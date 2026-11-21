@@ -348,4 +348,9 @@ export interface BookingQueryParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   forUser?: boolean;
+  /** S2: set only by the controller for a specialist or pharmacy; the list never leaves this owner's bookings. */
+  ownerScope?: BookingOwnerScope;
 }
+
+/** S2: the bookings a specialist (own specialistId) or a pharmacy (own pharmacyId) may see. */
+export type BookingOwnerScope = { specialistId: string } | { pharmacyId: string };

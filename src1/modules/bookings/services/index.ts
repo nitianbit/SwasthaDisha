@@ -1058,6 +1058,13 @@ export class BookingService {
     return booking;
   }
 
+  /** S2: a booking outside the caller's own specialistId / pharmacyId is "not found" (its existence is not revealed). */
+  async assertInOwnerScope(id: string, owner: NonNullable<BookingQueryParams['ownerScope']>): Promise<void> {
+    if (!(await this.bookingRepository.existsInOwnerScope(id, owner))) {
+      throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    }
+  }
+
   async getPaymentDetails(
     id: string,
     requester: { _id: string; userType: string; corporateId?: string; pharmacyId?: string }
@@ -1188,6 +1195,11 @@ export class BookingService {
     page?: number;
     totalPages?: number;
   }> {
+    // S2: a specialist's or pharmacy's list is always within its own bookings, whatever the other filters say.
+    if (queryParams.ownerScope) {
+      return this.bookingRepository.findInOwnerScope(queryParams, queryParams.ownerScope);
+    }
+
     if (requiredCorporateId !== undefined) {
       if (
         typeof requiredCorporateId !== 'string' ||

@@ -3,6 +3,7 @@ import { Model } from 'mongoose';
 import BookingModel from '@/modules/bookings/model';
 import {
   IBooking,
+  BookingOwnerScope,
   BookingQueryParams,
   BookingType,
 } from '@/modules/bookings/types';
@@ -255,6 +256,29 @@ export class BookingRepository extends BaseRepository<IBooking> {
     page: number;
     totalPages: number;
   }> {
+    const query = this.listQuery(filter);
+    const skip = (page - 1) * limit;
+    const sort = this.listSort(filter);
+
+    const [data, total] = await Promise.all([
+      BookingModel.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BookingModel.countDocuments(query),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /** Mongo filter of `findWithPagination` (pharmacyId is not one of its filters). */
+  private listQuery(filter: BookingQueryParams): any {
     const query: any = {};
 
     if (filter.userId) {
@@ -301,7 +325,10 @@ export class BookingRepository extends BaseRepository<IBooking> {
       }
     }
 
-    const skip = (page - 1) * limit;
+    return query;
+  }
+
+  private listSort(filter: BookingQueryParams): any {
     const sort: any = {};
 
     if (filter.sortBy) {
@@ -310,21 +337,45 @@ export class BookingRepository extends BaseRepository<IBooking> {
       sort.bookingDate = -1;
       sort.createdAt = -1;
     }
-
-    const [data, total] = await Promise.all([
-      BookingModel.find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      BookingModel.countDocuments(query),
-    ]);
-
-    return {
-      data,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
+    return sort;
   }
+
+  /**
+   * S2: the list a specialist or pharmacy may see. Every list filter (pharmacyId included) only narrows it, and the
+   * caller's own specialistId / pharmacyId is always ANDed on, paginated or not, so no filter reaches another owner.
+   */
+  async findInOwnerScope(filter: BookingQueryParams, owner: BookingOwnerScope): Promise<{
+    data: IBooking[];
+    total?: number;
+    page?: number;
+    totalPages?: number;
+  }> {
+    const narrowed = this.listQuery(filter);
+    if (filter.pharmacyId) narrowed.pharmacyId = filter.pharmacyId;
+    const query = { $and: [narrowed, bookingOwnerFilter(owner)] };
+    const sort = this.listSort(filter);
+
+    if (filter.page && filter.limit) {
+      const [data, total] = await Promise.all([
+        BookingModel.find(query).sort(sort).skip((filter.page - 1) * filter.limit).limit(filter.limit).lean(),
+        BookingModel.countDocuments(query),
+      ]);
+      return { data: data as IBooking[], total, page: filter.page, totalPages: Math.ceil(total / filter.limit) };
+    }
+
+    return { data: (await BookingModel.find(query).sort(sort).lean()) as IBooking[] };
+  }
+
+  /** S2: whether this booking carries the caller's own specialistId / pharmacyId. */
+  async existsInOwnerScope(id: string, owner: BookingOwnerScope): Promise<boolean> {
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) return false;
+    return (await BookingModel.exists({ $and: [{ _id: id }, bookingOwnerFilter(owner)] })) !== null;
+  }
+}
+
+/** S2: exact match on the owner's id (a missing or empty owner id matches nothing). */
+export function bookingOwnerFilter(owner: BookingOwnerScope): Record<string, unknown> {
+  const [field, value] = 'specialistId' in owner ? ['specialistId', owner.specialistId] : ['pharmacyId', owner.pharmacyId];
+  if (typeof value !== 'string' || value.trim().length === 0) return { _id: { $exists: false } };
+  return { [field]: { $eq: value } };
 }
