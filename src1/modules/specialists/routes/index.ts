@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave, rescheduleMyNoShow, adminRescheduleNoShow } from '@/modules/doctors/controller';
+import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave, rescheduleMyNoShow, adminRescheduleNoShow, adminCancelNoShow } from '@/modules/doctors/controller';
 import { scheduleTemplateSchema, leaveSchema, leaveParamSchema, presenceSchema, requestIdParamSchema, bookingIdParamSchema, extendSchema } from '@/modules/doctors/validation';
 import * as instantDoctor from '@/modules/doctors/controller/instant';
 import * as fin from '@/modules/partners/controller/finance';
@@ -102,6 +102,9 @@ specialistRouter.post('/me/bookings/:bookingId/reschedule-no-show', requireSpeci
   validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(rescheduleMyNoShow));
 specialistRouter.post('/admin/bookings/:bookingId/reschedule-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
   validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(adminRescheduleNoShow));
+// Q16a: only an admin cancels a moved no-show; `refund` (required) chooses whether the patient is refunded.
+specialistRouter.post('/admin/bookings/:bookingId/cancel-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
+  validate(clinicV.adminCancelNoShowSchema, 'body'), catchAsync(adminCancelNoShow));
 specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
 specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.acceptInvite));
 specialistRouter.post('/me/clinic-invites/:inviteId/decline', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.declineInvite));

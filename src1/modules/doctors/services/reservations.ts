@@ -8,19 +8,24 @@ import {
 } from '@/modules/doctors/model/reservation';
 
 const busy = () => new AppError({ status: 409, code: 'DOCTOR_BUSY', message: 'The doctor is not free at that time' });
+/**
+ * Q16a: reservations and the doctor's guard are keyed by the doctor id in its canonical (lower-case) spelling, so two
+ * spellings of one doctor can never hold overlapping intervals under separate guards.
+ */
+const doctorKey = (id: unknown) => { const v = String(id ?? ''); return /^[0-9a-fA-F]{24}$/.test(v) ? v.toLowerCase() : v; };
 
 /** Serializes this transaction with every other admission for the doctor (write-write conflict on the guard). */
 export async function bumpGuard(doctorId: string, s: ClientSession): Promise<void> {
   await DoctorScheduleGuardModel.findOneAndUpdate(
-    { doctorId: String(doctorId) },
-    { $inc: { version: 1 }, $setOnInsert: { doctorId: String(doctorId) } },
+    { doctorId: doctorKey(doctorId) },
+    { $inc: { version: 1 }, $setOnInsert: { doctorId: doctorKey(doctorId) } },
     { upsert: true, new: true, session: s }
   );
 }
 
 async function overlapping(doctorId: string, start: Date, end: Date, s: ClientSession, exceptRefId?: string) {
   return DoctorReservationModel.findOne({
-    doctorId: String(doctorId), isActive: true, startTime: { $lt: end }, endTime: { $gt: start },
+    doctorId: doctorKey(doctorId), isActive: true, startTime: { $lt: end }, endTime: { $gt: start },
     ...(exceptRefId ? { refId: { $ne: String(exceptRefId) } } : {}),
   }).session(s).lean();
 }
@@ -50,7 +55,7 @@ export async function reserveInterval(
     return revived as IDoctorReservation;
   }
   const [created] = await DoctorReservationModel.create([{
-    doctorId: String(p.doctorId), kind: p.kind, refId: String(p.refId), startTime: p.start, endTime: p.end, branchId: p.branchId, isActive: true,
+    doctorId: doctorKey(p.doctorId), kind: p.kind, refId: String(p.refId), startTime: p.start, endTime: p.end, branchId: p.branchId, isActive: true,
   }], { session: s });
   return created!.toObject() as IDoctorReservation;
 }
@@ -64,7 +69,7 @@ export async function moveInterval(
   await bumpGuard(p.doctorId, s);
   if (await overlapping(p.doctorId, p.start, p.end, s, p.refId)) throw busy();
   const moved = await DoctorReservationModel.findOneAndUpdate(
-    { refId: String(p.refId), kind: p.kind, doctorId: String(p.doctorId), isActive: true },
+    { refId: String(p.refId), kind: p.kind, doctorId: doctorKey(p.doctorId), isActive: true },
     { $set: { startTime: p.start, endTime: p.end } },
     { new: true, session: s }
   ).lean();
@@ -80,7 +85,7 @@ export async function releaseInterval(kind: ReservationKind, refId: string, s: C
 /** Whether the doctor holds an active interval covering `at` (e.g. busy with an instant consultation). */
 export async function activeIntervalAt(doctorId: string, at: Date, kind?: ReservationKind): Promise<IDoctorReservation | null> {
   const r = await DoctorReservationModel.findOne({
-    doctorId: String(doctorId), isActive: true, startTime: { $lte: at }, endTime: { $gt: at }, ...(kind ? { kind } : {}),
+    doctorId: doctorKey(doctorId), isActive: true, startTime: { $lte: at }, endTime: { $gt: at }, ...(kind ? { kind } : {}),
   }).lean();
   return (r as IDoctorReservation | null) ?? null;
 }

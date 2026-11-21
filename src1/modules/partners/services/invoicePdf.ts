@@ -30,10 +30,13 @@ const methodsOf = (e: IInvoiceEvent) => (e.splits?.length ? e.splits : [{ mode: 
  * Status of the bill after the given events (events are in lifecycle order). Q14: with the bill's total, payments are
  * summed (a pre-Q14 payment without an amount is the whole total): 'Partly paid' until the total is reached.
  */
-export function statusAfter(events: IInvoiceEvent[], totalMinor?: number): { label: string; detail?: string; paidMinor: number; payments: string[] } {
+export function statusAfter(events: IInvoiceEvent[], totalMinor?: number): { label: string; detail?: string; paidMinor: number; payments: string[];
+  refundMinor: number; refund?: string } {
   let label = 'Unpaid';
   let detail: string | undefined;
   let paid = 0;
+  let refundMinor = 0;
+  let refund: string | undefined;
   const payments: string[] = [];
   for (const e of events) {
     if (e.kind === 'payment') {
@@ -45,10 +48,15 @@ export function statusAfter(events: IInvoiceEvent[], totalMinor?: number): { lab
     } else if (e.kind === 'cancellation') {
       label = 'Cancelled';
       detail = `${e.reason ?? ''} · ${indiaDate(e.at)}`;
+      // Q16a: a cancelled bill that was paid prints its refund (amount, method, reference, date).
+      if (e.refund) {
+        refundMinor = typeof e.refund.amountMinor === 'number' ? e.refund.amountMinor : paid;
+        refund = `${rupees(refundMinor)} · ${String(e.refund.mode ?? '').toUpperCase()}${e.refund.reference ? ` · Ref ${e.refund.reference}` : ''} · ${indiaDate(e.at)}${e.refund.note ? ` · ${e.refund.note}` : ''}`;
+      }
     }
   }
   if (label === 'Partly paid' && totalMinor !== undefined) detail = `Paid ${rupees(paid)} · Due ${rupees(totalMinor - paid)}`;
-  return { label, detail, paidMinor: paid, payments };
+  return { label, detail, paidMinor: paid, payments, refundMinor, refund };
 }
 
 /** Self-contained HTML of the immutable invoice plus the given events; every value is escaped. */
@@ -84,7 +92,9 @@ ${showTax ? '<th class="n">GST</th>' : ''}<th class="n">Amount</th></tr></thead>
 <table style="margin-top:8px;width:40%;margin-left:auto"><tbody>
 <tr><td>Taxable value</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${taxRows}
 <tr><td><strong>Total</strong></td><td class="n"><strong>${rupees(t.totalMinor)}</strong></td></tr>${status.paidMinor > 0 && status.label !== 'Cancelled'
-  ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Due</td><td class="n">${rupees(Math.max(0, t.totalMinor - status.paidMinor))}</td></tr>` : ''}</tbody></table>
+  ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Due</td><td class="n">${rupees(Math.max(0, t.totalMinor - status.paidMinor))}</td></tr>` : ''}${status.label === 'Cancelled' && status.paidMinor > 0
+  ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Refunded</td><td class="n">${rupees(status.refundMinor)}</td></tr>` : ''}</tbody></table>
+${status.refund ? `<p class="note"><strong>Refund:</strong> ${esc(status.refund)}</p>` : ''}
 ${status.payments.length > 1 ? `<p class="note"><strong>Payments:</strong><br>${status.payments.map(esc).join('<br>')}</p>` : ''}
 ${inv.documentKind === 'bill_of_supply' && s.gstin ? '<p class="note">Composition taxable person / exempt supply — tax not chargeable.</p>' : ''}
 ${inv.documentKind === 'commercial_invoice' ? '<p class="note">Supplier not registered under GST.</p>' : ''}

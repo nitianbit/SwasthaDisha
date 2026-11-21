@@ -210,15 +210,15 @@ async function main() {
       const s2 = await slot(docA, 6, '11:00', '11:30');
       const b2 = await book(await customer(), docA, s2);
       await confirmPaid(b2._id);
-      await bookings.update(String(b2._id), { status: 'completed' } as any);
-      await bookings.update(String(b2._id), { status: 'completed' } as any); // a repeat is a no-op: no second earning
+      await bookings.update(String(b2._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000)); // Q16a: after the start
+      await bookings.update(String(b2._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000)); // a repeat is a no-op: no second earning
       assert.equal(await LedgerEntryModel.countDocuments({ source: 'consultation', sourceId: String(b2._id) }), 1);
     } finally { (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined; }
     const s3 = await slot(docA, 6, '12:00', '12:30');
     const legacy = await book(await customer(), docA, s3);
     assert.equal(legacy.settlementSystem, 'legacy');
     await confirmPaid(legacy._id);
-    await bookings.update(String(legacy._id), { status: 'completed' } as any);
+    await bookings.update(String(legacy._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000));
     assert.equal(await LedgerEntryModel.countDocuments({ sourceId: String(legacy._id) }), 0, 'legacy bookings belong to the legacy payouts');
   });
 
@@ -370,7 +370,7 @@ async function main() {
       const u = await customer();
       const b = await book(u, docZ, await slot(docZ, 11, '10:00', '10:30'));
       await BookingModel.updateOne({ _id: b._id }, { $set: { status: 'confirmed', paymentStatus: 'paid', walletFunding: { total: 500, revision: 1, closed: false, captures: [] } } });
-      await bookings.update(String(b._id), { status: 'completed' } as any);
+      await bookings.update(String(b._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000));
       for (const st of ['confirmed', 'pending']) await assert.rejects(() => bookings.update(String(b._id), { status: st } as any), code('BOOKING_TERMINAL'));
       await assert.rejects(() => bookings.cancelByDoctor(String(b._id), { _id: docZ, userType: 'specialist' }, 'x'), code('BOOKING_NOT_CANCELLABLE'));
       await bookings.update(String(b._id), { notes: 'follow up in a week' } as any); // non-status edits stay possible
@@ -388,10 +388,10 @@ async function main() {
       // Unpaid ledger consultation: completion refused (it would never earn); once paid it completes and earns once.
       const unpaid = await book(await customer(), docZ, await slot(docZ, 11, '12:00', '12:30'));
       await BookingModel.updateOne({ _id: unpaid._id }, { $set: { status: 'confirmed' } });
-      await assert.rejects(() => bookings.update(String(unpaid._id), { status: 'completed' } as any), code('BOOKING_NOT_PAID'));
+      await assert.rejects(() => bookings.update(String(unpaid._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000)), code('BOOKING_NOT_PAID'));
       assert.equal((await BookingModel.findById(unpaid._id).lean())!.status, 'confirmed');
       await confirmPaid(unpaid._id);
-      await bookings.update(String(unpaid._id), { status: 'completed' } as any);
+      await bookings.update(String(unpaid._id), { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000));
       assert.equal(await LedgerEntryModel.countDocuments({ source: 'consultation', sourceId: String(unpaid._id), kind: 'earning' }), 1);
     } finally { (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined; }
   });

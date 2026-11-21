@@ -59,7 +59,7 @@ import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/ser
 import { CatalogueService } from '@/modules/partners/services/catalogue';
 import { ensureSettlementAccount, postLedgerEntry, ledgerBalance } from '@/modules/partners/services/settlement';
 import { saveSlotTemplate, expandSlots, setSlotCapacity, setSlotClosed, addManualSlot, istDate, addDays, listSlotsForPartner } from '@/modules/partners/services/slots';
-import { LabBookingService, registerLabBookingPayments, LAB_CANCEL_CUTOFF_MS } from '@/modules/partners/services/labBookings';
+import { LabBookingService, registerLabBookingPayments, LAB_CANCEL_CUTOFF_MS, labSlotEnd } from '@/modules/partners/services/labBookings';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { runSettlementCutover } from '@/scripts/q3SettlementCutover';
 import { IMember, PartnerPermission } from '@/modules/partners/types';
@@ -644,7 +644,9 @@ async function main() {
     await assert.rejects(() => labSvc.assignCollector(deskA, id, { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' }), code('WRONG_VISIT_MODE'));
     await PartnerLabBookingModel.updateOne({ _id: id }, { $set: { collector: { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' } } });
     const b = await PartnerLabBookingModel.findById(id).lean();
-    const after = new Date(new Date(b!.slot.startsAt).getTime() + 60_000);
+    // Q16a re-review (N6): only once the arrival window has ENDED (a minute after the start is now too early).
+    await assert.rejects(() => labSvc.markNoShow(deskA, id, new Date(new Date(b!.slot.startsAt).getTime() + 60_000)), code('SLOT_NOT_STARTED'));
+    const after = new Date(labSlotEnd(b!.slot).getTime() + 60_000);
     assert.equal(((await labSvc.markNoShow(deskA, id, after)) as any).status, 'no_show');
     const acct = await SettlementAccountModel.findOne({ ownerKind: 'partner', ownerId: partnerId }).lean();
     const e = await LedgerEntryModel.find({ settlementAccountId: String(acct!._id), source: 'partner_lab_booking', sourceId: id }).lean();

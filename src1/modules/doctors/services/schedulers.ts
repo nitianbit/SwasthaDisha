@@ -27,13 +27,23 @@ export function runDoctorSchedulers(): void {
   cron.schedule('* * * * *', async () => {
     if (sweeping) return;
     sweeping = true;
-    try {
-      const svc = Container.get(InstantConsultService);
-      const unpaid = await svc.expireUnpaid();
-      const inactive = await svc.refundInactive();
-      if (unpaid.examined || inactive.examined) logger.info('Instant consultation sweep', { unpaid, inactive });
-    } catch (error) {
-      logger.error('Instant consultation sweep failed', { error: error instanceof Error ? error.message : String(error) });
-    } finally { sweeping = false; }
+    try { await runInstantSweeps(Container.get(InstantConsultService)); }
+    finally { sweeping = false; }
   });
+}
+
+/**
+ * Q16a: the two instant sweeps run independently — the inactivity refund runs even when the unpaid expiry throws
+ * (and the other way round); each failure is logged without patient data.
+ */
+export async function runInstantSweeps(svc: Pick<InstantConsultService, 'expireUnpaid' | 'refundInactive'>, now = new Date()) {
+  const errorOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
+  let unpaid: Awaited<ReturnType<InstantConsultService['expireUnpaid']>> | null = null;
+  let inactive: Awaited<ReturnType<InstantConsultService['refundInactive']>> | null = null;
+  try { unpaid = await svc.expireUnpaid(now); }
+  catch (error) { logger.error('Instant unpaid-expiry sweep failed', { error: errorOf(error) }); }
+  try { inactive = await svc.refundInactive(now); }
+  catch (error) { logger.error('Instant inactivity-refund sweep failed', { error: errorOf(error) }); }
+  if (unpaid?.examined || inactive?.examined) logger.info('Instant consultation sweep', { unpaid, inactive });
+  return { unpaid, inactive };
 }

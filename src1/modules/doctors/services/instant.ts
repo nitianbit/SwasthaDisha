@@ -13,6 +13,7 @@ import { CouponService } from '@/modules/coupon/services';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { WalletModel } from '@/modules/wallet/model';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { sweepFailure } from '@/modules/common/utils/sweepFailure';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
 import SpecialistModel from '@/modules/specialists/model';
@@ -41,9 +42,10 @@ const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * §5 funding split at acceptance. Fee is allocated coupon → wallet → gateway; the quote difference is returned gateway
  * first, then wallet, and the unused coupon part is voided (never money). allocated.total + returned.total == funding.total.
  */
-export function allocateFunding(f: MoneySplit, feeMinor: number) {
+export function allocateFunding(f: MoneySplit, feeMinor: number, couponForFeeMinor?: number) {
   if (!Number.isSafeInteger(feeMinor) || feeMinor < 0 || feeMinor > f.totalMinor) throw err(409, 'FEE_ABOVE_QUOTE', 'The fee is above the quoted amount');
-  const couponMinor = Math.min(f.couponMinor, feeMinor);
+  // Q16a: the coupon part is what the coupon gives on the fee actually charged (never more than was held for it).
+  const couponMinor = Math.min(f.couponMinor, feeMinor, couponForFeeMinor ?? f.couponMinor);
   const walletMinor = Math.min(f.walletMinor, feeMinor - couponMinor);
   const gatewayMinor = feeMinor - couponMinor - walletMinor;
   if (gatewayMinor > f.gatewayMinor) throw err(500, 'FUNDING_INCONSISTENT', 'The held funding does not cover the fee');
@@ -57,6 +59,50 @@ export function allocateFunding(f: MoneySplit, feeMinor: number) {
     throw err(500, 'FUNDING_INVARIANT', 'Funding allocation does not add up');
   }
   return { allocated, returned };
+}
+
+type CouponTerms = NonNullable<IInstantRequest['couponTerms']>;
+
+/**
+ * Q16a (owner, 22 Nov 2026): the coupon's discount on the fee actually charged, in paise. A percentage applies to that
+ * fee (capped by the coupon's maximum); a fixed amount never exceeds it; below the coupon's minimum purchase the coupon
+ * gives nothing. Requests made before Q16a have no frozen terms: their held coupon part is scaled to the fee.
+ */
+export function couponDiscountForFee(r: Pick<IInstantRequest, 'couponTerms' | 'discountMinor' | 'quotedAmountMinor'>, feeMinor: number): number {
+  if (!(r.discountMinor > 0) || !(feeMinor > 0)) return 0;
+  const t = r.couponTerms as CouponTerms | undefined;
+  if (!t) return r.quotedAmountMinor > 0 ? Math.min(r.discountMinor, Math.floor((r.discountMinor * feeMinor) / r.quotedAmountMinor)) : 0;
+  if (t.minimumPurchaseAmount && feeMinor < paiseOf(t.minimumPurchaseAmount)) return 0;
+  let d = t.discountType === 'percentage' ? Math.round((feeMinor * Number(t.discountValue)) / 100) : paiseOf(t.discountValue);
+  if (t.discountType === 'percentage' && t.maximumDiscountAmount) d = Math.min(d, paiseOf(t.maximumDiscountAmount));
+  return Math.max(0, Math.min(d, feeMinor, r.discountMinor));
+}
+
+/** Q16a: the fee a doctor charges at acceptance — never above the fee frozen with their offer, nor above today's fee. */
+export function chargedFeeFor(r: Pick<IInstantRequest, 'offerFees' | 'quotedAmountMinor'>, doctorId: string, currentFeeMinor: number): number {
+  const frozen = (r.offerFees ?? []).find((o) => o.doctorId === String(doctorId))?.feeMinor;
+  // A request offered before Q16a has no frozen fees: the quote is the ceiling (the former rule).
+  return Math.min(currentFeeMinor, frozen ?? r.quotedAmountMinor);
+}
+
+/**
+ * Q16a re-review (C): whether the money the customer put in (quote − coupon) covers this fee once the coupon is computed
+ * again on it. A fee below the coupon's minimum gets no coupon and may then cost more than was paid: such a doctor is
+ * left out of the offer, and accepting is refused (409 OFFER_NO_LONGER_AFFORDABLE), never a 500.
+ */
+export function feeAffordable(r: Pick<IInstantRequest, 'couponTerms' | 'discountMinor' | 'quotedAmountMinor'>, feeMinor: number): boolean {
+  return feeMinor <= r.quotedAmountMinor && feeMinor - couponDiscountForFee(r, feeMinor) <= r.quotedAmountMinor - r.discountMinor;
+}
+
+/**
+ * Q16a re-review (D): the frozen fees after a re-offer — a doctor offered before keeps min(earlier frozen fee, current
+ * fee); entries of doctors not in this offer are kept (a later re-offer to them keeps their earlier fee too).
+ */
+export function mergeOfferFees(prior: { doctorId: string; feeMinor: number }[] | undefined, offers: { doctorId: string; feeMinor: number }[]) {
+  const before = new Map((prior ?? []).map((o) => [o.doctorId, o.feeMinor]));
+  const now = offers.map((o) => ({ doctorId: o.doctorId, feeMinor: Math.min(o.feeMinor, before.get(o.doctorId) ?? o.feeMinor) }));
+  const ids = new Set(now.map((o) => o.doctorId));
+  return [...(prior ?? []).filter((o) => !ids.has(o.doctorId)), ...now];
 }
 
 export type InstantNotifier = (n: { userId: string; userType: 'user' | 'specialist'; title: string; message: string; key: string; data?: Record<string, unknown> }) => Promise<void>;
@@ -93,7 +139,7 @@ export function instantRequestHash(input: CreateInstantInput): string {
 
 /** Customer view: no ledger internals, no request hash/key. */
 export function requestView(r: IInstantRequest): Record<string, unknown> {
-  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, ...rest } = r as any;
+  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, offerFees: _f, couponTerms: _t, ...rest } = r as any;
   return rest;
 }
 
@@ -107,6 +153,12 @@ const istParts = (at: Date) => {
  * either is not eligible), exactly as discovery (`onlineDoctors`) and speciality listing query it.
  */
 const isEligibleDoctor = (sp: { isActive?: unknown; isVerified?: unknown } | null | undefined) => !!sp && sp.isActive === true && sp.isVerified === true;
+
+/**
+ * Q16a (L7): a doctor is busy for instant consultations when any held interval overlaps [now, now + 30 min) — the
+ * window an acceptance reserves — so discovery, quotes, offers and presence never list a doctor who could not accept.
+ */
+const busyWindow = (now: Date) => ({ isActive: true, startTime: { $lt: new Date(now.getTime() + CONSULT_MS) }, endTime: { $gt: now } });
 
 @Service()
 export class InstantConsultService {
@@ -180,7 +232,7 @@ export class InstantConsultService {
     const eligible = isEligibleDoctor(sp);
     const [p, held] = await Promise.all([
       DoctorPresenceModel.findOne({ doctorId: String(doctorId) }).lean(),
-      DoctorReservationModel.findOne({ doctorId: String(doctorId), isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).sort({ endTime: -1 }).lean(),
+      DoctorReservationModel.findOne({ doctorId: String(doctorId), ...busyWindow(now) }).sort({ endTime: -1 }).lean(),
     ]);
     const lastSeenAt = p?.lastSeenAt ? new Date(p.lastSeenAt) : null;
     const heartbeatExpired = !lastSeenAt || now.getTime() - lastSeenAt.getTime() > PRESENCE_TTL_MS;
@@ -209,7 +261,7 @@ export class InstantConsultService {
     if (!presences.length) return [];
     const ids = presences.map((p) => p.doctorId);
     const [busy, doctors] = await Promise.all([
-      DoctorReservationModel.find({ doctorId: { $in: ids }, isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).select({ doctorId: 1 }).lean(),
+      DoctorReservationModel.find({ doctorId: { $in: ids }, ...busyWindow(now) }).select({ doctorId: 1 }).lean(),
       SpecialistModel.find({ _id: { $in: ids.filter((i) => Types.ObjectId.isValid(i)) }, isActive: true, isVerified: true,
         specialization: new RegExp(`^\\s*${escapeRx(f.specialization.trim())}\\s*$`, 'i') }).select({ name: 1, rating: 1, specialization: 1 }).lean() as any,
     ]);
@@ -248,6 +300,7 @@ export class InstantConsultService {
     let discountMinor = 0;
     let couponCode: string | undefined;
     let couponDoctorIds: string[] | undefined;
+    let couponTerms: CouponTerms | undefined;
     if (input.couponCode && quotedAmountMinor > 0) {
       // The same eligibility context as an ordinary consultation: the resolved patient and the account's corporate.
       const v = await this.couponService.validateCoupon({ code: input.couponCode, userId, bookingType: 'consultation',
@@ -258,6 +311,10 @@ export class InstantConsultService {
       couponCode = v.coupon.code;
       // A coupon for named doctors stays bound to them through re-offers and acceptance (frozen with the price).
       if (v.coupon.applicableTo === 'specific') couponDoctorIds = (v.coupon.applicableIds ?? []).map(String);
+      // Q16a: frozen so the discount can be computed again on the fee actually charged at acceptance.
+      couponTerms = { discountType: v.coupon.discountType === 'percentage' ? 'percentage' : 'fixed', discountValue: Number(v.coupon.discountValue || 0),
+        ...(v.coupon.maximumDiscountAmount ? { maximumDiscountAmount: Number(v.coupon.maximumDiscountAmount) } : {}),
+        ...(v.coupon.minimumPurchaseAmount ? { minimumPurchaseAmount: Number(v.coupon.minimumPurchaseAmount) } : {}) };
     }
 
     // Q9: nothing is funded at a price the customer did not accept (a doctor's fee or the coupon may have changed).
@@ -272,7 +329,7 @@ export class InstantConsultService {
       await claimRequestKey(scopeOf('instant_request_create', userId), input.requestKey, s);
       const [created] = await InstantRequestModel.create([{
         userId, createRequestKey: input.requestKey, createRequestHash: hash, patient, specialization: input.specialization.trim(), mode: input.mode,
-        target: input.target, quotedAmountMinor, couponCode, ...(couponDoctorIds ? { couponDoctorIds } : {}), discountMinor, fundingState: 'awaiting', status: 'pending_payment', statusVersion: 0,
+        target: input.target, quotedAmountMinor, couponCode, ...(couponDoctorIds ? { couponDoctorIds } : {}), ...(couponTerms ? { couponTerms } : {}), discountMinor, fundingState: 'awaiting', status: 'pending_payment', statusVersion: 0,
         paymentStatus: 'pending', paymentDeadline: new Date(now.getTime() + INSTANT_PAYMENT_WINDOW_MS), offerGeneration: 0, offeredTo: [],
       }], { session: s });
       return created!.toObject() as IInstantRequest;
@@ -319,14 +376,14 @@ export class InstantConsultService {
         requested: useWallet ? due : 0, legacyFunded: 0, wallets: this.walletRepository })).total
       : 0;
     const remaining = Math.round((due - funded) * 100) / 100;
-    const offeredTo = await this.offerTargets(r, now);
+    const offers = await this.offerTargets(r, now);
     if (remaining <= 0) {
       const held = await runLedgerTransaction(async (s) => {
         const recordId = new Types.ObjectId();
         const x = await InstantRequestModel.findOneAndUpdate(
           { _id: id, status: 'pending_payment', paymentStatus: 'pending', 'walletFunding.closed': { $ne: true },
             $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: r.paymentTransactionId ?? '' }] },
-          { $set: { paymentStatus: 'paid', paymentTransactionId: String(recordId), ...this.holdPatch(r, paiseOf(funded), 0, offeredTo, now) }, $inc: { statusVersion: 1 } },
+          { $set: { paymentStatus: 'paid', paymentTransactionId: String(recordId), ...this.holdPatch(r, paiseOf(funded), 0, offers, now) }, $inc: { statusVersion: 1 } },
           { new: true, session: s }
         ).lean();
         if (!x) throw err(409, 'INSTANT_PAYMENT_STATE_CHANGED', 'This request was paid or changed; reload');
@@ -351,18 +408,31 @@ export class InstantConsultService {
         amount: remaining, currency: order.razorpayOrder.currency } };
   }
 
-  /** Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote, coupon's doctors only). */
-  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds'>, now: Date): Promise<string[]> {
-    if (r.target.kind === 'specific') return [String(r.target.doctorId)];
+  /**
+   * Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote, coupon's
+   * doctors only). Q16a: each with the fee frozen for this offer (never above the quote the patient paid).
+   */
+  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds' | 'couponTerms' | 'discountMinor'>
+    & { offerFees?: IInstantRequest['offerFees'] }, now: Date): Promise<{ doctorId: string; feeMinor: number }[]> {
+    if (r.target.kind === 'specific') {
+      const doctorId = String(r.target.doctorId);
+      const p = await DoctorPresenceModel.findOne({ doctorId }).select({ instantFeeMinor: 1 }).lean();
+      return mergeOfferFees(r.offerFees, [{ doctorId, feeMinor: Math.min(p?.instantFeeMinor ?? r.quotedAmountMinor, r.quotedAmountMinor) }])
+        .filter((o) => o.doctorId === doctorId);
+    }
+    const prior = new Map((r.offerFees ?? []).map((o) => [o.doctorId, o.feeMinor]));
+    // D: a doctor offered before keeps min(earlier frozen, current); C: only doctors the customer's money covers.
     return (await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor,
-      ...(r.couponDoctorIds ? { onlyDoctorIds: r.couponDoctorIds } : {}) }, now)).map((d) => d.doctorId);
+      ...(r.couponDoctorIds ? { onlyDoctorIds: r.couponDoctorIds } : {}) }, now))
+      .map((d) => ({ doctorId: d.doctorId, feeMinor: Math.min(d.instantFeeMinor, prior.get(d.doctorId) ?? d.instantFeeMinor) }))
+      .filter((o) => feeAffordable(r, o.feeMinor));
   }
 
   /** The held state: funding recorded (coupon + wallet + gateway == quote) and the first offer generation opened. */
-  private holdPatch(r: IInstantRequest, walletMinor: number, gatewayMinor: number, offeredTo: string[], now: Date) {
+  private holdPatch(r: IInstantRequest, walletMinor: number, gatewayMinor: number, offers: { doctorId: string; feeMinor: number }[], now: Date) {
     const funding = { couponMinor: r.discountMinor, walletMinor, gatewayMinor, totalMinor: r.discountMinor + walletMinor + gatewayMinor };
     return {
-      status: 'offered', fundingState: 'held', funding, offerGeneration: 1, offeredTo,
+      status: 'offered', fundingState: 'held', funding, offerGeneration: 1, offeredTo: offers.map((o) => o.doctorId), offerFees: offers,
       offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS),
     };
   }
@@ -377,7 +447,7 @@ export class InstantConsultService {
     if (!r || r.userId !== record.userId) throw notFound();
     const now = new Date();
     const thisRecord = String(record._id);
-    const offeredTo = await this.offerTargets(r, now);
+    const offers = await this.offerTargets(r, now);
     const gatewayMinor = paiseOf(record.finalAmount);
     const capture = await recordGatewayCapture({
       model: InstantRequestModel, kind: 'instant_request', bookingId: String(r._id), userId: r.userId, recordId: thisRecord,
@@ -387,7 +457,7 @@ export class InstantConsultService {
         || (b.paymentStatus === 'paid' && String(b.paymentTransactionId) === thisRecord),
       applyPatch: (b: any) => b.status === 'pending_payment'
         ? { paymentStatus: 'paid', paymentTransactionId: thisRecord, statusVersion: Number(b.statusVersion ?? 0) + 1,
-          ...this.holdPatch(b, b.quotedAmountMinor - b.discountMinor - gatewayMinor, gatewayMinor, offeredTo, now) }
+          ...this.holdPatch(b, b.quotedAmountMinor - b.discountMinor - gatewayMinor, gatewayMinor, offers, now) }
         : { paymentStatus: 'paid', paymentTransactionId: thisRecord },
       wallets: this.walletRepository,
     });
@@ -415,11 +485,16 @@ export class InstantConsultService {
       DoctorPresenceModel.findOne({ doctorId: String(doctorId) }).select({ instantFeeMinor: 1 }).lean(),
     ]);
     // Q13: the quote the patient paid (coupon + wallet + gateway) is the ceiling of the fee this doctor may charge.
+    // Q16a: the fee frozen with this offer is the doctor's ceiling; accepting charges min(frozen fee, current fee).
     const yourFeeMinor = presence?.instantFeeMinor ?? null;
-    return rows.map((r) => ({ requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
-      gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt,
-      quotedAmountMinor: r.quotedAmountMinor, quotedAmount: rupees(r.quotedAmountMinor), yourFeeMinor,
-      feeWithinQuote: yourFeeMinor !== null && yourFeeMinor <= r.quotedAmountMinor }));
+    return rows.map((r) => {
+      const offeredFeeMinor = (r.offerFees ?? []).find((o) => o.doctorId === String(doctorId))?.feeMinor ?? null;
+      const chargeFeeMinor = yourFeeMinor === null ? null : chargedFeeFor(r as IInstantRequest, String(doctorId), yourFeeMinor);
+      return { requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
+        gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt,
+        quotedAmountMinor: r.quotedAmountMinor, quotedAmount: rupees(r.quotedAmountMinor), yourFeeMinor, offeredFeeMinor, chargeFeeMinor,
+        feeWithinQuote: chargeFeeMinor !== null && feeAffordable(r as IInstantRequest, chargeFeeMinor) };
+    });
   }
 
   /**
@@ -472,9 +547,13 @@ export class InstantConsultService {
       if (r.couponDoctorIds && !r.couponDoctorIds.includes(String(doctorId))) {
         throw err(409, 'COUPON_NOT_FOR_DOCTOR', "The patient's coupon is for other doctors");
       }
-      const fee = presence.instantFeeMinor;
+      // Q16a (owner, 22 Nov 2026): the fee frozen with the offer is the ceiling (a fee raised after the offer cannot be
+      // charged); a lower current fee is charged as it is. The coupon is computed again on the fee charged.
+      const fee = chargedFeeFor(r, String(doctorId), presence.instantFeeMinor);
       if (fee > r.quotedAmountMinor) throw err(409, 'FEE_ABOVE_QUOTE', 'Your fee is above what this patient paid');
-      const { allocated, returned } = allocateFunding(r.funding as MoneySplit, fee);
+      // Q16a re-review (C): below the coupon's minimum the fee may cost more than the patient paid: refused, never a 500.
+      if (!feeAffordable(r, fee)) throw err(409, 'OFFER_NO_LONGER_AFFORDABLE', "What the patient paid does not cover your fee for this request");
+      const { allocated, returned } = allocateFunding(r.funding as MoneySplit, fee, couponDiscountForFee(r, fee));
 
       const bookingId = new Types.ObjectId();
       await reserveInterval({ doctorId: String(doctorId), kind: 'instant', refId: String(bookingId), start: now, end: new Date(now.getTime() + CONSULT_MS) }, s);
@@ -494,6 +573,11 @@ export class InstantConsultService {
 
       const back = returned.walletMinor + returned.gatewayMinor;
       if (back > 0) await this.creditWallet(r.userId, back, `instant_request_return:${id}`, 'Instant consultation: quote difference returned', id, s);
+      // Q16a: a coupon that gives nothing on the fee charged (below its minimum purchase) was not used: its count is undone.
+      if (r.discountMinor > 0 && allocated.couponMinor === 0) {
+        const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: id }).session(s).lean();
+        await undoCouponUsageIn(records.map((x) => String(x._id)), s);
+      }
 
       const { date, time } = istParts(now);
       const settlementSystem = settlementSystemFor(now);
@@ -529,22 +613,26 @@ export class InstantConsultService {
   async reoffer(userId: string, requestId: string, target: { kind: 'specific' | 'any'; doctorId?: string }, now = new Date()) {
     const r = await this.own(userId, requestId);
     if (r.status !== 'offered' || r.fundingState !== 'held') throw err(409, 'REQUEST_NOT_OPEN', 'This request is no longer waiting for a doctor');
-    let offeredTo: string[];
+    // Q16a: each re-offered doctor's fee is frozen again with the new offer.
+    let offers: { doctorId: string; feeMinor: number }[];
     if (target.kind === 'specific') {
       if (!target.doctorId) throw err(400, 'DOCTOR_REQUIRED', 'Choose a doctor');
       if (r.couponDoctorIds && !r.couponDoctorIds.includes(String(target.doctorId))) {
         throw err(409, 'COUPON_NOT_FOR_DOCTOR', 'Your coupon is for other doctors; choose one of them or ask for a refund');
       }
       const online = await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor }, now);
-      if (!online.some((d) => d.doctorId === String(target.doctorId))) throw err(409, 'DOCTOR_NOT_ONLINE', 'This doctor is not available within your paid amount');
-      offeredTo = [String(target.doctorId)];
+      const d = online.find((x) => x.doctorId === String(target.doctorId));
+      const fee = d ? Math.min(d.instantFeeMinor, (r.offerFees ?? []).find((o) => o.doctorId === d.doctorId)?.feeMinor ?? d.instantFeeMinor) : 0;
+      if (!d || !feeAffordable(r, fee)) throw err(409, 'DOCTOR_NOT_ONLINE', 'This doctor is not available within your paid amount');
+      offers = [{ doctorId: d.doctorId, feeMinor: fee }];
     } else {
-      offeredTo = await this.offerTargets({ ...r, target }, now);
-      if (!offeredTo.length) throw err(409, 'NO_DOCTOR_ONLINE', 'No doctor is online within your paid amount right now');
+      offers = await this.offerTargets({ ...r, target }, now);
+      if (!offers.length) throw err(409, 'NO_DOCTOR_ONLINE', 'No doctor is online within your paid amount right now');
     }
+    const offeredTo = offers.map((o) => o.doctorId);
     const updated = await InstantRequestModel.findOneAndUpdate(
       { _id: r._id, userId: { $eq: userId }, status: 'offered', fundingState: 'held', offerGeneration: r.offerGeneration, statusVersion: r.statusVersion },
-      { $set: { target, offeredTo, offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS) },
+      { $set: { target, offeredTo, offerFees: mergeOfferFees(r.offerFees, offers), offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS) },
         $inc: { offerGeneration: 1, statusVersion: 1 } },
       { new: true }
     ).lean() as IInstantRequest | null;
@@ -640,18 +728,20 @@ export class InstantConsultService {
       if (b.status !== 'confirmed') throw err(409, 'BOOKING_STATE_CONFLICT', `A ${b.status} consultation cannot be cancelled`);
       const r = await InstantRequestModel.findOne({ _id: b.instantRequestId, bookingId: id }).session(s).lean() as IInstantRequest | null;
       if (!r || r.fundingState !== 'allocated' || !r.allocated) throw err(409, 'FUNDING_STATE_CONFLICT', 'The consultation funding is not in an allocated state');
+      const byAdmin = requester.userType === 'admin';
       const done = await BookingModel.updateOne({ _id: id, status: 'confirmed' },
-        { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: 'doctor', cancelledAt: getTodayYyyymmdd() } }, { session: s });
+        { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: getTodayYyyymmdd() } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
       const already = r.refunded ?? { walletMinor: 0, gatewayMinor: 0, totalMinor: 0 };
       const wallet = r.allocated.walletMinor - already.walletMinor;
       const gateway = r.allocated.gatewayMinor - already.gatewayMinor;
       const upd = await InstantRequestModel.updateOne({ _id: r._id, statusVersion: r.statusVersion, fundingState: 'allocated' },
-        { $set: { fundingState: 'refunded', status: 'refunded', refundReason: 'doctor_cancelled',
+        { $set: { fundingState: 'refunded', status: 'refunded', refundReason: byAdmin ? 'admin_cancelled' : 'doctor_cancelled',
           refunded: { walletMinor: already.walletMinor + wallet, gatewayMinor: already.gatewayMinor + gateway, totalMinor: already.totalMinor + wallet + gateway } },
           $inc: { statusVersion: 1 } }, { session: s });
       if (upd.modifiedCount !== 1) throw changed();
-      if (wallet + gateway > 0) await this.creditWallet(r.userId, wallet + gateway, `instant_request_refund:${r._id}`, 'Instant consultation cancelled by the doctor', String(r._id), s);
+      if (wallet + gateway > 0) await this.creditWallet(r.userId, wallet + gateway, `instant_request_refund:${r._id}`,
+        byAdmin ? 'Instant consultation cancelled by the Jansetu team' : 'Instant consultation cancelled by the doctor', String(r._id), s);
       const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: String(r._id) }).session(s).lean();
       await undoCouponUsageIn(records.map((x) => String(x._id)), s);
       await releaseInterval('instant', id, s);
@@ -722,46 +812,54 @@ export class InstantConsultService {
   async expireUnpaid(now = new Date(), limit = 100) {
     const due = await InstantRequestModel.find({ status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }] }).limit(limit).lean();
-    let expired = 0; let deferred = 0;
+    let expired = 0; let deferred = 0; let failed = 0;
     for (const d of due) {
       const id = String(d._id);
-      const check = await this.paymentService.reconcileContextPayments('instant_request', id).catch(() => ({ unknown: 1 }));
-      if (check.unknown > 0) {
-        const checks = Number(d.expiryChecks || 0) + 1;
-        await InstantRequestModel.updateOne({ _id: id, status: 'pending_payment' }, { $set: { expiryNextAt: new Date(now.getTime() + Math.min(3_600_000, 60_000 * 2 ** Math.min(checks, 6))), expiryChecks: checks } });
-        deferred += 1;
-        continue;
+      // Q16a: one failing row never stops the sweep; it is logged by id and error only (no patient data) and retried next run.
+      try {
+        const check = await this.paymentService.reconcileContextPayments('instant_request', id).catch(() => ({ unknown: 1 }));
+        if (check.unknown > 0) {
+          const checks = Number(d.expiryChecks || 0) + 1;
+          await InstantRequestModel.updateOne({ _id: id, status: 'pending_payment' }, { $set: { expiryNextAt: new Date(now.getTime() + Math.min(3_600_000, 60_000 * 2 ** Math.min(checks, 6))), expiryChecks: checks } });
+          deferred += 1;
+          continue;
+        }
+        const ok = await runLedgerTransaction(async (s) => {
+          const r = await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest | null;
+          if (!r || r.status !== 'pending_payment' || r.paymentStatus !== 'pending' || now < new Date(r.paymentDeadline)) return false;
+          const records = await this.fenceRecords(id, s);
+          if (records.some((x) => x.status === 'paid')) return false;
+          const done = await InstantRequestModel.updateOne({ _id: id, status: 'pending_payment', statusVersion: r.statusVersion },
+            { $set: { status: 'expired_unpaid', fundingState: 'refunded', paymentStatus: 'refunded' }, $inc: { statusVersion: 1 }, $unset: { expiryNextAt: 1, expiryChecks: 1 } }, { session: s });
+          if (done.modifiedCount !== 1) throw changed();
+          await undoCouponUsageIn(records.map((x) => String(x._id)), s);
+          await this.returnAll(r, records, s);
+          return true;
+        });
+        if (ok) expired += 1;
+      } catch (e) {
+        failed += 1;
+        sweepFailure('instant unpaid expiry', id, e);
       }
-      const ok = await runLedgerTransaction(async (s) => {
-        const r = await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest | null;
-        if (!r || r.status !== 'pending_payment' || r.paymentStatus !== 'pending' || now < new Date(r.paymentDeadline)) return false;
-        const records = await this.fenceRecords(id, s);
-        if (records.some((x) => x.status === 'paid')) return false;
-        const done = await InstantRequestModel.updateOne({ _id: id, status: 'pending_payment', statusVersion: r.statusVersion },
-          { $set: { status: 'expired_unpaid', fundingState: 'refunded', paymentStatus: 'refunded' }, $inc: { statusVersion: 1 }, $unset: { expiryNextAt: 1, expiryChecks: 1 } }, { session: s });
-        if (done.modifiedCount !== 1) throw changed();
-        await undoCouponUsageIn(records.map((x) => String(x._id)), s);
-        await this.returnAll(r, records, s);
-        return true;
-      });
-      if (ok) expired += 1;
     }
-    return { examined: due.length, expired, deferred };
+    return { examined: due.length, expired, deferred, failed };
   }
 
   /** Held funding nobody accepted and the customer left unanswered for 30 minutes since the last offer/activity. */
   async refundInactive(now = new Date(), limit = 100) {
     const due = await InstantRequestModel.find({ status: 'offered', fundingState: 'held', inactivityRefundAt: { $lte: now } }).select({ _id: 1 }).limit(limit).lean();
-    let refunded = 0;
+    let refunded = 0; let failed = 0;
     for (const d of due) {
       try {
         const r = await this.refundHeld(String(d._id), 'inactivity', now);
         if (!r.skipped) refunded += 1;
       } catch (e: any) {
-        if (!['REQUEST_NOT_REFUNDABLE', 'INSTANT_REQUEST_CHANGED'].includes(e?.code)) throw e;
+        if (['REQUEST_NOT_REFUNDABLE', 'INSTANT_REQUEST_CHANGED'].includes(e?.code)) continue;
+        failed += 1;
+        sweepFailure('instant inactivity refund', String(d._id), e);
       }
     }
-    return { examined: due.length, refunded };
+    return { examined: due.length, refunded, failed };
   }
 
   // ───────────────────────────── Reads ─────────────────────────────
@@ -795,7 +893,7 @@ export class InstantConsultService {
       .select({ doctorId: 1 }).lean();
     const ids = fresh.map((p) => p.doctorId).filter((i) => Types.ObjectId.isValid(i));
     const [busy, docs] = await Promise.all([
-      DoctorReservationModel.find({ doctorId: { $in: ids }, isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).select({ doctorId: 1 }).lean(),
+      DoctorReservationModel.find({ doctorId: { $in: ids }, ...busyWindow(now) }).select({ doctorId: 1 }).lean(),
       SpecialistModel.find({ _id: { $in: ids }, isActive: true, isVerified: true }).select({ specialization: 1 }).lean() as any,
     ]);
     const busyIds = new Set(busy.map((b) => b.doctorId));

@@ -151,6 +151,12 @@ export interface IBooking {
   noShow?: { at: Date; by: string; byKind: string };
   noShows?: IBookingNoShow[];
   noShowReschedules?: number;
+  /** Q16a: a moved no-show cancelled by an admin, refunded or not (their choice). */
+  noShowCancel?: { at: Date; by: string; refund: boolean; forfeitedAmount?: number };
+  /** Q16a: the appointment before the first customer reschedule (history only; the refund rule uses `refundLock`). */
+  originalAppointment?: { bookingDate: string; bookingTime: string };
+  /** Q16a: the appointment a customer moved away from after its refund deadline had passed; that window stays closed. */
+  refundLock?: { bookingDate: string; bookingTime: string; movedAt: Date };
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;

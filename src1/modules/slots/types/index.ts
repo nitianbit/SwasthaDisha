@@ -16,7 +16,9 @@ export interface ISlot {
   serviceModes?: ('chat' | 'call' | 'video' | 'in-person')[];
   branchId?: string;
   source?: 'manual' | 'template';
-  closedReason?: 'leave' | 'template';
+  closedReason?: 'leave' | 'template' | 'holiday';
+  /** Q16a: closed by hand; schedule changes never reopen it. */
+  manuallyClosed?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -63,4 +65,9 @@ export interface SlotQueryParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  /**
+   * Q16a re-review (N3): an admin or doctor reading slots for an explicit date range (past ones included) gets them as
+   * stored; every other read is customer-facing availability (started and holiday slots left out in the query).
+   */
+  staffView?: boolean;
 }

@@ -17,6 +17,37 @@ import { AppError } from '@/modules/common/types';
  */
 export const EXCLUDE_Q14_NO_SHOWS = Object.freeze({ $nor: [{ status: 'no_show', 'noShow.at': { $type: 'date' } }] });
 
+/**
+ * Q16a (item 3): the legacy monthly payout bills a booking in the month of its ORIGINAL appointment. A booking moved
+ * after a no-show keeps that month (`noShows[0].fromDate`), so a month billed before the move and the month it moved to
+ * can never both pay for it. Every other booking is billed by its `bookingDate`.
+ */
+export function legacyBillingMonthFilter(from?: string, to?: string): Record<string, unknown> {
+  const range: Record<string, string> = {};
+  if (from) range.$gte = from;
+  if (to) range.$lte = to;
+  if (!from && !to) return {};
+  return { $or: [
+    { 'noShows.0.fromDate': range },
+    { 'noShows.0.fromDate': { $exists: false }, bookingDate: range },
+  ] };
+}
+
+/**
+ * Q16a re-review (E): a legacy booking moved after a no-show is billed in its ORIGINAL month. When it later changes in
+ * a way the bill counts (moved back to confirmed, completed, a second no-show), an already computed billing row of that
+ * month is flagged `needsRecalculation` in the same transaction (the booking id is listed; ids only). The admin
+ * recalculates the month (calculate billings clears the flag); the booking is never billed in the month it moved to.
+ */
+export async function flagLegacyOriginalMonth(b: { _id?: unknown; specialistId?: string; settlementSystem?: string; noShows?: { fromDate?: string }[] },
+  session?: import('mongoose').ClientSession): Promise<void> {
+  const from = b.noShows?.[0]?.fromDate;
+  if (!b.specialistId || !from || !/^\d{8}$/.test(from) || ['ledger', 'clinic'].includes(String(b.settlementSystem ?? 'legacy'))) return;
+  const { PayoutBillingModel } = await import('@/modules/payouts/model');
+  await PayoutBillingModel.updateOne({ specialistId: { $in: [String(b.specialistId), String(b.specialistId).toLowerCase()] }, month: Number(from.slice(0, 6)) },
+    { $set: { needsRecalculation: true }, $addToSet: { recalculationReasons: String(b._id) } }, { session: session ?? undefined });
+}
+
 @Service()
 export class BookingRepository extends BaseRepository<IBooking> {
   constructor() {
@@ -67,7 +98,9 @@ export class BookingRepository extends BaseRepository<IBooking> {
       ...(options.legacyOnly ? { settlementSystem: { $nin: ['ledger', 'clinic'] }, ...EXCLUDE_Q14_NO_SHOWS } : {}),
     };
 
-    if (options.from || options.to) {
+    if (options.legacyOnly) {
+      Object.assign(match, legacyBillingMonthFilter(options.from, options.to));
+    } else if (options.from || options.to) {
       match.bookingDate = {} as Record<string, string>;
       if (options.from) {
         (match.bookingDate as Record<string, string>).$gte = options.from;

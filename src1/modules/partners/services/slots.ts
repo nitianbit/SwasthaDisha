@@ -219,6 +219,9 @@ export async function expandSlots(branchId: string, visitMode: VisitMode, fromDa
 /** Re-expands both visit modes of a branch (after its holidays, services or active state changed) — with or without a template. */
 export async function expandBranchTemplates(branchId: string, now = new Date()): Promise<void> {
   for (const mode of ['lab', 'home'] as VisitMode[]) await expandSlots(branchId, mode, istDate(now), ROLLING_DAYS);
+  // Q16a (M4): a clinic branch's holidays close (and reopen) its doctors' in-clinic slots too.
+  const { expandDoctorsAtBranch } = await import('@/modules/doctors/services/schedule');
+  await expandDoctorsAtBranch(branchId, now);
 }
 
 /** Daily rolling expansion for every active template (run by the scheduler). */

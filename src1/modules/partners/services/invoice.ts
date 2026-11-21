@@ -238,20 +238,24 @@ export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<
   });
 }
 
-/** Per-line tax rounded to the paisa; totals are sums of rounded line amounts. CGST/SGST split puts the odd paisa in SGST. */
+/**
+ * Per-line tax rounded to the paisa; totals are sums of rounded line amounts. Q16a: within a state, CGST and SGST are
+ * each charged at half the rate and rounded on their own, so they are always equal and the line's tax is CGST + SGST
+ * (it can differ by a paisa from rounding the full rate once — the earlier rule, which put the odd paisa in SGST).
+ * Only new bills use this: an issued bill is never recomputed (its stored totals are part of its checksum).
+ */
 export function computeTotals(lines: IInvoiceLine[], sameState: boolean): IInvoiceTotals {
   const t = { subtotalMinor: 0, discountMinor: 0, taxableMinor: 0, cgstMinor: 0, sgstMinor: 0, igstMinor: 0 };
   for (const line of lines) {
     t.subtotalMinor += line.unitPriceMinor * line.qty;
     t.discountMinor += line.discountMinor;
     t.taxableMinor += line.amountMinor;
-    const tax = Math.round((line.amountMinor * line.gstRate) / 100);
     if (sameState) {
-      const half = Math.floor(tax / 2);
+      const half = Math.round((line.amountMinor * line.gstRate) / 200);
       t.cgstMinor += half;
-      t.sgstMinor += tax - half;
+      t.sgstMinor += half;
     } else {
-      t.igstMinor += tax;
+      t.igstMinor += Math.round((line.amountMinor * line.gstRate) / 100);
     }
   }
   const totals = { ...t, totalMinor: t.taxableMinor + t.cgstMinor + t.sgstMinor + t.igstMinor, currency: 'INR' as const };

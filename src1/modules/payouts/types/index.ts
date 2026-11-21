@@ -13,6 +13,10 @@ export interface IPayoutBilling {
   due: number;
   status: PayoutBillingStatus;
   invoiceUrl?: string;
+  /** Q16a: a moved no-show of this month changed after it was computed; recalculate the month. */
+  needsRecalculation?: boolean;
+  /** Q16a: the booking ids that flagged it (ids only). */
+  recalculationReasons?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }

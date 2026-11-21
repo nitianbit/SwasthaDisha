@@ -231,7 +231,8 @@ async function main() {
     assert.deepEqual([mine.quotedAmountMinor, mine.quotedAmount, mine.yourFeeMinor, mine.feeWithinQuote], [50000, 500, 30000, true]);
     await svc.setPresence(drB, { available: true, modes: ['video', 'call'], instantFeeMinor: 60000 });
     const theirs = (await svc.myOffers(drB)).find((o) => o.requestId === reqA)!;
-    assert.deepEqual([theirs.quotedAmountMinor, theirs.yourFeeMinor, theirs.feeWithinQuote], [50000, 60000, false]);
+    // Q16a: a fee raised after the offer is capped at the fee frozen with it (the doctor may still accept, at that fee).
+    assert.deepEqual([theirs.quotedAmountMinor, theirs.yourFeeMinor, theirs.offeredFeeMinor, theirs.chargeFeeMinor, theirs.feeWithinQuote], [50000, 60000, 50000, 50000, true]);
     await svc.setPresence(drB, { available: true, modes: ['video', 'call'], instantFeeMinor: 50000 });
     const outsider = await doctor('Dr Outsider', 300, 'Dermatology');
     assert.equal((await svc.myOffers(outsider)).length, 0, 'a doctor not offered sees nothing');
@@ -641,12 +642,13 @@ async function main() {
     assert.equal(moved.slotId, target.slotId.toLowerCase());
     await assert.rejects(() => clinic.cancelDeskAppointment(desk, made.booking.bookingId, 'x', arrived.updatedAt), code('BOOKING_CHANGED'));
     assert.equal((await BookingModel.findById(made.booking.bookingId).lean())!.status, 'confirmed', 'the refused cancel changed nothing');
-    const done = await clinic.closeDeskAppointment(desk, made.booking.bookingId, 'completed', new Date(), moved.updatedAt);
+    const done = await clinic.closeDeskAppointment(desk, made.booking.bookingId, 'completed', new Date(Date.now() + 30 * 86_400_000), moved.updatedAt); // Q16a: after the start
     assert.equal(done.status, 'completed');
     // No-show (after the appointment time) and cancel with the current version; without a version as before.
     const cur = (await BookingModel.findById(startedBooking).lean())!;
     await assert.rejects(() => clinic.closeDeskAppointment(desk, startedBooking, 'no_show', new Date(), stale), code('BOOKING_CHANGED'));
-    assert.equal((await clinic.closeDeskAppointment(desk, startedBooking, 'no_show', new Date(), cur.updatedAt)).status, 'no_show');
+    // Q16a: a no-show is marked 15 minutes after the start (this slot started 10 minutes before the check above).
+    assert.equal((await clinic.closeDeskAppointment(desk, startedBooking, 'no_show', new Date(Date.now() + 10 * 60_000), cur.updatedAt)).status, 'no_show');
     const c = await clinic.createDeskAppointment(desk, { slotId: (await future(futureN++)).slotId, customer: { phone: nextPhone() }, requestKey: rk('desk') });
     assert.equal((await clinic.cancelDeskAppointment(desk, c.booking.bookingId, 'Patient called', c.booking.updatedAt)).status, 'cancelled');
     const d = await clinic.createDeskAppointment(desk, { slotId: (await future(futureN++)).slotId, customer: { phone: nextPhone() }, requestKey: rk('desk') });

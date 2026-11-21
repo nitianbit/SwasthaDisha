@@ -62,10 +62,26 @@ export function parseAppointment({
   };
 }
 
+/**
+ * Q16a: the refund deadline of one appointment (24 hours before it; 48 hours before a Monday appointment), or null.
+ */
+export function refundDeadlineOf(appointment: CancellationAppointment): Date | null {
+  const a = parseAppointment(appointment);
+  if (!a) return null;
+  return new Date(a.at.getTime() - (a.weekday === 1 ? 48 : 24) * HOUR_MS);
+}
+
+/**
+ * `earlierAppointments` (Q16a re-review rule): an appointment the customer moved away from AFTER its refund deadline
+ * had passed (the booking's `refundLock`). It counts only for the refund deadline — so such a move never reopens the
+ * closed window — never for "already started" (that is the current appointment's). A move made while the window was
+ * still open records nothing, and the booking is judged on its current time alone.
+ */
 export function enforceUserCancellationWindow(
   appointments: CancellationAppointment[],
   userType: string,
-  now = new Date()
+  now = new Date(),
+  earlierAppointments: CancellationAppointment[] = []
 ): void {
   const parsed = appointments.map(parseAppointment);
   if (!parsed.length || parsed.some((appointment) => !appointment)) {
@@ -91,11 +107,17 @@ export function enforceUserCancellationWindow(
 
   if (userType !== 'user') return;
 
-  const cancellationDeadline = appointmentsByTime
-    .map((appointment) => {
+  const earlier = earlierAppointments.map(parseAppointment)
+    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+  const cancellationDeadline = [
+    ...appointmentsByTime.map((appointment) => ({ appointment, original: false })),
+    ...earlier.map((appointment) => ({ appointment, original: true })),
+  ]
+    .map(({ appointment, original }) => {
       const cutoffHours = appointment.weekday === 1 ? 48 : 24;
       return {
         cutoffHours,
+        original,
         at: appointment.at.getTime() - cutoffHours * HOUR_MS,
       };
     })
@@ -105,7 +127,9 @@ export function enforceUserCancellationWindow(
     throw new AppError({
       status: 400,
       code: 'CANCELLATION_WINDOW_CLOSED',
-      message: `Booking cannot be cancelled within ${cancellationDeadline.cutoffHours} hours of the appointment time`,
+      message: cancellationDeadline.original
+        ? `Booking cannot be cancelled for a refund: it was rescheduled after its cancellation window (${cancellationDeadline.cutoffHours} hours before the earlier appointment time) had closed`
+        : `Booking cannot be cancelled within ${cancellationDeadline.cutoffHours} hours of the appointment time`,
     });
   }
 }

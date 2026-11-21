@@ -70,6 +70,10 @@ const payoutBillingSchema = new Schema<IPayoutBilling>(
       type: String,
       trim: true,
     },
+    // Q16a: a moved no-show billed in this (its original) month changed state after the month was computed; recalculate
+    // the month (calculate billings clears the flag). The booking is still billed in this month only.
+    needsRecalculation: { type: Boolean },
+    recalculationReasons: [{ type: String }],
   },
   { timestamps: true }
 );

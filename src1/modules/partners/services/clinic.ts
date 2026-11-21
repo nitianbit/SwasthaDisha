@@ -2,7 +2,6 @@ import { createHash } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
-import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
@@ -21,14 +20,15 @@ import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
 import {
-  assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, noShowRescheduleHash, rescheduleWithHolds, type DeskScope,
+  appointmentStartOf, assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, noShowAllowedFrom,
+  noShowRescheduleHash, rescheduleWithHolds, type DeskScope,
 } from '@/modules/bookings/holds';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import DependentModel from '@/modules/dependents/model';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
-import { clinicBranchAllowed, doctorScopeOf, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
+import { branchClosedOn, clinicBranchAllowed, doctorScopeOf, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { Container } from 'typedi';
 import type { NotificationType } from '@/modules/notification/types';
@@ -362,6 +362,8 @@ export async function linkDoctor(actor: PartnerActor, input: { doctorId: string;
   } catch (e) {
     const raced = await prior();
     if (raced) return view(raced, true);
+    // Q16a (L8): a concurrent link of the same doctor under another key lost the race on the one-membership index.
+    if ((e as { code?: unknown })?.code === 11000) throw err(409, 'DOCTOR_ALREADY_MEMBER', 'This doctor already consults here');
     throw e;
   }
   await refreshDoctorSlots(doctorId);
@@ -465,12 +467,14 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
   await clinicBranch(actor, q.branchId);
   if (!isRealDate(q.date)) throw err(400, 'INVALID_DATE', 'date must be a real date, YYYY-MM-DD');
   if (!(await clinicBranchAllowed(q.doctorId, q.branchId))) throw err(404, 'DOCTOR_NOT_AT_CLINIC', 'This doctor does not consult at this branch');
+  // Q16a (M4): nothing is offered on the branch's holiday (admission refuses it too).
+  if (await branchClosedOn(String(q.branchId), ymd(q.date))) return [];
   const slots = await SlotModel.find({ specialistId: String(q.doctorId), branchId: String(q.branchId), date: ymd(q.date), isActive: true, isAvailable: true,
     $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } }).lean() as any[];
   const inPerson = slots.filter((s) => !(s.serviceModes?.length) || s.serviceModes.includes('in-person'));
   const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x) => x.w && x.w.start.getTime() > now.getTime());
   if (!windows.length) return [];
-  const held = await DoctorReservationModel.find({ doctorId: String(q.doctorId), isActive: true,
+  const held = await DoctorReservationModel.find({ doctorId: String(q.doctorId).toLowerCase(), isActive: true,
     startTime: { $lt: new Date(Math.max(...windows.map((x) => x.w!.end.getTime()))) }, endTime: { $gt: new Date(Math.min(...windows.map((x) => x.w!.start.getTime()))) } }).lean();
   return windows
     .filter(({ s, w }) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) => h.startTime < w!.end && h.endTime > w!.start))
@@ -730,8 +734,11 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     const b = await ownDeskBooking(actor, bookingId, s);
     if (b.status !== 'confirmed') throw err(409, 'BOOKING_STATE_CONFLICT', `A ${b.status} appointment cannot be closed`);
     assertBookingVersion(b, expectedUpdatedAt);
-    const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
-    if (outcome === 'no_show' && (!at || now < at.at)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked only after the appointment time');
+    // Q16a: completed only once the appointment has started; a no-show only 15 minutes after it.
+    const start = appointmentStartOf(b);
+    if (outcome === 'completed' && start && now < start) throw err(409, 'NOT_STARTED_YET', 'An appointment can be completed only after it has started');
+    const noShowFrom = noShowAllowedFrom(b);
+    if (outcome === 'no_show' && (!noShowFrom || now < noShowFrom)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked 15 minutes after the appointment time');
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
       { $set: { status: outcome, ...(outcome === 'no_show' ? { noShow: { at: now, by: actor.memberId, byKind: 'clinic' } } : {}) } },
       { new: true, session: s }).lean() as IBooking | null;
@@ -740,6 +747,22 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     await audit(actor, outcome === 'completed' ? 'clinic.appointment_completed' : 'clinic.appointment_no_show', { kind: 'booking', id: String(b._id) }, {}, s);
     return deskView(r);
   });
+}
+
+/**
+ * Q16a (L8): a desk appointment cancelled by its doctor (portal) is written to the clinic's audit trail in the same
+ * transaction, as the doctor's member record at that clinic (or the doctor id when there is none).
+ */
+export async function recordDoctorDeskCancelIn(b: IBooking, requester: { _id: string; userType: string }, reason: string, s: ClientSession): Promise<void> {
+  const partnerId = b.clinicDesk?.partnerId;
+  if (!partnerId) return;
+  const byDoctor = requester.userType === 'specialist';
+  const member = byDoctor ? await MemberModel.findOne({ partnerId, doctorId: String(requester._id) }).select({ _id: 1 }).session(s).lean() as { _id: unknown } | null : null;
+  const actor: PartnerActor = byDoctor
+    ? { memberId: member ? String(member._id) : `doctor:${String(requester._id).toLowerCase()}`, partnerId, role: 'staff', permissions: [], branchIds: [], actorKind: 'member' }
+    : { memberId: `admin:${String(requester._id)}`, partnerId, role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' };
+  await audit(actor, byDoctor ? 'clinic.appointment_cancelled_by_doctor' : 'clinic.appointment_cancelled', { kind: 'booking', id: String(b._id) },
+    { reason, doctorId: b.specialistId }, s);
 }
 
 /** Cancelled by the clinic: seat and doctor's time released; no money moves (nothing was taken online). */
@@ -766,6 +789,8 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
   const updated = await rescheduleWithHolds({
     bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id),
     // Q13: the target slot must not have started (checked when the move takes a new slot), and the version must match.
+    // Q16a re-review (N4): the appointment being moved may have started — desk appointments are not paid through us, so
+    // the clinic may move a late patient any time before it marks them completed or no-show.
     desk: { ...deskScopeOf(actor), refuseStartedClock: clockOf(clock) }, expectedUpdatedAt,
     patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
