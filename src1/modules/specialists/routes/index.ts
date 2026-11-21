@@ -4,6 +4,8 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { requireAdmin, requireSpecialist } from '@/modules/middleware/auth';
 import { SpecialistController } from '@/modules/specialists/controller';
+// S5: only verified, active doctors do what patients see or book; identity fields are admin-only after verification.
+import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialists/eligibility';
 import {
   createSpecialistSchema,
   updateSpecialistSchema,
@@ -74,6 +76,7 @@ specialistRouter.put(
   '/me/profile',
   requireSpecialist,
   validate(specialistProfileUpdateSchema, 'body'),
+  catchAsync(lockVerifiedIdentity),
   catchAsync(specialistController.updateMyProfile)
 );
 
@@ -88,6 +91,7 @@ specialistRouter.post(
   '/me/slots',
   requireSpecialist,
   validate(specialistCreateSlotSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.createMySlot)
 );
 
@@ -96,6 +100,7 @@ specialistRouter.put(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(specialistUpdateSlotSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.updateMySlot)
 );
 
@@ -125,6 +130,7 @@ specialistRouter.patch(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(updateAppointmentStatusSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.updateMyAppointmentStatus)
 );
 
@@ -133,6 +139,7 @@ specialistRouter.post(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(specialistAppointmentPrescriptionSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.createMyAppointmentPrescription)
 );
 

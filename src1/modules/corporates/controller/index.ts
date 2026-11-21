@@ -4,6 +4,7 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { CorporateService } from '@/modules/corporates/services';
+import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import {
   CreateCorporateRequest,
   UpdateCorporateRequest,
@@ -139,7 +140,10 @@ export class CorporateController {
 
   getSpecialists = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
-    const result = await this.corporateService.getSpecialists(id);
+    const all = await this.corporateService.getSpecialists(id);
+    // S5: outside admin, a corporate's doctor list shows verified, active doctors only.
+    const user = (req as AuthRequest).user;
+    const result = user?.userType === 'admin' ? all : all.filter(isEligibleDoctor);
 
     res.status(200).json({
       success: true,

@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
+import { requireAdmin } from '@/modules/middleware/auth';
+import { adminClearBodySchema, clearBookingPrescription, clearBookingReport } from '@/modules/bookings/adminClear';
 import { BookingController } from '@/modules/bookings/controller';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
@@ -133,6 +135,23 @@ bookingRouter.delete(
   validate(idParamSchema, 'params'),
   validate(bookingQuerySchema, 'query'),
   catchAsync(bookingController.delete)
+);
+
+// S5: an admin removes a planted prescription (and its marker) or report; reason required, audited.
+bookingRouter.delete(
+  '/:id/prescription',
+  requireAdmin,
+  validate(idParamSchema, 'params'),
+  validate(adminClearBodySchema, 'body'),
+  catchAsync(clearBookingPrescription)
+);
+
+bookingRouter.delete(
+  '/:id/report',
+  requireAdmin,
+  validate(idParamSchema, 'params'),
+  validate(adminClearBodySchema, 'body'),
+  catchAsync(clearBookingReport)
 );
 
 export default bookingRouter;
