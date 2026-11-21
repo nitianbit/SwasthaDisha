@@ -1,7 +1,7 @@
 # Assisted booking: partners book for walk-in patients (design, 2026-11-22)
 
-Status: **phase 0 built** (branch `m0/r2-assisted-phase0`, local commits, not pushed; build record §18). Phase 1a and
-later: design only.
+Status: **phase 0 built** (branch `m0/r2-assisted-phase0`, build record §18) and **phase 1a built** (branch
+`m0/r3-assisted-phase1a`, build record §19); local commits, not pushed. Phase 1b and later: design only.
 
 - **Revision 2** folded in the owner's 22 Nov answers (§2.2).
 - **Revision 3** applies all 20 findings of the independent review of 4b44435 and the coordinator's overnight decisions
@@ -1420,3 +1420,177 @@ linked consultation of such an order: 409 `ORDER_PRESCRIPTION_PARTY_LOCKED`.
    documents, report, notes or money internals, and `prescription.fileUrls` now holds the dispensing copy; the full
    PDF URL returns 404 to a pharmacy.
 
+
+## 19. Assisted booking phase 1a built (build record, 2026-11-22)
+
+Built on `m0/r3-assisted-phase1a` (base: phase 0 `e248f57` on the stage line `286eb0a`). Local commits only; nothing
+pushed or deployed. Suite: `test/assisted/phase1a.integration.ts` (30 checks over HTTP with the real `authenticate` and
+routers; all 30 fail without the source changes). Phase 1a is **wallet payments only**: Razorpay per booking (1b), lab
+and doctor bookers (2, 3), referral cuts (4), withdrawals (4) and SMS (5) are not built.
+
+### 19.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| `assisted` block, `source`, `earningRule` | `bookings/model`, `assisted/types.ts` | `assisted` is a Mixed sub-document written only by the assisted writers; indexes `{assisted.bookedBy.kind, .id, createdAt}`, unique partial `assisted.shortRef`, unique partial `assisted.requestKey` |
+| Switches and thresholds | `assisted/flags.ts` | §19.4 |
+| Masked lookup | `POST /pharmacy-assisted/patients/lookup` (`assisted/pharmacyCommands.ts`) | `{ exists, holderNameMasked }`; 120 an hour per pharmacy; audited `patient.lookup` (ids only) |
+| Nearby doctors | `GET /pharmacy-assisted/doctors` | Active and verified only; pharmacy pincode, then city, then language, fee, next slot |
+| Wallet-paid consultation | `POST /pharmacy-assisted/consultations` (`assisted/consultations.ts`) | One transaction: key claim, family member, link with consent and typed name, seat and doctor interval, per-phone count, coupon redemption, wallet debit (lots), booking, audit. No payment record (P3) |
+| Pharmacy wallet ledger | `pharmacyWallet/ledger.ts`, `pharmacyWallet/model/lots.ts` | The one writer of movements from 1a: operation key, signed paise, version, lots, withdrawable; credits always post |
+| Refunds by method | `assisted/refunds.ts`, hooked into `bookings/holds.ts` `cancelBookingSettlement` | Every cancel path of an assisted row (booker, patient, doctor, admin, admin moved-no-show) refunds the payer's wallet in the cancel transaction; never the customer wallet |
+| Booker cancel and reschedule | `POST /pharmacy-assisted/bookings/:id/cancel`, `/reschedule` | Cancel any time before the start; reschedule P9; by-key and abandon (Q13) |
+| Customer command routing (§6.7) | `bookings/services`, `bookings/controller`, `assisted/views.ts` | Patient cancel refunds the partner; pay-again / retry / reconcile 409 `PARTNER_PAID_BOOKING`; patient reschedule 409 `ASSISTED_RESCHEDULE_BY_PARTNER`; payment details 404; reads without the partner money, with `paidBy` |
+| Coupons | `coupon/model/redemption.ts`, `coupon/model` (`fundedBy`, `partnerUsable`), `coupon/repository` | Redemption keyed to the patient, guarded total count, reversed once on cancel; per-user count adds partner-paid uses |
+| Earnings (P5) | `doctors/services/earnings.ts` | A `provider_coupon_v2` row earns `split.providerMinor` (gross `baseMinor`, commission `cutMinor` = 0) on completion only; no-show earns nothing |
+| Typed names (§17.4) | `pharmacyCustomers/*`, `assisted/names.ts` `withLinkNames` | Customer list, pharmacy order lists and the pharmacist queue, pharmacy subscription list: typed name or masked, never email; `PUT /pharmacy-customers/:id/typed-name` |
+| "Not mine", review queue, admin move (§17.5) | `assisted/review.ts` | Consultations only in 1a |
+| Reconciliation and stuck money (§8.8) | `assisted/reconciliation.ts`, `assisted/schedulers.ts` | Live admin route; daily job stores the report, raises alerts, fills gateway fees |
+| Neutral Meet and guest check (N6) | `meet/service` `meetEventTextFor` | §19.2 item 11 |
+| Doctor views | `specialists/controller` | `source` and `assisted.identity.note` = "Identity attested by the partner, not verified" |
+| Migration | `npm run migrate:assisted-pharmacy-wallets` (`scripts/assistedPharmacyWallets.ts`) | §19.5 |
+
+### 19.2 Choices made while building (reversible)
+
+1. **Mixed `assisted` block.** The block is a Mixed path (typed in `assisted/types.ts`) so refund rows, reschedules and
+   moves are appended without schema churn; only the assisted writers write it.
+2. **Request keys.** Stored as `assisted:pharmacy:<pharmacyId>:<actorId>:<key>` (unique partial index) and claimed in
+   the transaction in scope `assisted_consult_create:<pharmacyId>:<actorId>`. The hash (`canonicalJson`) covers phone,
+   patient identity, `holderName`, slot, mode, join, coupon, language, concern, notes and `acceptedPriceMinor`; not the
+   payment method. Reschedule keys: scope `assisted_reschedule:<pharmacyId>:<bookingId>`, hash of the slot. Move keys:
+   scope `assisted_move:<adminId>`.
+3. **Settlement.** Assisted rows are always `settlementSystem: 'ledger'`, whatever `SETTLEMENT_CUTOVER_AT` says (§5.1).
+4. **Lots and withdrawable.** A card top-up opens a lot only while `ASSISTED_BOOKING_ENABLED_PHARMACY` is on and the
+   lot index exists (otherwise non-withdrawable: the conservative side). Spending consumes **every open lot** (fee
+   known or not) oldest first, then non-withdrawable money, so Σ open lots ≤ balance always holds; `withdrawableMinor`
+   is recomputed from the eligible lots (not closed, fee known, no dispute) on every movement. A refund restores the
+   debit's allocations only for a full refund (the only kind in 1a); a closed lot is never restored. The fee is
+   Razorpay `fee` alone, kept on the payment record (`gatewayFeeMinor`) at verify and at reconcile; the daily job
+   fills unknown fees.
+5. **Admin top-ups** now go through the ledger too (operation key `admin_topup:<Idempotency-Key or random>`),
+   non-withdrawable. `PharmacyWalletRepository.atomicCredit` no longer requires `isActive: true`.
+6. **Coupons.** A coupon with `usageLimitPerUser`, or platform-funded without `partnerUsable`, is refused 400
+   `COUPON_NOT_FOR_ASSISTED` before the ordinary rules, which run against the patient (account, family member, the
+   account's `corporateId`). Exhausted inside the transaction: 409 `COUPON_EXHAUSTED`. The split freezes `fundedBy`.
+7. **Customer views.** Partner-paid rows hide `price`, `originalPrice`, `paymentTransactionId`, `walletFunding`,
+   `createTerms` and the `assisted` money, keys and consent actor; they add `paidBy`. **`paymentStatus` stays** (not an
+   amount; the released app reads it to decide whether to offer payment). Admins see the block whole except the
+   request key and hash. Doctors get the same view plus the identity note.
+8. **Cancellation causes** on assisted rows: `booker`, `patient`, `doctor`, `admin` (the refund row's `cause` too).
+   The generic `/bookings/:id/cancel` by a pharmacy token still finds nothing (404); only the booker route cancels for
+   the booker, so the P7 count and the audit are never skipped.
+9. **Limits (P7).** Counters in `assisted_counters` (TTL), per organisation; phones HMAC'd. Lookups: clock hour;
+   new accounts: IST day, counted only when the number has no account yet; bookings per phone: counted inside the
+   booking transaction (aborted bookings do not count); booker cancellations: counted in the cancel transaction, new
+   bookings refused once the day's count reaches the threshold. Alerts (`assisted_alerts`, one per subject and day):
+   `booker_cancellations`, `same_pair_bookings` (10 a day), `cancel_rate` (≥ 30 % of 7 days, minimum 10, daily job),
+   `reconciliation_mismatch`. There is no admin inbox, so "admin notifications" are this list
+   (`GET /admin/assisted/alerts`) plus the daily report.
+10. **"Not mine" and move.** A booking can be reported once (`ALREADY_REPORTED`, whatever the outcome). Open reports
+    leave the holder's lists (paged and unpaged); direct reads still work. The move ensures the booker's link to the
+    target (typed name: `holderName`, else the old link's) and removes the old link only when no other booking of
+    that pharmacy and no pharmacy order uses that customer. Without `asFamily` the target holder is the patient.
+11. **Meet (N6).** Assisted events: title "Jansetu consultation", description "Jansetu booking reference: <shortRef>",
+    attendees the doctor and the booking pharmacy's email, `guestsCanSeeOtherGuests` and `guestsCanInviteOthers` false;
+    a missing patient email no longer blocks them. The guest check (`GET /admin/assisted/meet-guest-check/:id`) says
+    whether the partner device joins as an attendee or as a guest the doctor admits ("ask to join"). **Manual check
+    before go-live:** on stage, book `partner_device` video with and without a pharmacy email, join from the pharmacy
+    device signed out of Google, and confirm the doctor sees and can admit the guest; record the result here.
+12. **Reconciliation** reports wallets with unsigned rows as `notMigrated` instead of flagging them, and lists the
+    later-phase items (Razorpay refund rows, late captures, withdrawals) as not built.
+13. **Not built in 1a:** Razorpay per booking and the operator queue (1b); withdrawals and their admin flow (phase 4,
+    `WALLET_WITHDRAWALS_ENABLED` stays false and nothing reads it yet); partner-lab assisted rows and their
+    "not mine" / move (phase 2); `source` on non-assisted rows (still derived); the generic-create switch
+    `PHARMACY_GENERIC_CREATE_ENABLED` (needs the app-version step, §13); SMS of the move (phase 5); audit of coupon
+    `fundedBy` edits (edited through the existing coupon update, not audited separately).
+
+### 19.3 API for the web (phase 1a)
+
+All pharmacy routes: pharmacy token, operational and verified (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`, …).
+Answers `{ success, data }`. Money is paise.
+
+- `POST /api/v1/pharmacy-assisted/patients/lookup { phone }` → `{ exists, holderNameMasked }`. 429
+  `ASSISTED_LIMIT_REACHED` `limit: 'lookups'` (with `Retry-After`).
+- `GET /api/v1/pharmacy-assisted/doctors?speciality&mode&language&date&limit` → `[{ doctorId, name, specialization,
+  languages, city, experienceYears, feeMinor, nearby: 'pincode'|'city'|null, nextSlot: { slotId, date, startTime,
+  endTime, startsAt, modes }, slots?: [...] }]` (`slots` = that `date`'s free slots).
+- `POST /api/v1/pharmacy-assisted/consultations` with `{ requestKey ([A-Za-z0-9_-]{8,100}), phone, patient:
+  { relation: 'self', name } | { dependentId } | { relation, name, gender?, dateOfBirth? }, holderName?, consent:
+  { agreed: true, statementVersion, statementLanguage }, preferredLanguage, slotId, consultationMode: 'video'|'call'|
+  'in-person', join?: { on: 'partner_device'|'patient_phone', phone? } (required for video/call, absent in person),
+  couponCode?, acceptedPriceMinor, primaryConcern?, notes?, paymentMethod: 'wallet' }` → 201 `{ booking: { _id,
+  status, paymentStatus, bookingDate, bookingTime, slotId, specialistId, doctorName, consultationMode, userId,
+  dependentId, source, price, originalPrice, updatedAt, createdAt, assisted: { shortRef, preferredLanguage, join,
+  bookedBy } }, funding: { method, amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode },
+  newAccount, replayed }`; a replay is 200 with `replayed: true`. Errors: 400 `CONSENT_REQUIRED`,
+  `PAYMENT_METHOD_UNAVAILABLE` (Razorpay is 1b), `REQUEST_KEY_REQUIRED`, `INVALID_PHONE`, `VALIDATION_ERROR`,
+  `INVALID_COUPON`, `COUPON_NOT_FOR_ASSISTED`; 404 `DEPENDENT_NOT_FOUND`; 409 `PRICE_CHANGED` (`details: { priceMinor,
+  listMinor, discountMinor }`), `SLOT_NOT_AVAILABLE`, `SLOT_STARTED`, `DOCTOR_NOT_AVAILABLE`, `INSUFFICIENT_BALANCE`,
+  `WALLET_FROZEN`, `WALLET_INACTIVE`, `COUPON_EXHAUSTED`, `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 429
+  `ASSISTED_LIMIT_REACHED` (`limit: 'new_accounts' | 'bookings_per_phone' | 'booker_cancellations'`); 503
+  `ASSISTED_BOOKING_DISABLED`, `INDEXES_OUTDATED`, `CUSTOMER_LINKING_UNAVAILABLE`.
+- `GET /api/v1/pharmacy-assisted/bookings/by-key/:key` → `{ state: 'used', booking: <booker view> } | { state:
+  'abandoned' } | { state: 'unknown' }`; `POST …/by-key/:key/abandon` → `abandoned` or `used` with the booking.
+- `POST /api/v1/pharmacy-assisted/bookings/:id/cancel { reason?, expectedUpdatedAt? }` → `{ booking: <booker view>,
+  refundedMinor, alreadyCancelled }`. 400 `BOOKING_ALREADY_STARTED`; 404 `BOOKING_NOT_FOUND`; 409 `BOOKING_CHANGED`,
+  `BOOKING_NOT_CANCELLABLE` (completed, no-show), `NO_SHOW_NOT_REFUNDABLE`.
+- `POST /api/v1/pharmacy-assisted/bookings/:id/reschedule { slotId, requestKey, expectedUpdatedAt? }` → `{ booking:
+  <booker view>, replayed }`. 400 `BOOKING_ALREADY_STARTED`; 409 `SLOT_NOT_THIS_DOCTOR`, `SLOT_NOT_AVAILABLE`,
+  `SLOT_STARTED`, `BOOKING_CHANGED`, `IDEMPOTENCY_KEY_REUSED`.
+- `GET /api/v1/pharmacy-bookings[/:id]` (phase 0) now lists assisted rows; the view adds `assisted.disputed.state`
+  (the "reported as not mine" badge). "Cancelled by patient" = `cancellationCause: 'patient'`.
+- `GET /api/v1/pharmacy-wallet` adds `withdrawableMinor`, `frozen`, `receivableMinor`; `GET …/transactions` rows carry
+  `signedAmountPaise`, `operationKey`, `withdrawableDeltaPaise`, `lotAllocations`. `POST
+  /api/v1/pharmacy-wallet/topups/:paymentTransactionId/check` → `{ state: 'credited' | 'unpaid', wallet }` (404 for
+  another pharmacy's record).
+- `PUT /api/v1/pharmacy-customers/:id/typed-name { typedName }` (`id` = link id or the customer's user id) → `{ _id,
+  userId, typedName }`. `GET /api/v1/pharmacy-customers`: `userId.name` = typed name or masked, `userId.email` = null,
+  search = typed name and phone.
+- Customer: `POST /api/v1/bookings/:id/not-mine { note? }` → `{ reported, reviewItemId }` (403 non-customer, 404, 409
+  `NOT_ASSISTED_BOOKING`, `ALREADY_REPORTED`, 503 when the admin tools are off). `POST /api/v1/bookings/:id/cancel`
+  works for assisted rows (customer windows; the refund goes to the partner). Booking reads show `paidBy`,
+  `assisted.{shortRef, bookedBy.name, preferredLanguage, join.on, identity}`.
+- Admin: `POST /api/v1/admin/assisted-bookings/:id/move { toPhone, asFamily?: { name, relation, gender?, dateOfBirth? },
+  holderName?, reason, requestKey, expectedUpdatedAt? }` → `{ booking: { _id, userId, dependentId, status, …, disputed },
+  replayed }`; `GET /api/v1/admin/assisted/review-items?state&limit`; `POST …/review-items/:id/dismiss { reason? }`;
+  `GET /api/v1/admin/assisted/reconciliation[?day=YYYY-MM-DD]` (live, or the stored report of that day);
+  `GET /api/v1/admin/assisted/stuck-money`; `GET /api/v1/admin/assisted/alerts`; `GET
+  /api/v1/admin/assisted/meet-guest-check/:id`; `GET /api/v1/admin/wallet-recharges/uncredited`; `PUT
+  /api/v1/admin/pharmacies/:id/wallet/freeze { frozen, reason }`. Coupon create and update accept `fundedBy`
+  (`provider` | `platform`) and `partnerUsable`.
+
+### 19.4 Switches (all off unless the value is exactly `true`)
+
+| Variable | Default | Effect |
+|---|---|---|
+| `ASSISTED_BOOKING_ENABLED_PHARMACY` | off | Lookup, doctor list, new consultations, typed-name edit, top-up lots. Off: 503 `ASSISTED_BOOKING_DISABLED`; top-ups credit without lots (old behaviour). Cancel, reschedule, refunds, reads, by-key keep working |
+| `ASSISTED_ADMIN_TOOLS_ENABLED` | off | "Not mine", admin move and dismiss, wallet freeze (503 when off). Keep it on during a rollback of the booking switch |
+| `ASSISTED_RECONCILIATION_ENABLED` | off | The 02:30 IST daily job. The admin reconciliation route works regardless (read only) |
+| `WALLET_RECHARGE_SWEEP_FROM` | unset | ISO time; pharmacy top-ups created from then on join the payment recovery sweep. Older ones are on the uncredited list |
+| `ASSISTED_LIMIT_LOOKUPS_PER_HOUR` 120, `…_NEW_ACCOUNTS_PER_DAY` 30, `…_BOOKINGS_PER_PHONE_PER_DAY` 5, `…_BOOKER_CANCELLATIONS_PER_DAY` 20, `ASSISTED_ALERT_CANCEL_RATE_PCT` 30, `ASSISTED_ALERT_CANCEL_RATE_MIN` 10, `ASSISTED_ALERT_SAME_PAIR_PER_DAY` 10 | D10 | Thresholds |
+| `WALLET_WITHDRAWALS_ENABLED` | off | Not used in 1a (withdrawals are phase 4) |
+
+### 19.5 Migrations and deploy order
+
+1. Deploy with every switch off. Behaviour changes that need no switch: the pharmacy customer list, order lists and
+   subscription list show typed or masked names and no email; partner-paid rows hide the partner money from customers;
+   wallet credits post on inactive wallets; payment records keep the Razorpay fee.
+2. `npm run migrate:assisted-pharmacy-wallets` (dry run; review `openings` and any `signAnomalies` — exit code 2 when
+   there are some), then `-- --commit`. It signs old wallet rows, fills `balancePaise`, writes one `opening_balance`
+   per wallet (`migration:opening:<walletId>`), sets `ledgerOpenedAt` and `withdrawableMinor: 0` / `version: 0` only
+   where missing (D14), backfills `typedName` where the pharmacy opened the account, and sets `Coupon.fundedBy`
+   (`platform` with `corporateIds`) and `partnerUsable: false`. A rerun is a no-op.
+3. `npm run sync-indexes`. New or changed: `bookings` (`assisted.requestKey` and `assisted.shortRef` unique partial,
+   `assisted.bookedBy`), `pharmacy_wallet_transactions {pharmacyId, operationKey}` unique partial, `pharmacy_wallets
+   {frozen}`, `wallet_topup_lots` (`paymentRecordId` unique, wallet and fee indexes), `coupon_redemptions` (unique
+   `{couponCode, bookingKind, bookingId}`), `assisted_counters` (TTL), `assisted_alerts {key}` unique,
+   `assisted_review_items {bookingKind, bookingId}` unique, `assisted_reconciliation_reports {day}` unique. Until it
+   has run, the create answers 503 `INDEXES_OUTDATED` and top-ups open no lots.
+4. Set `WALLET_RECHARGE_SWEEP_FROM` to the deploy time; turn on `ASSISTED_ADMIN_TOOLS_ENABLED`, then
+   `ASSISTED_RECONCILIATION_ENABLED`, then `ASSISTED_BOOKING_ENABLED_PHARMACY` (stage first; production only on the
+   owner's word; GATE-DPDP review before go-live). Wallets created after the migration need nothing: every row the 1a
+   ledger writes is signed, and reconciliation checks any wallet whose rows are all signed; a wallet that still has
+   unsigned rows is listed as `notMigrated` (run the migration again).
+5. Merging phase 0 review fixes: phase 0 files were changed additively only — `assisted/model` (audit actions and
+   actor kinds, new models appended), `assisted/names.ts` (`withLinkNames` appended), `assisted/bookerView.ts` (the
+   disputed badge), `assisted/validation` (schemas appended), `routes/index.ts` (two mounts).
