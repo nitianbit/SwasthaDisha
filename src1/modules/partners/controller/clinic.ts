@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { actorOf } from '@/modules/partners/controller';
 import * as c from '@/modules/partners/services/clinic';
+import { partnerOwnView } from '@/modules/partners/ownView';
 
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
 
@@ -54,18 +55,20 @@ export const myClinics = async (req: Request, res: Response, _n: NextFunction) =
 export const acceptInvite = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.respondToInvite(doctorOf(req), req.params.inviteId, true));
 export const declineInvite = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.respondToInvite(doctorOf(req), req.params.inviteId, false));
 export const leaveClinic = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.leaveClinic(doctorOf(req), req.params.partnerId));
-export const getMyPractice = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.mySoloPractice(doctorOf(req)));
+/** Q16b N5: the doctor sees their clinic through the partner own view (no create key/hash, no verifying admin). */
+const withOwnView = <T extends { partner?: unknown } | null>(r: T): T => (r && r.partner ? { ...r, partner: partnerOwnView(r.partner as never) } : r);
+export const getMyPractice = async (req: Request, res: Response, _n: NextFunction) => ok(res, withOwnView(await c.mySoloPractice(doctorOf(req))));
 /** Q14: an onboarded doctor creates their own clinic (keyed; a second one 409 DOCTOR_CLINIC_EXISTS) and finds a lost answer by key. */
 export const createMyClinic = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createSoloPractice(doctorOf(req), req.body);
-  ok(res, r, r.created ? 201 : 200);
+  ok(res, withOwnView(r), r.created ? 201 : 200);
 };
 export const myClinicByKey = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.findDoctorClinicByKey(doctorOf(req), req.params.key);
   if (!r) { res.status(404).json({ error: 404, code: 'CLINIC_NOT_FOUND', message: 'No clinic was created with this key' }); return; }
-  ok(res, r);
+  ok(res, withOwnView(r));
 };
 export const createMyPractice = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createSoloPractice(doctorOf(req), req.body);
-  ok(res, r, r.created ? 201 : 200);
+  ok(res, withOwnView(r), r.created ? 201 : 200);
 };

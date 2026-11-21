@@ -77,6 +77,8 @@ export interface IMemberProfessional {
 }
 
 export interface IMember {
+  /** Q16b: token generation (never selected by default; written only by auth/tokenVersion.ts). */
+  authVersion?: number;
   _id?: string;
   partnerId: string;
   phone: string;

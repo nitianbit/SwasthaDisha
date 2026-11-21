@@ -169,6 +169,8 @@ export class PharmacyRepository extends BaseRepository<IPharmacy> {
       { $addFields: { _distanceKm: distanceExpression } },
       { $match: { _distanceKm: { $lte: radiusKm } } },
       { $sort: { _distanceKm: 1, createdAt: -1 } },
+      // Q16b: the token generation is never shown (aggregations ignore the schema's select: false).
+      { $project: { authVersion: 0 } },
       {
         $facet: {
           data: [{ $skip: skip }, { $limit: limit }],

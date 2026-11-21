@@ -492,6 +492,113 @@ async function main() {
       assert.equal(ext.status, 200);
       assert.equal(ext.body.data.logo, 'https://cdn.example.com/alpha.png');
     });
+    // ── Re-review items N1–N5 ──
+    await check('N1: an owner linked as the clinic doctor loses only the link (another owner or an admin; slots, notice, audit), then is an ordinary owner', async () => {
+      const C = await verifiedPartner('Owner Doctor Clinic', 'clinic');
+      await partners.createBranch(C.own, branchIn('Main', true));
+      const co = await partners.addMember(C.own, { phone: nextPhone(), name: 'Dr Co-owner', role: 'owner', permissions: [] } as any);
+      const dr = await SpecialistModel.create({ name: 'Dr Co-owner', phone: co.phone, isActive: true, isVerified: true });
+      await clinic.linkDoctor(C.admin, { doctorId: String(dr._id), requestKey: 'q16b-n1-link-01' });
+      assert.equal((await MemberModel.findById(co._id).lean() as any).doctorId, String(dr._id), 'the co-owner record carries the doctor');
+      await assert.rejects(partners.removeMember(C.own, String(co._id)), code('USE_DOCTOR_UNLINK'));
+      await assert.rejects(clinic.unlinkDoctor(actorFor(co), String(dr._id)), code('DOCTOR_IS_OWNER'));
+      const notices: any[] = [];
+      const prev = clinic.setClinicNotifier(async (n: any) => { notices.push(n); });
+      try {
+        const r = await call('DELETE', `/api/v1/partner-workspace/clinic/doctors/${dr._id}`, { bearer: memberTok(C.owner) });
+        assert.deepEqual([r.status, r.body.data?.membershipEnded], [200, false], JSON.stringify(r.body));
+      } finally { clinic.setClinicNotifier(prev); }
+      const after = await MemberModel.findById(co._id).lean() as any;
+      assert.deepEqual([after.isActive, after.role, after.doctorId], [true, 'owner', undefined]);
+      assert.ok(notices.some((n) => n.audience === 'doctor' && n.userId === String(dr._id)), 'the doctor is told');
+      assert.ok(await PartnerAuditEventModel.exists({ partnerId: C.partnerId, action: 'clinic.doctor_unlinked', targetId: String(co._id) }));
+      await partners.removeMember(C.own, String(co._id));
+      assert.equal((await MemberModel.findById(co._id).lean() as any).isActive, false);
+      // A doctor's own practice keeps its doctor, for an admin too.
+      const solo = await SpecialistModel.create({ name: 'Dr Solo', phone: nextPhone(), isActive: true, isVerified: true });
+      const r = await clinic.createSoloPractice(String(solo._id), { name: 'Solo N1', invoiceSeriesPrefix: 'SN', requestKey: 'q16b-n1-solo-01',
+        branch: { name: 'Main', phone: nextPhone(), address: { line1: '1', city: 'Pune', state: 'MH', stateCode: '27', pincode: '411001' } } } as any);
+      await assert.rejects(clinic.unlinkDoctor(adminActor(ADMIN, String(r.partner._id)), String(solo._id)), code('DOCTOR_IS_OWNER'));
+    });
+
+    await check('N2: an admin change of a doctor\'s phone moves their clinic memberships (old number ends); a number in use there refuses the edit', async () => {
+      const C = await verifiedPartner('Phone Move Clinic', 'clinic');
+      await partners.createBranch(C.own, branchIn('Main', true));
+      const oldPhone = nextPhone();
+      const dr = await SpecialistModel.create({ name: 'Dr Mover', phone: oldPhone, isActive: true, isVerified: true });
+      const link = await clinic.linkDoctor(C.admin, { doctorId: String(dr._id), requestKey: 'q16b-n2-link-01' });
+      const memberId = String(link.memberId);
+      const old = memberTok({ _id: memberId, partnerId: C.partnerId });
+      assert.equal((await call('GET', '/api/v1/partner-workspace/clinic/doctors', { bearer: old })).status !== 401, true);
+      const taken = await partners.addMember(C.own, { phone: nextPhone(), name: 'Desk', role: 'staff', permissions: [] } as any);
+      await assert.rejects(doctors.update(String(dr._id), { phone: taken.phone } as any), code('PHONE_IN_USE_AT_CLINIC'));
+      assert.equal((await SpecialistModel.findById(dr._id).lean() as any).phone, oldPhone, 'the whole edit was refused');
+      assert.equal((await MemberModel.findById(memberId).lean() as any).phone, oldPhone);
+      const newPhone = nextPhone();
+      await doctors.update(String(dr._id), { phone: newPhone } as any);
+      assert.equal((await MemberModel.findById(memberId).lean() as any).phone, newPhone);
+      assert.equal((await call('GET', '/api/v1/partner-workspace/me', { bearer: old })).status, 401, 'the membership token from before ends');
+      const byOld = await call('POST', '/api/v1/auth/partner/send', { body: { phone: oldPhone } });
+      assert.deepEqual([byOld.status, byOld.body.code], [404, 'PARTNER_MEMBER_NOT_FOUND'], 'the old number no longer opens the clinic');
+      await call('POST', '/api/v1/auth/partner/send', { body: { phone: newPhone } });
+      const byNew = await call('POST', '/api/v1/auth/partner/verify', { body: { phone: newPhone, otp: lastOtp(), ...nativeBody }, native: true });
+      assert.equal(byNew.status, 200, JSON.stringify(byNew.body));
+      assert.equal((jwt.decode(byNew.body.data.token) as any).memberId, memberId);
+    });
+
+    await check('N3: authVersion never appears in answers (pharmacy profile and nearby list, member list, doctor documents)', async () => {
+      const ph = await PharmacyModel.create({ name: 'Hidden Version', phone: nextPhone(), isActive: true, isVerified: true, latitude: 18.5, longitude: 73.8 });
+      await pharmacies.update(String(ph._id), { phone: nextPhone() } as any);
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph._id }))!.authVersion, 1);
+      const pTok = legacy({ _id: String(ph._id), pharmacyId: String(ph._id), userType: 'pharmacy', authVersion: 1 });
+      const prof = await call('GET', '/api/v1/auth/profile', { bearer: pTok });
+      assert.equal(prof.status, 200);
+      assert.equal('authVersion' in prof.body.data.user, false);
+      const near = await new PharmacyRepository().findNearby({ latitude: 18.5, longitude: 73.8, radiusKm: 5 } as any);
+      assert.ok(near.data.some((x: any) => String(x._id) === String(ph._id)));
+      assert.ok(near.data.every((x: any) => !('authVersion' in x)));
+      const members = await call('GET', '/api/v1/partner-workspace/members', { bearer: memberTok(A.owner) });
+      assert.equal(members.status, 200);
+      assert.ok(await MemberModel.collection.findOne({ partnerId: A.partnerId, authVersion: { $gte: 1 } }), 'some member has a generation');
+      assert.ok(members.body.data.every((m: any) => !('authVersion' in m)));
+      const sp = await SpecialistModel.create({ name: 'Dr Hidden', phone: nextPhone(), isActive: true, isVerified: true });
+      await doctors.update(String(sp._id), { phone: nextPhone() } as any);
+      assert.equal('authVersion' in (await SpecialistModel.findById(sp._id).lean() as any), false);
+      assert.equal('authVersion' in (await doctors.getById(String(sp._id)) as any), false);
+    });
+
+    await check('N4: a FIRST phone or email (none before) ends nothing; changing an existing one does', async () => {
+      const u = await UserModel.create({ name: 'Email only', email: 'email.only@example.com', userType: 'user' });
+      const id = String(u._id);
+      const tok = legacy({ _id: id, email: u.email, userType: 'user' });
+      await customers.updateWithContacts(id, { phone: nextPhone() } as any, { _id: ADMIN, userType: 'admin' } as any);
+      assert.equal((await call('GET', '/api/v1/auth/profile', { bearer: tok })).status, 200, 'first phone');
+      const sp = await SpecialistModel.create({ name: 'Dr Email Only', email: 'dr.email.only@example.com', isActive: true, isVerified: true });
+      const dTok = legacy({ _id: String(sp._id), specialistId: String(sp._id), userType: 'specialist' });
+      await doctors.update(String(sp._id), { phone: nextPhone() } as any);
+      assert.equal((await call('GET', '/api/v1/auth/profile', { bearer: dTok })).status, 200, 'first doctor phone');
+      await customers.updateWithContacts(id, { phone: nextPhone() } as any, { _id: ADMIN, userType: 'admin' } as any);
+      assert.equal((await call('GET', '/api/v1/auth/profile', { bearer: tok })).status, 401, 'a changed phone ends it');
+    });
+
+    await check('N5: the doctor portal shows the doctor\'s clinic through the own view (GET /me/clinic, /me/practice, by-key, create)', async () => {
+      const sp = await SpecialistModel.create({ name: 'Dr Portal', phone: nextPhone(), isActive: true, isVerified: true });
+      const dTok = legacy({ _id: String(sp._id), specialistId: String(sp._id), userType: 'specialist' });
+      const body = { name: 'Portal Clinic', invoiceSeriesPrefix: 'PC', requestKey: 'q16b-n5-clinic-01',
+        branch: { name: 'Main', phone: nextPhone(), address: { line1: '1', city: 'Pune', state: 'MH', stateCode: '27', pincode: '411001' } } };
+      const created = await call('POST', '/api/v1/specialists/me/clinic', { bearer: dTok, body });
+      assert.equal(created.status, 201, JSON.stringify(created.body));
+      await partners.verifyPartner(String(created.body.data.partner._id), ADMIN);
+      const answers = [created, await call('POST', '/api/v1/specialists/me/clinic', { bearer: dTok, body }),
+        await call('GET', '/api/v1/specialists/me/clinic', { bearer: dTok }), await call('GET', '/api/v1/specialists/me/practice', { bearer: dTok }),
+        await call('GET', '/api/v1/specialists/me/clinic/by-key/q16b-n5-clinic-01', { bearer: dTok })];
+      for (const a of answers) {
+        assert.equal(a.status < 300, true, JSON.stringify(a.body));
+        const p = a.body.data.partner;
+        assert.deepEqual([p.createdBy, p.createRequestKey, p.createRequestHash, p.verification.verifiedBy], [undefined, undefined, undefined, undefined]);
+        assert.equal(p.name, 'Portal Clinic');
+      }
+    });
   } finally {
     server.close();
     await mongoose.disconnect();

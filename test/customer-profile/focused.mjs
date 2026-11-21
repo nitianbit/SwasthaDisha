@@ -76,7 +76,7 @@ function fixture(serviceSource = sources.service, row = base, overrides = {}) {
     AppError: RecordingAppError, PROFILE_SELF_FORBIDDEN_FIELDS: forbidden,
     updateUserSchema, buildContainsRegex: () => { throw Error('unadmitted method'); },
     // Q16b: recording port; the real one (one transaction, token generation + sessions) is proven by its own suite.
-    signInContactChanged: (before, write) => (write.phone !== undefined && write.phone !== before.phone)
+    signInContactChanged: (before, write) => (!!before.phone && write.phone !== undefined && write.phone !== before.phone)
       || (!!before.email && write.email !== undefined && String(write.email).toLowerCase() !== String(before.email).toLowerCase()),
     inContactChange: async (userType, userId, reason, write) => { state.ended = [...(state.ended ?? []), { userType, userId, reason }]; return write('recorded-session'); },
   });
