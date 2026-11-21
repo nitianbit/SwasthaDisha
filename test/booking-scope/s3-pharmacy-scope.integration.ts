@@ -487,6 +487,10 @@ async function main() {
       const other = await expect('pharmV', 'POST', '/pharmacy-orders', 404, order(L, parentV), 'CONSULTATION_NOT_FOUND');
       const missing = await expect('pharmV', 'POST', '/pharmacy-orders', 404, order(L, oid()), 'CONSULTATION_NOT_FOUND');
       assert.deepEqual(other.json, missing.json);
+      // S4 (merged): its own consultation links only once it carries the doctor's saved prescription.
+      await expect('pharmV', 'POST', '/pharmacy-orders', 400, order(L, parentL), 'CONSULTATION_PRESCRIPTION_REQUIRED');
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(parentL) }, { $set: { prescription: { message: 'rx', prescribedBySpecialistId: specS },
+        'lifecycle.prescriptionUploaded': { at: new Date() } } });
       await expect('pharmV', 'POST', '/pharmacy-orders', 201, order(L, parentL));
       // Update: moving to an unlinked customer is refused before the consultation lookup.
       const own = await expect('pharmV', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: L,
