@@ -412,36 +412,25 @@ export class PharmacyOrderService {
   ): Promise<void> {
     if (data.linkedConsultationId) {
       const consultation = await this.bookingRepository.findById(data.linkedConsultationId);
-      if (!consultation || consultation.bookingType !== 'consultation') {
+      // S3: missing and someone else's look the same (404), so the lookup reveals nothing about other customers.
+      if (!consultation || consultation.bookingType !== 'consultation' ||
+          (customerId && String(consultation.userId) !== String(customerId))) {
         throw new AppError({
           status: 404,
           code: 'CONSULTATION_NOT_FOUND',
           message: 'Consultation booking not found',
         });
       }
-      if (customerId && String(consultation.userId) !== String(customerId)) {
-        throw new AppError({
-          status: 400,
-          code: 'CONSULTATION_USER_MISMATCH',
-          message: 'Consultation booking must belong to the same user as the pharmacy order',
-        });
-      }
     }
 
     if (data.linkedDiagnosticOrderId) {
       const diagnosticBooking = await this.externalBookingRepository.findById(data.linkedDiagnosticOrderId);
-      if (!diagnosticBooking || diagnosticBooking.appointmentType !== 'diagnostics') {
+      if (!diagnosticBooking || diagnosticBooking.appointmentType !== 'diagnostics' ||
+          (customerId && String(diagnosticBooking.userId) !== String(customerId))) {
         throw new AppError({
           status: 404,
           code: 'DIAGNOSTIC_BOOKING_NOT_FOUND',
           message: 'Diagnostic booking not found',
-        });
-      }
-      if (customerId && String(diagnosticBooking.userId) !== String(customerId)) {
-        throw new AppError({
-          status: 400,
-          code: 'DIAGNOSTIC_USER_MISMATCH',
-          message: 'Diagnostic booking must belong to the same user as the pharmacy order',
         });
       }
     }
@@ -612,8 +601,15 @@ export class PharmacyOrderService {
       });
     }
 
-    await this.validateLinkedReferences(data.customerId, data);
+    // S3: a pharmacy's link to the customer (and the order's party rules) are checked before any linked booking is
+    // looked up, so an unlinked caller learns nothing about that customer's bookings. A customer's own order links
+    // the pharmacy only after the order passes its checks (below).
     this.ensureLinkedOrderAllowed(data);
+    const linkCheckedFirst = Boolean(data.customerId) && createdByRole !== 'user';
+    if (linkCheckedFirst) {
+      await this.customerService.ensureLinked(pharmacyId, data.customerId!, createdById, createdByRole);
+    }
+    await this.validateLinkedReferences(data.customerId, data);
 
     const pricedItems = await this.resolveOrderItemsPricing(
       pharmacyId,
@@ -630,7 +626,7 @@ export class PharmacyOrderService {
     });
     // Only explicit boolean flags survive the shared guard.
     const admittedItems = pricedItems as NonPrescriptionOrderItem[];
-    if (data.customerId) {
+    if (data.customerId && !linkCheckedFirst) {
       await this.customerService.ensureLinked(
         pharmacyId,
         data.customerId,
@@ -1167,13 +1163,17 @@ export class PharmacyOrderService {
         ? data.linkedDiagnosticOrderId
         : order.linkedDiagnosticOrderId;
 
-    await this.validateLinkedReferences(nextCustomerId, {
-      linkedConsultationId: nextLinkedConsultationId,
-      linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
-    });
+    // S3: party rules and the link to a new customer first, before any linked booking is looked up.
     this.ensureLinkedOrderAllowed({
       customerId: nextCustomerId,
       buyerPharmacyId: nextBuyerPharmacyId,
+      linkedConsultationId: nextLinkedConsultationId,
+      linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
+    });
+    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
+      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
+    }
+    await this.validateLinkedReferences(nextCustomerId, {
       linkedConsultationId: nextLinkedConsultationId,
       linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
     });
@@ -1218,10 +1218,6 @@ export class PharmacyOrderService {
         grandTotalPaise: totals.grandTotalPaise,
         prescriptionStatus,
       };
-    }
-
-    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
-      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
     }
 
     const nextItemsForInventory = (updatePayload.items as IPharmacyOrder['items'] | undefined) || order.items;

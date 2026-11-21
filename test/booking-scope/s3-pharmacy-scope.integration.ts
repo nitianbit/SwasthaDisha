@@ -170,8 +170,8 @@ async function main() {
       { _id: new Types.ObjectId(pharmU), name: 'Unverified', phone: '9700000003', isActive: true, isVerified: false },
     ] as never);
     await PharmacyCustomerModel.collection.insertMany([
-      { pharmacyId: new Types.ObjectId(pharmV), userId: new Types.ObjectId(L) },
-      { pharmacyId: new Types.ObjectId(pharmW), userId: new Types.ObjectId(V) },
+      { pharmacyId: new Types.ObjectId(pharmV), userId: new Types.ObjectId(L), consent: 'patient_agreed' },
+      { pharmacyId: new Types.ObjectId(pharmW), userId: new Types.ObjectId(V), consent: 'patient_agreed' },
     ] as never);
     await UserModel.collection.updateOne({ _id: new Types.ObjectId(X) }, { $set: { linkedPharmacyId: pharmW } });
 
@@ -445,9 +445,88 @@ async function main() {
       const link = await PharmacyCustomerModel.findOne({ pharmacyId: pharmW, userId: Y }).lean();
       assert.equal(link?.consent, 'customer_order'); assert.equal(link?.consentRecordedById, Y);
       assert.equal((await UserModel.findById(Y).lean())?.linkedPharmacyId, undefined, 'linkedPharmacyId untouched');
-      // From then on pharmW may order for Y.
+      // From then on pharmW may order for Y, and book for Y (a customer's own order counts as consent).
       await expect('pharmW', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: Y,
         items: [{ medicineId: MED, orderedQty: 1 }], paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
+      await expect('pharmW', 'POST', '/bookings/specialist', 201, { ...(await consult()), userId: Y });
+    });
+
+    await check('1 a pharmacy books only for a link with the patient\'s consent recorded', async () => {
+      // A pre-S3 link (no consent) and a link made by the released app without the tick ('not_recorded').
+      const legacy = (await UserModel.create({ phone: '9600000081', userType: 'user', isActive: true }))._id.toHexString();
+      await PharmacyCustomerModel.collection.insertOne({ pharmacyId: new Types.ObjectId(pharmV), userId: new Types.ObjectId(legacy) } as never);
+      const untick = await expect('pharmV', 'POST', '/pharmacy-customers', 201, { name: 'No Tick', phone: '9600000082' });
+      const noTick = String(untick.json.data.userId);
+      assert.equal(untick.json.data.customer.consent, 'not_recorded');
+      const before = await count();
+      for (const u of [legacy, noTick]) {
+        await expect('pharmV', 'POST', '/bookings/specialist', 403, { ...(await consult()), userId: u }, 'CUSTOMER_CONSENT_REQUIRED');
+        await expect('pharmV', 'POST', '/bookings', 403, { ...(await consult()), bookingType: 'consultation', userId: u }, 'CUSTOMER_CONSENT_REQUIRED');
+      }
+      assert.equal(await count(), before);
+      // The partner links again with the patient's tick: booking works.
+      await expect('pharmV', 'POST', '/pharmacy-customers', 201, { name: 'No Tick', phone: '9600000082', consent: true });
+      await expect('pharmV', 'POST', '/bookings/specialist', 201, { ...(await consult()), userId: noTick });
+    });
+
+    await check('2 an order\'s linked consultation is looked up only after the link check, with one answer', async () => {
+      // pharmV probing the consultation of a customer not linked to it: the same answer for a real and a made-up id.
+      const Z = (await UserModel.create({ phone: '9600000091', userType: 'user', isActive: true }))._id.toHexString();
+      const order = (customerId: string, linkedConsultationId: string) => ({ orderType: 'in_store', customerId, linkedConsultationId,
+        items: [{ medicineId: MED, orderedQty: 1 }], paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
+      const real = await expect('pharmV', 'POST', '/pharmacy-orders', 403, order(Z, parentV), 'CUSTOMER_NOT_LINKED');
+      const fake = await expect('pharmV', 'POST', '/pharmacy-orders', 403, order(Z, oid()), 'CUSTOMER_NOT_LINKED');
+      assert.deepEqual(real.json, fake.json);
+      // A business-to-business order cannot probe consultation ids either.
+      const b2b = (linkedConsultationId: string) => ({ orderType: 'in_store', buyerPharmacyId: pharmW, linkedConsultationId,
+        items: [{ medicineId: MED, orderedQty: 1 }], paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
+      const b1 = await expect('pharmV', 'POST', '/pharmacy-orders', 400, b2b(parentV), 'LINKED_ORDER_REQUIRES_USER');
+      const b2 = await expect('pharmV', 'POST', '/pharmacy-orders', 400, b2b(oid()), 'LINKED_ORDER_REQUIRES_USER');
+      assert.deepEqual(b1.json, b2.json);
+      // Linked customer: someone else's consultation and a missing one give the same 404; its own works.
+      const other = await expect('pharmV', 'POST', '/pharmacy-orders', 404, order(L, parentV), 'CONSULTATION_NOT_FOUND');
+      const missing = await expect('pharmV', 'POST', '/pharmacy-orders', 404, order(L, oid()), 'CONSULTATION_NOT_FOUND');
+      assert.deepEqual(other.json, missing.json);
+      await expect('pharmV', 'POST', '/pharmacy-orders', 201, order(L, parentL));
+      // Update: moving to an unlinked customer is refused before the consultation lookup.
+      const own = await expect('pharmV', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: L,
+        items: [{ medicineId: MED, orderedQty: 1 }], paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
+      const id = String(own.json.data.order._id);
+      const u1 = await expect('pharmV', 'PUT', '/pharmacy-orders/' + id, 403, { customerId: Z, linkedConsultationId: parentV }, 'CUSTOMER_NOT_LINKED');
+      const u2 = await expect('pharmV', 'PUT', '/pharmacy-orders/' + id, 403, { customerId: Z, linkedConsultationId: oid() }, 'CUSTOMER_NOT_LINKED');
+      assert.deepEqual(u1.json, u2.json);
+    });
+    await check('3 the audit script lists pre-S3 access by id only and writes nothing', async () => {
+      // Pre-S3 style rows: a pharmacy booking with no link, one paid from the customer's wallet, one on a free follow-up.
+      const row = (extra: Record<string, unknown>) => ({ bookingType: 'consultation', specialistId: specS, status: 'confirmed',
+        paymentStatus: 'paid', price: 100, bookingDate: DATE, bookingTime: '10:00 AM', createdAt: new Date(), updatedAt: new Date(), ...extra });
+      const noLink = (await BookingModel.collection.insertOne(row({ userId: V, pharmacyId: pharmU }) as never)).insertedId.toHexString();
+      const wallet = (await BookingModel.collection.insertOne(row({ userId: L, pharmacyId: pharmV, walletFunding: { total: 100 } }) as never)).insertedId.toHexString();
+      const followUp = (await BookingModel.collection.insertOne(row({ userId: L, pharmacyId: pharmV,
+        followUp: { isFollowUp: true, parentConsultationId: parentL } }) as never)).insertedId.toHexString();
+      const legacyLink = String((await PharmacyCustomerModel.collection.findOne({ consent: { $exists: false } }))?._id);
+
+      const snapshot = async () => {
+        const out: Record<string, unknown> = {};
+        for (const c of (await mongoose.connection.db!.listCollections().toArray()).map((x) => x.name).sort()) {
+          out[c] = await mongoose.connection.db!.collection(c).find().sort({ _id: 1 }).toArray();
+        }
+        return JSON.stringify(out);
+      };
+      const before = await snapshot();
+      const { auditS3PharmacyLinks } = await import('@/scripts/auditS3PharmacyLinks'); // loaded here: a missing script fails this check only
+      const report = await auditS3PharmacyLinks();
+      assert.equal(await snapshot(), before, 'the audit wrote nothing');
+
+      assert.ok(report.linksWithoutConsent.some((l) => l.linkId === legacyLink && l.consent === null));
+      assert.ok(report.linksWithoutConsent.every((l) => l.consent !== 'patient_agreed' && l.consent !== 'customer_order'));
+      assert.deepEqual(report.bookingsWithoutLink.map((b) => b.bookingId), [noLink]);
+      const benefits = new Map(report.pharmacyBookingsUsingCustomerBenefits.map((b) => [b.bookingId, b]));
+      assert.equal(benefits.get(wallet)?.walletAmount, 100);
+      assert.equal(benefits.get(followUp)?.followUpParentId, parentL);
+      assert.equal(benefits.has(pharmBooking), false, 'a pharmacy booking paid by the gateway is not listed');
+      const text = JSON.stringify(report);
+      for (const secret of ['Victim', 'Linked', 'Walk In', '9600000001', '9600000002', 'fever']) assert.equal(text.includes(secret), false, secret);
     });
   } finally {
     server.close();
