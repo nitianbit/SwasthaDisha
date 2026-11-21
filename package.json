@@ -10,6 +10,7 @@
     "dev:ts": "tsx watch src1/index.ts",
     "type-check": "tsc --noEmit",
     "dev": "ts-node-dev -r tsconfig-paths/register --respawn src1/index.ts",
+    "audit:s3-pharmacy-links": "tsx src1/scripts/auditS3PharmacyLinks.ts",
     "sync-indexes": "tsx src1/scripts/syncIndexes.ts",
     "d1-manifest": "tsx src1/scripts/d1LegacyFileManifest.ts",
     "migrate:pharmacy-email-duplicates": "tsx src1/scripts/pharmacyEmailDuplicates.ts",

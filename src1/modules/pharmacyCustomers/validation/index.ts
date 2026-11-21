@@ -11,6 +11,9 @@ export const createPharmacyCustomerSchema = Joi.object({
   chronicCondition: Joi.boolean().optional(),
   recurringMedicine: Joi.boolean().optional(),
   recurringIntervalDays: Joi.number().integer().min(1).optional(),
+  // S3: the partner confirms the patient agreed to be linked. Optional for now: the released pharmacy app does not send
+  // it (a missing value is recorded as 'not_recorded'); `false` is refused by the service.
+  consent: Joi.boolean().optional(),
 });
 
 export const updateCustomerNotesSchema = Joi.object({

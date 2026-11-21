@@ -377,9 +377,13 @@ export class BookingRepository extends BaseRepository<IBooking> {
   }
 
   /** S2: whether this booking carries the caller's own specialistId / pharmacyId. */
-  async existsInOwnerScope(id: string, owner: BookingOwnerScope): Promise<boolean> {
+  /** `ownCustomerId` (S3): the booking also counts as the caller's when it is that caller's own booking as a customer. */
+  async existsInOwnerScope(id: string, owner: BookingOwnerScope, ownCustomerId?: string): Promise<boolean> {
     if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) return false;
-    return (await BookingModel.exists({ $and: [{ _id: id }, bookingOwnerFilter(owner)] })) !== null;
+    const scope = typeof ownCustomerId === 'string' && ownCustomerId.trim().length > 0
+      ? { $or: [bookingOwnerFilter(owner), { userId: { $eq: ownCustomerId } }] }
+      : bookingOwnerFilter(owner);
+    return (await BookingModel.exists({ $and: [{ _id: id }, scope] })) !== null;
   }
 }
 

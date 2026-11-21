@@ -5,6 +5,7 @@ import { validate } from '@/modules/common/middleware/validation';
 import { BookingController } from '@/modules/bookings/controller';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
+import { gatePharmacyBookingCreate, gatePharmacyBookingRetry } from '@/modules/bookings/pharmacyBookingGate';
 import {
   cancelBookingSchema,
   createBookingSchema,
@@ -35,6 +36,7 @@ bookingRouter.use((req: AuthRequest, _res, next) => {
 bookingRouter.post(
   '/wellness-package',
   validate(createWellnessPackageBookingSchema, 'body'),
+  catchAsync(gatePharmacyBookingCreate),
   catchAsync(bookingController.createWellnessPackageBooking)
 );
 
@@ -42,6 +44,7 @@ bookingRouter.post(
 bookingRouter.post(
   '/specialist',
   validate(createSpecialistBookingSchema, 'body'),
+  catchAsync(gatePharmacyBookingCreate),
   catchAsync(bookingController.createSpecialistBooking)
 );
 
@@ -49,6 +52,7 @@ bookingRouter.post(
 bookingRouter.post(
   '/',
   validate(createBookingSchema, 'body'),
+  catchAsync(gatePharmacyBookingCreate),
   catchAsync(bookingController.createBooking)
 );
 
@@ -86,6 +90,7 @@ bookingRouter.post(
   '/:id/retry-payment',
   validate(idParamSchema, 'params'),
   validate(retryPaymentBodySchema, 'body'),
+  catchAsync(gatePharmacyBookingRetry),
   catchAsync(bookingController.retryPayment)
 );
 

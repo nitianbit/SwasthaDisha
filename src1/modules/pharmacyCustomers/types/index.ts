@@ -11,9 +11,19 @@ export interface IPharmacyCustomer {
   pharmacyNotes?: string;
   createdByRole?: string;
   createdById?: string;
+  /** S3: how the patient's agreement to this link was recorded, by whom and when. */
+  consent?: PharmacyCustomerConsent;
+  consentRecordedAt?: Date;
+  consentRecordedById?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+/**
+ * 'patient_agreed': the partner ticked "patient agreed"; 'not_recorded': linked without that confirmation;
+ * 'customer_order': the customer placed an order with this pharmacy themselves.
+ */
+export type PharmacyCustomerConsent = 'patient_agreed' | 'not_recorded' | 'customer_order';
 
 export interface CreatePharmacyCustomerRequest {
   pharmacyId: string;
@@ -25,6 +35,8 @@ export interface CreatePharmacyCustomerRequest {
   chronicCondition?: boolean;
   recurringMedicine?: boolean;
   recurringIntervalDays?: number;
+  /** S3: true when the patient agreed to the link; a missing value is recorded as 'not_recorded'. */
+  consent?: boolean;
 }
 
 export interface UpdatePharmacyCustomerNotesRequest {

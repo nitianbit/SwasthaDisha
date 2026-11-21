@@ -7,6 +7,7 @@ import {
   CreatePharmacyCustomerRequest,
   UpdatePharmacyCustomerNotesRequest,
   PharmacyCustomerQueryParams,
+  PharmacyCustomerConsent,
 } from '@/modules/pharmacyCustomers/types';
 import { AppError } from '@/modules/common/types';
 
@@ -23,6 +24,14 @@ export class PharmacyCustomerService {
     createdById: string,
     createdByRole: string
   ): Promise<{ customer: IPharmacyCustomer; userId: string; isNewUser: boolean }> {
+    // S3: the partner confirms the patient agreed ("patient agreed" tick). An explicit `false` is refused; a missing
+    // answer (the released pharmacy app sends none) is still accepted and recorded as 'not_recorded'.
+    if (data.consent === false) {
+      throw new AppError({ status: 400, code: 'CONSENT_REQUIRED', message: 'The patient must agree before being linked to your pharmacy' });
+    }
+    const consent: PharmacyCustomerConsent = data.consent === true ? 'patient_agreed' : 'not_recorded';
+    const consentRecord = { consent, consentRecordedAt: new Date(), consentRecordedById: createdById };
+
     const pharmacy = await this.pharmacyRepo.findById(data.pharmacyId);
     if (!pharmacy) {
       throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND', message: 'Pharmacy not found' });
@@ -47,15 +56,22 @@ export class PharmacyCustomerService {
         linkedPharmacyId: data.pharmacyId,
       });
       isNewUser = true;
-    } else if (!user.createdSource || user.createdSource !== 'pharmacy_app') {
-      await this.userRepo.update(
-        { _id: user._id },
-        {
+    } else {
+      if (!user.createdSource || user.createdSource !== 'pharmacy_app') {
+        const fill = {
           ...(data.name && !user.name ? { name: data.name } : {}),
           ...(data.age !== undefined && user.age === undefined ? { age: data.age } : {}),
-          linkedPharmacyId: data.pharmacyId,
-        }
-      );
+        };
+        if (Object.keys(fill).length > 0) await this.userRepo.update({ _id: user._id }, fill);
+      }
+      // S3: an existing user's linkedPharmacyId is never replaced. It is set only while empty, and only for a user this
+      // pharmacy account created.
+      if (user.createdSource === 'pharmacy_app' && String(user.createdById ?? '') === String(createdById) && !user.linkedPharmacyId) {
+        await this.userRepo.update(
+          { _id: user._id, $or: [{ linkedPharmacyId: { $exists: false } }, { linkedPharmacyId: null }, { linkedPharmacyId: '' }] },
+          { linkedPharmacyId: data.pharmacyId }
+        );
+      }
     }
 
     const userId = String(user._id);
@@ -63,6 +79,11 @@ export class PharmacyCustomerService {
     // Upsert the pharmacy-customer relationship
     const existing = await this.pharmacyCustomerRepo.findByPharmacyAndUser(data.pharmacyId, userId);
     if (existing) {
+      // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer.
+      if (!existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed')) {
+        const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, consentRecord);
+        return { customer: updated || existing, userId, isNewUser: false };
+      }
       return { customer: existing, userId, isNewUser: false };
     }
 
@@ -75,6 +96,7 @@ export class PharmacyCustomerService {
       recurringIntervalDays: data.recurringIntervalDays,
       createdByRole,
       createdById,
+      ...consentRecord,
     });
 
     return { customer, userId, isNewUser };
@@ -142,12 +164,23 @@ export class PharmacyCustomerService {
     }
   }
 
+  /**
+   * S3: an order for a customer needs a link. A pharmacy orders only for a customer already linked to it (403
+   * CUSTOMER_NOT_LINKED otherwise; a link is made with the patient's consent through POST /pharmacy-customers). A
+   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order'. The user's
+   * linkedPharmacyId is never touched here.
+   */
   async ensureLinked(
     pharmacyId: string,
     userId: string,
     createdById: string,
     createdByRole = 'pharmacy'
   ): Promise<void> {
+    const linked = await this.pharmacyCustomerRepo.isLinked(pharmacyId, userId);
+    if (!linked && (createdByRole !== 'user' || String(userId) !== String(createdById))) {
+      throw new AppError({ status: 403, code: 'CUSTOMER_NOT_LINKED', message: 'This customer is not linked to your pharmacy' });
+    }
+
     const user = await this.userRepo.findById(userId);
     if (!user || user.userType !== 'user') {
       throw new AppError({
@@ -157,13 +190,15 @@ export class PharmacyCustomerService {
       });
     }
 
-    const linked = await this.pharmacyCustomerRepo.isLinked(pharmacyId, userId);
     if (!linked) {
       await this.pharmacyCustomerRepo.save({
         pharmacyId,
         userId,
         createdById,
         createdByRole,
+        consent: 'customer_order',
+        consentRecordedAt: new Date(),
+        consentRecordedById: createdById,
       });
     }
   }
