@@ -7,8 +7,8 @@ import ExternalBookingModel from '@/modules/externalBookings/model';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import PartnerMemberModel from '@/modules/partners/model/member';
 import PartnerOrgModel from '@/modules/partners/model';
-import PharmacyModel from '@/modules/pharmacies/model';
-import { rxWindowOpenFor } from '@/modules/assisted/rxAccess';
+import { hasPrescription, isOperationalPharmacy, rxWindowOpenFor } from '@/modules/assisted/rxAccess';
+import { dispensingHashOf, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 
 /**
@@ -29,7 +29,7 @@ const pharmacyOf = (r: Reader) => id(r.pharmacyId ?? r._id);
 /** Exact server-written folders (never client uploads: those modules are reserved). */
 const BOOKING_PRESCRIPTION = /^bookings\/([0-9a-f]{24})\/prescription-\d+\.pdf$/;
 /** Assisted booking phase 0 (D15): the server-made dispensing copy of a prescription (no diagnosis). */
-const BOOKING_RX_DISPENSE = /^bookings\/([0-9a-f]{24})\/rx-dispense-\d+\.pdf$/;
+const BOOKING_RX_DISPENSE = /^bookings\/([0-9a-f]{24})\/rx-dispense-\d+(?:-[0-9a-f]{16})?\.pdf$/;
 const LAB_REPORT = /^external-bookings\/([0-9a-f]{24})\/diagnostics-report-[A-Za-z0-9_-]+\.pdf$/;
 export const RESERVED_UPLOAD_MODULES = new Set(['bookings', 'external-bookings', 'payouts', 'partner-lab-reports']);
 /** Q3: partner lab report files are readable only through their report bindings (never the uploader shortcut). */
@@ -53,31 +53,25 @@ async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
   }
 }
 
-/** The pharmacy's current authority (as requireOperationalPharmacy): active, verified, not archived. */
-async function pharmacyOperational(pharmacyId: string): Promise<boolean> {
-  if (!isValidObjectId(pharmacyId)) return false;
-  const p = await PharmacyModel.findById(pharmacyId).select({ isActive: 1, isVerified: 1, archivedAt: 1 }).lean();
-  return !!p && !p.archivedAt && p.isActive !== false && !!p.isVerified;
-}
-
 /**
  * Assisted booking phase 0 (§17.2, D15, overnight H): the dispensing copy is read by the patient and the booking's
- * doctor, and by the booking pharmacy while it is operational, only the copy the booking currently holds, and only
- * within 90 days of the consultation's end (legacy pharmacy bookings included). After that the pharmacy keeps it only
- * through a medicine order it dispensed (the order's binding, N12).
+ * doctor, and by the booking pharmacy while it is operational, inside the 90-day window, and only the copy the booking
+ * currently holds for its current doctor-saved prescription (review finding 7: the stored hash must match the
+ * prescription now; an older copy is not the pharmacy's to read). After that the pharmacy keeps a copy only through a
+ * medicine order dispensed in time (the order's binding, N12).
  */
 async function canReadDispensingCopy(r: Reader, bookingId: string, rel: string): Promise<boolean> {
   if (!isValidObjectId(bookingId)) return false;
-  const b = await BookingModel.findById(bookingId).select({ userId: 1, specialistId: 1, pharmacyId: 1, slotId: 1, bookingDate: 1,
-    bookingTime: 1, lifecycle: 1, instantExtensions: 1, 'prescription.dispensingCopy': 1 }).lean() as Record<string, any> | null;
+  const b = await BookingModel.findById(bookingId).select(WITH_COPY_STATE).lean() as Record<string, any> | null;
   if (!b) return false;
   switch (r.userType) {
     case 'user': return id(b.userId) === id(r._id);
     case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r);
     case 'pharmacy': {
       if (!b.pharmacyId || id(b.pharmacyId) !== pharmacyOf(r)) return false;
-      if (uploadPathOf(b.prescription?.dispensingCopy?.url) !== rel) return false;
-      if (!(await pharmacyOperational(pharmacyOf(r)))) return false;
+      const copy = b.prescription?.dispensingCopy;
+      if (uploadPathOf(copy?.url) !== rel || !hasPrescription(b) || copy?.hash !== dispensingHashOf(b)) return false;
+      if (!(await isOperationalPharmacy(pharmacyOf(r)))) return false;
       return (await rxWindowOpenFor(b)).open;
     }
     default: return false;
@@ -86,16 +80,26 @@ async function canReadDispensingCopy(r: Reader, bookingId: string, rel: string):
 
 /** Order statuses that count as dispensed (N12): the medicines were packed or handed over. */
 export const DISPENSED_ORDER_STATUSES = ['packed', 'ready_for_pickup', 'out_for_delivery', 'completed'];
+/** An order that ends without dispensing: its binding serves nothing, inside the window or after it (review finding 7). */
+const VOID_ORDER_STATUSES = ['cancelled', 'rejected', 'abandoned'];
 
 /**
- * A server binding with an expiry (assisted booking phase 0, N12): in force until `expiresAt`; after it, only when it
- * is kept by its order having been dispensed. Bindings without an expiry are unchanged.
+ * A server binding of a prescription order (assisted booking phase 0, N12; `keepIfDispensed`):
+ * - nothing while the order is cancelled, rejected or abandoned;
+ * - a pharmacy reads through it only while operational (access ends with authority, review finding 5);
+ * - until `expiresAt` otherwise in force; after it only when the order is dispensed AND was dispensed (packed) before
+ *   the expiry — packing after the expiry never revives it.
+ * Bindings without an expiry are unchanged.
  */
-async function grantInForce(g: { expiresAt?: Date | null; keepIfDispensed?: boolean; model: string; resourceId: string }): Promise<boolean> {
+async function grantInForce(r: Reader, g: { expiresAt?: Date | null; keepIfDispensed?: boolean; model: string; resourceId: string }): Promise<boolean> {
+  if (!g.keepIfDispensed) return !g.expiresAt || Date.now() < new Date(g.expiresAt).getTime();
+  if (g.model !== 'PharmacyOrder' || !isValidObjectId(g.resourceId)) return false;
+  const o = await PharmacyOrderModel.findById(g.resourceId).select({ status: 1, pharmacyId: 1, prescriptionFromBooking: 1 }).lean() as Record<string, any> | null;
+  if (!o || VOID_ORDER_STATUSES.includes(String(o.status))) return false;
+  if (r.userType === 'pharmacy' && !(await isOperationalPharmacy(pharmacyOf(r)))) return false;
   if (!g.expiresAt || Date.now() < new Date(g.expiresAt).getTime()) return true;
-  if (!g.keepIfDispensed || g.model !== 'PharmacyOrder' || !isValidObjectId(g.resourceId)) return false;
-  const o = await PharmacyOrderModel.findById(g.resourceId).select({ status: 1 }).lean();
-  return !!o && DISPENSED_ORDER_STATUSES.includes(String(o.status));
+  const dispensedAt = o.prescriptionFromBooking?.dispensedAt ? new Date(o.prescriptionFromBooking.dispensedAt).getTime() : NaN;
+  return DISPENSED_ORDER_STATUSES.includes(String(o.status)) && Number.isFinite(dispensedAt) && dispensedAt <= new Date(g.expiresAt).getTime();
 }
 
 async function canReadPharmacyOrder(r: Reader, orderId: string): Promise<boolean> {
@@ -314,7 +318,7 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }
   if (await firstMatch(FileGrantModel.find({ path: rel, kind: { $ne: 'public' }, state: 'active' }).lean().cursor() as never,
-    async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await grantInForce(g) && await currentOrWithdraw(g))) return ok;
+    async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await grantInForce(reader, g) && await currentOrWithdraw(g))) return ok;
   return { allow: false, status: 404 };
 }
 

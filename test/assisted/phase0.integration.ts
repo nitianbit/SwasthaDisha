@@ -72,9 +72,11 @@ async function check(name: string, fn: () => Promise<void>) {
 const WORK = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'assisted-phase0-')));
 const UPLOAD = path.join(WORK, 'files');
 const FAIL_MARK = path.join(WORK, 'converter-fails');
+/** While this file exists the converter takes its content (seconds) before it writes. */
+const SLOW_MARK = path.join(WORK, 'converter-slow');
 fs.mkdirSync(UPLOAD);
 const CONVERTER = path.join(WORK, 'fake-wkhtmltopdf.sh');
-fs.writeFileSync(CONVERTER, `#!/bin/sh\n[ -f '${FAIL_MARK}' ] && exit 3\ncp "$1" "$2"\n`, { mode: 0o755 });
+fs.writeFileSync(CONVERTER, `#!/bin/sh\n[ -f '${FAIL_MARK}' ] && exit 3\n[ -f '${SLOW_MARK}' ] && sleep "$(cat '${SLOW_MARK}')"\ncp "$1" "$2"\n`, { mode: 0o755 });
 process.env.WKHTMLTOPDF_BINARY = CONVERTER;
 (CONFIG as { UPLOAD_DIR: string }).UPLOAD_DIR = UPLOAD;
 
@@ -143,6 +145,8 @@ async function main() {
     specialistService: { getById: async (id: string) => SpecialistModel.findById(id).lean() },
   }));
 
+  Container.set(PaymentService, payments);
+  const { default: paymentRouter } = await import('@/modules/payment/routes');
   const { default: bookingRouter } = await import('@/modules/bookings/routes');
   const { default: pharmacyOrderRouter } = await import('@/modules/pharmacyOrders/routes');
   const { default: specialistRouter } = await import('@/modules/specialists/routes');
@@ -162,6 +166,7 @@ async function main() {
   app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
   app.use('/api/v1/specialists', authenticate, specialistRouter);
   app.use('/api/v1/request-keys', authenticate, requestKeyRouter);
+  app.use('/api/v1/payments', authenticate, paymentRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const root = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -237,7 +242,9 @@ async function main() {
         bookingDate: date, bookingTime: '10:00 AM', serviceMode: 'video', consultationMode: 'video', price: 300, originalPrice: 300,
         status: 'completed', paymentStatus: 'paid', primaryConcern: 'fever', contactNo: '9600000101', alternateContactNo: '9600000999',
         notes: 'private note', paymentTransactionId: 'pay_secret', createRequestKey: `key-secret-${String(seq + 1).padStart(3, '0')}`,
-        lifecycle: { created: { at: at.toISOString(), by: 'pharmacy-actor' }, completed: { at: slotEndOf(date).toISOString(), by: D } },
+        lifecycle: { created: { at: at.toISOString(), by: 'pharmacy-actor' }, completed: { at: slotEndOf(date).toISOString(), by: D },
+          // The server's mark of the doctor's save (only such a prescription counts, review finding 2).
+          ...(f.prescription ? { prescriptionUploaded: { at: slotEndOf(date).toISOString() } } : {}) },
         createdAt: at, updatedAt: at, ...f } as never);
       return String(_id);
     };
@@ -262,9 +269,10 @@ async function main() {
       'specialistId', 'doctorName', 'primaryConcern', 'consultationMode', 'serviceMode', 'clinicVisit', 'slotId', 'bookingDate', 'bookingTime',
       'contactNo', 'status', 'paymentStatus', 'price', 'originalPrice', 'cancellationReason', 'cancelledAt', 'cancellationCause', 'noShow',
       'lifecycle', 'virtualMeeting', 'prescription', 'createdAt', 'updatedAt']);
-    const RX_ALLOWED = new Set(['message', 'advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName', 'fileUrls']);
+    const RX_ALLOWED = new Set(['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName', 'fileUrls', 'copyPending']);
     const FORBIDDEN_TEXT = [SECRET_DIAGNOSIS, 'diagnosis', 'private note', 'pay_secret', 'key-secret-', '9600000999', 'prescription-1700000000000',
-      'lab says x', 'old-report', 'pharmacy-actor', 'sunita@example', 'lakshmi@example', 'Sunita Kumari', 'prescribedBySpecialistId'];
+      'lab says x', 'old-report', 'pharmacy-actor', 'sunita@example', 'lakshmi@example', 'Sunita Kumari', 'prescribedBySpecialistId',
+      'Private doctor message', 'dispensingCopy', 'hash'];
     const assertBookerRow = (row: Record<string, any>) => {
       for (const k of Object.keys(row)) assert.ok(ALLOWED.has(k), `field ${k} is not in the booker view`);
       if (row.prescription) for (const k of Object.keys(row.prescription)) assert.ok(RX_ALLOWED.has(k), `prescription.${k} is not in the booker view`);
@@ -274,7 +282,17 @@ async function main() {
       const text = JSON.stringify(row);
       for (const t of FORBIDDEN_TEXT) assert.equal(text.includes(t), false, `booker view leaks ${t}`);
     };
-    const DISPENSE = (id: string) => new RegExp(`^/api/static/bookings/${id}/rx-dispense-\\d+\\.pdf$`);
+    const DISPENSE = (id: string) => new RegExp(`^/api/static/bookings/${id}/rx-dispense-\\d+-[0-9a-f]{16}\\.pdf$`);
+    /** Waits for the background copies of these bookings (lists only queue them). */
+    const copiesMade = async (ids: string[], ms = 15_000) => {
+      const until = Date.now() + ms;
+      for (;;) {
+        const rows = await BookingModel.find({ _id: { $in: ids } }).select({ 'prescription.dispensingCopy': 1 }).lean() as any[];
+        if (rows.length === ids.length && rows.every((r) => r.prescription?.dispensingCopy?.url)) return rows;
+        if (Date.now() > until) throw new Error('background copies not made in time');
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    };
     const listAll = async (who: Who, query = '') => {
       const rows: any[] = []; let cursor: string | null = null; let pages = 0;
       do {
@@ -286,7 +304,11 @@ async function main() {
     };
 
     let b1Copy = '';
-    await check('list: only the bookings this pharmacy made, newest first, cursor-paged', async () => {
+    await check('list: only the bookings this pharmacy made, newest first, cursor-paged; copies are never made inline', async () => {
+      // The first page (bS, bN: prescriptions without copies) answers at once with the copies pending (finding 6).
+      const firstPage = await expect('P', 'GET', '/pharmacy-bookings?limit=2', 200);
+      assert.deepEqual(firstPage.json.data.map((r: any) => r._id), [bS, bN]);
+      for (const r of firstPage.json.data) { assert.deepEqual(r.prescription.fileUrls, []); assert.equal(r.prescription.copyPending, true); }
       const rows = await listAll('P');
       assert.deepEqual(rows.map((r) => r._id), [...ownP].reverse(), 'own bookings, newest first, no repeats across pages');
       const first = await expect('P', 'GET', '/pharmacy-bookings?limit=2', 200);
@@ -306,6 +328,7 @@ async function main() {
     });
 
     await check('list: the allowlisted booker view, typed patient name, prescription without the diagnosis', async () => {
+      await copiesMade([b1, b5, bN, bS]);
       const rows = await listAll('P');
       rows.forEach(assertBookerRow);
       const by = new Map(rows.map((r) => [r._id, r]));
@@ -320,6 +343,8 @@ async function main() {
       assert.deepEqual(r1.prescription.testsAdvised, ['CBC']);
       assert.equal(r1.prescription.diagnosis, undefined);
       assert.equal(r1.prescription.fileUrls.length, 1);
+      assert.equal(r1.prescription.copyPending, undefined);
+      assert.equal(r1.prescription.message, undefined, 'the doctor\'s free text is not shown (finding 9)');
       assert.match(r1.prescription.fileUrls[0], DISPENSE(b1), 'the only file is the dispensing copy');
       b1Copy = r1.prescription.fileUrls[0];
       assert.equal(by.get(b3)!.prescription, undefined, 'no prescription yet');
@@ -558,6 +583,11 @@ async function main() {
       const url = r.json.data.order.prescriptionUrls[0];
       assert.match(url, DISPENSE(b5));
       assert.equal(await fileStatus('P', url), 200);
+      // Packing (the pharmacist approved the prescription) records when the order was dispensed (finding 7).
+      await PharmacyOrderModel.updateOne({ _id: id5 }, { $set: { status: 'accepted', prescriptionStatus: 'approved', paymentStatus: 'paid' } });
+      await expect('P', 'POST', `/pharmacy-orders/${id5}/status`, 200, { status: 'packed' });
+      const packedAt = (await PharmacyOrderModel.findById(id5).lean() as any).prescriptionFromBooking.dispensedAt;
+      assert.ok(packedAt instanceof Date && Math.abs(packedAt.getTime() - Date.now()) < 60_000, 'dispensedAt set by the packing');
       // Five days later: the consultation is 94 days old (the booking's own window is closed) and the binding expired.
       const shifted = istDay(94);
       const slot = await SlotModel.create({ specialistId: D, date: shifted, startTime: '10:00 AM', endTime: '10:15 AM', duration: 15, maxBookings: 1,
@@ -566,11 +596,21 @@ async function main() {
       const expiry = new Date(slotEndOf(shifted).getTime() + 90 * DAY);
       assert.ok(expiry.getTime() < Date.now());
       await FileGrantModel.updateOne({ model: 'PharmacyOrder', resourceId: id5 }, { $set: { expiresAt: expiry } });
-      for (const [status, code] of [['placed', 404], ['accepted', 404], ['packed', 200], ['ready_for_pickup', 200], ['out_for_delivery', 200],
-        ['completed', 200], ['cancelled', 404]] as [string, number][]) {
-        await PharmacyOrderModel.updateOne({ _id: id5 }, { $set: { status } });
-        assert.equal(await fileStatus('P', url), code, `order ${status}`);
+      const before = new Date(expiry.getTime() - DAY); const after = new Date(expiry.getTime() + 60_000);
+      for (const [status, dispensedAt, code] of [['placed', null, 404], ['accepted', null, 404], ['packed', before, 200], ['ready_for_pickup', before, 200],
+        ['out_for_delivery', before, 200], ['completed', before, 200], ['cancelled', before, 404], ['rejected', before, 404],
+        // Packed only after the expiry: never revives the binding.
+        ['packed', after, 404], ['completed', after, 404], ['completed', null, 404]] as [string, Date | null, number][]) {
+        await PharmacyOrderModel.updateOne({ _id: id5 }, dispensedAt
+          ? { $set: { status, 'prescriptionFromBooking.dispensedAt': dispensedAt } }
+          : { $set: { status }, $unset: { 'prescriptionFromBooking.dispensedAt': '' } });
+        assert.equal(await fileStatus('P', url), code, `order ${status} dispensed ${dispensedAt ? (dispensedAt === before ? 'before' : 'after') : 'never'}`);
       }
+      // Kept as the dispensing record, but only while the pharmacy is operational (finding 5).
+      await PharmacyOrderModel.updateOne({ _id: id5 }, { $set: { status: 'completed', 'prescriptionFromBooking.dispensedAt': before } });
+      assert.equal(await fileStatus('P', url), 200);
+      await PharmacyModel.updateOne({ _id: P }, { $set: { isActive: false } });
+      try { assert.equal(await fileStatus('P', url), 404); } finally { await PharmacyModel.updateOne({ _id: P }, { $set: { isActive: true } }); }
       assert.equal(await fileStatus('L', url), 200, 'the patient always reads it');
       assert.equal(await fileStatus('Q', url), 404);
       // A new order from the expired prescription is refused.
@@ -588,6 +628,241 @@ async function main() {
       } finally { fs.rmSync(FAIL_MARK, { force: true }); }
       const ok = await expect('P', 'GET', `/pharmacy-bookings/${fresh}`, 200);
       assert.match(ok.json.data.prescription.fileUrls[0], DISPENSE(fresh));
+    });
+
+    // ── Review fixes (extra-high review of 9ce19b0 / e248f57) ──
+    const futureSlot = async (daysAhead: number) => {
+      const date = istDay(-daysAhead);
+      const slot = await SlotModel.create({ specialistId: D, date, startTime: '11:00 AM', endTime: '11:15 AM', duration: 15, maxBookings: 1,
+        currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation' } as never);
+      return { slotId: String(slot._id), bookingDate: date, bookingTime: '11:00 AM' };
+    };
+
+    await check('finding 2: a prescription the client sent is never a prescription (no view, no copy, no order)', async () => {
+      const made = await expect('P', 'POST', '/bookings/specialist', 201, { specialistId: D, ...(await futureSlot(30)), consultationMode: 'in-person',
+        primaryConcern: 'fever', userId: L, prescription: { diagnosis: 'forged', advice: 'forged advice', medicines: [{ name: 'Alprazolam 0.5 mg' }],
+          testsAdvised: ['forged test'], prescribedAt: new Date().toISOString(), prescribedBySpecialistId: D, prescribedBySpecialistName: 'Dr Asha Menon' } });
+      const id = String(made.json.data.booking._id);
+      assert.ok((await BookingModel.findById(id).lean() as any).prescription?.medicines?.length, 'stored as sent (root cause: hotfix S4)');
+      const view = await expect('P', 'GET', `/pharmacy-bookings/${id}`, 200);
+      assert.equal(view.json.data.prescription, undefined);
+      await expect('P', 'POST', '/pharmacy-orders', 409, rxOrder(id, 'rx-key-forged-01'), 'PRESCRIPTION_NOT_READY');
+      const list = await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200);
+      assert.equal(list.json.data.find((r: any) => r._id === id)?.prescription, undefined);
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(fs.existsSync(path.join(UPLOAD, 'bookings', id)), false, 'no copy file made');
+      assert.equal((await BookingModel.findById(id).lean() as any).prescription?.dispensingCopy, undefined);
+    });
+
+    await check('finding 3: concurrent first reads and orders keep one stored copy whose file exists; a lost file is made again', async () => {
+      // A slow converter makes every concurrent first read render at the same time (all but one lose the store).
+      fs.writeFileSync(SLOW_MARK, '0.5');
+      try {
+        for (let i = 0; i < 3; i++) {
+          const id = await booking({ userId: L, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 3);
+          const reads = await Promise.all([0, 1, 2, 3, 4, 5].map(() => call('P', 'GET', `/pharmacy-bookings/${id}`)));
+          const urls = reads.map((r) => r.json.data.prescription.fileUrls[0]);
+          const stored = (await BookingModel.findById(id).lean() as any).prescription.dispensingCopy.url;
+          assert.ok(urls.every((u) => u === stored), `every concurrent read answers the stored copy (${i})`);
+          assert.ok(fs.existsSync(path.join(UPLOAD, stored.replace('/api/static/', ''))), `stored copy file exists (${i})`);
+          assert.deepEqual(fs.readdirSync(path.join(UPLOAD, 'bookings', id)), [stored.split('/').pop()], 'the losers removed only their own files');
+        }
+      } finally { fs.rmSync(SLOW_MARK, { force: true }); }
+      // Each write has its own temporary HTML file, even for the same output name in the same millisecond.
+      const { writeBookingPdf } = await import('@/modules/specialistPortal/pdf' as string);
+      const tmpId = oid();
+      const both = await Promise.allSettled([writeBookingPdf(tmpId, 'prescription-1.pdf', 'A'), writeBookingPdf(tmpId, 'prescription-2.pdf', 'B'),
+        writeBookingPdf(tmpId, 'prescription-1.pdf', 'A')]);
+      assert.deepEqual(both.map((x) => x.status), ['fulfilled', 'fulfilled', 'fulfilled'], JSON.stringify(both));
+      assert.equal(fs.readFileSync(path.join(UPLOAD, 'bookings', tmpId, 'prescription-2.pdf'), 'utf8'), 'B');
+      for (let i = 0; i < 6; i++) {
+        const id = await booking({ userId: L, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 3);
+        const reads = await Promise.all([0, 1, 2, 3, 4, 5].map(() => call('P', 'GET', `/pharmacy-bookings/${id}`)));
+        const urls = new Set(reads.map((r) => r.json.data.prescription.fileUrls[0]));
+        const stored = (await BookingModel.findById(id).lean() as any).prescription.dispensingCopy.url;
+        assert.ok(fs.existsSync(path.join(UPLOAD, stored.replace('/api/static/', ''))), `stored copy file exists (${i})`);
+        for (const u of urls) assert.ok(u === stored || (u && fs.existsSync(path.join(UPLOAD, u.replace('/api/static/', '')))), `answered file exists (${i})`);
+        assert.equal(await fileStatus('P', stored), 200);
+        const ord = await booking({ userId: L, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 3);
+        const rs = await Promise.all([0, 1, 2, 3].map(() => call('P', 'POST', '/pharmacy-orders', rxOrder(ord, `rx-key-k-race-${i}`))));
+        assert.deepEqual(rs.map((r) => r.status), [201, 201, 201, 201], JSON.stringify(rs.map((r) => r.json.code)));
+        const ou = rs[0]!.json.data.order.prescriptionUrls[0];
+        assert.ok(rs.every((r) => r.json.data.order.prescriptionUrls[0] === ou));
+        assert.ok(fs.existsSync(path.join(UPLOAD, ou.replace('/api/static/', ''))), `order copy file exists (${i})`);
+        assert.equal(await fileStatus('P', ou), 200);
+      }
+      // Repair: the stored copy's file is lost; the next read makes it again and stores the new one.
+      const id = await booking({ userId: L, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 3);
+      const first = (await expect('P', 'GET', `/pharmacy-bookings/${id}`, 200)).json.data.prescription.fileUrls[0];
+      fs.rmSync(path.join(UPLOAD, first.replace('/api/static/', '')));
+      const again = (await expect('P', 'GET', `/pharmacy-bookings/${id}`, 200)).json.data.prescription.fileUrls[0];
+      assert.notEqual(again, first);
+      assert.equal((await BookingModel.findById(id).lean() as any).prescription.dispensingCopy.url, again);
+      assert.equal(await fileStatus('P', again), 200); assert.equal(await fileStatus('L', again), 200);
+    });
+
+    await check('finding 6: a slow converter never holds a list, and is stopped by its timeout on a detail read', async () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 4; i++) ids.push(await booking({ userId: S, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 2));
+      fs.writeFileSync(SLOW_MARK, '3');
+      process.env.PDF_CONVERTER_TIMEOUT_MS = '600';
+      try {
+        const t0 = Date.now();
+        const list = await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200);
+        assert.ok(Date.now() - t0 < 1500, `list answered in ${Date.now() - t0} ms`);
+        for (const id of ids) {
+          const row = list.json.data.find((r: any) => r._id === id);
+          assert.deepEqual(row.prescription.fileUrls, []); assert.equal(row.prescription.copyPending, true);
+        }
+        const t1 = Date.now();
+        const one = await expect('P', 'GET', `/pharmacy-bookings/${ids[0]}`, 200);
+        assert.ok(Date.now() - t1 < 2500, `detail answered in ${Date.now() - t1} ms (converter killed)`);
+        assert.deepEqual(one.json.data.prescription.fileUrls, []);
+        assert.equal(fs.readdirSync(path.join(UPLOAD, 'bookings')).includes(ids[0]!) &&
+          fs.readdirSync(path.join(UPLOAD, 'bookings', ids[0]!)).length > 0, false, 'no partial file left');
+      } finally { fs.rmSync(SLOW_MARK, { force: true }); delete process.env.PDF_CONVERTER_TIMEOUT_MS; }
+      // The queued copies are made in the background afterwards.
+      await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200);
+      await copiesMade(ids);
+    });
+
+    await check('finding 7: a stale copy, a cancelled or rejected order and a non-operational pharmacy get nothing', async () => {
+      const id = await booking({ userId: L, pharmacyId: P, prescription: { ...rx(), fileUrls: [] } }, 3);
+      const o = await expect('P', 'POST', '/pharmacy-orders', 201, rxOrder(id, 'rx-key-stale-01'));
+      const oid7 = String(o.json.data.order._id);
+      const copy = o.json.data.order.prescriptionUrls[0];
+      // The prescription changes under the stored copy (its URL stays stored, its hash no longer matches).
+      await BookingModel.updateOne({ _id: id }, { $set: { 'prescription.medicines': [{ name: 'Changed Med' }] } });
+      assert.equal((await BookingModel.findById(id).lean() as any).prescription.dispensingCopy.url, copy);
+      const direct = await call('P', 'GET', copy);
+      assert.equal(direct.status, 200, 'still readable through the placed order');
+      await PharmacyOrderModel.updateOne({ _id: oid7 }, { $set: { status: 'cancelled' } });
+      assert.equal(await fileStatus('P', copy), 404, 'stale copy, cancelled order');
+      await PharmacyOrderModel.updateOne({ _id: oid7 }, { $set: { status: 'rejected' } });
+      assert.equal(await fileStatus('P', copy), 404, 'stale copy, rejected order');
+      await PharmacyOrderModel.updateOne({ _id: oid7 }, { $set: { status: 'placed' } });
+      await PharmacyModel.updateOne({ _id: P }, { $set: { isVerified: false } });
+      try { assert.equal(await fileStatus('P', copy), 404, 'not operational'); } finally { await PharmacyModel.updateOne({ _id: P }, { $set: { isVerified: true } }); }
+      assert.equal(await fileStatus('L', copy), 200, 'the patient keeps it');
+      // The next read makes the copy of the prescription as it is now.
+      const fresh = (await expect('P', 'GET', `/pharmacy-bookings/${id}`, 200)).json.data.prescription.fileUrls[0];
+      assert.notEqual(fresh, copy); assert.ok(read(fresh).includes('Changed Med'));
+    });
+
+    await check('finding 1: payment verify / reconcile give the booking pharmacy the booker view; the customer keeps hers', async () => {
+      const rec = await PaymentRecordModel.create({ userId: L, context: 'booking', contextId: b1, baseAmount: 300, discountAmount: 0, finalAmount: 300,
+        currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_p0_b1', razorpayPaymentId: 'pay_p0_b1', status: 'paid', isProcessed: true,
+        paidAt: new Date(), notes: { walletDeductedAmount: 0 } } as never);
+      const recId = String((rec as any)._id);
+      const r = await expect('P', 'POST', '/payments/reconcile', 200, { paymentTransactionId: recId });
+      assert.equal(r.json.data.context, 'booking');
+      assertBookerRow(r.json.data.entity);
+      assert.deepEqual(r.json.data.entity.prescription.medicines.map((m: any) => m.name), ['Paracetamol 500']);
+      const v = await expect('P', 'POST', '/payments/verify', 200, { paymentTransactionId: recId, razorpayOrderId: 'order_p0_b1',
+        razorpayPaymentId: 'pay_p0_b1', razorpaySignature: 'bogus' });
+      assertBookerRow(v.json.data.entity);
+      const mine = await expect('L', 'POST', '/payments/reconcile', 200, { paymentTransactionId: recId });
+      assert.equal(mine.json.data.entity.prescription.diagnosis, SECRET_DIAGNOSIS, 'the customer view is unchanged');
+      await PharmacyModel.updateOne({ _id: P }, { $set: { isActive: false } });
+      try {
+        const late = await expect('P', 'POST', '/payments/reconcile', 200, { paymentTransactionId: recId });
+        assertBookerRow(late.json.data.entity);
+        assert.equal(late.json.data.entity.prescription, undefined, 'no prescription once the pharmacy is not operational');
+      } finally { await PharmacyModel.updateOne({ _id: P }, { $set: { isActive: true } }); }
+    });
+
+    await check('finding 4: create, retry and reconcile-payments answers give the pharmacy the strict booker view', async () => {
+      await BookingModel.updateOne({ _id: b5 }, { $set: { serviceAddress: { addressLine: 'SECRET-HOME-ADDRESS', city: 'x', pincode: '1' },
+        followUp: { isFollowUp: false, benefitUsed: false, eligibilityExpiresAt: '20991231' }, corporateId: 'c'.repeat(24),
+        virtualMeeting: { provider: 'google_meet', status: 'active', joinUrl: 'https://meet.example/SECRET-JOIN' } } });
+      const rc = await expect('P', 'POST', `/bookings/${b5}/reconcile-payments`, 200);
+      assertBookerRow(rc.json.data.booking);
+      for (const t of ['SECRET-HOME-ADDRESS', 'SECRET-JOIN', 'eligibilityExpiresAt']) assert.equal(JSON.stringify(rc.json).includes(t), false, t);
+      const made = await expect('P', 'POST', '/bookings/specialist', 201, { specialistId: D, ...(await futureSlot(31)), consultationMode: 'in-person',
+        primaryConcern: 'fever', userId: L, notes: 'PATIENT-NOTE' });
+      assertBookerRow(made.json.data.booking);
+      assert.equal(JSON.stringify(made.json).includes('PATIENT-NOTE'), false);
+      assert.equal(made.json.data.paymentRequired, true);
+      const retry = await expect('P', 'POST', `/bookings/${made.json.data.booking._id}/retry-payment`, 200, {});
+      assertBookerRow(retry.json.data.booking);
+    });
+
+    await check('finding 5: a pharmacy that is not operational gets 403 on every generic booking route', async () => {
+      for (const [patch, code] of [[{ isVerified: false }, 'PHARMACY_NOT_VERIFIED'], [{ isActive: false }, 'PHARMACY_INACTIVE'],
+        [{ archivedAt: new Date() }, 'PHARMACY_INACTIVE']] as [Record<string, unknown>, string][]) {
+        await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(P) }, { $set: patch });
+        try {
+          await expect('P', 'GET', `/bookings/${b1}`, 403, undefined, code);
+          await expect('P', 'GET', '/bookings', 403, undefined, code);
+          await expect('P', 'GET', `/bookings/user/${L}`, 403, undefined, code);
+          await expect('P', 'POST', `/bookings/${b1}/reconcile-payments`, 403, undefined, code);
+          await expect('P', 'GET', `/bookings/${b1}/payment-details`, 403, undefined, code);
+        } finally {
+          await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(P) }, { $set: { isActive: true, isVerified: true }, $unset: { archivedAt: '' } });
+        }
+      }
+      await expect('P', 'GET', `/bookings/${b1}`, 200);
+    });
+
+    await check('finding 8: pharmacy order lists and the review queue name customers as the booker view does', async () => {
+      // T: an account P opened but whose holder signed in since (may have renamed it); W: a two-letter one-word name.
+      const T = oid(); const W = oid();
+      await UserModel.collection.insertMany([
+        { _id: new Types.ObjectId(T), userType: 'user', phone: '9600000105', name: 'Tara RENAMED-BY-HOLDER', createdSource: 'pharmacy_app',
+          linkedPharmacyId: P, otpVerified: true },
+        { _id: new Types.ObjectId(W), userType: 'user', phone: '9600000106', name: 'Om', createdSource: 'self_signup' },
+      ] as never);
+      await PharmacyCustomerModel.collection.insertMany([{ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(T), consent: 'patient_agreed' },
+        { pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(W), consent: 'patient_agreed' }] as never);
+      for (const u of [T, W, S, L]) {
+        await expect('P', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: u, items: [{ medicineId: MED, orderedQty: 1 }],
+          paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
+      }
+      const expected: Record<string, string> = { [T]: 'Tara R.', [W]: '…', [S]: 'Sunita D.', [L]: 'Lakshmi Devi Rao' };
+      const list = await expect('P', 'GET', '/pharmacy-orders?limit=100', 200);
+      const queue = await expect('P', 'GET', '/pharmacy-orders/prescription-reviews?limit=100', 200);
+      for (const rows of [list.json.data, queue.json.data]) {
+        for (const [u, name] of Object.entries(expected)) {
+          const named = rows.filter((o: any) => String(o.customerId?._id) === u).map((o: any) => o.customerId.name);
+          assert.ok(named.length > 0, `rows for ${name}`);
+          assert.ok(named.every((n: string) => n === name), `${name}: ${JSON.stringify([...new Set(named)])}`);
+        }
+        const text = JSON.stringify(rows);
+        for (const t of ['RENAMED-BY-HOLDER', 'Sunita Kumari']) assert.equal(text.includes(t), false, t);
+      }
+      // The booker view uses the same rule.
+      const tb = await booking({ userId: T, pharmacyId: P }, 1);
+      assert.equal((await expect('P', 'GET', `/pharmacy-bookings/${tb}`, 200)).json.data.patientName, 'Tara R.');
+      // Admins still see the account.
+      const adminToken = sign({ _id: oid(), userType: 'admin' });
+      const adm = await fetch(`${base}/pharmacy-orders?limit=100&pharmacyId=${P}`, { headers: { authorization: 'Bearer ' + adminToken } }).then((x) => x.json()) as any;
+      assert.ok(JSON.stringify(adm.data).includes('Sunita Kumari Das'));
+    });
+
+    await check('finding 9a: the copy internals (hash, time) are hidden from the patient and the doctor; the URL stays', async () => {
+      for (const who of ['L', 'D'] as Who[]) {
+        const r = await expect(who, 'GET', `/bookings/${b1}`, 200);
+        assert.deepEqual(Object.keys(r.json.data.prescription.dispensingCopy), ['url'], `${who} sees the copy URL only`);
+      }
+    });
+
+    await check('finding 9b: PUT cannot remove or replace the bound copy of an order made from a prescription', async () => {
+      await expect('P', 'PUT', `/pharmacy-orders/${orderId}`, 409, { prescriptionUrls: [] }, 'ORDER_PRESCRIPTION_LOCKED');
+      assert.deepEqual((await PharmacyOrderModel.findById(orderId).lean())?.prescriptionUrls, [b1Copy]);
+      assert.equal(await fileStatus('P', b1Copy), 200);
+    });
+
+    await check('finding 9c: bookings stored without createdAt page after the dated ones, each exactly once', async () => {
+      // Bookings stored without createdAt page after the dated ones, each exactly once (a page ends on the last dated row).
+      const dated2 = await booking({ userId: L, pharmacyId: Q }, 2);
+      const undated: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const _id = new Types.ObjectId(); undated.push(String(_id));
+        await BookingModel.collection.insertOne({ _id, bookingType: 'consultation', userId: L, pharmacyId: Q, specialistId: D, bookingDate: istDay(1),
+          bookingTime: '10:00 AM', serviceMode: 'video', price: 1, status: 'confirmed', paymentStatus: 'paid' } as never);
+      }
+      const rows = await listAll('Q');
+      assert.deepEqual(rows.map((r) => r._id), [dated2, bQ, ...undated.sort().reverse()]);
     });
   } finally {
     server.close();

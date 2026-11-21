@@ -3,3 +3,6 @@ import pharmacyOrderSideEffectConsumer from '@/modules/queue/service/PharmacyOrd
 
 export { bookingReminderConsumer };
 export { pharmacyOrderSideEffectConsumer };
+
+// Assisted booking phase 0: dispensing copies made in the background (lists never convert inline).
+export { dispensingCopyConsumer } from '@/modules/assisted/dispensingCopy';

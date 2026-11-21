@@ -1,7 +1,8 @@
 import logger from '@/services/logger';
+import BookingModel from '@/modules/bookings/model';
 import { bookerPatientNames } from '@/modules/assisted/names';
 import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
-import { ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
 
 type Row = Record<string, any>;
 
@@ -14,19 +15,46 @@ type Row = Record<string, any>;
 const TOP_LEVEL = ['_id', 'bookingType', 'bookingKind', 'userId', 'dependentId', 'pharmacyId', 'specialistId', 'doctorName',
   'primaryConcern', 'consultationMode', 'serviceMode', 'clinicVisit', 'slotId', 'bookingDate', 'bookingTime', 'contactNo', 'status',
   'paymentStatus', 'price', 'originalPrice', 'cancellationReason', 'cancelledAt', 'cancellationCause', 'createdAt', 'updatedAt'] as const;
-const PRESCRIPTION_FIELDS = ['message', 'advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName'] as const;
+// Review finding 9: not `message` (the doctor's free text may be clinical; the copy withholds it too).
+const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName'] as const;
 const LIFECYCLE_EVENTS = ['created', 'confirmed', 'completed', 'cancelled'] as const;
 const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
 
 /** §5.1: rows written before `source` existed derive it (clinic desk, otherwise self). */
 const sourceOf = (b: Row) => (typeof b.source === 'string' ? b.source : b.clinicDesk ? 'clinic_desk' : 'self');
 
-/** The dispensing copy URL of each row that shows a prescription (made when missing; a failure shows no file). */
-async function dispensingUrls(rows: Row[], open: (b: Row) => boolean): Promise<Map<Row, string | null>> {
+export interface BookerViewOptions {
+  /**
+   * 'inline' (one booking: detail reads) makes a missing copy now, bounded by the converter timeout; 'queue' (lists,
+   * payment answers) never converts in the request: the row shows `fileUrls: []` and `copyPending: true` and the copy is
+   * queued (review finding 6).
+   */
+  copies?: 'inline' | 'queue';
+  /** False when the pharmacy is no longer operational: no prescription at all (access ends with authority). */
+  clinical?: boolean;
+  now?: Date;
+}
+
+/** The copy state (url + internal hash) of each row, read fresh (callers' rows do not carry the hidden fields). */
+async function withCopyState(rows: Row[]): Promise<Row[]> {
+  const ids = rows.filter((r) => hasPrescription(r)).map((r) => r._id);
+  if (!ids.length) return rows;
+  const states = await BookingModel.find({ _id: { $in: ids } }).select({ 'prescription.dispensingCopy': 1 }).lean() as unknown as Row[];
+  const by = new Map(states.map((x) => [String(x._id), x.prescription?.dispensingCopy]));
+  return rows.map((r) => (by.has(String(r._id)) ? { ...r, prescription: { ...r.prescription, dispensingCopy: by.get(String(r._id)) } } : r));
+}
+
+/** The dispensing copy URL of each row that shows a prescription (null: none yet; a failure shows no file). */
+async function dispensingUrls(rows: Row[], open: (b: Row) => boolean, mode: 'inline' | 'queue'): Promise<Map<Row, string | null>> {
   const out = new Map<Row, string | null>();
-  // One at a time: a page of old prescriptions without copies converts sequentially, never a burst of converters.
   for (const b of rows) {
-    if (!open(b) || !hasPrescription(b.prescription)) continue;
+    if (!open(b) || !hasPrescription(b)) continue;
+    const current = currentDispensingUrl(b);
+    if (current || mode === 'queue') {
+      out.set(b, current);
+      if (!current) await queueDispensingCopy(b._id);
+      continue;
+    }
     try {
       out.set(b, await ensureDispensingCopy(b));
     } catch (error) {
@@ -37,13 +65,15 @@ async function dispensingUrls(rows: Row[], open: (b: Row) => boolean): Promise<M
   return out;
 }
 
-export async function bookerViews(rows: Row[], pharmacyId: string, now: Date = new Date()): Promise<Row[]> {
-  const list = rows.filter((r) => r && typeof r === 'object').map((r) => (typeof r.toObject === 'function' ? r.toObject() : r));
+export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerViewOptions = {}): Promise<Row[]> {
+  const now = opts.now ?? new Date();
+  const clinical = opts.clinical !== false;
+  const list = await withCopyState(rows.filter((r) => r && typeof r === 'object').map((r) => (typeof r.toObject === 'function' ? r.toObject() : r)));
   if (!list.length) return [];
   const [slots, names] = await Promise.all([slotsOf(list), bookerPatientNames(list, pharmacyId)]);
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
-  const open = (b: Row) => rxWindowOpen(b, slotOf(b), now);
-  const copies = await dispensingUrls(list, open);
+  const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
+  const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -69,33 +99,33 @@ export async function bookerViews(rows: Row[], pharmacyId: string, now: Date = n
     }
     // The prescription for 90 days after the consultation (overnight H), without the diagnosis; its only file is the
     // dispensing copy. Afterwards the prescription is left out entirely.
-    if (hasPrescription(b.prescription) && open(b)) {
+    // Only a prescription the doctor saved counts (review finding 2).
+    if (hasPrescription(b) && open(b)) {
       const p: Row = {};
       for (const k of PRESCRIPTION_FIELDS) if (b.prescription[k] !== undefined) p[k] = b.prescription[k];
       const url = copies.get(b);
       p.fileUrls = url ? [url] : [];
+      if (!url) p.copyPending = true;
       v.prescription = p;
     }
     return v;
   });
 }
 
-export async function bookerView(row: Row, pharmacyId: string, now: Date = new Date()): Promise<Row> {
-  return (await bookerViews([row], pharmacyId, now))[0]!;
+export async function bookerView(row: Row, pharmacyId: string, opts: BookerViewOptions = {}): Promise<Row> {
+  return (await bookerViews([row], pharmacyId, opts))[0]!;
 }
 
 /**
- * For pharmacy answers of the generic booking routes that are not plain reads (create, retry, reconcile, payment
- * details): the booking inside keeps its fields (the released app's payment flow reads them), but its clinical part
- * is the booker's — the prescription as in the booker view, and no documents or report.
+ * Review finding 4: every pharmacy answer of the generic booking routes that carries a booking (create, retry,
+ * reconcile; `booking` inside the answer, or the answer itself) gets the strict booker view of it — the §17.2 shown list
+ * only. Other answer fields (payment, flags) stay. Copies are never made in these requests.
  */
-export async function withBookerClinicalView<T>(value: T, pharmacyId: string): Promise<T> {
+export async function withBookerBooking<T>(value: T, pharmacyId: string, opts: BookerViewOptions = {}): Promise<T> {
   const raw = value as unknown as Row;
   if (!raw || typeof raw !== 'object') return value;
   const row: Row = typeof raw.toObject === 'function' ? raw.toObject() : raw;
-  if (row.booking && typeof row.booking === 'object') return { ...row, booking: await withBookerClinicalView(row.booking, pharmacyId) } as T;
-  if (!('prescription' in row) && !('documents' in row) && !('report' in row)) return value;
-  const view = await bookerView(row, pharmacyId);
-  const { prescription: _p, documents: _d, report: _r, ...rest } = row;
-  return { ...rest, ...(view.prescription ? { prescription: view.prescription } : {}) } as T;
+  if (row.booking && typeof row.booking === 'object') return { ...row, booking: await bookerView(row.booking, pharmacyId, { copies: 'queue', ...opts }) } as T;
+  if (row._id && row.bookingType) return await bookerView(row, pharmacyId, { copies: 'queue', ...opts }) as T;
+  return value;
 }

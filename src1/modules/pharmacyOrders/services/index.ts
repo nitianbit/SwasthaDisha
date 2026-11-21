@@ -1130,6 +1130,15 @@ export class PharmacyOrderService {
       throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_PARTY_LOCKED',
         message: "The patient of an order made from a booking's prescription cannot be changed" });
     }
+    // Review finding 9: the bound dispensing copy stays the order's prescription (it cannot be removed or replaced).
+    if (order.prescriptionFromBooking && Object.prototype.hasOwnProperty.call(data, 'prescriptionUrls')) {
+      const sent = Array.isArray(data.prescriptionUrls) ? data.prescriptionUrls : [];
+      const kept = sent.length === (order.prescriptionUrls ?? []).length && sent.every((u, i) => u === order.prescriptionUrls?.[i]);
+      if (!kept) {
+        throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_LOCKED',
+          message: "The prescription of an order made from a booking's prescription cannot be changed" });
+      }
+    }
     if (changesOrderParty && Object.prototype.hasOwnProperty.call(order, 'recoveryRequest')) {
       throw new AppError({
         status: 409,
@@ -1447,7 +1456,10 @@ export class PharmacyOrderService {
             : {}),
           ...(shouldReturnInventory ? { paymentStatus: { $in: ['pending', 'failed', null] } } : {}),
         },
-        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}) },
+        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}),
+          // Assisted booking phase 0 (N12, review finding 7): when an order made from a prescription was dispensed.
+          ...(payload.status === 'packed' && order.prescriptionFromBooking && !order.prescriptionFromBooking.dispensedAt
+            ? { 'prescriptionFromBooking.dispensedAt': new Date() } : {}) },
         { new: true, session }
       );
 

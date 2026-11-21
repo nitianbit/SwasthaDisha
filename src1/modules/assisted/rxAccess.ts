@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import SlotModel from '@/modules/slots/model';
+import PharmacyModel from '@/modules/pharmacies/model';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 
@@ -74,10 +75,23 @@ export async function rxWindowOpenFor(b: Row, now: Date = new Date()): Promise<{
   return { open: !!until && now.getTime() < until.getTime(), until };
 }
 
-/** Whether a prescription has been written for the booking (a doctor saved one). */
-export function hasPrescription(p: Row | null | undefined): boolean {
+/**
+ * Whether the booking has a prescription the DOCTOR saved (review finding 2): only the server's mark of the doctor's
+ * save (`lifecycle.prescriptionUploaded`, written by `createAppointmentPrescription`) counts, with some content. A
+ * `prescription` a client sent (with any `prescribedAt` / `prescribedBySpecialistId`) is never a prescription here.
+ */
+export function hasPrescription(b: Row | null | undefined): boolean {
+  if (!b || typeof b !== 'object' || !b.lifecycle?.prescriptionUploaded?.at) return false;
+  const p = b.prescription;
   if (!p || typeof p !== 'object') return false;
-  return !!p.prescribedAt || (Array.isArray(p.medicines) && p.medicines.length > 0)
-    || (Array.isArray(p.testsAdvised) && p.testsAdvised.length > 0) || !!p.advice
-    || (Array.isArray(p.fileUrls) && p.fileUrls.length > 0);
+  return (Array.isArray(p.medicines) && p.medicines.length > 0) || (Array.isArray(p.testsAdvised) && p.testsAdvised.length > 0)
+    || !!p.advice || !!p.prescribedAt;
+}
+
+/** The pharmacy's current authority (as requireOperationalPharmacy): active, verified, not archived. */
+export async function isOperationalPharmacy(pharmacyId: unknown): Promise<boolean> {
+  const id = String(pharmacyId ?? '');
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) return false;
+  const p = await PharmacyModel.findById(id).select({ isActive: 1, isVerified: 1, archivedAt: 1 }).lean();
+  return !!p && !p.archivedAt && p.isActive !== false && !!p.isVerified;
 }

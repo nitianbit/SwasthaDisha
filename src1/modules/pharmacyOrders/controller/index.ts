@@ -10,6 +10,7 @@ import { CustomerReturnService } from '@/modules/pharmacyInventory/customerRetur
 import { AuthRequest } from '@/modules/middleware/auth';
 import { MarkOrderPaidRequest, OrderQueryParams, PharmacyRecoveryWorklistQuery } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
+import { withPharmacyFacingCustomerNames } from '@/modules/assisted/names';
 
 export class PharmacyOrderController {
   private service: PharmacyOrderService;
@@ -48,7 +49,7 @@ export class PharmacyOrderController {
     res.setHeader('Cache-Control', 'private, no-store');
     res.status(200).json({
       success: true,
-      data: result.data,
+      data: await withPharmacyFacingCustomerNames(result.data, req.user?.pharmacyId || ''),
       pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
     });
   };
@@ -123,7 +124,8 @@ export class PharmacyOrderController {
     );
     res.status(200).json({
       success: true,
-      data: result.data,
+      // Assisted booking phase 0 (review finding 8): a pharmacy sees its customers by the name it typed, else masked.
+      data: isPharmacy ? await withPharmacyFacingCustomerNames(result.data, req.user?.pharmacyId || '') : result.data,
       pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
     });
   };
