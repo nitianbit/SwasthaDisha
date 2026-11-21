@@ -358,8 +358,10 @@ export class SpecialistPortalService {
       advice: body.advice,
     });
 
+    // A new prescription never keeps the previous one's dispensing copy (assisted booking phase 0).
+    const { dispensingCopy: _previousCopy, ...previous } = booking.prescription || {};
     const prescription: IBookingPrescription = {
-      ...(booking.prescription || {}),
+      ...previous,
       fileUrls: [pdfUrl],
       message: body.message,
       diagnosis: body.diagnosis,

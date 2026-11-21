@@ -558,6 +558,13 @@ async function main() {
       const ph = await expect('P', 'GET', `/bookings/${couponBooking}`, 200);
       assert.equal(ph.json.data.assisted.funding, undefined, 'the generic read gives the pharmacy the booker view');
       assert.equal(ph.json.data.source, 'pharmacy_assisted');
+      // The booker's generic payment answers are refused for a partner-paid row; its generic list is the strict booker view.
+      await expect('P', 'POST', `/bookings/${couponBooking}/retry-payment`, 409, {}, 'PARTNER_PAID_BOOKING');
+      await expect('P', 'POST', `/bookings/${couponBooking}/reconcile-payments`, 409, undefined, 'PARTNER_PAID_BOOKING');
+      const generic = await expect('P', 'GET', '/bookings', 200);
+      const row = generic.json.data.find((x: any) => x._id === couponBooking);
+      assert.ok(row && row.assisted.shortRef && row.assisted.funding === undefined && row.paidBy === undefined && row.price === 400,
+        'the pharmacy sees its own booker view (its price, no funding internals, no patient-side paidBy)');
       const list = await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200);
       assert.ok(list.json.data.some((x: any) => x._id === couponBooking), 'the phase 0 list now has the assisted rows');
     });

@@ -1,4 +1,3 @@
-import { withLinkNames } from '@/modules/assisted/names';
 import { Service } from 'typedi';
 import PaymentRecordModel from '@/modules/payment/model';
 import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
@@ -1050,8 +1049,7 @@ export class PharmacyOrderService {
     if (typeof pharmacyId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Pharmacy access is required' });
     }
-    const queue = await this.orderRepo.findPrescriptionReviewQueue(pharmacyId, PRESCRIPTION_REVIEWABLE_STATUSES, page, limit);
-    return { ...queue, data: await withLinkNames(queue.data, pharmacyId, 'customerId') }; // §17.4
+    return this.orderRepo.findPrescriptionReviewQueue(pharmacyId, PRESCRIPTION_REVIEWABLE_STATUSES, page, limit);
   }
 
   async getRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
@@ -1099,10 +1097,7 @@ export class PharmacyOrderService {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
     }
 
-    const result = await this.orderRepo.findWithPagination(filter, page, limit);
-    // Assisted booking (§17.4): a pharmacy sees its customers by the name it typed (or masked), never the account's.
-    if (requesterRole === 'pharmacy') return { ...result, data: await withLinkNames(result.data, requesterId, 'customerId') };
-    return result;
+    return this.orderRepo.findWithPagination(filter, page, limit);
   }
 
   async update(id: string, pharmacyId: string, data: UpdateOrderRequest): Promise<IPharmacyOrder> {
@@ -1134,6 +1129,15 @@ export class PharmacyOrderService {
     if ((changesOrderParty || Object.prototype.hasOwnProperty.call(data, 'linkedConsultationId')) && order.prescriptionFromBooking) {
       throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_PARTY_LOCKED',
         message: "The patient of an order made from a booking's prescription cannot be changed" });
+    }
+    // Review finding 9: the bound dispensing copy stays the order's prescription (it cannot be removed or replaced).
+    if (order.prescriptionFromBooking && Object.prototype.hasOwnProperty.call(data, 'prescriptionUrls')) {
+      const sent = Array.isArray(data.prescriptionUrls) ? data.prescriptionUrls : [];
+      const kept = sent.length === (order.prescriptionUrls ?? []).length && sent.every((u, i) => u === order.prescriptionUrls?.[i]);
+      if (!kept) {
+        throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_LOCKED',
+          message: "The prescription of an order made from a booking's prescription cannot be changed" });
+      }
     }
     if (changesOrderParty && Object.prototype.hasOwnProperty.call(order, 'recoveryRequest')) {
       throw new AppError({
@@ -1452,7 +1456,10 @@ export class PharmacyOrderService {
             : {}),
           ...(shouldReturnInventory ? { paymentStatus: { $in: ['pending', 'failed', null] } } : {}),
         },
-        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}) },
+        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}),
+          // Assisted booking phase 0 (N12, review finding 7): when an order made from a prescription was dispensed.
+          ...(payload.status === 'packed' && order.prescriptionFromBooking && !order.prescriptionFromBooking.dispensedAt
+            ? { 'prescriptionFromBooking.dispensedAt': new Date() } : {}) },
         { new: true, session }
       );
 

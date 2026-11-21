@@ -17,6 +17,7 @@ import { Container } from 'typedi';
 import { CONFIG } from '@/config/config';
 import UserModel from '@/modules/user/model';
 import BookingModel from '@/modules/bookings/model';
+import PharmacyModel from '@/modules/pharmacies/model';
 import { BookingRepository } from '@/modules/bookings/repository';
 import { BookingService } from '@/modules/bookings/services';
 import { DependentService } from '@/modules/dependents/services';
@@ -65,6 +66,10 @@ async function main() {
     const custA = oid(); const custB = oid();
     await UserModel.collection.insertMany([custA, custB].map((id, i) => ({ _id: new Types.ObjectId(id), userType: 'user', phone: '96000000' + (10 + i) })) as never);
     const specA = oid(); const specB = oid(); const pharmA = oid(); const pharmB = oid(); const corpX = oid();
+    // Assisted booking phase 0 (review finding 5): a pharmacy reaches /bookings only while operational, so both are real
+    // verified pharmacies.
+    await PharmacyModel.collection.insertMany([pharmA, pharmB].map((p, i) => ({ _id: new Types.ObjectId(p), name: 'S2 pharmacy ' + i,
+      phone: '970000020' + i, email: `s2-pharmacy-${i}@example.test`, isActive: true, isVerified: true })) as never);
     const tokens = {
       custA: sign({ _id: custA, userType: 'user' }),
       custB: sign({ _id: custB, userType: 'user' }),

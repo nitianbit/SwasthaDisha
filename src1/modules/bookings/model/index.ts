@@ -120,10 +120,10 @@ const prescriptionSchema = new Schema<IBookingPrescription>(
       type: String,
       trim: true,
     },
-    // Assisted booking phase 0 (D15): the server-made dispensing copy (no diagnosis) and the prescription content it shows.
+    // Assisted booking phase 0 (D15): the server-made dispensing copy (no diagnosis). Only `url` is ever answered: the
+    // hash of the content it shows and its time are internal (select: false; the assisted module selects them).
     dispensingCopy: {
-      type: new Schema({ url: { type: String, required: true }, hash: { type: String, required: true }, at: { type: Date, required: true } },
-        { _id: false }),
+      type: new Schema({ url: { type: String }, hash: { type: String, select: false }, at: { type: Date, select: false } }, { _id: false }),
       default: undefined,
     },
   },

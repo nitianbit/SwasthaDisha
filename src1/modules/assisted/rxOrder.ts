@@ -3,7 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { AppError } from '@/modules/common/types';
 import { bindServerFile, uploadPathOf } from '@/modules/file/access';
-import { ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { ensureDispensingCopy, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { hasPrescription, rxWindowOpenFor } from '@/modules/assisted/rxAccess';
 import type { CreateOrderRequest, IPharmacyOrder } from '@/modules/pharmacyOrders/types';
 
@@ -47,7 +47,7 @@ export function assertRxOrderRequest(data: CreateOrderRequest): string {
 export async function prepareRxOrder(pharmacyId: string, data: CreateOrderRequest): Promise<RxOrderTerms> {
   const bookingId = data.prescriptionFromBookingId;
   if (typeof bookingId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(bookingId) || !Types.ObjectId.isValid(pharmacyId)) throw notFound();
-  const b = await BookingModel.findOne({ _id: bookingId, pharmacyId: { $eq: pharmacyId } }).lean() as Record<string, any> | null;
+  const b = await BookingModel.findOne({ _id: bookingId, pharmacyId: { $eq: pharmacyId } }).select(WITH_COPY_STATE).lean() as Record<string, any> | null;
   if (!b) throw notFound();
   if (data.customerId !== undefined && lower(data.customerId) !== lower(b.userId)) throw notFound();
   if (data.linkedConsultationId !== undefined && lower(data.linkedConsultationId) !== lower(b._id)) throw notFound();
@@ -59,7 +59,8 @@ export async function prepareRxOrder(pharmacyId: string, data: CreateOrderReques
   if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') {
     throw err(403, 'CUSTOMER_CONSENT_REQUIRED', "The patient's agreement to this link is not recorded; link the customer again with the patient's consent");
   }
-  if (b.bookingType !== 'consultation' || !hasPrescription(b.prescription)) {
+  // Only a prescription the doctor saved (review finding 2).
+  if (b.bookingType !== 'consultation' || !hasPrescription(b)) {
     throw err(409, 'PRESCRIPTION_NOT_READY', 'This booking has no prescription yet');
   }
   const window = await rxWindowOpenFor(b);

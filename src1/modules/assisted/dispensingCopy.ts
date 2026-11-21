@@ -1,12 +1,16 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import BookingModel from '@/modules/bookings/model';
 import SpecialistModel from '@/modules/specialists/model';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
 import { canonicalJson } from '@/modules/common/utils/canonicalJson';
-import { ageFromDob, escapeHtml, formatDisplayDate, removeBookingPdf, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { ageFromDob, bookingPdfExists, escapeHtml, formatDisplayDate, removeBookingPdf, writeBookingPdf } from '@/modules/specialistPortal/pdf';
 import { bookerPatientNames, maskName } from '@/modules/assisted/names';
 import { hasPrescription } from '@/modules/assisted/rxAccess';
+import { Job } from '@/modules/queue/model';
+import JobConsumer from '@/modules/queue/service/JobConsumer';
+import type { JobPayload } from '@/modules/queue/types';
+import logger from '@/services/logger';
 
 type Row = Record<string, any>;
 
@@ -17,10 +21,16 @@ type Row = Record<string, any>;
  * the diagnosis (nor the doctor's free-text message). It is the only prescription file a booker reads; the full PDF
  * stays with the patient and the doctor (file/access.ts).
  *
- * The booking stores `prescription.dispensingCopy {url, hash, at}`; `hash` is over exactly the prescription content the
- * copy shows, so a prescription saved again (any writer) is noticed and a fresh copy made on the next request.
+ * The booking stores `prescription.dispensingCopy {url, hash, at}` (`hash` and `at` are select: false; read them with
+ * WITH_COPY_STATE); `hash` is over exactly the prescription content the copy shows, so a prescription saved again (any
+ * writer) is noticed and a fresh copy made on the next request.
+ * Review finding 3: every attempt writes its own file (`rx-dispense-<ms>-<random>.pdf`), the store is a compare-and-set
+ * on the copy state that was read, a file whose URL is the stored one is never removed, and a stored copy whose file is
+ * missing is made again.
  */
-export const DISPENSING_COPY_FILE = /^rx-dispense-\d+\.pdf$/;
+export const DISPENSING_COPY_FILE = /^rx-dispense-\d+(?:-[0-9a-f]{16})?\.pdf$/;
+/** Projection that adds the copy's internal state to an ordinary booking read. */
+export const WITH_COPY_STATE = '+prescription.dispensingCopy.hash +prescription.dispensingCopy.at';
 
 export function dispensingHashOf(b: Row): string {
   const p = b.prescription ?? {};
@@ -30,10 +40,11 @@ export function dispensingHashOf(b: Row): string {
   })).digest('hex');
 }
 
-/** The current copy's URL when it reflects the booking's prescription as stored. */
+/** The current copy's URL: it reflects the booking's (doctor-saved) prescription as stored and its file is on disk. */
 export function currentDispensingUrl(b: Row): string | null {
+  if (!hasPrescription(b)) return null;
   const c = b?.prescription?.dispensingCopy;
-  return c && typeof c.url === 'string' && c.hash === dispensingHashOf(b) ? c.url : null;
+  return c && typeof c.url === 'string' && c.hash === dispensingHashOf(b) && bookingPdfExists(c.url) ? c.url : null;
 }
 
 const MEDICINE_FIELDS: [string, string][] = [['dosage', 'Dose'], ['frequency', 'Frequency'], ['duration', 'Duration'], ['instructions', 'Instructions']];
@@ -107,28 +118,101 @@ async function renderDispensingCopy(b: Row): Promise<string> {
     ? (await bookerPatientNames([b], String(b.pharmacyId))).get(String(b._id).toLowerCase()) ?? null
     : maskName(holder?.name);
   const age = ageFromDob(person?.dateOfBirth) ?? (typeof person?.age === 'number' ? person.age : null);
-  const html = buildDispensingHtml({ booking: b, doctorName: String(b.prescription?.prescribedBySpecialistName || doctor?.name || b.doctorName || ''),
+  const html = buildDispensingHtml({ booking: b, doctorName: String(doctor?.name || b.prescription?.prescribedBySpecialistName || b.doctorName || ''),
     registration: doctor?.medicalRegistrationNumber ?? null, patientName, age, sex: person?.gender ?? null });
-  return writeBookingPdf(String(b._id), `rx-dispense-${Date.now()}.pdf`, html);
+  return writeBookingPdf(String(b._id), `rx-dispense-${Date.now()}-${randomBytes(8).toString('hex')}.pdf`, html);
 }
 
 /**
- * The booking's current dispensing copy, made when missing or stale (prescriptions saved before phase 0 get theirs on the
- * first booker request). Idempotent: the copy is stored only while the booking does not already hold a current one; a
- * copy that lost that race is removed and the stored one returned. Null when the booking has no prescription. Throws
- * when the PDF cannot be written.
+ * The booking's current dispensing copy, made when missing, stale or its file is gone (prescriptions saved before
+ * phase 0 get theirs on the first booker request). `b` must carry the copy state (WITH_COPY_STATE). The new copy is
+ * stored only while the booking still holds exactly the copy state that was read (compare-and-set on url + hash, and on
+ * the prescription it was made from); losing that race removes only this attempt's own file and answers with the stored
+ * copy. Null when the booking has no doctor-saved prescription. Throws when the PDF cannot be written.
  */
 export async function ensureDispensingCopy(b: Row): Promise<string | null> {
-  if (!b?._id || !hasPrescription(b.prescription)) return null;
-  const current = currentDispensingUrl(b);
-  if (current) return current;
-  const hash = dispensingHashOf(b);
-  const url = await renderDispensingCopy(b);
-  const r = await BookingModel.updateOne(
-    { _id: b._id, prescription: { $exists: true }, 'prescription.dispensingCopy.hash': { $ne: hash } },
-    { $set: { 'prescription.dispensingCopy': { url, hash, at: new Date() } } });
-  if (r.modifiedCount === 1) return url;
-  removeBookingPdf(url);
-  const now = await BookingModel.findById(b._id).lean() as Row | null;
-  return now ? currentDispensingUrl(now) : null;
+  let row: Row | null = b;
+  for (let attempt = 0; attempt < 3 && row; attempt++) {
+    if (!row._id || !hasPrescription(row)) return null;
+    const current = currentDispensingUrl(row);
+    if (current) return current;
+    const seen = row.prescription?.dispensingCopy;
+    const hash = dispensingHashOf(row);
+    const url = await renderDispensingCopy(row);
+    const fence: Row = { _id: row._id, 'lifecycle.prescriptionUploaded.at': row.lifecycle.prescriptionUploaded.at,
+      'prescription.prescribedAt': row.prescription.prescribedAt ?? null };
+    if (seen && typeof seen.url === 'string') {
+      fence['prescription.dispensingCopy.url'] = seen.url;
+      fence['prescription.dispensingCopy.hash'] = seen.hash ?? null;
+    } else {
+      fence['prescription.dispensingCopy'] = { $exists: false };
+    }
+    const r = await BookingModel.updateOne(fence, { $set: { 'prescription.dispensingCopy': { url, hash, at: new Date() } } });
+    if (r.modifiedCount === 1) return url;
+    row = await BookingModel.findById(b._id).select(WITH_COPY_STATE).lean() as Row | null;
+    // Never remove the stored copy's file (with unique names it is never ours, but check anyway).
+    if (row?.prescription?.dispensingCopy?.url !== url) removeBookingPdf(url);
+  }
+  return row ? currentDispensingUrl(row) : null;
 }
+
+/** Reads the booking with its copy state and ensures the copy (consumer and single-booking callers). */
+export async function ensureDispensingCopyById(bookingId: unknown): Promise<string | null> {
+  const b = await BookingModel.findById(String(bookingId)).select(WITH_COPY_STATE).lean() as Row | null;
+  return b ? ensureDispensingCopy(b) : null;
+}
+
+/**
+ * Review finding 6: lists never convert inline. A missing copy is queued (one job per booking, `uniqueId` = the
+ * booking) and made in the background by DispensingCopyConsumer, a few at a time, never in the request. Never throws.
+ */
+export const DISPENSING_COPY_CONSUMER = 'assistedDispensingCopy';
+export async function queueDispensingCopy(bookingId: unknown): Promise<void> {
+  try {
+    const id = String(bookingId);
+    await Job.findOneAndUpdate({ consumer: DISPENSING_COPY_CONSUMER, uniqueId: id },
+      { $setOnInsert: { consumer: DISPENSING_COPY_CONSUMER, uniqueId: id, processAfter: Math.floor(Date.now() / 1000), payload: { bookingId: id } } },
+      { upsert: true });
+    setImmediate(() => { dispensingCopyConsumer.init().catch(() => undefined); });
+  } catch (error) {
+    if ((error as { code?: number })?.code === 11000) return;
+    logger.warn('Dispensing copy not queued', { bookingId: String(bookingId), error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+/** Makes queued copies one at a time, at most BATCH per run (the scheduler runs it again for the rest). */
+class DispensingCopyConsumer extends JobConsumer {
+  static readonly BATCH = 10;
+  private draining = false;
+  constructor() { super(DISPENSING_COPY_CONSUMER); }
+
+  async init(): Promise<void> {
+    if (this.draining) return;
+    this.draining = true;
+    try {
+      for (let i = 0; i < DispensingCopyConsumer.BATCH; i++) {
+        const now = Math.floor(Date.now() / 1000);
+        const job = await Job.findOneAndUpdate({ consumer: this.type, processAfter: { $lte: now } },
+          { $set: { processAfter: now + 120 } }, { sort: { processAfter: 1 } });
+        if (!job) return;
+        await this.consume(job.payload);
+        await Job.deleteOne({ _id: job._id });
+      }
+    } finally {
+      this.draining = false;
+    }
+  }
+
+  /** One attempt per job: a failure is logged and the next list read queues the booking again. */
+  async consume(payload: JobPayload): Promise<boolean> {
+    try {
+      await ensureDispensingCopyById(payload.bookingId);
+    } catch (error) {
+      logger.warn('Dispensing copy not made in the background', { bookingId: String(payload.bookingId),
+        error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
+  }
+}
+
+export const dispensingCopyConsumer = new DispensingCopyConsumer();

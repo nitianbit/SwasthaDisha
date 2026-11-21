@@ -48,7 +48,7 @@ export interface IBookingPrescription {
   prescribedBySpecialistId?: string;
   prescribedBySpecialistName?: string;
   /** Assisted booking phase 0 (D15): the dispensing copy (no diagnosis) and the hash of the content it shows. */
-  dispensingCopy?: { url: string; hash: string; at: Date };
+  dispensingCopy?: { url?: string; hash?: string; at?: Date };
 }
 
 export interface IBookingPrescriptionMedicine {

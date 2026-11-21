@@ -1,6 +1,6 @@
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import { withPatientNames } from '@/modules/bookings/utils/patientNames';
-import { bookerView, bookerViews, withBookerClinicalView } from '@/modules/assisted/bookerView';
+import { bookerView, bookerViews, withBookerBooking } from '@/modules/assisted/bookerView';
 import { assistedAdminView, assistedPublicView, notDisputed } from '@/modules/assisted/views';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
@@ -70,10 +70,10 @@ export class BookingController {
     return req.user?.userType === 'pharmacy' ? String(req.user.pharmacyId || req.user._id) : undefined;
   }
 
-  /** A pharmacy's create / payment answers: the booking's clinical part as the booker view has it (§9.2). */
-  private async clinicalViewFor<T>(req: AuthRequest, value: T): Promise<T> {
+  /** A pharmacy's create / retry / reconcile answers: the strict booker view of the booking inside (review finding 4). */
+  private async bookerAnswerFor<T>(req: AuthRequest, value: T): Promise<T> {
     const pharmacyId = this.bookerPharmacyOf(req);
-    return pharmacyId ? withBookerClinicalView(value, pharmacyId) : value;
+    return pharmacyId ? withBookerBooking(value, pharmacyId) : value;
   }
 
   private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
@@ -316,7 +316,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking created and payment initiated successfully'
         : 'Booking created successfully',
-      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -348,7 +348,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Wellness package booking created and payment initiated successfully'
         : 'Wellness package booking created successfully',
-      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -380,7 +380,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Specialist booking created and payment initiated successfully'
         : 'Specialist booking created successfully',
-      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -396,7 +396,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: pharmacyId ? await bookerView(row as never, pharmacyId) : this.viewFor(req, row),
+      data: pharmacyId ? await bookerView(row as never, pharmacyId, { copies: 'inline' }) : this.viewFor(req, row),
     });
   };
 
@@ -414,9 +414,10 @@ export class BookingController {
       pharmacyId: req.user?.pharmacyId,
     });
 
+    // payment-details: its booking part is ten payment fields only (no clinical data), for the pharmacy's payment flow.
     res.status(200).json({
       success: true,
-      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -603,7 +604,7 @@ export class BookingController {
     });
     res.setHeader('Cache-Control', 'private, no-store');
     // Q16d (F6): the same view as every other booking route (no desk, settlement or no-show internals).
-    res.status(200).json({ success: true, data: await this.clinicalViewFor(req, this.viewFor(req, result)) });
+    res.status(200).json({ success: true, data: await this.bookerAnswerFor(req, this.viewFor(req, result)) });
   };
 
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
@@ -626,7 +627,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking payment initiated successfully'
         : 'Booking payment completed successfully',
-      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 

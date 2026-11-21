@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { BookingController } from '@/modules/bookings/controller';
-import { AuthRequest } from '@/modules/middleware/auth';
+import { AuthRequest, assertOperationalPharmacy } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { gatePharmacyBookingCreate, gatePharmacyBookingRetry } from '@/modules/bookings/pharmacyBookingGate';
 import { notMine } from '@/modules/assisted/controller/phase1a';
@@ -33,6 +33,12 @@ bookingRouter.use((req: AuthRequest, _res, next) => {
     ? undefined
     : new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access to this booking resource is not permitted' }));
 });
+// Assisted booking phase 0 (review finding 5): a pharmacy's access ends with its authority — every booking route answers
+// a pharmacy that is not operational (inactive, unverified or archived) 403, as /pharmacy-bookings does.
+bookingRouter.use(catchAsync(async (req: AuthRequest, _res, next) => {
+  if (req.user?.userType === 'pharmacy') await assertOperationalPharmacy(req);
+  next();
+}));
 
 // Create wellness package booking
 bookingRouter.post(

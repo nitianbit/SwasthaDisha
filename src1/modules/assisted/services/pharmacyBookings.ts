@@ -20,14 +20,26 @@ export const PHARMACY_BOOKINGS_MAX_LIMIT = 50;
 const notFound = () => new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
 const ymd = (d: string) => d.replace(/-/g, '');
 
-function parseCursor(c?: string): { at: Date; id: Types.ObjectId } | null {
+/**
+ * Cursor `<createdAt ms>_<id>`. Review finding 9: a row stored without `createdAt` (sorted after every dated row) pages
+ * as `n_<id>` — the rest of that undated tail, by `_id`; a dated cursor's next page includes the whole undated tail.
+ */
+type Cursor = { at: Date | null; id: Types.ObjectId };
+function parseCursor(c?: string): Cursor | null {
   if (c === undefined || c === '') return null;
   const [ms, id, extra] = c.split('_');
-  if (extra !== undefined || !/^\d{1,15}$/.test(ms ?? '') || !/^[0-9a-fA-F]{24}$/.test(id ?? '')) {
+  if (extra !== undefined || !/^(\d{1,15}|n)$/.test(ms ?? '') || !/^[0-9a-fA-F]{24}$/.test(id ?? '')) {
     throw new AppError({ status: 400, code: 'INVALID_CURSOR', message: 'Invalid cursor' });
   }
-  return { at: new Date(Number(ms)), id: new Types.ObjectId(id) };
+  return { at: ms === 'n' ? null : new Date(Number(ms)), id: new Types.ObjectId(id) };
 }
+const afterCursor = (cur: Cursor) => (cur.at === null
+  ? { createdAt: null, _id: { $lt: cur.id } }
+  : { $or: [{ createdAt: { $lt: cur.at } }, { createdAt: cur.at, _id: { $lt: cur.id } }, { createdAt: null }] });
+const cursorOf = (row: Row) => {
+  const t = row.createdAt ? new Date(row.createdAt).getTime() : NaN;
+  return `${Number.isFinite(t) ? t : 'n'}_${String(row._id)}`;
+};
 
 /**
  * Assisted booking phase 0 (§17.2): the bookings this pharmacy made (`pharmacyId` = it; legacy and, from phase 1a,
@@ -43,7 +55,7 @@ export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookin
   }
   const limit = Math.min(Math.max(Number(q.limit) || PHARMACY_BOOKINGS_DEFAULT_LIMIT, 1), PHARMACY_BOOKINGS_MAX_LIMIT);
   const cur = parseCursor(q.cursor);
-  const page = cur ? { $and: [filter, { $or: [{ createdAt: { $lt: cur.at } }, { createdAt: cur.at, _id: { $lt: cur.id } }] }] } : filter;
+  const page = cur ? { $and: [filter, afterCursor(cur)] } : filter;
   const [total, rows] = await Promise.all([
     BookingModel.countDocuments(filter),
     BookingModel.find(page).sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as unknown as Promise<Row[]>,
@@ -51,9 +63,10 @@ export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookin
   const items = rows.slice(0, limit);
   const last = items[items.length - 1];
   return {
-    items: await bookerViews(items, pharmacyId),
+    // A list never converts copies in the request (review finding 6): missing ones are queued.
+    items: await bookerViews(items, pharmacyId, { copies: 'queue' }),
     total,
-    nextCursor: rows.length > limit && last ? `${new Date(last.createdAt).getTime()}_${String(last._id)}` : null,
+    nextCursor: rows.length > limit && last ? cursorOf(last) : null,
   };
 }
 
@@ -62,5 +75,5 @@ export async function getPharmacyBooking(pharmacyId: string, bookingId: unknown)
   if (typeof bookingId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(bookingId)) throw notFound();
   const b = await BookingModel.findOne({ _id: bookingId, pharmacyId: { $eq: pharmacyId } }).lean() as Row | null;
   if (!b) throw notFound();
-  return bookerView(b, pharmacyId);
+  return bookerView(b, pharmacyId, { copies: 'inline' });
 }

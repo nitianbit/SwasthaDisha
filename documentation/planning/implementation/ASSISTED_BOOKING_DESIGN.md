@@ -1321,8 +1321,8 @@ holder; optional `note`):
 ## 18. Assisted booking phase 0 built (build record, 2026-11-22)
 
 Built on `m0/r2-assisted-phase0` (base: stage line `286eb0a` + this design). Local commits only; nothing pushed or
-deployed. Suite: `test/assisted/phase0.integration.ts` (18 checks over HTTP; 17 fail without the source changes, the
-remaining one is the S3 regression guard).
+deployed. Suite: `test/assisted/phase0.integration.ts` (29 checks over HTTP after the review fixes). §18.5 records the
+review fixes and replaces the statements of §18.1–§18.4 where they differ.
 
 ### 18.1 What was built
 
@@ -1330,7 +1330,7 @@ remaining one is the S3 regression guard).
 |---|---|---|
 | Booker list and detail | `GET /api/v1/pharmacy-bookings`, `GET /api/v1/pharmacy-bookings/:id` (`src1/modules/assisted/`) | `requireOperationalPharmacy`. Rows: `pharmacyId` = the caller (legacy pharmacy bookings; assisted ones from 1a). Newest first by `createdAt`, exact cursor `<ms>_<id>`; index `{pharmacyId, createdAt: -1, _id: -1}` |
 | Booker view | `assisted/bookerView.ts` | Exactly the §17.2 "Shown" list; hidden fields never copied (allowlist, not a denylist) |
-| Generic reads | `bookings/controller` | A pharmacy's `GET /bookings`, `/bookings/:id`, `/bookings/user/:userId` return the booker view (S2 scope unchanged). Its create, retry, reconcile and payment-details answers keep their fields (the released app's payment flow) but carry the booker prescription and no `documents` / `report` |
+| Generic reads | `bookings/controller` | A pharmacy's `GET /bookings`, `/bookings/:id`, `/bookings/user/:userId` return the booker view (S2 scope unchanged). Its create, retry and reconcile answers carry the strict booker view of the booking; payment-details keeps its ten payment fields (§18.5) |
 | Dispensing copy (D15) | `assisted/dispensingCopy.ts`, PDF step `specialistPortal/pdf.ts` | `bookings/<id>/rx-dispense-<ms>.pdf`; stored as `prescription.dispensingCopy {url, hash, at}` |
 | File access | `file/access.ts` | `canReadBooking` no longer admits pharmacies; new `BOOKING_RX_DISPENSE` pattern; expiring server bindings |
 | Medicine order from the prescription | `POST /api/v1/pharmacy-orders` + `prescriptionFromBookingId` + `requestKey` (`assisted/rxOrder.ts`, `pharmacyOrders/services`) | Server binding of the dispensing copy; exactly once per (pharmacy, key) |
@@ -1394,10 +1394,11 @@ Answer `{ success, data: [view…], pagination: { total, nextCursor } }`. Errors
 `GET /api/v1/pharmacy-bookings/:id` — `{ success, data: view }`; 404 `BOOKING_NOT_FOUND` for another pharmacy's,
 a missing or a malformed id (one answer).
 
-View fields: §17.2 "Shown" plus `patientName`. `prescription` = `{ message, advice, medicines[], testsAdvised[],
-prescribedAt, prescribedBySpecialistName, fileUrls: [dispensing copy] }`, absent before the doctor writes one and after
-the 90-day window; `fileUrls` may be `[]` if the copy could not be made (retry later). Open the file through the usual
-`/api/static/…` URL with the pharmacy token.
+View fields: §17.2 "Shown" plus `patientName`. `prescription` = `{ advice, medicines[], testsAdvised[], prescribedAt,
+prescribedBySpecialistName, fileUrls: [dispensing copy], copyPending? }` (no `message`, §18.5), absent before the doctor
+saves one and after the 90-day window. `fileUrls: []` with `copyPending: true` while the copy is being made (lists never
+make it in the request; read again shortly). Open the file through the usual `/api/static/…` URL with the pharmacy
+token.
 
 `POST /api/v1/pharmacy-orders` with `{ prescriptionFromBookingId, requestKey, orderType, items[], paymentMode,
 deliveryMode, deliveryAddress?, isWalkIn?, notes?, customerId? }` (pre-fill `items` from `prescription.medicines`; the
@@ -1420,6 +1421,28 @@ linked consultation of such an order: 409 `ORDER_PRESCRIPTION_PARTY_LOCKED`.
    documents, report, notes or money internals, and `prescription.fileUrls` now holds the dispensing copy; the full
    PDF URL returns 404 to a pharmacy.
 
+### 18.5 Review fixes (extra-high review of `9ce19b0` / `e248f57`)
+
+Each fix has its own check in the suite. On `e248f57` every new check fails (24 of the 29 checks fail there; the 5
+that pass are unchanged S3 and access guards). A mutation run on the fixed code undid each of 16 sub-fixes alone and
+confirmed that its check then fails.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (HIGH) | `POST /payments/verify` and `/payments/reconcile` returned the raw booking (diagnosis, full PDF, documents, report, notes) to the booking pharmacy | `payment/controller`: for a pharmacy caller, an `entity` of context `booking` is the booker view (prescription only while the pharmacy is operational and inside the window; copies queued, never made in the request). Customers keep the customer view, admins the booking. No other payment answer carries a booking (`pharmacy_order` is the pharmacy's own order) |
+| 2 (HIGH) | A prescription the client sent at booking create became a Jansetu copy in the doctor's name | Only a prescription the server marked as the doctor's save counts: `lifecycle.prescriptionUploaded.at`, set by `createAppointmentPrescription` (the create schema does not accept `lifecycle`). `rxAccess.hasPrescription(booking)` is used by the view, the copy, file access and `rxOrder`; client `prescribedAt` / `prescribedBySpecialistId` are ignored. The copy prints the doctor's name from the doctor record. The root cause (the generic create accepting `prescription` / `report`) is the separate hotfix S4 |
+| 3 (HIGH) | Concurrent first requests deleted the stored copy's file (same name in the same millisecond, shared temp file, unconditional removal) | Each attempt writes `rx-dispense-<ms>-<16 hex>.pdf` from its own random temp file (`wx`). The store is a compare-and-set on the copy state read (url + hash, plus the prescription's `prescribedAt` and save mark), retried up to 3 times; the loser removes only its own file, never the stored one. A stored copy whose file is missing is not current and is made again on the next read |
+| 4 (MEDIUM) | `reconcile-payments` (and create, retry) answered a near-raw booking | Every pharmacy answer of `/bookings*` that carries a booking uses the strict booker view (§17.2 shown list). `payment-details` keeps its ten payment fields (no clinical data). The released pharmacy app does not call `/api/v1/bookings*` (checked by the reviewer) |
+| 5 (MEDIUM) | Access did not end with authority on generic reads and order bindings | Every `/bookings*` route answers a pharmacy that is not operational 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as `/pharmacy-bookings` does. A pharmacy reads through an order's server binding only while operational. (`test/booking-scope/s2-booking-read-scope.integration.ts` now gives its two pharmacy tokens real verified pharmacies.) |
+| 6 (LOW-MEDIUM) | One list request converted every missing copy before answering | Lists (`/pharmacy-bookings`, generic lists, payment answers) never convert: `fileUrls: []` + `copyPending: true`, and the booking is queued (`Job`, consumer `assistedDispensingCopy`, one job per booking, at most 10 per run, one at a time; a failure is retried when a later list queues it again). Detail reads and orders still make a missing copy inline. The converter is killed after `PDF_CONVERTER_TIMEOUT_MS` (default 30 s; also for the full PDF) and a partial file is removed |
+| 7 (LOW) | Stale copy and cancelled-order binding | The pharmacy reads the copy only when its stored hash matches the prescription now. An order's binding serves nothing while the order is cancelled, rejected or abandoned. Packing records `prescriptionFromBooking.dispensedAt` (first `packed`); after the expiry the binding counts only for a dispensed order whose `dispensedAt` is before the expiry, so packing late never revives it |
+| 8 (LOW) | Names | One rule for every pharmacy-facing name (booker view, copy, `GET /pharmacy-orders`, `/pharmacy-orders/prescription-reviews`): the link's `typedName` (1a); until then the account name only for an account this pharmacy opened that its holder never took over (`otpVerified` not true, so it is still the name the pharmacy typed); otherwise masked. A one-word name of two letters or fewer is "…". Admin and customer views are unchanged. Consequence: until 1a adds typed names, the pharmacy order list shows masked names for customers who signed up themselves or took over their account |
+| 9 (LOW) | Notes | `prescription.message` is left out of the booker view. `prescription.dispensingCopy.hash` / `.at` are `select: false`: customers, doctors, HR and admins see only `dispensingCopy.url`; the assisted module selects them explicitly. `PUT /pharmacy-orders/:id` that removes or replaces the bound copy: 409 `ORDER_PRESCRIPTION_LOCKED`. Cursor: a row stored without `createdAt` pages as `n_<id>` after every dated row (each row once) |
+
+**New answers for the web:** `prescription.copyPending`; 409 `ORDER_PRESCRIPTION_LOCKED`; 403 pharmacy admission codes
+on every `/bookings*` route; cursor values may be `n_<id>`.
+
+**Deploy:** the job scheduler must run (it already does for reminders). `PDF_CONVERTER_TIMEOUT_MS` is optional.
 
 ## 19. Assisted booking phase 1a built (build record, 2026-11-22)
 
@@ -1443,7 +1466,7 @@ and doctor bookers (2, 3), referral cuts (4), withdrawals (4) and SMS (5) are no
 | Customer command routing (§6.7) | `bookings/services`, `bookings/controller`, `assisted/views.ts` | Patient cancel refunds the partner; pay-again / retry / reconcile 409 `PARTNER_PAID_BOOKING`; patient reschedule 409 `ASSISTED_RESCHEDULE_BY_PARTNER`; payment details 404; reads without the partner money, with `paidBy` |
 | Coupons | `coupon/model/redemption.ts`, `coupon/model` (`fundedBy`, `partnerUsable`), `coupon/repository` | Redemption keyed to the patient, guarded total count, reversed once on cancel; per-user count adds partner-paid uses |
 | Earnings (P5) | `doctors/services/earnings.ts` | A `provider_coupon_v2` row earns `split.providerMinor` (gross `baseMinor`, commission `cutMinor` = 0) on completion only; no-show earns nothing |
-| Typed names (§17.4) | `pharmacyCustomers/*`, `assisted/names.ts` `withLinkNames` | Customer list, pharmacy order lists and the pharmacist queue, pharmacy subscription list: typed name or masked, never email; `PUT /pharmacy-customers/:id/typed-name` |
+| Typed names (§17.4) | `pharmacyCustomers/*`, `assisted/names.ts` | The phase 0 rule (§18.5 finding 8, `pharmacyFacingHolderNames`: typed name, else an account the pharmacy opened and the holder never took over, else masked) now also names the customer list (`userId.email` null) and the subscription list (`withLinkNames`); order lists and the review queue keep phase 0's `withPharmacyFacingCustomerNames`. `PUT /pharmacy-customers/:id/typed-name` |
 | "Not mine", review queue, admin move (§17.5) | `assisted/review.ts` | Consultations only in 1a |
 | Reconciliation and stuck money (§8.8) | `assisted/reconciliation.ts`, `assisted/schedulers.ts` | Live admin route; daily job stores the report, raises alerts, fills gateway fees |
 | Neutral Meet and guest check (N6) | `meet/service` `meetEventTextFor` | §19.2 item 11 |
@@ -1591,6 +1614,8 @@ Answers `{ success, data }`. Money is paise.
    owner's word; GATE-DPDP review before go-live). Wallets created after the migration need nothing: every row the 1a
    ledger writes is signed, and reconciliation checks any wallet whose rows are all signed; a wallet that still has
    unsigned rows is listed as `notMigrated` (run the migration again).
-5. Merging phase 0 review fixes: phase 0 files were changed additively only — `assisted/model` (audit actions and
+5. The phase 0 review fixes (`83a0ef1`, §18.5) are merged into this branch: the generic `/bookings*` answers use
+   phase 0's strict booker view for pharmacies and the 1a partner-money scrub for everyone else; phase 1a's own
+   order-name pass was dropped in favour of phase 0's. Before the merge, phase 0 files were changed additively only — `assisted/model` (audit actions and
    actor kinds, new models appended), `assisted/names.ts` (`withLinkNames` appended), `assisted/bookerView.ts` (the
    disputed badge), `assisted/validation` (schemas appended), `routes/index.ts` (two mounts).

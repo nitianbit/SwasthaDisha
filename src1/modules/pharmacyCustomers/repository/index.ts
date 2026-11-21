@@ -4,7 +4,7 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { IPharmacyCustomer, PharmacyCustomerQueryParams } from '@/modules/pharmacyCustomers/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
-import { maskName } from '@/modules/assisted/names';
+import { pharmacyFacingHolderNames } from '@/modules/assisted/names';
 
 @Service()
 export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer> {
@@ -63,10 +63,12 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
     const [result] = await PharmacyCustomerModel.aggregate(pipeline);
     // §17.4: the response shape stays (`userId.name`, `userId.email`), but the name is the typed one (or the account
     // name masked, "Rina D.") and the email is never shown.
-    const data = ((result?.data || []) as any[]).map((row) => {
-      const { accountName, ...user } = row.userId ?? {};
-      const typed = typeof row.typedName === 'string' && row.typedName.trim() ? row.typedName.trim() : null;
-      return { ...row, userId: { ...user, name: typed ?? maskName(accountName), email: null } };
+    const rows = (result?.data || []) as any[];
+    // The phase 0 names rule (typed name, else an account this pharmacy opened and the holder never took over, else masked).
+    const names = await pharmacyFacingHolderNames(rows.map((row) => row.userId?._id), params.pharmacyId);
+    const data = rows.map((row) => {
+      const { accountName: _a, ...user } = row.userId ?? {};
+      return { ...row, userId: { ...user, name: user._id ? names.get(String(user._id).toLowerCase()) ?? null : null, email: null } };
     }) as IPharmacyCustomer[];
     const total = result?.metadata?.[0]?.total ?? 0;
 

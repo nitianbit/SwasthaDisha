@@ -54,7 +54,7 @@ function fixture(kind, source, options = {}) {
     BookingModel: { findOne() { return { select() { return this; }, async lean() { return null; } }; } },
     withFiles: async (_actor, _model, _data, _id, run) => run(), rebindStored: async () => undefined,
     publicNoShowView: value => value, withPatientNames: async rows => rows,
-    bookerView: async row => row, bookerViews: async rows => rows, withBookerClinicalView: async value => value,
+    bookerView: async row => row, bookerViews: async rows => rows, withBookerClinicalView: async value => value, withBookerBooking: async value => value,
     assistedPublicView: value => value, assistedAdminView: value => value, notDisputed: () => true,
     listOpenCancellations: async () => { throw new Error('not used here'); }, obligationSnapshot: async () => { throw new Error('not used here'); },
     logger: { info() {} }, calculateAgeFromDob: () => '30', toLabstackGender: () => 'male',

@@ -291,6 +291,8 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
         bindingExpiresAt: { type: Date, required: true },
         requestKey: { type: String, required: true },
         requestHash: { type: String, required: true },
+        // When the order was first packed (dispensed): the binding outlives its expiry only if this came before it.
+        dispensedAt: { type: Date },
       }, { _id: false }),
       default: undefined,
     },
