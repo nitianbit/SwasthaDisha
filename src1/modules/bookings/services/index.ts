@@ -181,19 +181,12 @@ export class BookingService {
       parentConsultationId
     );
 
-    if (!parentConsultation) {
+    // S3: a missing consultation and someone else's get the same answer (its existence and state are not revealed).
+    if (!parentConsultation || String(parentConsultation.userId) !== String(data.userId)) {
       throw new AppError({
         status: 404,
         code: 'PARENT_CONSULTATION_NOT_FOUND',
         message: 'Parent consultation booking not found',
-      });
-    }
-
-    if (parentConsultation.userId !== data.userId) {
-      throw new AppError({
-        status: 403,
-        code: 'INVALID_PARENT_CONSULTATION',
-        message: 'Parent consultation does not belong to this user',
       });
     }
 
@@ -717,6 +710,18 @@ export class BookingService {
     } as BookingPaymentInitResponse;
   }
 
+  /**
+   * S3: a create key replays only its own creator's booking (the customer's own, or the same pharmacy's); a key already
+   * used for this customer by someone else is refused, and that booking is not returned.
+   */
+  private assertSameCreator(prior: IBooking, data: CreateSpecialistBookingRequest): IBooking {
+    if (String(prior.pharmacyId ?? '') !== String(data.pharmacyId ?? '')) {
+      throw new AppError({ status: 409, code: 'CREATE_REQUEST_KEY_CONFLICT',
+        message: 'This request key was already used for another booking; send a new request key' });
+    }
+    return prior;
+  }
+
   async createSpecialistBooking(
     data: CreateSpecialistBookingRequest,
     bookingType: Extract<BookingType, 'consultation' | 'second-opinion'> = 'consultation'
@@ -725,7 +730,7 @@ export class BookingService {
     const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
     if (requestKey) {
       const prior = await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: requestKey } }).lean() as IBooking | null;
-      if (prior) return this.replayedCreate(prior, data);
+      if (prior) return this.replayedCreate(this.assertSameCreator(prior, data), data);
     }
     const followUpConfig = await this.validateAndPrepareFollowUp(
       data,
@@ -816,7 +821,7 @@ export class BookingService {
     // the insert (A2a): a slot is never oversold and a follow-up benefit never used twice.
     const savedBooking = await createBookingWithHolds(booking);
     // A concurrent request with the same key created it: no notifications, wallet debit or order for this one.
-    if (isReplayedBooking(savedBooking)) return this.replayedCreate(savedBooking, data);
+    if (isReplayedBooking(savedBooking)) return this.replayedCreate(this.assertSameCreator(savedBooking, data), data);
 
     try {
       await this.notificationService.createBookingCreatedNotification(
@@ -1059,8 +1064,8 @@ export class BookingService {
   }
 
   /** S2: a booking outside the caller's own specialistId / pharmacyId is "not found" (its existence is not revealed). */
-  async assertInOwnerScope(id: string, owner: NonNullable<BookingQueryParams['ownerScope']>): Promise<void> {
-    if (!(await this.bookingRepository.existsInOwnerScope(id, owner))) {
+  async assertInOwnerScope(id: string, owner: NonNullable<BookingQueryParams['ownerScope']>, ownCustomerId?: string): Promise<void> {
+    if (!(await this.bookingRepository.existsInOwnerScope(id, owner, ownCustomerId))) {
       throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
     }
   }

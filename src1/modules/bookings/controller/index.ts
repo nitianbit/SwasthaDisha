@@ -49,13 +49,16 @@ export class BookingController {
 
   private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
     const actor = this.requireBookingActor(req);
-    if (actor.userType !== 'user') return;
+    // S3: a pharmacy's dependentId must belong to the customer it books for (its link to that customer is checked by
+    // gatePharmacyBookingCreate). Admins are not checked here.
+    const ownerId: unknown = actor.userType === 'user' ? actor._id : actor.userType === 'pharmacy' ? req.body.userId : undefined;
+    if (typeof ownerId !== 'string' || ownerId.length === 0) return;
     const dependentId = req.body.dependentId;
     if (dependentId === undefined) return;
     if (typeof dependentId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(dependentId)) {
       throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
     }
-    const dependent = await this.dependentService.getById(dependentId, actor._id);
+    const dependent = await this.dependentService.getById(dependentId, ownerId);
     if (dependent.isActive === false) {
       throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
     }
@@ -240,11 +243,16 @@ export class BookingController {
     }
   }
 
-  /** HR stays within its corporate (403); a specialist or pharmacy gets 404 for a booking that is not its own (S2). */
+  /**
+   * HR stays within its corporate (403); a specialist or pharmacy gets 404 for a booking that is not its own (S2). A
+   * specialist also reaches a booking it made as the customer (its own id is the booking's userId) (S3).
+   */
   private async ensureCanReadBooking(req: AuthRequest, bookingId: string): Promise<void> {
     await this.ensureHRCanAccessBooking(req, bookingId);
     const staffScope = this.resolveStaffBookingScope(req);
-    if (staffScope) await this.bookingService.assertInOwnerScope(bookingId, staffScope);
+    if (staffScope) {
+      await this.bookingService.assertInOwnerScope(bookingId, staffScope, 'specialistId' in staffScope ? req.user!._id : undefined);
+    }
   }
 
   createBooking = async (
@@ -516,8 +524,9 @@ export class BookingController {
     res: Response,
     _next: NextFunction
   ) => {
+    const actor = this.requireBookingActor(req);
     const requiredCorporateId = this.resolveHRBookingReadScope(req);
-    if (req.user?.userType === 'hr') {
+    if (actor.userType === 'hr') {
       const result = await this.bookingService.getAll({
         corporateId: this.getHRCorporateId(req),
         bookingDateFrom: getTodayYyyymmdd(),
@@ -533,9 +542,9 @@ export class BookingController {
     }
 
     const effectiveUserId =
-      req.user?.userType === 'admin'
+      actor.userType === 'admin'
         ? (req.query.userId as string | undefined)
-        : req.user?._id;
+        : actor._id;
 
     const result = await this.bookingService.getUpcomingBookings(effectiveUserId);
 

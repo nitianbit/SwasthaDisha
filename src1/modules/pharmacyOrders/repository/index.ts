@@ -252,17 +252,14 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
     return this.applyCommonFilters(query, filter);
   }
 
-  private buildUserQuery(filter: OrderQueryParams): Record<string, unknown> {
-    return this.applyCommonFilters({}, filter);
-  }
-
+  /**
+   * S3: a given pharmacyId always applies, also together with a customer filter (patient tracking passes
+   * {pharmacyId, customerId}; before this a customer filter dropped the pharmacyId and returned the customer's orders
+   * from every pharmacy). A customer's own listing carries no pharmacyId (getAll removes it), so it is unchanged.
+   */
   private buildQuery(filter: OrderQueryParams): Record<string, unknown> {
     if (filter.viewerPharmacyId) {
       return this.buildPharmacyViewerQuery(filter);
-    }
-
-    if (filter.userId || filter.customerId) {
-      return this.buildUserQuery(filter);
     }
 
     return this.buildAdminQuery(filter);
