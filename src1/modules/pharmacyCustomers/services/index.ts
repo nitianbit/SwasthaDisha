@@ -78,10 +78,14 @@ export class PharmacyCustomerService {
 
     // Upsert the pharmacy-customer relationship
     const existing = await this.pharmacyCustomerRepo.findByPharmacyAndUser(data.pharmacyId, userId);
+    // Assisted booking (§17.4): the name this pharmacy typed is kept on its link (the first one typed).
+    const typedName = typeof data.name === 'string' && data.name.trim() ? data.name.trim().replace(/\s+/g, ' ') : undefined;
     if (existing) {
+      const typedFill = typedName && !(typeof existing.typedName === 'string' && existing.typedName.trim()) ? { typedName } : {};
       // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer.
-      if (!existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed')) {
-        const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, consentRecord);
+      if (!existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed') || Object.keys(typedFill).length) {
+        const consentFill = !existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed') ? consentRecord : {};
+        const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, { ...consentFill, ...typedFill });
         return { customer: updated || existing, userId, isNewUser: false };
       }
       return { customer: existing, userId, isNewUser: false };
@@ -97,9 +101,34 @@ export class PharmacyCustomerService {
       createdByRole,
       createdById,
       ...consentRecord,
+      ...(typedName ? { typedName } : {}),
     });
 
     return { customer, userId, isNewUser };
+  }
+
+  /**
+   * Assisted booking (§17.4): the pharmacy edits the name it typed for a linked account holder (`id` = the link id or the
+   * customer's user id). Audited. Another pharmacy's link, or none, is 404.
+   */
+  async setTypedName(pharmacyId: string, id: string, typedName: string, actorId: string): Promise<IPharmacyCustomer> {
+    const notFound = () => new AppError({ status: 404, code: 'CUSTOMER_NOT_LINKED', message: 'This user is not linked to your pharmacy' });
+    if (!/^[0-9a-fA-F]{24}$/.test(String(id)) || !/^[0-9a-fA-F]{24}$/.test(String(pharmacyId))) throw notFound();
+    const name = String(typedName ?? '').trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 200) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'typedName must have 1 to 200 characters' });
+    const { inTransaction } = await import('@/modules/partners/services');
+    const { auditIn } = await import('@/modules/assisted/support');
+    const PharmacyCustomerModel = (await import('@/modules/pharmacyCustomers/model')).default;
+    const { Types } = await import('mongoose');
+    return inTransaction(async (s) => {
+      const pid = new Types.ObjectId(pharmacyId);
+      const link = await PharmacyCustomerModel.findOneAndUpdate({ pharmacyId: pid, $or: [{ _id: new Types.ObjectId(id) }, { userId: new Types.ObjectId(id) }] },
+        { $set: { typedName: name } }, { new: true, session: s }).lean() as IPharmacyCustomer | null;
+      if (!link) throw notFound();
+      await auditIn({ actorKind: 'pharmacy', actorId: String(actorId).toLowerCase(), orgKind: 'pharmacy', orgId: String(pharmacyId).toLowerCase(),
+        action: 'customer.typed_name', detail: { linkId: String(link._id), userId: String(link.userId) } }, s);
+      return link;
+    });
   }
 
   async getCustomers(

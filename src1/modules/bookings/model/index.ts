@@ -465,6 +465,13 @@ const bookingSchema = new Schema<IBooking>(
         forfeitedAmount: { type: Number, min: 0 } }, { _id: false }),
       default: undefined,
     },
+    // Assisted booking (§5.1): written on assisted rows; readers derive it for older rows (clinic_desk / self).
+    source: { type: String, enum: ['self', 'pharmacy_assisted', 'lab_assisted', 'doctor_assisted', 'clinic_desk', 'lab_desk'] },
+    // Assisted booking (§5.1, P5): the earning rule frozen at create (provider-borne coupon, cut 0 until phase 4).
+    earningRule: { type: String, enum: ['provider_coupon_v2'] },
+    // Assisted booking phase 1a (§5.1, §17): booker, consent, language, identity, join, funding (wallet), split. The
+    // shape is assisted/types AssistedBlock; written only by the assisted writers.
+    assisted: { type: Schema.Types.Mixed },
     // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.
     settlementSystem: {
       type: String,
@@ -550,6 +557,10 @@ bookingSchema.index({ pharmacyId: 1, status: 1 });
 bookingSchema.index({ pharmacyId: 1, bookingDate: 1 });
 // Assisted booking phase 0: the booking pharmacy's list, newest first (cursor <createdAt ms>_<id>).
 bookingSchema.index({ pharmacyId: 1, createdAt: -1, _id: -1 });
+// Assisted booking phase 1a (§5.1, §15): the booker's list, the short reference and the exactly-once request key.
+bookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1 });
+bookingSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
+bookingSchema.index({ 'assisted.requestKey': 1 }, { unique: true, partialFilterExpression: { 'assisted.requestKey': { $type: 'string' } } });
 bookingSchema.index({ corporateId: 1, status: 1 });
 bookingSchema.index({ corporateId: 1, bookingDate: 1 });
 bookingSchema.index({ bookingType: 1, status: 1 });

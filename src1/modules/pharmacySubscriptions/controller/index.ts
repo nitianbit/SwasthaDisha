@@ -1,3 +1,4 @@
+import { withLinkNames } from '@/modules/assisted/names';
 import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -53,9 +54,11 @@ export class PharmacySubscriptionController {
       page: q.page ? parseInt(q.page) : 1,
       limit: q.limit ? parseInt(q.limit) : 20,
     });
+    // Assisted booking (§17.4): a pharmacy sees its customers by the name it typed (or masked), never the account's.
+    const data = req.user?.userType === 'pharmacy' && req.user.pharmacyId ? await withLinkNames(result.data, req.user.pharmacyId, 'userId') : result.data;
     res.status(200).json({
       success: true,
-      data: result.data,
+      data,
       pagination: { page: result.page, limit: 20, total: result.total, totalPages: result.totalPages },
     });
   };

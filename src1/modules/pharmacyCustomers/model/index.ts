@@ -30,6 +30,9 @@ const pharmacyCustomerSchema = new Schema<IPharmacyCustomer>(
     consent: { type: String, enum: ['patient_agreed', 'not_recorded', 'customer_order'] },
     consentRecordedAt: { type: Date },
     consentRecordedById: { type: String },
+    // Assisted booking (§17.4): the name the pharmacy first typed for the account holder. Pharmacy-facing lists show it
+    // (or the masked account name), never the account's own name or email.
+    typedName: { type: String, trim: true, maxlength: 200 },
   },
   { timestamps: true }
 );

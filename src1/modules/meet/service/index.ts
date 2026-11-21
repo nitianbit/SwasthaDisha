@@ -430,6 +430,32 @@ function buildBookingFailureVirtualMeeting(
   };
 }
 
+/**
+ * Assisted booking phase 1a (§6.6, N6): the Meet event of a partner-made booking is NEUTRAL — title "Jansetu
+ * consultation", the booking reference only; never the patient's name, the primary concern or the speciality. Attendees:
+ * the doctor and the booker's contact email (or none). The guest check: when the booker's email is invited, the partner
+ * device joins as an attendee; otherwise it joins as a guest and the doctor admits it ("ask to join").
+ */
+export function meetEventTextFor(booking: Pick<IBooking, 'assisted'>, p: { specialistEmail: string; bookerEmail?: string | null }) {
+  const ref = booking.assisted?.shortRef ?? '';
+  const emails = [p.specialistEmail, p.bookerEmail].filter((e): e is string => typeof e === 'string' && e.includes('@')).map((e) => e.trim().toLowerCase());
+  return {
+    summary: 'Jansetu consultation',
+    description: `Jansetu booking reference: ${ref}`,
+    attendees: Array.from(new Set(emails)).map((email) => ({ email })),
+    guestAccess: p.bookerEmail && p.bookerEmail.includes('@') ? 'attendee' as const : 'ask_to_join' as const,
+  };
+}
+
+/** The booker's contact email for the invite (pharmacy in 1a); null when none. */
+export async function assistedBookerEmail(booking: Pick<IBooking, 'assisted'>): Promise<string | null> {
+  const by = booking.assisted?.bookedBy;
+  if (by?.kind !== 'pharmacy') return null;
+  const { default: PharmacyModel } = await import('@/modules/pharmacies/model');
+  const p = await PharmacyModel.findById(by.id).select({ email: 1 }).lean() as { email?: string } | null;
+  return p?.email ?? null;
+}
+
 export async function syncBookingMeet(params: {
   booking: IBooking;
   bookingRepository: BookingRepository;
@@ -462,8 +488,10 @@ export async function syncBookingMeet(params: {
       booking.slotId ? slotRepository.findById(booking.slotId) : instantWindowOf(booking),
     ]);
 
-    if (!user?.email || !specialist?.email || !slot) {
-      const reason = !user?.email
+    // Assisted booking phase 1a (§6.6): a walk-in patient has no email; the invite goes to the doctor and the booker.
+    const assisted = !!booking.assisted;
+    if ((!assisted && !user?.email) || !specialist?.email || !slot) {
+      const reason = !assisted && !user?.email
         ? 'Cannot generate Google Meet link because patient email is missing'
         : !specialist?.email
         ? 'Cannot generate Google Meet link because specialist email is missing'
@@ -479,24 +507,34 @@ export async function syncBookingMeet(params: {
 
     const { startDateTime, endDateTime } = meetWindowOf(slot);
 
-    const eventPayload = buildMeetEventPayload({
-      summary: `${specialist.name} consultation with ${user.name || user.phone || 'Patient'}`,
-      description: [
-        `Booking ID: ${booking._id}`,
-        `Booking Type: ${booking.bookingType}`,
-        booking.primaryConcern ? `Primary Concern: ${booking.primaryConcern}` : undefined,
-        specialist.specialization ? `Specialization: ${specialist.specialization}` : undefined,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      startDateTime,
-      endDateTime,
-      timeZone: CONFIG.GOOGLE_MEET_TIMEZONE || 'Asia/Kolkata',
-      attendees: Array.from(
-        new Set([user.email.trim().toLowerCase(), specialist.email.trim().toLowerCase()])
-      ).map((email) => ({ email })),
-      requestId: `booking-${booking._id}-${Date.now()}`,
-    });
+    const text = assisted
+      ? meetEventTextFor(booking, { specialistEmail: specialist.email, bookerEmail: await assistedBookerEmail(booking) })
+      : {
+        summary: `${specialist.name} consultation with ${user!.name || user!.phone || 'Patient'}`,
+        description: [
+          `Booking ID: ${booking._id}`,
+          `Booking Type: ${booking.bookingType}`,
+          booking.primaryConcern ? `Primary Concern: ${booking.primaryConcern}` : undefined,
+          specialist.specialization ? `Specialization: ${specialist.specialization}` : undefined,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        attendees: Array.from(
+          new Set([user!.email!.trim().toLowerCase(), specialist.email.trim().toLowerCase()])
+        ).map((email) => ({ email })),
+      };
+    const eventPayload = {
+      ...buildMeetEventPayload({
+        summary: text.summary,
+        description: text.description,
+        startDateTime,
+        endDateTime,
+        timeZone: CONFIG.GOOGLE_MEET_TIMEZONE || 'Asia/Kolkata',
+        attendees: text.attendees,
+        requestId: `booking-${booking._id}-${Date.now()}`,
+      }),
+      ...(assisted ? { guestsCanSeeOtherGuests: false, guestsCanInviteOthers: false } : {}),
+    };
 
     const accessToken = await getMeetOAuthAccessToken();
     let event: Record<string, any>;

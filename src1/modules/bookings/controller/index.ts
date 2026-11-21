@@ -1,6 +1,7 @@
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import { withPatientNames } from '@/modules/bookings/utils/patientNames';
 import { bookerView, bookerViews, withBookerClinicalView } from '@/modules/assisted/bookerView';
+import { assistedAdminView, assistedPublicView, notDisputed } from '@/modules/assisted/views';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
 import { rebindStored, withFiles } from '@/modules/file/access';
@@ -48,6 +49,20 @@ export class BookingController {
     }
 
     return actor;
+  }
+
+  /**
+   * The no-show scrub for every caller, then (assisted booking phase 1a, §6.7) a partner-paid booking without the
+   * partner's money for everyone but admins.
+   */
+  private viewFor<T>(req: AuthRequest, value: T): T {
+    const scrubbed = publicNoShowView(value);
+    return req.user?.userType === 'admin' ? assistedAdminView(scrubbed) : assistedPublicView(scrubbed);
+  }
+
+  /** §17.5: a holder's lists leave out the bookings they reported as not theirs (direct reads still work). */
+  private listFor<T>(req: AuthRequest, rows: T[]): T[] {
+    return req.user?.userType === 'user' && Array.isArray(rows) ? rows.filter((r) => notDisputed(r as never)) : rows;
   }
 
   /** Assisted booking phase 0: the booking pharmacy's id when the caller is a pharmacy (its answers use the booker view). */
@@ -301,7 +316,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking created and payment initiated successfully'
         : 'Booking created successfully',
-      data: await this.clinicalViewFor(req, publicNoShowView(result)),
+      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -333,7 +348,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Wellness package booking created and payment initiated successfully'
         : 'Wellness package booking created successfully',
-      data: await this.clinicalViewFor(req, publicNoShowView(result)),
+      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -365,7 +380,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Specialist booking created and payment initiated successfully'
         : 'Specialist booking created successfully',
-      data: await this.clinicalViewFor(req, publicNoShowView(result)),
+      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -381,7 +396,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: pharmacyId ? await bookerView(row as never, pharmacyId) : publicNoShowView(row),
+      data: pharmacyId ? await bookerView(row as never, pharmacyId) : this.viewFor(req, row),
     });
   };
 
@@ -401,7 +416,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: await this.clinicalViewFor(req, publicNoShowView(result)),
+      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -445,6 +460,8 @@ export class BookingController {
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
       forUser: req.query.forUser === 'true',
       ownerScope: staffScope,
+      // §17.5: a holder's list leaves out what they reported as not theirs.
+      ...(req.user?.userType === 'user' ? { hideDisputed: true } : {}),
     };
 
     const result = requiredCorporateId === undefined
@@ -454,7 +471,7 @@ export class BookingController {
     const rows = req.user?.userType === 'admin' ? await withPatientNames(result.data as any[]) as unknown as typeof result.data : result.data;
     // Assisted booking phase 0 (§9.2): a pharmacy lists its bookings only in the booker view.
     const pharmacyId = this.bookerPharmacyOf(req);
-    const view = pharmacyId ? await bookerViews(rows as never[], pharmacyId) as unknown as typeof rows : publicNoShowView(rows);
+    const view = pharmacyId ? await bookerViews(rows as never[], pharmacyId) as unknown as typeof rows : this.viewFor(req, this.listFor(req, rows));
 
     if (result.total !== undefined) {
       // Paginated response
@@ -488,7 +505,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking updated successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -539,7 +556,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: pharmacyId ? await bookerViews(result as never[], pharmacyId) : publicNoShowView(result),
+      data: pharmacyId ? await bookerViews(result as never[], pharmacyId) : this.viewFor(req, this.listFor(req, result)),
     });
   };
 
@@ -558,7 +575,7 @@ export class BookingController {
 
       res.status(200).json({
         success: true,
-        data: publicNoShowView(result.data.filter(
+        data: this.viewFor(req, result.data.filter(
           (booking) => booking.status === 'pending' || booking.status === 'confirmed'
         )),
       });
@@ -574,7 +591,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: publicNoShowView(result),
+      data: this.viewFor(req, this.listFor(req, result)),
     });
   };
 
@@ -586,7 +603,7 @@ export class BookingController {
     });
     res.setHeader('Cache-Control', 'private, no-store');
     // Q16d (F6): the same view as every other booking route (no desk, settlement or no-show internals).
-    res.status(200).json({ success: true, data: await this.clinicalViewFor(req, publicNoShowView(result)) });
+    res.status(200).json({ success: true, data: await this.clinicalViewFor(req, this.viewFor(req, result)) });
   };
 
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
@@ -609,7 +626,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking payment initiated successfully'
         : 'Booking payment completed successfully',
-      data: await this.clinicalViewFor(req, publicNoShowView(result)),
+      data: await this.clinicalViewFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -629,7 +646,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -649,7 +666,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking rescheduled successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 }

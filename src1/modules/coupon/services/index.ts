@@ -258,6 +258,9 @@ export class CouponService {
       endDate: data.endDate,
       usageLimitPerUser: data.usageLimitPerUser,
       totalUsageLimit: data.totalUsageLimit,
+      // Assisted booking (decision B): corporate coupons default to platform-funded; others to provider-funded.
+      fundedBy: data.fundedBy ?? ((data.corporateIds ?? []).length > 0 ? 'platform' : 'provider'),
+      partnerUsable: data.partnerUsable === true,
       currentUsageCount: 0,
       isActive: data.isActive !== undefined ? data.isActive : true,
     };

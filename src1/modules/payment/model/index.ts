@@ -86,6 +86,8 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
       type: String,
       trim: true,
     },
+    // Assisted booking phase 1a (§5.3, P2): Razorpay's `fee` (GST included) for the capture, in paise, when reported.
+    gatewayFeeMinor: { type: Number, min: 0 },
     status: {
       type: String,
       enum: ['created', 'paid', 'failed', 'refunded'],

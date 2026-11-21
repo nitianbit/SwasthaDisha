@@ -53,6 +53,9 @@ export interface ICoupon {
   totalUsageLimit?: number; // Maximum total times this coupon can be used (null = unlimited)
   currentUsageCount: number; // Current number of times this coupon has been used
   isActive: boolean; // Whether coupon is currently active
+  /** Assisted booking (decision B, N1). */
+  fundedBy?: 'provider' | 'platform';
+  partnerUsable?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -79,6 +82,8 @@ export interface CreateCouponRequest {
   usageLimitPerUser?: number;
   totalUsageLimit?: number;
   isActive?: boolean;
+  fundedBy?: 'provider' | 'platform';
+  partnerUsable?: boolean;
 }
 
 export interface UpdateCouponRequest {
@@ -102,6 +107,8 @@ export interface UpdateCouponRequest {
   usageLimitPerUser?: number;
   totalUsageLimit?: number;
   isActive?: boolean;
+  fundedBy?: 'provider' | 'platform';
+  partnerUsable?: boolean;
 }
 
 export interface ValidateCouponRequest {

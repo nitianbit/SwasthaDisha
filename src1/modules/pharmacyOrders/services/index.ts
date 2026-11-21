@@ -1,3 +1,4 @@
+import { withLinkNames } from '@/modules/assisted/names';
 import { Service } from 'typedi';
 import PaymentRecordModel from '@/modules/payment/model';
 import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
@@ -1049,7 +1050,8 @@ export class PharmacyOrderService {
     if (typeof pharmacyId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Pharmacy access is required' });
     }
-    return this.orderRepo.findPrescriptionReviewQueue(pharmacyId, PRESCRIPTION_REVIEWABLE_STATUSES, page, limit);
+    const queue = await this.orderRepo.findPrescriptionReviewQueue(pharmacyId, PRESCRIPTION_REVIEWABLE_STATUSES, page, limit);
+    return { ...queue, data: await withLinkNames(queue.data, pharmacyId, 'customerId') }; // §17.4
   }
 
   async getRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
@@ -1097,7 +1099,10 @@ export class PharmacyOrderService {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
     }
 
-    return this.orderRepo.findWithPagination(filter, page, limit);
+    const result = await this.orderRepo.findWithPagination(filter, page, limit);
+    // Assisted booking (§17.4): a pharmacy sees its customers by the name it typed (or masked), never the account's.
+    if (requesterRole === 'pharmacy') return { ...result, data: await withLinkNames(result.data, requesterId, 'customerId') };
+    return result;
   }
 
   async update(id: string, pharmacyId: string, data: UpdateOrderRequest): Promise<IPharmacyOrder> {

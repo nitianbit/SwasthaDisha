@@ -15,6 +15,8 @@ export interface IPharmacyCustomer {
   consent?: PharmacyCustomerConsent;
   consentRecordedAt?: Date;
   consentRecordedById?: string;
+  /** Assisted booking (§17.4): the name the pharmacy first typed for the account holder. */
+  typedName?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

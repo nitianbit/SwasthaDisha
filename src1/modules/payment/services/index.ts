@@ -68,13 +68,33 @@ interface RazorpayOrderResponse {
   status: string;
 }
 
+import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
+import { assistedFlags } from '@/modules/assisted/flags';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+
+const rechargeSweepFrom = () => assistedFlags.rechargeSweepFrom();
+/** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
+async function rechargeLotsWritable(): Promise<boolean> {
+  if (!assistedFlags.pharmacy()) return false;
+  try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
+}
+
 interface RazorpayPaymentDetails {
   id: string;
   order_id?: string;
   amount: number;
   currency: string;
   status: string;
+  /** Assisted booking phase 1a (P2): Razorpay's fee in paise (GST included), when reported. */
+  fee?: number;
 }
+
+/** P2: Razorpay `fee` alone (it already includes GST); anything else is "not known yet". */
+const feeOf = (raw: unknown): number | undefined => {
+  const n = Number(raw);
+  return raw !== null && raw !== undefined && Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+};
 
 const PHARMACY_ORDER_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const PHARMACY_ORDER_PAYMENT_TIMEOUT_NOTE =
@@ -826,6 +846,7 @@ export class PaymentService {
         amount: Number(payment.amount),
         currency: payment.currency,
         status: payment.status,
+        fee: feeOf((payment as { fee?: unknown }).fee),
       };
     } catch (error: any) {
       throw new AppError({
@@ -964,7 +985,19 @@ export class PaymentService {
     this.validateRazorpayPaymentForRecord(paymentRecord, data, razorpayPayment);
     await this.handleGatewayTerminalStatus(paymentRecord, data, razorpayPayment);
 
-    return this.markPaymentAsPaid(paymentRecord, data);
+    const paid = await this.markPaymentAsPaid(paymentRecord, data);
+    return this.rememberGatewayFee(paid, razorpayPayment.fee);
+  }
+
+  /** P2: keeps Razorpay's fee on the record (once known; never overwritten). Best effort: the payment stands without it. */
+  private async rememberGatewayFee(record: IPaymentRecord, fee: number | undefined): Promise<IPaymentRecord> {
+    if (fee === undefined || record.gatewayFeeMinor !== undefined) return record;
+    try {
+      await PaymentRecordModel.updateOne({ _id: record._id, gatewayFeeMinor: { $exists: false } }, { $set: { gatewayFeeMinor: fee } });
+      return { ...record, gatewayFeeMinor: fee };
+    } catch {
+      return record;
+    }
   }
 
   async markAsProcessed(paymentRecordId: string): Promise<void> {
@@ -1515,6 +1548,9 @@ export class PaymentService {
   ): Promise<unknown> {
     const pharmacyId = paymentRecord.payerPharmacyId!;
     await this.pharmacyWalletRepository.upsertWallet(pharmacyId);
+    // Assisted booking phase 1a (§5.3, P2): a card top-up opens a withdrawable lot while the pharmacy switch is on and
+    // the lot index exists (otherwise the money is credited non-withdrawable, the conservative side).
+    const lots = await rechargeLotsWritable();
 
     try {
       return await this.runPharmacyPaymentCoreTransaction(async (session) => {
@@ -1533,43 +1569,14 @@ export class PaymentService {
 
         const amountPaise =
           paymentRecord.baseAmountPaise ?? Math.round(paymentRecord.baseAmount * 100);
-        const updated = await this.pharmacyWalletRepository.atomicCredit(
-          pharmacyId,
-          amountPaise / 100,
-          session
-        );
-        if (!updated) {
-          throw new AppError({
-            status: 500,
-            code: 'PHARMACY_WALLET_CREDIT_FAILED',
-            message: 'Failed to credit pharmacy wallet after payment',
-          });
-        }
-
-        const balanceAfterPaise = updated.balancePaise ?? Math.round(updated.balance * 100);
-        const balanceBeforePaise = balanceAfterPaise - amountPaise;
-        await this.pharmacyWalletTransactionRepository.save(
-          {
-            pharmacyId,
-            walletId: String(updated._id),
-            transactionType: 'credit',
-            amount: amountPaise / 100,
-            amountPaise,
-            balanceBefore: balanceBeforePaise / 100,
-            balanceAfter: balanceAfterPaise / 100,
-            balanceBeforePaise,
-            balanceAfterPaise,
-            status: 'completed',
-            referenceType: 'wallet_recharge',
-            referenceId: paymentRecord._id!,
-            description: 'Pharmacy wallet recharge via Razorpay',
-            notes: paymentRecord.razorpayPaymentId,
-            transactionDate: getTodayYyyymmdd(),
-          },
-          { session }
-        );
-
-        return updated;
+        // §17.3: through the ledger (signed amount, operation key, version); credits post whatever the wallet state.
+        const posted = await postPharmacyMovementIn({
+          pharmacyId, kind: 'credit', amountPaise, operationKey: `wallet_recharge:${paymentRecord._id}`,
+          referenceType: 'wallet_recharge', referenceId: String(paymentRecord._id), description: 'Pharmacy wallet recharge via Razorpay',
+          notes: paymentRecord.razorpayPaymentId,
+          ...(lots ? { lot: { paymentRecordId: String(paymentRecord._id), gatewayFeeMinor: paymentRecord.gatewayFeeMinor ?? null } } : {}),
+        }, session);
+        return posted.wallet;
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
@@ -1804,9 +1811,10 @@ export class PaymentService {
     const razorpayClient = this.getRazorpayClient();
     try {
       const res = (await razorpayClient.orders.fetchPayments(orderId)) as unknown as {
-        items?: { id: string; order_id: string; amount: number | string; currency: string; status: string }[];
+        items?: { id: string; order_id: string; amount: number | string; currency: string; status: string; fee?: unknown }[];
       };
-      return (res.items ?? []).map((p) => ({ id: p.id, order_id: p.order_id, amount: Number(p.amount), currency: p.currency, status: p.status }));
+      return (res.items ?? []).map((p) => ({ id: p.id, order_id: p.order_id, amount: Number(p.amount), currency: p.currency, status: p.status,
+        fee: feeOf(p.fee) }));
     } catch (error: any) {
       throw new AppError({
         status: 502,
@@ -1858,6 +1866,7 @@ export class PaymentService {
       } else {
         paymentRecord = updated;
       }
+      paymentRecord = await this.rememberGatewayFee(paymentRecord, captured.fee);
       logger.info('[Payment][reconcile] captured payment applied from the gateway', {
         paymentTransactionId: paymentRecord._id, razorpayOrderId: orderId, razorpayPaymentId: captured.id,
       });
@@ -1892,9 +1901,15 @@ export class PaymentService {
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
     const records = await PaymentRecordModel.find({
       // D3: pharmacy order payments too, so a lost browser continuation never strands a capture.
-      context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] }, ...UNSETTLED_ATTEMPT,
+      // Assisted booking phase 1a (§6.4): pharmacy wallet top-ups created from WALLET_RECHARGE_SWEEP_FROM on join the sweep
+      // (older captured-but-uncredited ones are on the admin list instead).
+      ...UNSETTLED_ATTEMPT,
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
-      $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
+      $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] },
+        { $or: [
+          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] } },
+          ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
+        ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
     let unsettled = 0;
     for (const r of records) {

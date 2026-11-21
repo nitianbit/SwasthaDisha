@@ -4,6 +4,7 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { IPharmacyCustomer, PharmacyCustomerQueryParams } from '@/modules/pharmacyCustomers/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
+import { maskName } from '@/modules/assisted/names';
 
 @Service()
 export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer> {
@@ -36,14 +37,13 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
 
     if (params.search) {
       const search = buildContainsRegex(params.search);
+      // Assisted booking (§6.2, §17.4): a pharmacy searches its customers by the name IT typed and the phone only,
+      // never by the account's own name or email.
       pipeline.push({
         $match: {
           $or: [
-            { pharmacyNotes: search },
-            { diseaseNotes: search },
-            { 'user.name': search },
+            { typedName: search },
             { 'user.phone': search },
-            { 'user.email': search },
           ],
         },
       });
@@ -51,7 +51,7 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
 
     pipeline.push(
       { $sort: { createdAt: -1 } },
-      { $project: { userId: { _id: '$user._id', name: '$user.name', phone: '$user.phone', email: '$user.email' }, pharmacyId: 1, diseaseNotes: 1, chronicCondition: 1, recurringMedicine: 1, recurringIntervalDays: 1, preferredFollowUpDate: 1, pharmacyNotes: 1, createdByRole: 1, createdById: 1, createdAt: 1, updatedAt: 1 } },
+      { $project: { userId: { _id: '$user._id', accountName: '$user.name', phone: '$user.phone' }, typedName: 1, pharmacyId: 1, diseaseNotes: 1, chronicCondition: 1, recurringMedicine: 1, recurringIntervalDays: 1, preferredFollowUpDate: 1, pharmacyNotes: 1, createdByRole: 1, createdById: 1, consent: 1, createdAt: 1, updatedAt: 1 } },
       {
         $facet: {
           data: [{ $skip: skip }, { $limit: limit }],
@@ -61,7 +61,13 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
     );
 
     const [result] = await PharmacyCustomerModel.aggregate(pipeline);
-    const data = (result?.data || []) as IPharmacyCustomer[];
+    // §17.4: the response shape stays (`userId.name`, `userId.email`), but the name is the typed one (or the account
+    // name masked, "Rina D.") and the email is never shown.
+    const data = ((result?.data || []) as any[]).map((row) => {
+      const { accountName, ...user } = row.userId ?? {};
+      const typed = typeof row.typedName === 'string' && row.typedName.trim() ? row.typedName.trim() : null;
+      return { ...row, userId: { ...user, name: typed ?? maskName(accountName), email: null } };
+    }) as IPharmacyCustomer[];
     const total = result?.metadata?.[0]?.total ?? 0;
 
     return { data, total, page, totalPages: Math.ceil(total / limit) };

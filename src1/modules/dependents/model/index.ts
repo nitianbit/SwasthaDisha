@@ -42,6 +42,8 @@ const dependentSchema = new Schema<IDependent>(
       min: 0,
       max: 150,
     },
+    // Assisted booking (§5.2): set when a booking creates the family member.
+    preferredLanguage: { type: String, trim: true },
     gender: {
       type: String,
       enum: ['Male', 'Female', 'Other'],

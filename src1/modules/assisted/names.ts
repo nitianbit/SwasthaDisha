@@ -58,3 +58,24 @@ export async function bookerPatientNames(rows: Row[], pharmacyId: string): Promi
   }
   return out;
 }
+
+/**
+ * Assisted booking phase 1a (§17.4): pharmacy-facing lists that populate a customer (`field` = `customerId` on orders,
+ * `userId` on subscriptions) keep their shape, but the name is the one this pharmacy typed (its link's `typedName`),
+ * else the account name masked; the email is never shown. Rows whose field is not populated are left as they are.
+ */
+export async function withLinkNames<T>(rows: T[], pharmacyId: string, field: string): Promise<T[]> {
+  if (!Array.isArray(rows) || !rows.length || !Types.ObjectId.isValid(pharmacyId)) return rows;
+  const populated = rows.map((r) => (r as Row)?.[field]).filter((u) => u && typeof u === 'object' && u._id);
+  if (!populated.length) return rows;
+  const userIds = [...new Set(populated.map((u: Row) => String(u._id)))].filter((u) => Types.ObjectId.isValid(u));
+  const links = await PharmacyCustomerModel.find({ pharmacyId: new Types.ObjectId(pharmacyId), userId: { $in: userIds.map((u) => new Types.ObjectId(u)) } })
+    .select({ userId: 1, typedName: 1 }).lean() as unknown as Row[];
+  const typedBy = new Map(links.map((l) => [String(l.userId).toLowerCase(), typeof l.typedName === 'string' && l.typedName.trim() ? l.typedName.trim() : null]));
+  return rows.map((r) => {
+    const u = (r as Row)?.[field];
+    if (!u || typeof u !== 'object' || !u._id) return r;
+    const { email: _e, ...rest } = u as Row;
+    return { ...(r as Row), [field]: { ...rest, name: typedBy.get(String(u._id).toLowerCase()) ?? maskName(u.name) } } as T;
+  });
+}

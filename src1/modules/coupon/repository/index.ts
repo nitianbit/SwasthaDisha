@@ -12,6 +12,7 @@ import {
   UserCouponUsageSummaryItem,
 } from '@/modules/coupon/types';
 import PaymentRecordModel from '@/modules/payment/model';
+import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { Model, PipelineStage } from 'mongoose';
 import { Service } from 'typedi';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
@@ -125,13 +126,17 @@ export class CouponRepository extends BaseRepository<ICoupon> {
    * Only counts successful processed payment transactions
    */
   async countUserCouponUsage(userId: string, couponCode: string): Promise<number> {
-    const count = await PaymentRecordModel.countDocuments({
-      userId,
-      couponCode: couponCode.toUpperCase(),
-      status: 'paid',
-      isProcessed: true,
-    });
-    return count;
+    const [count, partnerPaid] = await Promise.all([
+      PaymentRecordModel.countDocuments({
+        userId,
+        couponCode: couponCode.toUpperCase(),
+        status: 'paid',
+        isProcessed: true,
+      }),
+      // Assisted booking (§5.7): uses on bookings a partner paid for this patient count towards the patient's own limit.
+      CouponRedemptionModel.countDocuments({ patientUserId: { $eq: String(userId) }, couponCode: couponCode.toUpperCase(), state: 'counted' }),
+    ]);
+    return count + partnerPaid;
   }
 
   async getCouponUsageSummary(

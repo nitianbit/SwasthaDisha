@@ -17,6 +17,7 @@ import { runPrescriptionRefundScheduler } from '@/modules/pharmacyOrders/service
 import { runBookingPaymentRecoveryScheduler } from '@/modules/payment/services/bookingPaymentRecoveryScheduler';
 import { runBookingPaymentTimeoutScheduler } from '@/modules/bookings/services/bookingPaymentTimeoutScheduler';
 import { runPartnerLabSchedulers } from '@/modules/partners/services/labSchedulers';
+import { runAssistedSchedulers } from '@/modules/assisted/schedulers';
 import { runDoctorSchedulers } from '@/modules/doctors/services/schedulers';
 import { checkSettlementCutoverConfig } from '@/modules/partners/services/cutover';
 import { runLowStockAlertScheduler } from '@/modules/pharmacyInventory/lowStockScheduler';
@@ -92,6 +93,7 @@ connectDB()
     runBookingPaymentRecoveryScheduler();
     runBookingPaymentTimeoutScheduler();
     runPartnerLabSchedulers();
+    runAssistedSchedulers();
     runDoctorSchedulers();
     runLowStockAlertScheduler();
     logger.info('Pharmacy order payment-timeout scheduler started');

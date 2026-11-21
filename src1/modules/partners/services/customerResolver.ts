@@ -61,7 +61,7 @@ export interface ResolvedCustomer {
  * Find-or-create the customer account for a phone. Never merges accounts and never overwrites an existing customer's
  * fields (`$setOnInsert` only).
  */
-export async function resolveCustomerByPhone(rawPhone: string, source: 'partner_invoice' | 'clinic_desk'): Promise<ResolvedCustomer> {
+export async function resolveCustomerByPhone(rawPhone: string, source: 'partner_invoice' | 'clinic_desk' | 'assisted_booking'): Promise<ResolvedCustomer> {
   const phone = normalizePhone(rawPhone);
   if (!(await customerPhoneIndexReady())) {
     throw new AppError({

@@ -4,7 +4,7 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { requireOperationalPharmacy } from '@/modules/middleware/auth';
 import { PharmacyCustomerController } from '@/modules/pharmacyCustomers/controller';
-import { createPharmacyCustomerSchema } from '@/modules/pharmacyCustomers/validation';
+import { createPharmacyCustomerSchema, typedNameSchema } from '@/modules/pharmacyCustomers/validation';
 
 const pharmacyCustomerRouter = Router();
 const controller = new PharmacyCustomerController();
@@ -22,6 +22,14 @@ pharmacyCustomerRouter.get(
   '/',
   requireOperationalPharmacy,
   catchAsync(controller.list)
+);
+
+// Assisted booking (§17.4): edit the name this pharmacy typed for a linked account holder.
+pharmacyCustomerRouter.put(
+  '/:id/typed-name',
+  requireOperationalPharmacy,
+  validate(typedNameSchema, 'body'),
+  catchAsync(controller.setTypedName)
 );
 
 export default pharmacyCustomerRouter;

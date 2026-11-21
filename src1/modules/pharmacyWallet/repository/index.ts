@@ -57,8 +57,9 @@ export class PharmacyWalletRepository extends BaseRepository<IPharmacyWallet> {
     session?: ClientSession
   ): Promise<IPharmacyWallet | null> {
     const amountPaise = Math.round(amount * 100);
+    // Assisted booking phase 1a (§5.3): credits post whatever the wallet state (money owed back is owed back).
     return PharmacyWalletModel.findOneAndUpdate(
-      { pharmacyId, isActive: true },
+      { pharmacyId },
       [
         {
           $set: {

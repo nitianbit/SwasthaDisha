@@ -32,3 +32,8 @@ export const userIdParamSchema = Joi.object({
     'string.pattern.base': 'Invalid userId format',
   }),
 });
+
+/** Assisted booking (§17.4): PUT /pharmacy-customers/:id/typed-name. */
+export const typedNameSchema = Joi.object({
+  typedName: Joi.string().trim().min(1).max(200).required(),
+});

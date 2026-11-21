@@ -329,6 +329,11 @@ export class BookingRepository extends BaseRepository<IBooking> {
       query.userId = filter.userId;
     }
 
+    // Assisted booking phase 1a (§17.5): reported "not mine" (open) bookings leave the holder's lists.
+    if (filter.hideDisputed) {
+      query['assisted.identity.disputed.state'] = { $ne: 'open' };
+    }
+
     if (filter.dependentId) {
       query.dependentId = filter.dependentId;
     }

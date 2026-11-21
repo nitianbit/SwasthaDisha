@@ -59,6 +59,8 @@ export async function bookerViews(rows: Row[], pharmacyId: string, now: Date = n
       if (b.assisted.bookedBy?.name !== undefined) a.bookedBy = { name: b.assisted.bookedBy.name };
       if (b.assisted.join?.on !== undefined) a.join = { on: b.assisted.join.on };
       if (b.assisted.preferredLanguage !== undefined) a.preferredLanguage = b.assisted.preferredLanguage;
+      // Phase 1a (§17.5): the "reported as not mine" badge (state only).
+      if (b.assisted.identity?.disputed?.state) a.disputed = { state: b.assisted.identity.disputed.state };
       v.assisted = a;
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.

@@ -6,6 +6,8 @@ export interface IPaymentRecord {
   userId: string;
   payerUserId?: string;
   payerPharmacyId?: string;
+  /** Assisted booking phase 1a (P2): Razorpay `fee` of the capture, paise. */
+  gatewayFeeMinor?: number;
   context: PaymentContext;
   contextId: string; // Booking ID for booking context, generated reference for wallet recharge
   baseAmount: number;

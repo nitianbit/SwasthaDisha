@@ -20,11 +20,17 @@ export const errorHandler = (
     });
   }
 
+  // Assisted booking phase 1a: a limit names itself (`limit`), and a few answers carry safe details (e.g. the current
+  // price of a PRICE_CHANGED); both only when the error sets them.
+  const limit = (err as { limit?: unknown }).limit;
+  const details = (err as { details?: unknown }).details;
+  const extra = { ...(typeof limit === 'string' ? { limit } : {}), ...(details && typeof details === 'object' ? { details } : {}) };
+
   // O1: limits tell the client when to try again.
   const retryAfter = (err as { retryAfter?: unknown }).retryAfter;
   if (typeof retryAfter === 'number' && retryAfter > 0) {
     res.setHeader('Retry-After', String(retryAfter));
-    return res.status(err.status ?? 429).json({ error: err.status ?? 429, message: err.message, code: err.code, retryAfter });
+    return res.status(err.status ?? 429).json({ error: err.status ?? 429, message: err.message, code: err.code, retryAfter, ...extra });
   }
 
   // if no status or message in error use default 500 code and message
@@ -36,5 +42,6 @@ export const errorHandler = (
     error: statusCode,
     message: message,
     code: err?.code,
+    ...extra,
   });
 };

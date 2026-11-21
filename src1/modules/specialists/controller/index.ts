@@ -1,3 +1,4 @@
+import { assistedPublicView } from '@/modules/assisted/views';
 import 'reflect-metadata';
 import { SELF_CONTACT_MESSAGE } from '@/modules/common/utils/selfContacts';
 import { withFiles } from '@/modules/file/access';
@@ -282,7 +283,8 @@ export class SpecialistController {
     res.status(200).json({
       success: true,
       message: 'Appointments retrieved successfully',
-      data: result.data,
+      // Assisted booking phase 1a (§17.6): partner-made rows show the source and "identity attested by the partner".
+      data: Array.isArray(result.data) ? assistedPublicView(result.data) : result.data,
       meta: {
         total: result.total,
         ...(result.page !== undefined && { page: result.page }),
@@ -306,7 +308,7 @@ export class SpecialistController {
     res.status(200).json({
       success: true,
       message: 'Appointment retrieved successfully',
-      data,
+      data: assistedPublicView(data),
     });
   };
 
@@ -324,7 +326,7 @@ export class SpecialistController {
     res.status(200).json({
       success: true,
       message: 'Appointment status updated',
-      data: booking,
+      data: assistedPublicView(booking),
     });
   };
 

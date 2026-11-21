@@ -18,6 +18,7 @@ import { bookableUntilOf, isWindowSlot, slotIntervalOf } from '@/modules/common/
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
+import { assistedBookerFilter, assistedCauseOf, settleAssistedFundingIn } from '@/modules/assisted/refunds';
 import { clinicBranchContext, branchClosedOn } from '@/modules/doctors/services/schedule';
 
 /**
@@ -268,6 +269,12 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
       const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: input.clinicDesk.requestKey } }).session(s).lean() as IBooking | null;
       if (prior) return Object.assign(prior, { [REPLAYED]: true });
     }
+    // Assisted booking phase 1a: an assisted request key already used answers with its booking on every attempt (the
+    // caller compares the content hash), before any capacity or money is taken.
+    if (input.assisted?.requestKey) {
+      const prior = await BookingModel.findOne({ 'assisted.requestKey': { $eq: input.assisted.requestKey } }).session(s).lean() as IBooking | null;
+      if (prior) return Object.assign(prior, { [REPLAYED]: true });
+    }
     const slotId = input.slotId ? canon(input.slotId) : null;
     if (input.slotId && !slotId && input.bookingType !== 'surgery') throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
     const parentId = input.followUp?.isFollowUp && input.followUp.parentConsultationId ? canon(input.followUp.parentConsultationId) : null;
@@ -306,7 +313,8 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
       await claimRequestKey(scopeOf('booking_create', String((doc as { userId?: unknown }).userId)), requestKey, s);
     }
     // Q6: a front-desk appointment is paid at the clinic — never the legacy payouts', never the ledger's.
-    const settlementSystem = input.clinicDesk ? 'clinic' as const : settlementSystemFor(new Date());
+    // Assisted booking (§5.1): a partner-paid consultation is always settled by the ledger, whatever the cutover says.
+    const settlementSystem = input.clinicDesk ? 'clinic' as const : input.assisted ? 'ledger' as const : settlementSystemFor(new Date());
     // Q4 §7a: a ledger consultation snapshots the doctor's settlement account (created here on first use).
     let settlement: { settlementAccountId: string; beneficiaryName: string } | undefined;
     if (settlementSystem === 'ledger' && doc.specialistId) {
@@ -369,6 +377,8 @@ export async function cancelBookingSettlement(p: {
    * and chooses whether the patient is refunded. Only with requester 'admin'; the booking must have been moved.
    */
   movedNoShow?: { refund: boolean };
+  /** Assisted booking phase 1a: the booker's own command (its assisted bookings only; never the generic routes). */
+  assistedBooker?: 'pharmacy';
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -377,6 +387,8 @@ export async function cancelBookingSettlement(p: {
     const owner = p.requester.userType === 'admin' ? {}
       : p.requester.userType === 'specialist' ? { specialistId: { $eq: p.requester._id } }
       : p.requester.userType === 'clinic' ? deskOwnerFilter(p.desk)
+      // Assisted booking phase 1a: a booker acts only on the assisted bookings it made (legacy pharmacy rows excluded).
+      : p.assistedBooker ? assistedBookerFilter(p.assistedBooker, p.requester._id)
       : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
@@ -444,7 +456,12 @@ export async function cancelBookingSettlement(p: {
     // Coupon state first (it reads each record as captured, before the money step marks it refunded). Without a refund
     // the coupon stays used and the money stays where it is (nobody earns it: the booking is not completed).
     let refunded = 0;
-    if (!keepMoney) {
+    if (booking.assisted?.funding) {
+      // Assisted booking phase 1a (§8.4, §8.7): partner money goes back to the partner by its method (wallet), in this
+      // transaction, whatever the wallet's state; the coupon redemption is reversed; the join link dies. Never the
+      // customer's wallet ledger.
+      refunded = await settleAssistedFundingIn(booking, { cause: p.cause ?? assistedCauseOf(p.requester.userType), keepMoney }, s);
+    } else if (!keepMoney) {
       await undoCouponUsageIn(records.map(r => String(r._id)), s);
       refunded = await settleMoney(booking, id, records, p.wallets, s);
     } else {
@@ -562,11 +579,16 @@ export async function rescheduleWithHolds(p: {
    * already admitted the requester (doctor, clinic desk or admin); `owner` narrows the booking read in the transaction.
    */
   noShow?: NoShowReschedule;
+  /** Assisted booking phase 1a (P9): the booker's own command (its assisted bookings only). */
+  assistedBooker?: 'pharmacy';
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
   return runLedgerTransaction(async s => {
-    const owner = p.noShow ? p.noShow.owner : p.requester.userType === 'admin' ? {} : { userId: { $eq: p.requester._id } };
+    const owner = p.noShow ? p.noShow.owner : p.requester.userType === 'admin' ? {}
+      // Assisted booking phase 1a (P9): a booker moves only the assisted bookings it made.
+      : p.assistedBooker ? assistedBookerFilter(p.assistedBooker, p.requester._id)
+      : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation holds no slot and its own interval; it is never moved onto a scheduled slot.

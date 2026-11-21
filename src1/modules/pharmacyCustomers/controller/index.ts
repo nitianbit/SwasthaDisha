@@ -29,6 +29,14 @@ export class PharmacyCustomerController {
     });
   };
 
+  /** PUT /pharmacy-customers/:id/typed-name (assisted booking §17.4). */
+  setTypedName = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const { assertPharmacyAssistedOn } = await import('@/modules/assisted/flags');
+    assertPharmacyAssistedOn();
+    const result = await this.service.setTypedName(req.user?.pharmacyId || '', req.params.id, req.body?.typedName, req.user?._id || '');
+    res.status(200).json({ success: true, data: { _id: result._id, userId: result.userId, typedName: result.typedName } });
+  };
+
   list = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.pharmacyId || '';
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
