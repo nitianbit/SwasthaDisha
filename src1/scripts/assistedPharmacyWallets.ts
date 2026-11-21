@@ -17,7 +17,8 @@
  *    (`createdSource: 'pharmacy_app'`, `linkedPharmacyId` = it). Other links stay empty (masked in lists).
  * 6. Decision B: `Coupon.fundedBy` = platform for coupons with corporateIds, provider otherwise; `partnerUsable: false`;
  *    only where missing.
- * A second run is a no-op (keys and "only where missing").
+ * A second run is a no-op (keys and "only where missing"): a wallet with `ledgerOpenedAt` is never opened again; a
+ * mismatch found on it is listed in `openedWalletMismatches` and never written.
  */
 import mongoose, { Types } from 'mongoose';
 import { CONFIG } from '@/config/config';
@@ -37,13 +38,15 @@ export interface MigrationReport {
   signAnomalies: { id: string; transactionType: string; signedAmountPaise: number }[];
   balancePaiseFilled: number;
   openings: { walletId: string; pharmacyId: string; amountPaise: number }[];
+  /** Wallets already opened whose entries no longer explain the balance: reported for review, never written. */
+  openedWalletMismatches: { walletId: string; pharmacyId: string; balancePaise: number; entriesPaise: number }[];
   walletsOpened: number;
   typedNamesFilled: number;
   couponsFunded: { platform: number; provider: number };
 }
 
 export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }): Promise<MigrationReport> {
-  const report: MigrationReport = { mode: opts.commit ? 'commit' : 'dry-run', signedFilled: 0, signAnomalies: [], balancePaiseFilled: 0, openings: [],
+  const report: MigrationReport = { mode: opts.commit ? 'commit' : 'dry-run', signedFilled: 0, signAnomalies: [], balancePaiseFilled: 0, openings: [], openedWalletMismatches: [],
     walletsOpened: 0, typedNamesFilled: 0, couponsFunded: { platform: 0, provider: 0 } };
 
   // 1. signedAmountPaise on old rows.
@@ -76,7 +79,14 @@ export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }):
         const balancePaise = paiseOr(w.balancePaise, w.balance);
         const key = `migration:opening:${String(w._id)}`;
         const has = await PharmacyWalletTransactionModel.exists({ pharmacyId: w.pharmacyId, operationKey: key }).session(session);
-        if (!has) {
+        // Review (rerun): a wallet already opened is never opened again; a later mismatch is reported, never written.
+        if (w.ledgerOpenedAt) {
+          const [sum] = await PharmacyWalletTransactionModel.aggregate([{ $match: { pharmacyId: w.pharmacyId, status: 'completed' } },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$signedAmountPaise', 0] } } } }]).session(session);
+          if (Number(sum?.total ?? 0) !== balancePaise) {
+            report.openedWalletMismatches.push({ walletId: String(w._id), pharmacyId: String(w.pharmacyId), balancePaise, entriesPaise: Number(sum?.total ?? 0) });
+          }
+        } else if (!has) {
           const [sum] = await PharmacyWalletTransactionModel.aggregate([{ $match: { pharmacyId: w.pharmacyId, status: 'completed' } },
             { $group: { _id: null, total: { $sum: { $ifNull: ['$signedAmountPaise', { $subtract: [
               { $ifNull: ['$balanceAfterPaise', { $round: [{ $multiply: ['$balanceAfter', 100] }, 0] }] },
@@ -121,9 +131,11 @@ export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }):
   const links = await PharmacyCustomerModel.find({ $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] })
     .select({ pharmacyId: 1, userId: 1 }).lean() as Row[];
   for (const link of links) {
-    const u = await UserModel.findById(link.userId).select({ name: 1, createdSource: 1, linkedPharmacyId: 1 }).lean() as Row | null;
+    const u = await UserModel.findById(link.userId).select({ name: 1, createdSource: 1, linkedPharmacyId: 1, otpVerified: 1 }).lean() as Row | null;
     const name = typeof u?.name === 'string' ? u.name.trim() : '';
-    if (!u || !name || u.createdSource !== 'pharmacy_app' || String(u.linkedPharmacyId ?? '').toLowerCase() !== String(link.pharmacyId).toLowerCase()) continue;
+    // The names rule (§18.5 finding 8): only an account this pharmacy opened that its holder never took over.
+    if (!u || !name || u.createdSource !== 'pharmacy_app' || u.otpVerified === true
+      || String(u.linkedPharmacyId ?? '').toLowerCase() !== String(link.pharmacyId).toLowerCase()) continue;
     report.typedNamesFilled += 1;
     if (opts.commit) {
       await PharmacyCustomerModel.collection.updateOne({ _id: link._id, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
@@ -151,6 +163,10 @@ async function main(): Promise<void> {
     const report = await migrateAssistedPharmacyWallets({ commit });
     console.log(JSON.stringify({ ...report, signAnomalies: report.signAnomalies.slice(0, 50), openings: report.openings.slice(0, 50),
       openingsTotal: report.openings.length, signAnomaliesTotal: report.signAnomalies.length }, null, 2));
+    if (report.openedWalletMismatches.length) {
+      console.log('REVIEW: wallets already opened whose entries do not explain the balance (listed, not changed).');
+      process.exitCode = 2;
+    }
     if (report.signAnomalies.length) {
       console.log('REVIEW: the rows above have a sign that contradicts their type; they were filled as recorded, not changed.');
       process.exitCode = 2;

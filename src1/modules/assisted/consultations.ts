@@ -23,9 +23,9 @@ import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { claimRequestKey } from '@/modules/requestKeys';
-import { resolveCustomerByPhone } from '@/modules/partners/services/customerResolver';
+import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
-import { assertBookerMayBook, countBookingForPhoneIn, countPairBookingIn, hitNewAccount } from '@/modules/assisted/limits';
+import { assertBookerMayBook, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
 
@@ -187,10 +187,17 @@ async function replayOf(storedKey: string, hash: string): Promise<IBooking | nul
   return prior;
 }
 
-export async function createPharmacyConsultation(actor: PharmacyActor, input: AssistedConsultInput, clock: () => Date = () => new Date()) {
+export async function createPharmacyConsultation(actor: PharmacyActor, input: AssistedConsultInput, clock: () => Date = () => new Date(), attempt = 0) {
   assertPharmacyAssistedOn();
   validate(input);
   const phone = canonicalMobile(input.phone)!;
+  // Review 4: a create names a phone like a lookup does, so it counts against the lookup limit and is audited.
+  if (attempt === 0) {
+    await hitLookup(orgKey(actor.pharmacyId));
+    const seen = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.attempted',
+      requestKey: input.requestKey, detail: { exists: !!seen, ...(seen ? { userId: String(seen._id) } : {}) } }, null);
+  }
   const storedKey = storedAssistedKey(actor, input.requestKey);
   const hash = assistedRequestHash(input);
   await assertAssistedIndexes(!!input.couponCode);
@@ -216,19 +223,18 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   const pharmacy = await PharmacyModel.findById(actor.pharmacyId).select({ name: 1 }).lean() as { name?: string } | null;
   const listMinor = sp.isConsultationFree === true ? 0 : Math.round(Number(sp.consultationFee || 0) * 100);
 
-  // The patient: an existing family member must be the phone account's; a new number may hit the new-account limit.
+  // The patient (review 4: no create is an existence test). Every step that can refuse runs BEFORE any account is
+  // counted or opened, and gives the same answer for a known and an unknown number; the account of a new number is
+  // opened only inside the booking transaction (a refused or failed booking leaves no account behind).
+  if (!(await customerPhoneIndexReady())) {
+    throw err(503, 'CUSTOMER_LINKING_UNAVAILABLE', 'Customer linking is not available yet; try again later');
+  }
   const p = input.patient;
   if ('dependentId' in p) await assertDependentOfPhone(String(p.dependentId), phone);
-  const known = await UserModel.exists({ phone, userType: 'user' });
-  if (!known) await hitNewAccount(orgKey(actor.pharmacyId));
-  const customer = await resolveCustomerByPhone(phone, 'assisted_booking');
+  const existing = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+  const newUserId = existing ? null : new Types.ObjectId().toHexString();
+  const customer = { _id: existing ? String(existing._id) : newUserId!, created: !existing };
   const holderTyped = 'dependentId' in p ? cleanName(input.holderName) : p.relation === 'self' ? cleanName(p.name) : cleanName(input.holderName);
-  // §17.4: a new account takes the typed holder name; an existing account is never renamed.
-  if (customer.created && holderTyped) {
-    await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name: holderTyped } });
-  }
-  await UserModel.updateOne({ _id: customer._id, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
-    { $set: { preferredLanguage: input.preferredLanguage } });
 
   // Family member: an active one with the same name and relation is used as it is; otherwise created in the transaction.
   let dependentId: string | undefined;
@@ -236,8 +242,8 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   if ('dependentId' in p) dependentId = lower(p.dependentId);
   else if (p.relation !== 'self') {
     const depName = cleanName(p.name);
-    const same = await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
-      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    const same = existing ? await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
+      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null : null;
     if (same) dependentId = String(same._id);
     else {
       dependentId = new Types.ObjectId().toHexString();
@@ -291,6 +297,8 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
     } as IBooking, async (b, s) => {
       await claimRequestKey(assistedKeyScope(actor), input.requestKey, s);
       await assertBookerMayBook(orgKey(actor.pharmacyId), s);
+      await openOrPrepareAccountIn(actor, { phone, newUserId, existingId: existing ? String(existing._id) : null, holderTyped,
+        preferredLanguage: input.preferredLanguage }, s);
       if (newDependent) await DependentModel.create([newDependent], { session: s });
       else if (dependentId && !(await DependentModel.exists({ _id: dependentId, userId: customer._id, isActive: true }).session(s))) {
         throw err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
@@ -311,8 +319,10 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   } catch (e) {
     // A racing identical request may have committed first: answer with its receipt.
     const raced = await replayOf(storedKey, hash);
-    if (!raced) throw e;
-    return assistedReceipt(raced, true, !!raced.assisted?.identity?.newAccount);
+    if (raced) return assistedReceipt(raced, true, !!raced.assisted?.identity?.newAccount);
+    // Another booking or desk opened this number's account meanwhile: book again once, on that account.
+    if ((e as { code?: string }).code === 'ACCOUNT_OPENED_MEANWHILE' && attempt === 0) return createPharmacyConsultation(actor, input, clock, 1);
+    throw e;
   }
   if (isReplayedBooking(booking)) {
     if (booking.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
@@ -325,6 +335,24 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   await sendAssistedNotices(await bookedNotices(withMeet));
   const fresh = await BookingModel.findById(booking._id).lean() as IBooking | null;
   return assistedReceipt(fresh ?? withMeet, false, customer.created);
+}
+
+/**
+ * In the booking transaction: a new number's account is inserted here (typed name, language, never signed in), counted
+ * against the organisation's new-account limit; an existing account only gets an empty `preferredLanguage` filled. A
+ * number whose account appeared meanwhile aborts with ACCOUNT_OPENED_MEANWHILE (the caller books again on it).
+ */
+async function openOrPrepareAccountIn(actor: PharmacyActor, a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
+  preferredLanguage: string }, s: ClientSession): Promise<void> {
+  if (a.existingId) {
+    await UserModel.updateOne({ _id: a.existingId, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
+      { $set: { preferredLanguage: a.preferredLanguage } }, { session: s });
+    return;
+  }
+  if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
+  await countNewAccountIn(orgKey(actor.pharmacyId), s);
+  await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: 'assisted_booking', otpVerified: false,
+    ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
 }
 
 /** §17.4 / S3: the pharmacy's link to the account holder, with consent and the first typed name. */

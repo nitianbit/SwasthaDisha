@@ -103,6 +103,7 @@ export async function postPharmacyMovementIn(m: PharmacyMovement, s: ClientSessi
   const debit = DEBITS.includes(m.kind);
   const before = paiseOf(wallet);
   if (debit) {
+    if (Number(wallet.receivableMinor ?? 0) > 0) throw err(409, 'WALLET_RECEIVABLE', 'This wallet owes Jansetu money (a lost card dispute); top it up first');
     if (wallet.frozen === true) throw err(409, 'WALLET_FROZEN', 'This wallet is frozen; contact Jansetu support');
     if (wallet.isActive === false) throw err(409, 'WALLET_INACTIVE', 'This wallet is not active');
     if (before < m.amountPaise) throw err(409, 'INSUFFICIENT_BALANCE', `Insufficient wallet balance. Available: ₹${(before / 100).toFixed(2)}`);
@@ -131,6 +132,73 @@ export async function postPharmacyMovementIn(m: PharmacyMovement, s: ClientSessi
     referenceType: m.referenceType, referenceId: m.referenceId, description: m.description, ...(m.notes ? { notes: m.notes } : {}),
     transactionDate: istTodayYyyymmdd(), signedAmountPaise: signed, operationKey: m.operationKey,
     withdrawableDeltaPaise: withdrawableAfter - withdrawableBefore, ...(lotAllocations?.length ? { lotAllocations } : {}),
+  }], { session: s });
+  // Chargebacks (§5.3): a credit arriving on a wallet that owes a receivable clears it first (`receivable_setoff`).
+  const owed = Number(updated.receivableMinor ?? 0);
+  if (!debit && owed > 0) {
+    const setoff = Math.min(owed, m.amountPaise, after);
+    if (setoff > 0) {
+      const setoffLots = await consumeLots(m.pharmacyId, setoff, s);
+      const wBefore = Number(updated.withdrawableMinor ?? 0);
+      const wAfter = await withdrawableOfIn(m.pharmacyId, s);
+      const cleared = await PharmacyWalletModel.findOneAndUpdate({ _id: wallet._id, version: updated.version },
+        { $set: { balancePaise: after - setoff, balance: (after - setoff) / 100, withdrawableMinor: wAfter, receivableMinor: owed - setoff,
+          version: Number(updated.version ?? 0) + 1 } }, { new: true, session: s }).lean() as IPharmacyWallet | null;
+      if (!cleared) throw Object.assign(err(409, 'WALLET_CHANGED', 'The wallet changed; please retry'), { retryable: true });
+      await PharmacyWalletTransactionModel.create([{
+        pharmacyId: m.pharmacyId, walletId: String(wallet._id), transactionType: 'receivable_setoff', amount: setoff / 100, amountPaise: setoff,
+        balanceBefore: after / 100, balanceAfter: (after - setoff) / 100, balanceBeforePaise: after, balanceAfterPaise: after - setoff, status: 'completed',
+        referenceType: 'receivable_setoff', referenceId: `${m.operationKey}:setoff`, description: 'Owed amount cleared from this credit',
+        transactionDate: istTodayYyyymmdd(), signedAmountPaise: -setoff, operationKey: `${m.operationKey}:setoff`, receivableDeltaPaise: -setoff,
+        withdrawableDeltaPaise: wAfter - wBefore, ...(setoffLots.length ? { lotAllocations: setoffLots } : {}),
+      }], { session: s });
+      return { entry: entry!.toObject() as IPharmacyWalletTransaction, wallet: cleared, replayed: false };
+    }
+  }
+  return { entry: entry!.toObject() as IPharmacyWalletTransaction, wallet: updated, replayed: false };
+}
+
+/**
+ * Chargebacks (§5.3, production gate): an admin records a card dispute LOST on a top-up lot. In the caller's
+ * transaction, exactly once per lot: the lot is closed for good (never restored or withdrawable again); the wallet is
+ * debited the lot's amount — what the balance cannot cover becomes `receivableMinor`, owed by the partner (the balance
+ * itself never goes below zero, so balance = Σ entries holds); the wallet is frozen. A frozen wallet or one with a
+ * receivable funds nothing; a later credit clears the receivable first.
+ */
+export async function recordChargebackIn(lotId: string, s: ClientSession): Promise<{ entry: IPharmacyWalletTransaction; wallet: IPharmacyWallet; replayed: boolean }> {
+  if (!Types.ObjectId.isValid(lotId)) throw err(404, 'LOT_NOT_FOUND', 'Top-up not found');
+  const lot = await WalletTopupLotModel.findById(lotId).session(s).lean();
+  if (!lot || lot.walletRef.kind !== 'pharmacy') throw err(404, 'LOT_NOT_FOUND', 'Top-up not found');
+  const pharmacyId = lot.walletRef.id;
+  const key = `chargeback:${String(lot._id)}`;
+  const prior = await PharmacyWalletTransactionModel.findOne({ pharmacyId, operationKey: key }).session(s).lean() as IPharmacyWalletTransaction | null;
+  if (prior) return { entry: prior, wallet: await PharmacyWalletModel.findOne({ pharmacyId }).session(s).lean() as IPharmacyWallet, replayed: true };
+  const closed = await WalletTopupLotModel.updateOne({ _id: lot._id, disputeState: { $ne: 'lost' } },
+    { $set: { closed: true, disputeState: 'lost', remainingMinor: 0 } }, { session: s });
+  if (closed.modifiedCount !== 1) throw Object.assign(err(409, 'WALLET_CHANGED', 'The top-up changed; please retry'), { retryable: true });
+  const wallet = await pharmacyWalletIn(pharmacyId, s);
+  const before = paiseOf(wallet);
+  const amount = Number(lot.amountMinor);
+  const fromBalance = Math.min(before, amount);
+  const shortfall = amount - fromBalance;
+  const after = before - fromBalance;
+  // The lot's own unspent money left with it (closed above); what else the balance gives up comes out of the other lots
+  // (oldest first), so open lots never exceed the balance.
+  const beyondLot = Math.max(0, fromBalance - Number(lot.remainingMinor || 0));
+  const lotAllocations = beyondLot > 0 ? await consumeLots(pharmacyId, beyondLot, s) : [];
+  const withdrawableBefore = Number(wallet.withdrawableMinor ?? 0);
+  const withdrawableAfter = await withdrawableOfIn(pharmacyId, s);
+  const updated = await PharmacyWalletModel.findOneAndUpdate({ _id: wallet._id, ...(wallet.version === undefined ? { version: { $exists: false } } : { version: wallet.version }) },
+    { $set: { balancePaise: after, balance: after / 100, withdrawableMinor: withdrawableAfter, receivableMinor: Number(wallet.receivableMinor ?? 0) + shortfall,
+      frozen: true, frozenReason: 'Card dispute lost on a top-up', frozenAt: new Date(), version: Number(wallet.version ?? 0) + 1 } },
+    { new: true, session: s }).lean() as IPharmacyWallet | null;
+  if (!updated) throw Object.assign(err(409, 'WALLET_CHANGED', 'The wallet changed; please retry'), { retryable: true });
+  const [entry] = await PharmacyWalletTransactionModel.create([{
+    pharmacyId, walletId: String(wallet._id), transactionType: 'chargeback', amount: fromBalance / 100, amountPaise: fromBalance,
+    balanceBefore: before / 100, balanceAfter: after / 100, balanceBeforePaise: before, balanceAfterPaise: after, status: 'completed',
+    referenceType: 'chargeback', referenceId: String(lot._id), description: 'Card dispute lost on a top-up', transactionDate: istTodayYyyymmdd(),
+    signedAmountPaise: -fromBalance, operationKey: key, receivableDeltaPaise: shortfall, withdrawableDeltaPaise: withdrawableAfter - withdrawableBefore,
+    ...(lotAllocations.length ? { lotAllocations } : {}),
   }], { session: s });
   return { entry: entry!.toObject() as IPharmacyWalletTransaction, wallet: updated, replayed: false };
 }

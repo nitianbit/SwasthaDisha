@@ -37,13 +37,15 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
 
     if (params.search) {
       const search = buildContainsRegex(params.search);
-      // Assisted booking (§6.2, §17.4): a pharmacy searches its customers by the name IT typed and the phone only,
-      // never by the account's own name or email.
+      // Assisted booking (§6.2, §17.4): a pharmacy searches its customers by the name it may see and the phone, never the
+      // email.
       pipeline.push({
         $match: {
           $or: [
             { typedName: search },
             { 'user.phone': search },
+            // Phase 1a decision: a consented link shows (so may search) the account name; never the email.
+            { 'user.name': search, consent: { $in: ['patient_agreed', 'customer_order'] } },
           ],
         },
       });

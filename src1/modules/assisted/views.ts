@@ -15,8 +15,14 @@ function one(row: Row): Row {
   if (!row || typeof row !== 'object' || !row.assisted || typeof row.assisted !== 'object') return row;
   const { price: _p, originalPrice: _o, paymentTransactionId: _t, walletFunding: _w, createTerms: _c, assisted, ...rest } = row;
   const a = assisted as Row;
+  // Review 5: lifecycle events keep their time (and a cancellation reason), never the amount paid or who paid it.
+  const lifecycle = rest.lifecycle && typeof rest.lifecycle === 'object'
+    ? Object.fromEntries(Object.entries(rest.lifecycle as Row).map(([k, v]) => [k, v && typeof v === 'object'
+      ? { ...(v.at !== undefined ? { at: v.at } : {}), ...(typeof v.reason === 'string' ? { reason: v.reason } : {}) } : v]))
+    : rest.lifecycle;
   return {
     ...rest,
+    ...(lifecycle !== undefined ? { lifecycle } : {}),
     source: row.source ?? 'pharmacy_assisted',
     paidBy: a.bookedBy?.name ?? null,
     assisted: {

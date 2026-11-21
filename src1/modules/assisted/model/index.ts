@@ -6,8 +6,8 @@ import { Schema, model, Model } from 'mongoose';
  * Phase 0 writes `rx_order.created` (a medicine order made from a booking's prescription).
  */
 /** Phase 0: rx_order.created. Phase 1a: the assisted booking actions (each audited in its own transaction). */
-export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'booking.created', 'booking.cancelled', 'booking.rescheduled',
-  'booking.not_mine', 'booking.moved', 'review.dismissed', 'wallet.frozen', 'wallet.unfrozen', 'customer.typed_name'] as const;
+export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'booking.attempted', 'booking.created', 'booking.cancelled', 'booking.rescheduled',
+  'booking.not_mine', 'booking.moved', 'review.dismissed', 'wallet.frozen', 'wallet.unfrozen', 'wallet.chargeback', 'customer.typed_name'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {

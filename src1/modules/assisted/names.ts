@@ -23,10 +23,13 @@ export function maskName(name: unknown): string | null {
 const ids = (rows: Row[], field: string) =>
   [...new Set(rows.map((r) => String(r?.[field] ?? '')).filter((id) => Types.ObjectId.isValid(id) && id.length === 24))];
 const key = (v: unknown) => String(v ?? '').toLowerCase();
+/** Link consents by which the patient chose the pharmacy (S3): the pharmacy sees the account name. */
+export const CONSENTED = ['patient_agreed', 'customer_order'];
 
 /**
  * The account holder's name as a PHARMACY may see it (booker view, dispensing copy, pharmacy order lists and review
- * queue): the name that pharmacy TYPED — the link's `typedName` (phase 1a, §17.4) or, until then, the account name of an
+ * queue, subscriptions, customer list): when the link records the patient's consent (`patient_agreed`, `customer_order`)
+ * the real account name (phase 1a decision, overnight, assumed); otherwise the name that pharmacy TYPED — the link's `typedName` (phase 1a, §17.4) or, until then, the account name of an
  * account this pharmacy opened (`createdSource: 'pharmacy_app'`, `linkedPharmacyId` = it) that its holder never took
  * over (`otpVerified` not true: only the holder can rename it after signing in, so it is still the typed name) —
  * otherwise the account name masked. Never the email or another account field. Two batched reads.
@@ -42,11 +45,16 @@ export async function pharmacyFacingHolderNames(userIds: unknown[], pharmacyId: 
         .lean() as unknown as Promise<Row[]>
       : Promise.resolve([] as Row[]),
   ]);
-  const typedBy = new Map(links.map((l) => [key(l.userId), typeof l.typedName === 'string' && l.typedName.trim() ? l.typedName.trim() : null]));
+  const linkBy = new Map(links.map((l) => [key(l.userId), l]));
   for (const u of users) {
-    const typed = typedBy.get(key(u._id));
+    const link = linkBy.get(key(u._id));
+    const typed = typeof link?.typedName === 'string' && link.typedName.trim() ? link.typedName.trim() : null;
+    const accountName = String(u.name ?? '').trim() || null;
+    // Phase 1a decision (overnight, assumed): the patient chose this pharmacy (link consent `patient_agreed` or
+    // `customer_order`), so it sees the real account name; otherwise only the typed or masked name.
+    if (link && CONSENTED.includes(String(link.consent)) && accountName) { out.set(key(u._id), accountName); continue; }
     const opened = u.createdSource === 'pharmacy_app' && key(u.linkedPharmacyId) === key(pharmacyId) && u.otpVerified !== true;
-    out.set(key(u._id), typed ?? (opened ? (String(u.name ?? '').trim() || null) : maskName(u.name)));
+    out.set(key(u._id), typed ?? (opened ? accountName : maskName(u.name)));
   }
   return out;
 }

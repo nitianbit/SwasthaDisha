@@ -17,6 +17,24 @@ import { AppError } from '@/modules/common/types';
 import { PaymentService } from '@/modules/payment/services';
 import PaymentRecordModel from '@/modules/payment/model';
 
+/**
+ * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
+ * `credit` / `recharge` / `refund` and `debit` / `payment` / `booking`; anything else falls to the title text (a refund
+ * of a "booking" would read as a debit). So every row answers with an app type by its sign, and the stored kind as
+ * `movementType`. `credit`, `debit` and `refund` rows are unchanged.
+ */
+const APP_TYPES = ['credit', 'debit', 'refund'];
+const ZERO_DEBIT_KINDS = ['chargeback', 'receivable_setoff', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
+export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletTransaction & { movementType: string } {
+  const kind = String(t.transactionType);
+  if (APP_TYPES.includes(kind)) return { ...t, movementType: kind };
+  const signed = Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
+    : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100);
+  // A zero-amount row (a chargeback the balance could not cover) reads as what its kind is.
+  const credit = signed > 0 || (signed === 0 && !ZERO_DEBIT_KINDS.includes(kind));
+  return { ...t, transactionType: (credit ? 'credit' : 'debit') as IPharmacyWalletTransaction['transactionType'], movementType: kind };
+}
+
 /** Assisted booking phase 1a (§17.6): the wallet answer adds the withdrawable amount and the freeze (absent = 0 / false). */
 export function walletView(w: IPharmacyWallet): Record<string, unknown> {
   return { ...w, withdrawableMinor: Number(w.withdrawableMinor ?? 0), frozen: w.frozen === true,
@@ -293,6 +311,7 @@ export class PharmacyWalletService {
   async getTransactions(
     params: WalletTxQueryParams
   ): Promise<{ data: IPharmacyWalletTransaction[]; total: number; page: number; totalPages: number }> {
-    return this.txRepo.findWithPagination(params, params.page ?? 1, params.limit ?? 20);
+    const page = await this.txRepo.findWithPagination(params, params.page ?? 1, params.limit ?? 20);
+    return { ...page, data: page.data.map(transactionView) };
   }
 }

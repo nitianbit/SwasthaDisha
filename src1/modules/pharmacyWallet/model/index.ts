@@ -55,6 +55,8 @@ const pharmacyWalletTransactionSchema = new Schema<IPharmacyWalletTransaction>(
     signedAmountPaise: { type: Number },
     operationKey: { type: String },
     withdrawableDeltaPaise: { type: Number },
+    // Chargebacks: the change to what the partner owes (`receivableMinor`).
+    receivableDeltaPaise: { type: Number },
     lotAllocations: {
       type: [new Schema({ lotId: { type: String, required: true }, amountPaise: { type: Number, required: true, min: 1 } }, { _id: false })],
       default: undefined,

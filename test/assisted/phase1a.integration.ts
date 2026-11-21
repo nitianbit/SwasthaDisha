@@ -153,6 +153,8 @@ async function main() {
 
   // Most checks book for the same few numbers: the per-number limit is set high here and tested on its own below.
   process.env.ASSISTED_LIMIT_BOOKINGS_PER_PHONE_PER_DAY = '1000';
+  // Every create also counts as a lookup (review 4): the hourly lookup limit is set high too, and tested on its own.
+  process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR = '100000';
   const flagsOn = () => {
     process.env.ASSISTED_BOOKING_ENABLED_PHARMACY = 'true';
     process.env.ASSISTED_ADMIN_TOOLS_ENABLED = 'true';
@@ -268,7 +270,7 @@ async function main() {
         await expect('Q', 'POST', '/pharmacy-assisted/patients/lookup', 200, { phone: '9600000201' });
         const hit = await expect('Q', 'POST', '/pharmacy-assisted/patients/lookup', 429, { phone: '9600000201' }, 'ASSISTED_LIMIT_REACHED');
         assert.equal(hit.json.limit, 'lookups');
-      } finally { delete process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR; }
+      } finally { process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR = '100000'; }
       await expect('U', 'POST', '/pharmacy-assisted/patients/lookup', 403, { phone: '9600000201' }, 'PHARMACY_NOT_VERIFIED');
     });
 
@@ -617,7 +619,12 @@ async function main() {
         { pharmacyId: new Types.ObjectId(L), walletId: w.insertedId, transactionType: 'consultation_payment', amount: 400, balanceBefore: 1000, balanceAfter: 600, status: 'completed' },
       ] as never);
       const link = await PharmacyCustomerModel.create({ pharmacyId: L, userId: H, consent: 'patient_agreed' } as never);
-      await UserModel.updateOne({ _id: H }, { $set: { createdSource: 'pharmacy_app', linkedPharmacyId: L } });
+      await UserModel.updateOne({ _id: H }, { $set: { createdSource: 'pharmacy_app', linkedPharmacyId: L, otpVerified: false } });
+      // An account the pharmacy opened but whose holder took it over: never copied (the names rule).
+      const TK = oid();
+      await UserModel.collection.insertOne({ _id: new Types.ObjectId(TK), userType: 'user', phone: '9600000299', name: 'Renamed By Holder',
+        createdSource: 'pharmacy_app', linkedPharmacyId: L, otpVerified: true } as never);
+      const takenOver = await PharmacyCustomerModel.create({ pharmacyId: L, userId: TK, consent: 'not_recorded' } as never);
       await CouponModel.collection.insertOne({ code: 'OLDCORP', corporateIds: ['c1'], discountType: 'fixed', discountValue: 10, applicableTo: 'all',
         startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as never);
       const dry = await migration.migrateAssistedPharmacyWallets({ commit: false });
@@ -630,6 +637,7 @@ async function main() {
       assert.equal(wallet.balancePaise, 75000); assert.equal(wallet.withdrawableMinor, 0); assert.ok(wallet.ledgerOpenedAt);
       assert.equal(rows.reduce((a, r) => a + r.signedAmountPaise, 0), wallet.balancePaise, 'balance = Σ signed entries');
       assert.equal((await PharmacyCustomerModel.findById(link._id).lean() as any).typedName, 'Holder Three', 'typedName backfilled where the pharmacy opened the account');
+      assert.equal((await PharmacyCustomerModel.findById(takenOver._id).lean() as any).typedName, undefined, 'never from a taken-over account');
       assert.equal((await CouponModel.findOne({ code: 'OLDCORP' }).lean() as any).fundedBy, 'platform');
       // The phase 1a wallets keep their withdrawable amount (only missing values are set).
       assert.equal((await balanceOf(R)).withdrawable, 100000);
@@ -767,19 +775,23 @@ async function main() {
     });
 
     // ───────────────────────── Customer list and freeze ─────────────────────────
-    await check('customer list: only the typed name (or masked) and phone, never the account name or email; typed-name edit', async () => {
+    await check('customer list: consented links show the account name, others the typed or masked name; never the email; typed-name edit', async () => {
       const l = await expect('P', 'GET', '/pharmacy-customers?limit=100', 200);
       for (const row of l.json.data) assert.equal(row.userId.email, null);
-      assert.equal(l.text.includes('rina@example'), false); assert.equal(l.text.includes('Rina Kumari Das'), false);
+      assert.equal(l.text.includes('rina@example'), false);
       const x = l.json.data.find((row: any) => String(row.userId._id) === X);
-      assert.equal(x.userId.name, 'Rina Das');
+      assert.equal(x.userId.name, 'Rina Kumari Das', 'the patient chose this pharmacy (consent): the account name (phase 1a decision)');
       const byAccountName = await expect('P', 'GET', '/pharmacy-customers?search=Kumari', 200);
-      assert.equal(byAccountName.json.data.length, 0, 'the account name is not searchable');
+      assert.equal(byAccountName.json.data.length, 1, 'a consented link is searchable by the name it shows');
       const byTyped = await expect('P', 'GET', '/pharmacy-customers?search=Rina%20Das', 200);
       assert.equal(byTyped.json.data.length, 1);
-      const masked = await PharmacyCustomerModel.create({ pharmacyId: Q, userId: X, consent: 'patient_agreed' } as never);
+      const byEmail = await expect('P', 'GET', '/pharmacy-customers?search=rina%40example', 200);
+      assert.equal(byEmail.json.data.length, 0, 'never by email');
+      const masked = await PharmacyCustomerModel.create({ pharmacyId: Q, userId: X, consent: 'not_recorded' } as never);
       const q = await expect('Q', 'GET', '/pharmacy-customers', 200);
-      assert.equal(q.json.data.find((row: any) => String(row.userId._id) === X).userId.name, 'Rina D.', 'another pharmacy\'s link without a typed name is masked');
+      assert.equal(q.json.data.find((row: any) => String(row.userId._id) === X).userId.name, 'Rina D.', 'no recorded consent and no typed name: masked');
+      const qs = await expect('Q', 'GET', '/pharmacy-customers?search=Kumari', 200);
+      assert.equal(qs.json.data.length, 0, 'the account name is not searchable without consent');
       await expect('Q', 'PUT', `/pharmacy-customers/${String(masked._id)}/typed-name`, 200, { typedName: 'Rina (Q)' });
       await expect('P', 'PUT', `/pharmacy-customers/${String(masked._id)}/typed-name`, 404, { typedName: 'Steal' }, 'CUSTOMER_NOT_LINKED');
       const q2 = await expect('Q', 'GET', '/pharmacy-customers', 200);

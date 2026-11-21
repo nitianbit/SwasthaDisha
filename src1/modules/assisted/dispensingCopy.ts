@@ -180,9 +180,13 @@ export async function queueDispensingCopy(bookingId: unknown): Promise<void> {
   }
 }
 
-/** Makes queued copies one at a time, at most BATCH per run (the scheduler runs it again for the rest). */
+/**
+ * Makes queued copies one at a time, in batches of BATCH, draining until the queue is empty — bounded per run at
+ * MAX_PER_RUN (the scheduler's next run takes any rest).
+ */
 class DispensingCopyConsumer extends JobConsumer {
   static readonly BATCH = 10;
+  static readonly MAX_PER_RUN = 200;
   private draining = false;
   constructor() { super(DISPENSING_COPY_CONSUMER); }
 
@@ -190,13 +194,16 @@ class DispensingCopyConsumer extends JobConsumer {
     if (this.draining) return;
     this.draining = true;
     try {
-      for (let i = 0; i < DispensingCopyConsumer.BATCH; i++) {
-        const now = Math.floor(Date.now() / 1000);
-        const job = await Job.findOneAndUpdate({ consumer: this.type, processAfter: { $lte: now } },
-          { $set: { processAfter: now + 120 } }, { sort: { processAfter: 1 } });
-        if (!job) return;
-        await this.consume(job.payload);
-        await Job.deleteOne({ _id: job._id });
+      for (let done = 0; done < DispensingCopyConsumer.MAX_PER_RUN;) {
+        let batch = 0;
+        for (; batch < DispensingCopyConsumer.BATCH && done < DispensingCopyConsumer.MAX_PER_RUN; batch++, done++) {
+          const now = Math.floor(Date.now() / 1000);
+          const job = await Job.findOneAndUpdate({ consumer: this.type, processAfter: { $lte: now } },
+            { $set: { processAfter: now + 120 } }, { sort: { processAfter: 1 } });
+          if (!job) return; // the queue is empty
+          await this.consume(job.payload);
+          await Job.deleteOne({ _id: job._id });
+        }
       }
     } finally {
       this.draining = false;

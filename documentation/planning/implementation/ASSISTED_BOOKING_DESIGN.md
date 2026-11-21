@@ -1439,6 +1439,11 @@ confirmed that its check then fails.
 | 8 (LOW) | Names | One rule for every pharmacy-facing name (booker view, copy, `GET /pharmacy-orders`, `/pharmacy-orders/prescription-reviews`): the link's `typedName` (1a); until then the account name only for an account this pharmacy opened that its holder never took over (`otpVerified` not true, so it is still the name the pharmacy typed); otherwise masked. A one-word name of two letters or fewer is "…". Admin and customer views are unchanged. Consequence: until 1a adds typed names, the pharmacy order list shows masked names for customers who signed up themselves or took over their account |
 | 9 (LOW) | Notes | `prescription.message` is left out of the booker view. `prescription.dispensingCopy.hash` / `.at` are `select: false`: customers, doctors, HR and admins see only `dispensingCopy.url`; the assisted module selects them explicitly. `PUT /pharmacy-orders/:id` that removes or replaces the bound copy: 409 `ORDER_PRESCRIPTION_LOCKED`. Cursor: a row stored without `createdAt` pages as `n_<id>` after every dated row (each row once) |
 
+**Names, changed in phase 1a (decision, overnight, assumed; §19.6 item 8):** where the pharmacy's link records the
+patient's consent (`patient_agreed` or `customer_order`) the pharmacy sees the real account name — the patient chose
+that pharmacy. Finding 8's typed / opened-not-taken-over / masked rule now applies only to links whose consent is
+`not_recorded` or missing.
+
 **New answers for the web:** `prescription.copyPending`; 409 `ORDER_PRESCRIPTION_LOCKED`; 403 pharmacy admission codes
 on every `/bookings*` route; cursor values may be `n_<id>`.
 
@@ -1619,3 +1624,28 @@ Answers `{ success, data }`. Money is paise.
    order-name pass was dropped in favour of phase 0's. Before the merge, phase 0 files were changed additively only — `assisted/model` (audit actions and
    actor kinds, new models appended), `assisted/names.ts` (`withLinkNames` appended), `assisted/bookerView.ts` (the
    disputed badge), `assisted/validation` (schemas appended), `routes/index.ts` (two mounts).
+
+### 19.6 Review fixes (xhigh review of `b4ae54e`: phase 0 + fixes + 1a)
+
+The review found no way to create or lose money. Each fix below has a check that fails on `b4ae54e`: the new suite
+`test/assisted/phase1a-review.integration.ts` (11 checks, all 11 fail there); item 10 is a changed check in the phase 0
+suite; the names decision (8) and the typed-name backfill (9) also changed checks of the phase 0 and 1a suites.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (MEDIUM) | A migration rerun opened a wallet again when its balance had drifted | A wallet with `ledgerOpenedAt` is never opened again; a mismatch on it is listed in `openedWalletMismatches` (exit code 2) and never written |
+| 2 (MEDIUM) | A move to a family member of the same account removed the pharmacy's link | A move within one account keeps the link |
+| 3 (MEDIUM) | A move left the medicine orders, their copy and the booking's family member with the old holder | The move (one transaction) also moves the orders made from the booking's prescription (`prescriptionFromBooking.bookingId`) to the new holder, so the order and its bound copy are readable only by the new holder (the old holder's file decision is now deny); a family member the booking created (audited `dependentCreated`) is deactivated on the old account when no other booking, lab booking or instant request names it; one that existed before is never touched |
+| 4 (MEDIUM) | The create was an existence test (an account opened before validation; refusals told known from unknown numbers) | Every check that can refuse (consent, method, key, slot, doctor, family member, coupon, price fence) runs before any account is counted or opened, with the same answer for both. A new number's account is inserted inside the booking transaction (with the new-account count), so a refused or failed booking leaves no account. Every create attempt counts against the hourly lookup limit and is audited (`booking.attempted`, ids only). Remaining difference, by design: `new_accounts` (429) can only hit unknown numbers; it is counted under the lookup limit like the lookup itself |
+| 5 (LOW-MEDIUM) | Customer and doctor views carried `lifecycle.paid.amount` and `.by` | Lifecycle events of assisted rows keep only `at` (and a cancellation `reason`) |
+| 6 (LOW) | The doctor's prescription-save answer was the raw booking | It uses the scrubbed doctor view |
+| 7 (production gate) | No chargeback path | `POST /api/v1/admin/wallet-lots/:lotId/chargeback { reason }` (admin tools switch), with `GET /api/v1/admin/pharmacies/:id/wallet/lots` to find the lot. Once per lot: the lot is closed for good (`disputeState: lost`, nothing left, never restored); the wallet is debited the lot's amount — the part the balance cannot cover becomes `receivableMinor` owed by the partner (the balance itself stays ≥ 0, so balance = Σ entries holds); the wallet is frozen; audited `wallet.chargeback`. A wallet with a receivable cannot fund bookings (409 `WALLET_RECEIVABLE`) or be unfrozen (409); the next credit (top-up or refund) clears the receivable first (`receivable_setoff` row). Reconciliation lists `walletsOwing` |
+| 8 | Released pharmacy app | **Names (decision, overnight, assumed):** a consented link (`patient_agreed`, `customer_order`) shows the real account name on the booker view, order lists, review queue, subscriptions and customer list (also searchable by it); otherwise typed or masked; never the email. **Wallet history:** `WalletScreen.tsx` reads `transactionType` first and knows only credit/recharge/refund and debit/payment/booking (anything else falls to the title, where "Refund of an assisted booking" read as a debit). `GET /pharmacy-wallet/transactions` now answers every other kind as `credit` or `debit` by its signed amount and keeps the stored kind in `movementType`; the app's rule is copied into the check |
+| 9 (LOW) | Small items | The `typedName` backfill skips accounts the holder took over. Meet invites the booker's email only when `join.on = partner_device`. `errorHandler` adds `limit` only to `ASSISTED_LIMIT_REACHED` and `details` only to `PRICE_CHANGED` (the three paise amounts), never other fields. The daily reconciliation checks bookings changed in the last 7 days plus those already flagged; `GET /admin/assisted/reconciliation?full=true` scans all. The uncredited top-up list covers the last 30 days when `WALLET_RECHARGE_SWEEP_FROM` is unset |
+| 10 (phase 0) | `/payments/reconcile` answered a non-operational pharmacy | 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as the booking reads |
+| 11 (phase 0) | The background copy job made 10 copies per run | It drains the queue in batches of 10 until empty, at most 200 per run |
+
+New answers for the web: 409 `WALLET_RECEIVABLE`; wallet rows carry `movementType` (the stored kind) and
+`receivableDeltaPaise`; `GET /pharmacy-wallet` shows `receivableMinor`; reconciliation adds `walletsOwing` and
+`bookings.scope`; Meet guest check `guestAccess` may be `not_partner_device`.
+

@@ -433,17 +433,20 @@ function buildBookingFailureVirtualMeeting(
 /**
  * Assisted booking phase 1a (§6.6, N6): the Meet event of a partner-made booking is NEUTRAL — title "Jansetu
  * consultation", the booking reference only; never the patient's name, the primary concern or the speciality. Attendees:
- * the doctor and the booker's contact email (or none). The guest check: when the booker's email is invited, the partner
+ * the doctor, and the booker's contact email only when the partner's device joins. The guest check: when the booker's email is invited, the partner
  * device joins as an attendee; otherwise it joins as a guest and the doctor admits it ("ask to join").
  */
 export function meetEventTextFor(booking: Pick<IBooking, 'assisted'>, p: { specialistEmail: string; bookerEmail?: string | null }) {
   const ref = booking.assisted?.shortRef ?? '';
-  const emails = [p.specialistEmail, p.bookerEmail].filter((e): e is string => typeof e === 'string' && e.includes('@')).map((e) => e.trim().toLowerCase());
+  // Review: the booker is invited only when the partner's device joins; a patient-phone booking invites the doctor only.
+  const partnerDevice = booking.assisted?.join?.on === 'partner_device';
+  const bookerEmail = partnerDevice ? p.bookerEmail : null;
+  const emails = [p.specialistEmail, bookerEmail].filter((e): e is string => typeof e === 'string' && e.includes('@')).map((e) => e.trim().toLowerCase());
   return {
     summary: 'Jansetu consultation',
     description: `Jansetu booking reference: ${ref}`,
     attendees: Array.from(new Set(emails)).map((email) => ({ email })),
-    guestAccess: p.bookerEmail && p.bookerEmail.includes('@') ? 'attendee' as const : 'ask_to_join' as const,
+    guestAccess: !partnerDevice ? 'not_partner_device' as const : bookerEmail && bookerEmail.includes('@') ? 'attendee' as const : 'ask_to_join' as const,
   };
 }
 

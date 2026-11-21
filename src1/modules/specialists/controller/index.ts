@@ -343,7 +343,8 @@ export class SpecialistController {
     res.status(200).json({
       success: true,
       message: 'Prescription generated successfully',
-      data: booking,
+      // Review 6: the same scrubbed doctor view as the other appointment answers (no partner money or request keys).
+      data: assistedPublicView(booking),
     });
   };
 

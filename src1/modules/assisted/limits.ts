@@ -72,6 +72,13 @@ export async function hitNewAccount(orgKey: string): Promise<void> {
   if (count > assistedLimits.newAccountsPerDay()) throw new AssistedLimitError('new_accounts', Math.ceil((istDayEnd(t) - t) / 1000));
 }
 
+/** In the booking transaction that opens the account (aborted bookings never count): one more new account today. */
+export async function countNewAccountIn(orgKey: string, s: ClientSession): Promise<void> {
+  const t = now();
+  const count = await bump(dayId('new_accounts', orgKey, t), 1, new Date(istDayEnd(t) + DAY_MS), s);
+  if (count > assistedLimits.newAccountsPerDay()) throw new AssistedLimitError('new_accounts', Math.ceil((istDayEnd(t) - t) / 1000));
+}
+
 /** In the booking transaction: one more assisted booking for this phone today, across every booker (aborts when over). */
 export async function countBookingForPhoneIn(phone: string, s: ClientSession): Promise<void> {
   const t = now();

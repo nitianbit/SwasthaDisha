@@ -50,6 +50,7 @@ export interface IPharmacyWalletTransaction {
   signedAmountPaise?: number;
   operationKey?: string;
   withdrawableDeltaPaise?: number;
+  receivableDeltaPaise?: number;
   lotAllocations?: { lotId: string; amountPaise: number }[];
   createdAt?: Date;
   updatedAt?: Date;

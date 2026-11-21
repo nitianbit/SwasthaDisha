@@ -10,7 +10,8 @@ import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { inTransaction } from '@/modules/partners/services';
-import { pharmacyWalletIn } from '@/modules/pharmacyWallet/ledger';
+import { pharmacyWalletIn, recordChargebackIn } from '@/modules/pharmacyWallet/ledger';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
@@ -52,7 +53,7 @@ export const reconciliation = async (req: AuthRequest, res: Response) => {
     if (!stored) throw new AppError({ status: 404, code: 'REPORT_NOT_FOUND', message: 'No stored report for that day' });
     return send(res, stored);
   }
-  send(res, await runReconciliation());
+  send(res, await runReconciliation(new Date(), { full: req.query.full === 'true' }));
 };
 export const stuck = async (_req: AuthRequest, res: Response) => send(res, await stuckMoney());
 export const alerts = async (_req: AuthRequest, res: Response) => send(res, await AssistedAlertModel.find({}).sort({ at: -1 }).limit(200).lean());
@@ -80,6 +81,8 @@ export const freeze = async (req: AuthRequest, res: Response) => {
   const reason = String(req.body.reason).trim();
   const wallet = await inTransaction(async (s) => {
     const w = await pharmacyWalletIn(pharmacyId, s);
+    // A wallet that owes a receivable (lost card dispute) stays frozen until a credit has cleared it.
+    if (!frozen && Number(w.receivableMinor ?? 0) > 0) throw new AppError({ status: 409, code: 'WALLET_RECEIVABLE', message: 'This wallet still owes a receivable' });
     const updated = await PharmacyWalletModel.findOneAndUpdate({ _id: w._id },
       frozen ? { $set: { frozen: true, frozenReason: reason, frozenAt: new Date() }, $inc: { version: 1 } }
         : { $set: { frozen: false }, $unset: { frozenReason: 1, frozenAt: 1 }, $inc: { version: 1 } }, { new: true, session: s }).lean();
@@ -88,4 +91,26 @@ export const freeze = async (req: AuthRequest, res: Response) => {
     return updated;
   });
   send(res, wallet);
+};
+
+/** GET /admin/pharmacies/:id/wallet/lots — the pharmacy's top-up lots (to pick the one a chargeback is for). */
+export const lots = async (req: AuthRequest, res: Response) => send(res, await WalletTopupLotModel.find({ 'walletRef.kind': 'pharmacy',
+  'walletRef.id': String(req.params.id).toLowerCase() }).sort({ createdAt: -1 }).limit(200).lean());
+
+/**
+ * POST /admin/wallet-lots/:lotId/chargeback { reason } — a card dispute lost on a top-up: the lot is closed for good,
+ * the wallet debited (a shortfall is owed as `receivableMinor`), frozen, audited. Once per lot (a repeat answers replayed).
+ */
+export const chargeback = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  const reason = String(req.body.reason).trim();
+  const out = await inTransaction(async (s) => {
+    const r = await recordChargebackIn(req.params.lotId, s);
+    if (!r.replayed) {
+      await auditIn({ actorKind: 'admin', actorId: String(req.user?._id).toLowerCase(), orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
+        action: 'wallet.chargeback', detail: { lotId: req.params.lotId, reason, debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
+    }
+    return r;
+  });
+  send(res, { entry: out.entry, wallet: out.wallet, replayed: out.replayed });
 };

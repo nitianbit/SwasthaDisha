@@ -54,9 +54,20 @@ async function walletInvariants(): Promise<{ checked: number; notMigrated: strin
   return { checked: wallets.length, notMigrated, mismatches };
 }
 
+async function walletsOwing() {
+  const rows = await PharmacyWalletModel.find({ $or: [{ receivableMinor: { $gt: 0 } }, { balancePaise: { $lt: 0 } }, { balance: { $lt: 0 } }] })
+    .select({ pharmacyId: 1, balancePaise: 1, receivableMinor: 1, frozen: 1 }).limit(LIST_MAX).lean() as Row[];
+  return rows.map((w) => ({ pharmacyId: String(w.pharmacyId), balancePaise: Number(w.balancePaise ?? 0), receivableMinor: Number(w.receivableMinor ?? 0),
+    frozen: w.frozen === true }));
+}
+
 /** §8.8: one funding per paid booking; every refund row posted; provider + cut = base and earned once on completion. */
-async function bookingChecks(): Promise<{ checked: number; mismatches: Mismatch[] }> {
-  const rows = await BookingModel.find({ 'assisted.funding.method': 'wallet' }).select({ status: 1, paymentStatus: 1, assisted: 1, settlement: 1 }).lean() as unknown as IBooking[];
+async function bookingChecks(scope: { since: Date | null; flagged: string[] }): Promise<{ checked: number; mismatches: Mismatch[] }> {
+  // Review: the daily run covers bookings changed in the last 7 days plus any already flagged; `full` scans everything.
+  const window = scope.since
+    ? { $or: [{ updatedAt: { $gte: scope.since } }, { _id: { $in: scope.flagged.filter((id) => Types.ObjectId.isValid(id)) } }] } : {};
+  const rows = await BookingModel.find({ 'assisted.funding.method': 'wallet', ...window }).select({ status: 1, paymentStatus: 1, assisted: 1, settlement: 1 })
+    .lean() as unknown as IBooking[];
   const mismatches: Mismatch[] = [];
   for (const b of rows) {
     const id = lower(b._id);
@@ -93,7 +104,10 @@ async function bookingChecks(): Promise<{ checked: number; mismatches: Mismatch[
 
 /** Paid pharmacy top-ups with no wallet credit (and, before the sweep's start date, attempts nobody checks). */
 export async function uncreditedTopups(now: Date = new Date()) {
-  const paid = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', status: 'paid' })
+  // Review: without a sweep date the list covers the last 30 days (older attempts are not scanned on every read).
+  const sweepFrom0 = assistedFlags.rechargeSweepFrom();
+  const recent = sweepFrom0 ? {} : { createdAt: { $gte: new Date(now.getTime() - 30 * DAY) } };
+  const paid = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', status: 'paid', ...recent })
     .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1, razorpayPaymentId: 1 }).sort({ createdAt: 1 }).limit(5000).lean() as Row[];
   const uncredited: Row[] = [];
   for (const r of paid) {
@@ -104,7 +118,8 @@ export async function uncreditedTopups(now: Date = new Date()) {
   }
   const sweepFrom = assistedFlags.rechargeSweepFrom();
   const unchecked = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', status: 'created',
-    paymentGateway: 'razorpay', createdAt: { $lt: new Date(Math.min(now.getTime() - HOUR, sweepFrom ? sweepFrom.getTime() : now.getTime())) } })
+    paymentGateway: 'razorpay', createdAt: { $lt: new Date(Math.min(now.getTime() - HOUR, sweepFrom ? sweepFrom.getTime() : now.getTime())),
+      ...(sweepFrom ? {} : { $gte: new Date(now.getTime() - 30 * DAY) }) } })
     .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(LIST_MAX).lean() as Row[];
   return [...uncredited, ...unchecked.map((r) => ({ paymentTransactionId: String(r._id), pharmacyId: r.payerPharmacyId,
     amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'not_checked_with_gateway' }))];
@@ -154,8 +169,15 @@ async function cancelRates(now: Date) {
   return rows.map((r) => ({ bookerKind: r._id.kind as string, bookerId: r._id.id as string, bookings: r.bookings as number, cancelledByBooker: r.cancelled as number }));
 }
 
-export async function runReconciliation(now: Date = new Date()) {
-  const [wallets, bookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(), stuckMoney(now), cancelRates(now)]);
+/** Booking ids an earlier run flagged (reconciliation_mismatch alerts), re-checked until they reconcile. */
+async function flaggedBookingIds(): Promise<string[]> {
+  const rows = await AssistedAlertModel.find({ kind: 'reconciliation_mismatch' }).select({ detail: 1 }).sort({ at: -1 }).limit(1000).lean();
+  return [...new Set(rows.map((r) => String((r.detail as Row | undefined)?.ref ?? '')).filter((id) => /^[0-9a-fA-F]{24}$/.test(id)))];
+}
+
+export async function runReconciliation(now: Date = new Date(), opts: { full?: boolean } = {}) {
+  const scope = opts.full ? { since: null, flagged: [] } : { since: new Date(now.getTime() - 7 * DAY), flagged: await flaggedBookingIds() };
+  const [wallets, bookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(scope), stuckMoney(now), cancelRates(now)]);
   const pct = assistedLimits.cancelRateAlertPct();
   const min = assistedLimits.cancelRateAlertMin();
   const highCancelRates = rates.filter((r) => r.bookings >= min && r.cancelledByBooker * 100 >= pct * r.bookings);
@@ -166,7 +188,9 @@ export async function runReconciliation(now: Date = new Date()) {
     ok: mismatches.length === 0,
     checks: {
       wallets: { checked: wallets.checked, notMigrated: wallets.notMigrated },
-      bookings: { checked: bookings.checked },
+      bookings: { checked: bookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
+      // Chargebacks: wallets that owe Jansetu (a receivable) or show a negative balance.
+      walletsOwing: await walletsOwing(),
       mismatches,
       withdrawals: 'not built (phase 4)',
       razorpayAssisted: 'not built (phase 1b)',

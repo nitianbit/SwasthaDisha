@@ -32,4 +32,6 @@ adminAssistedRouter.get('/assisted/stuck-money', catchAsync(c.stuck));
 adminAssistedRouter.get('/assisted/alerts', catchAsync(c.alerts));
 adminAssistedRouter.get('/assisted/meet-guest-check/:id', validate(v.idParamSchema, 'params'), catchAsync(c.meetGuestCheck));
 adminAssistedRouter.get('/wallet-recharges/uncredited', catchAsync(c.uncredited));
+adminAssistedRouter.get('/pharmacies/:id/wallet/lots', validate(v.idParamSchema, 'params'), catchAsync(c.lots));
+adminAssistedRouter.post('/wallet-lots/:lotId/chargeback', validate(v.lotIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'), catchAsync(c.chargeback));
 adminAssistedRouter.put('/pharmacies/:id/wallet/freeze', validate(v.idParamSchema, 'params'), validate(v.freezeSchema, 'body'), catchAsync(c.freeze));

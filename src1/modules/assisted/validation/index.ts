@@ -75,3 +75,5 @@ export const dismissSchema = Joi.object({ reason: Joi.string().trim().max(500) }
 export const reviewQuerySchema = Joi.object({ state: Joi.string().valid('open', 'moved', 'dismissed'), limit: Joi.number().integer().min(1).max(200) });
 export const freezeSchema = Joi.object({ frozen: Joi.boolean().required(), reason: Joi.string().trim().min(1).max(500).required() });
 export const notMineSchema = Joi.object({ note: Joi.string().trim().max(500) });
+export const lotIdParamSchema = Joi.object({ lotId: objectId.required() });
+export const chargebackSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required() });
