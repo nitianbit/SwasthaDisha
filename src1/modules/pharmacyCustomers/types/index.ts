@@ -19,8 +19,11 @@ export interface IPharmacyCustomer {
   updatedAt?: Date;
 }
 
-/** 'patient_agreed': the partner ticked "patient agreed"; 'not_recorded': linked without that confirmation. */
-export type PharmacyCustomerConsent = 'patient_agreed' | 'not_recorded';
+/**
+ * 'patient_agreed': the partner ticked "patient agreed"; 'not_recorded': linked without that confirmation;
+ * 'customer_order': the customer placed an order with this pharmacy themselves.
+ */
+export type PharmacyCustomerConsent = 'patient_agreed' | 'not_recorded' | 'customer_order';
 
 export interface CreatePharmacyCustomerRequest {
   pharmacyId: string;

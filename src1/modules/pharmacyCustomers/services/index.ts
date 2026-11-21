@@ -164,12 +164,23 @@ export class PharmacyCustomerService {
     }
   }
 
+  /**
+   * S3: an order for a customer needs a link. A pharmacy orders only for a customer already linked to it (403
+   * CUSTOMER_NOT_LINKED otherwise; a link is made with the patient's consent through POST /pharmacy-customers). A
+   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order'. The user's
+   * linkedPharmacyId is never touched here.
+   */
   async ensureLinked(
     pharmacyId: string,
     userId: string,
     createdById: string,
     createdByRole = 'pharmacy'
   ): Promise<void> {
+    const linked = await this.pharmacyCustomerRepo.isLinked(pharmacyId, userId);
+    if (!linked && (createdByRole !== 'user' || String(userId) !== String(createdById))) {
+      throw new AppError({ status: 403, code: 'CUSTOMER_NOT_LINKED', message: 'This customer is not linked to your pharmacy' });
+    }
+
     const user = await this.userRepo.findById(userId);
     if (!user || user.userType !== 'user') {
       throw new AppError({
@@ -179,15 +190,13 @@ export class PharmacyCustomerService {
       });
     }
 
-    const linked = await this.pharmacyCustomerRepo.isLinked(pharmacyId, userId);
     if (!linked) {
       await this.pharmacyCustomerRepo.save({
         pharmacyId,
         userId,
         createdById,
         createdByRole,
-        // S3: linked by an order, without the patient's confirmation.
-        consent: 'not_recorded',
+        consent: 'customer_order',
         consentRecordedAt: new Date(),
         consentRecordedById: createdById,
       });

@@ -43,6 +43,11 @@ import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
 import { PharmacySubscriptionRepository } from '@/modules/pharmacySubscriptions/repository';
 import { OrderHealthCheckRepository } from '@/modules/orderHealthChecks/repository';
 import { PatientTrackingService } from '@/modules/patientTracking/services';
+import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
+import { PrescriptionRefundService } from '@/modules/pharmacyOrders/prescriptionRefund';
+import PharmacyCartModel from '@/modules/pharmacyCart/model';
+import { PharmacyCartRepository } from '@/modules/pharmacyCart/repository';
+import { PharmacyCartService } from '@/modules/pharmacyCart/services';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/s3_pharmacy_scope_check?directConnection=true';
@@ -107,6 +112,30 @@ async function main() {
     customerService: pharmacyCustomerService, orderRepo: new PharmacyOrderRepository(),
     subscriptionRepo: new PharmacySubscriptionRepository(), orderHealthCheckRepo: new OrderHealthCheckRepository(),
   }));
+  // Pharmacy orders: real order and cart services with the real PharmacyCustomerService; stock, catalogue and payment
+  // are fakes (in-store orders take no online payment; a customer's checkout is cash on delivery).
+  const MED = oid();
+  const inventory = {
+    getInventoryByMedicine: async () => ({ retailPrice: 50, wholesalePrice: 40 }),
+    reserveOrderStockBulk: async (_p: string, items: { medicineId: string }[]) => new Map(items.map((i) => [String(i.medicineId), []])),
+    returnStockBulk: async () => [], releaseOrderStockBulk: async () => undefined, consumeOrderReservedStockBulk: async () => undefined,
+  };
+  const medicines = {
+    findById: async () => ({ _id: MED, name: 'Vitamin D', isActive: true, prescriptionRequired: false, gstPercent: 0 }),
+    findAll: async () => [{ _id: MED, name: 'Vitamin D', isActive: true, prescriptionRequired: false }],
+  };
+  const sideEffects = { queueNotification: async () => undefined, queueSubscriptionSync: async () => undefined };
+  const refunds = new PrescriptionRefundService({ listRefunds: async () => [], fetchRefund: async () => { throw new Error('x'); },
+    refund: async () => { throw new Error('x'); } } as never, new WalletRepository());
+  const orderService = new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
+    new PharmacyOrderRepository(), pharmacyCustomerService, inventory, payments, new BookingRepository(), {}, sideEffects, medicines, refunds);
+  Container.set(PharmacyOrderService, orderService);
+  const cartService = new (PharmacyCartService as unknown as new (...a: unknown[]) => PharmacyCartService)(
+    new PharmacyCartRepository(), inventory, {}, medicines, orderService);
+  Object.assign(cartService as unknown as Record<string, unknown>, { ensureTargetPharmacyAccessible: async () => undefined,
+    buildCartItem: async (_role: string, _p: string, medicineId: string, quantity: number) =>
+      ({ medicineId, medicineName: 'Vitamin D', quantity, unitPrice: 50, lineTotal: 50 * quantity, prescriptionRequired: false }) });
+  const { default: pharmacyOrderRouter } = await import('@/modules/pharmacyOrders/routes');
   const { default: bookingRouter } = await import('@/modules/bookings/routes');
   const { default: pharmacyCustomerRouter } = await import('@/modules/pharmacyCustomers/routes');
   const { default: patientTrackingRouter } = await import('@/modules/patientTracking/routes');
@@ -116,6 +145,7 @@ async function main() {
   app.use('/api/v1/bookings', authenticate, bookingRouter);
   app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
   app.use('/api/v1/patient-tracking', authenticate, patientTrackingRouter);
+  app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/v1`;
@@ -379,6 +409,45 @@ async function main() {
       const ok = await expect('pharmV', 'POST', '/bookings/specialist', 201, { ...(await consult()), userId: V });
       assert.equal(ok.json.data.booking.pharmacyId, pharmV);
       assert.equal(await balance(V), 500);
+    });
+    await check('order: a pharmacy orders only for a customer already linked to it (no silent link)', async () => {
+      const inStore = (customerId: string) => ({ orderType: 'in_store', customerId, items: [{ medicineId: MED, orderedQty: 1 }],
+        paymentMode: 'in_store_payment', deliveryMode: 'pickup', isWalkIn: false });
+      const before = await PharmacyCustomerModel.countDocuments();
+      const ordersBefore = await PharmacyOrderModel.countDocuments();
+      // pharmW is not linked to L; Y is linked to pharmV only (above), not to pharmW.
+      for (const u of [L, Y, oid()]) await expect('pharmW', 'POST', '/pharmacy-orders', 403, inStore(u), 'CUSTOMER_NOT_LINKED');
+      assert.equal(await PharmacyCustomerModel.countDocuments(), before, 'no link created');
+      assert.equal(await PharmacyOrderModel.countDocuments(), ordersBefore, 'no order created');
+      assert.equal(await PharmacyCustomerModel.exists({ pharmacyId: pharmW, userId: L }), null);
+      // Its own linked customer (the released app's flow: link through POST /pharmacy-customers, then order): works.
+      const ok = await expect('pharmV', 'POST', '/pharmacy-orders', 201, inStore(L));
+      const orderId = String(ok.json.data.order._id);
+      assert.equal(String(ok.json.data.order.customerId), L);
+      // Moving an order to a customer not linked to it: refused, order unchanged; to a linked customer: works.
+      await expect('pharmV', 'PUT', '/pharmacy-orders/' + orderId, 403, { customerId: oid() }, 'CUSTOMER_NOT_LINKED');
+      const notLinkedToV = (await UserModel.create({ phone: '9600000077', userType: 'user', isActive: true }))._id.toHexString();
+      await expect('pharmV', 'PUT', '/pharmacy-orders/' + orderId, 403, { customerId: notLinkedToV }, 'CUSTOMER_NOT_LINKED');
+      assert.equal(String((await PharmacyOrderModel.findById(orderId).lean())?.customerId), L);
+      assert.equal(await PharmacyCustomerModel.exists({ pharmacyId: pharmV, userId: notLinkedToV }), null);
+      const moved = await expect('pharmV', 'PUT', '/pharmacy-orders/' + orderId, 200, { customerId: Y });
+      assert.equal(String(moved.json.data.customerId), Y);
+    });
+
+    await check("order: a customer's own order links the pharmacy they chose (consent 'customer_order')", async () => {
+      // Y is not linked to pharmW; Y checks out a cart from pharmW.
+      assert.equal(await PharmacyCustomerModel.exists({ pharmacyId: pharmW, userId: Y }), null);
+      await PharmacyCartModel.create({ actorId: Y, actorRole: 'user', pharmacyId: pharmW,
+        items: [{ medicineId: MED, medicineName: 'Vitamin D', quantity: 1, unitPrice: 50, lineTotal: 50, prescriptionRequired: false }], subtotal: 50 });
+      const r = await cartService.checkout({ _id: Y, userType: 'user' }, { paymentMode: 'cash_on_delivery', deliveryMode: 'pickup' } as never) as
+        { order: { customerId: unknown; pharmacyId: unknown } };
+      assert.equal(String(r.order.customerId), Y); assert.equal(String(r.order.pharmacyId), pharmW);
+      const link = await PharmacyCustomerModel.findOne({ pharmacyId: pharmW, userId: Y }).lean();
+      assert.equal(link?.consent, 'customer_order'); assert.equal(link?.consentRecordedById, Y);
+      assert.equal((await UserModel.findById(Y).lean())?.linkedPharmacyId, undefined, 'linkedPharmacyId untouched');
+      // From then on pharmW may order for Y.
+      await expect('pharmW', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: Y,
+        items: [{ medicineId: MED, orderedQty: 1 }], paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
     });
   } finally {
     server.close();

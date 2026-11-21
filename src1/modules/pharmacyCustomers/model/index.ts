@@ -27,7 +27,7 @@ const pharmacyCustomerSchema = new Schema<IPharmacyCustomer>(
     createdByRole: { type: String, trim: true },
     createdById: { type: Schema.Types.ObjectId as any, ref: 'User' },
     // S3: the patient's agreement to the link (who recorded it and when). Links made before S3 have none.
-    consent: { type: String, enum: ['patient_agreed', 'not_recorded'] },
+    consent: { type: String, enum: ['patient_agreed', 'not_recorded', 'customer_order'] },
     consentRecordedAt: { type: Date },
     consentRecordedById: { type: String },
   },
