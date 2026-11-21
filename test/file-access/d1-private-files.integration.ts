@@ -147,11 +147,13 @@ async function main() {
       pharmacyId: new Types.ObjectId(pharmacy._id), corporateId: new Types.ObjectId((hr.claims as { corporateId: string }).corporateId),
       status: 'confirmed', paymentStatus: 'paid' } as never);
 
-    await check('a server-written prescription is read by the booking’s customer, specialist, pharmacy and HR only', async () => {
+    // Assisted booking phase 0 (§9.2): the booking pharmacy no longer reads the full prescription PDF (only its dispensing
+    // copy, test/assisted/phase0.integration.ts).
+    await check('a server-written prescription is read by the booking’s customer, specialist and HR only (not its pharmacy)', async () => {
       const rel = `bookings/${bookingId.toHexString()}/prescription-1700000000000.pdf`;
       put(rel, 'rx');
-      for (const who of [a, spec, pharmacy, hr, admin]) assert.equal((await get('/api/static/' + rel, who.token)).status, 200);
-      for (const who of [b, otherSpec, otherPharmacy, otherHr]) assert.equal((await get('/api/static/' + rel, who.token)).status, 404);
+      for (const who of [a, spec, hr, admin]) assert.equal((await get('/api/static/' + rel, who.token)).status, 200);
+      for (const who of [b, otherSpec, pharmacy, otherPharmacy, otherHr]) assert.equal((await get('/api/static/' + rel, who.token)).status, 404);
       // Only the exact server pattern: another file in that folder is admin-only.
       put(`bookings/${bookingId.toHexString()}/notes.pdf`);
       assert.equal((await get(`/api/static/bookings/${bookingId.toHexString()}/notes.pdf`, a.token)).status, 404);

@@ -7,6 +7,8 @@ import ExternalBookingModel from '@/modules/externalBookings/model';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import PartnerMemberModel from '@/modules/partners/model/member';
 import PartnerOrgModel from '@/modules/partners/model';
+import PharmacyModel from '@/modules/pharmacies/model';
+import { rxWindowOpenFor } from '@/modules/assisted/rxAccess';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 
 /**
@@ -26,22 +28,74 @@ const pharmacyOf = (r: Reader) => id(r.pharmacyId ?? r._id);
 
 /** Exact server-written folders (never client uploads: those modules are reserved). */
 const BOOKING_PRESCRIPTION = /^bookings\/([0-9a-f]{24})\/prescription-\d+\.pdf$/;
+/** Assisted booking phase 0 (D15): the server-made dispensing copy of a prescription (no diagnosis). */
+const BOOKING_RX_DISPENSE = /^bookings\/([0-9a-f]{24})\/rx-dispense-\d+\.pdf$/;
 const LAB_REPORT = /^external-bookings\/([0-9a-f]{24})\/diagnostics-report-[A-Za-z0-9_-]+\.pdf$/;
 export const RESERVED_UPLOAD_MODULES = new Set(['bookings', 'external-bookings', 'payouts', 'partner-lab-reports']);
 /** Q3: partner lab report files are readable only through their report bindings (never the uploader shortcut). */
 const PARTNER_LAB_REPORT = /^partner-lab-reports\//;
 
+/**
+ * A booking's files (full prescription PDF, documents, report): the patient, the booking's doctor and HR of its corporate.
+ * Assisted booking phase 0 (§9.2): the pharmacy that booked it no longer reads them — it reads only the dispensing copy
+ * (canReadDispensingCopy), never the full PDF, the documents or the report. (Files a pharmacy uploaded itself stay
+ * readable to it through the uploader rule.)
+ */
 async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
   if (!isValidObjectId(bookingId)) return false;
-  const b = await BookingModel.findById(bookingId).select({ userId: 1, specialistId: 1, pharmacyId: 1, corporateId: 1 }).lean();
+  const b = await BookingModel.findById(bookingId).select({ userId: 1, specialistId: 1, corporateId: 1 }).lean();
   if (!b) return false;
   switch (r.userType) {
     case 'user': return id(b.userId) === id(r._id);
     case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r);
-    case 'pharmacy': return !!b.pharmacyId && id(b.pharmacyId) === pharmacyOf(r);
     case 'hr': return !!r.corporateId && !!b.corporateId && id(b.corporateId) === id(r.corporateId);
     default: return false;
   }
+}
+
+/** The pharmacy's current authority (as requireOperationalPharmacy): active, verified, not archived. */
+async function pharmacyOperational(pharmacyId: string): Promise<boolean> {
+  if (!isValidObjectId(pharmacyId)) return false;
+  const p = await PharmacyModel.findById(pharmacyId).select({ isActive: 1, isVerified: 1, archivedAt: 1 }).lean();
+  return !!p && !p.archivedAt && p.isActive !== false && !!p.isVerified;
+}
+
+/**
+ * Assisted booking phase 0 (§17.2, D15, overnight H): the dispensing copy is read by the patient and the booking's
+ * doctor, and by the booking pharmacy while it is operational, only the copy the booking currently holds, and only
+ * within 90 days of the consultation's end (legacy pharmacy bookings included). After that the pharmacy keeps it only
+ * through a medicine order it dispensed (the order's binding, N12).
+ */
+async function canReadDispensingCopy(r: Reader, bookingId: string, rel: string): Promise<boolean> {
+  if (!isValidObjectId(bookingId)) return false;
+  const b = await BookingModel.findById(bookingId).select({ userId: 1, specialistId: 1, pharmacyId: 1, slotId: 1, bookingDate: 1,
+    bookingTime: 1, lifecycle: 1, instantExtensions: 1, 'prescription.dispensingCopy': 1 }).lean() as Record<string, any> | null;
+  if (!b) return false;
+  switch (r.userType) {
+    case 'user': return id(b.userId) === id(r._id);
+    case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r);
+    case 'pharmacy': {
+      if (!b.pharmacyId || id(b.pharmacyId) !== pharmacyOf(r)) return false;
+      if (uploadPathOf(b.prescription?.dispensingCopy?.url) !== rel) return false;
+      if (!(await pharmacyOperational(pharmacyOf(r)))) return false;
+      return (await rxWindowOpenFor(b)).open;
+    }
+    default: return false;
+  }
+}
+
+/** Order statuses that count as dispensed (N12): the medicines were packed or handed over. */
+export const DISPENSED_ORDER_STATUSES = ['packed', 'ready_for_pickup', 'out_for_delivery', 'completed'];
+
+/**
+ * A server binding with an expiry (assisted booking phase 0, N12): in force until `expiresAt`; after it, only when it
+ * is kept by its order having been dispensed. Bindings without an expiry are unchanged.
+ */
+async function grantInForce(g: { expiresAt?: Date | null; keepIfDispensed?: boolean; model: string; resourceId: string }): Promise<boolean> {
+  if (!g.expiresAt || Date.now() < new Date(g.expiresAt).getTime()) return true;
+  if (!g.keepIfDispensed || g.model !== 'PharmacyOrder' || !isValidObjectId(g.resourceId)) return false;
+  const o = await PharmacyOrderModel.findById(g.resourceId).select({ status: 1 }).lean();
+  return !!o && DISPENSED_ORDER_STATUSES.includes(String(o.status));
 }
 
 async function canReadPharmacyOrder(r: Reader, orderId: string): Promise<boolean> {
@@ -125,7 +179,7 @@ async function bindingIsCurrent(g: { path: string; model: string; resourceId: st
 }
 
 type Key = { path: string; model: string; resourceId: string; field: string };
-type Binding = Key & { _id: unknown; kind: GrantKind; state: 'active' | 'revoked'; gen: number };
+type Binding = Key & { _id: unknown; kind: GrantKind; state: 'active' | 'revoked'; gen: number; expiresAt?: Date | null; keepIfDispensed?: boolean };
 const keyOf = (g: Key): Key => ({ path: g.path, model: g.model, resourceId: g.resourceId, field: g.field });
 const isDuplicate = (e: unknown) => (e as { code?: number })?.code === 11000;
 
@@ -254,11 +308,13 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
     if (rx && await canReadBooking(reader, rx[1]!)) return ok;
+    const copy = BOOKING_RX_DISPENSE.exec(rel);
+    if (copy && await canReadDispensingCopy(reader, copy[1]!, rel)) return ok;
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }
   if (await firstMatch(FileGrantModel.find({ path: rel, kind: { $ne: 'public' }, state: 'active' }).lean().cursor() as never,
-    async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await currentOrWithdraw(g))) return ok;
+    async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await grantInForce(g) && await currentOrWithdraw(g))) return ok;
   return { allow: false, status: 404 };
 }
 
@@ -340,6 +396,34 @@ export async function grantFiles(actor: Reader | undefined, paths: string[], kin
     const current = await FileGrantModel.findOne(k).select({ gen: 1, state: 1 }).lean();
     if (current?.state === 'active') continue;
     await activate(actor, k, kind, current ? Number(current.gen) : 0, source);
+  }
+}
+
+/**
+ * Assisted booking phase 0 (§9.3): binds a SERVER-made file (no uploader: the dispensing copy) to one field of a record
+ * the server itself just wrote, with an expiry (N12: `keepIfDispensed` keeps it after the expiry while the order is
+ * dispensed). Never called with a client-supplied value; the uploader rule for client values is unchanged. Idempotent:
+ * an existing active binding is kept as it is.
+ */
+export async function bindServerFile(path: string, kind: GrantKind, binding: { model: string; resourceId: unknown; field: string },
+  terms: { expiresAt: Date; keepIfDispensed: boolean }): Promise<void> {
+  const rid = canon(binding.resourceId);
+  if (!rid || !mongoose.models[binding.model] || !binding.field || !path) {
+    throw new AppError({ status: 500, code: 'FILE_GRANT_INVALID', message: 'File grant needs a record and field' });
+  }
+  const k = { path, model: binding.model, resourceId: rid, field: binding.field };
+  const current = await FileGrantModel.findOne(k).select({ gen: 1, state: 1 }).lean();
+  if (current?.state === 'active') return;
+  try {
+    if (!current) {
+      await FileGrantModel.updateOne(k, { $setOnInsert: { ...k, kind, source: 'server', state: 'active', gen: 1, expiresAt: terms.expiresAt,
+        keepIfDispensed: terms.keepIfDispensed, createdByType: 'system', createdById: 'server', createdAt: new Date() } }, { upsert: true });
+    } else {
+      await FileGrantModel.updateOne({ ...k, gen: current.gen }, { $set: { state: 'active', expiresAt: terms.expiresAt,
+        keepIfDispensed: terms.keepIfDispensed }, $inc: { gen: 1 } });
+    }
+  } catch (e) {
+    if (!isDuplicate(e)) throw e;
   }
 }
 

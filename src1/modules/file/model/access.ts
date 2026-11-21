@@ -25,13 +25,18 @@ export interface FileGrant {
   resourceId: string;
   /** Dotted field path inside the record, e.g. 'documents.url', 'profilePictureUrl'. */
   field: string;
-  source: 'attach' | 'legacy_manifest';
+  /** 'server': a server-made file bound by the server (assisted booking phase 0: the dispensing copy on an order). */
+  source: 'attach' | 'legacy_manifest' | 'server';
   /**
    * 'revoked' is a tombstone: a withdrawal never deletes the slot. Every change bumps `gen`, and a grant applies only at
    * the generation seen when its authority was checked, so a delayed grant cannot revive a withdrawn binding.
    */
   state: 'active' | 'revoked';
   gen: number;
+  /** Assisted booking phase 0 (N12): the binding stops counting at this time … */
+  expiresAt?: Date;
+  /** … unless its pharmacy order was dispensed (packed or later). */
+  keepIfDispensed?: boolean;
   createdByType: string;
   createdById: string;
   createdAt: Date;
@@ -53,9 +58,11 @@ const grantSchema = new Schema<FileGrant>({
   model: { type: String, required: true, immutable: true },
   resourceId: { type: String, required: true, immutable: true },
   field: { type: String, required: true, immutable: true },
-  source: { type: String, enum: ['attach', 'legacy_manifest'], required: true, immutable: true },
+  source: { type: String, enum: ['attach', 'legacy_manifest', 'server'], required: true, immutable: true },
   state: { type: String, enum: ['active', 'revoked'], required: true },
   gen: { type: Number, required: true, min: 1 },
+  expiresAt: { type: Date },
+  keepIfDispensed: { type: Boolean },
   createdByType: { type: String, required: true, immutable: true },
   createdById: { type: String, required: true, immutable: true },
   createdAt: { type: Date, required: true, immutable: true },

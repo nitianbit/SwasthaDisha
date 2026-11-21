@@ -23,12 +23,9 @@ import {
   ISpecialist,
   UpdateSpecialistRequest,
 } from '@/modules/specialists/types';
-import { CONFIG } from '@/config/config';
-import { execFile } from 'child_process';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { promisify } from 'util';
+import { ageFromDob, escapeHtml, formatDisplayDate, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import logger from '@/services/logger';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
 
 export interface SpecialistAppointmentQuery {
@@ -63,8 +60,6 @@ export class SpecialistPortalService {
     private specialistService: SpecialistService,
     private notificationService: NotificationService
   ) {}
-
-  private readonly execFileAsync = promisify(execFile);
 
   private buildLifecyclePatch(
     current: IBooking['lifecycle'],
@@ -393,6 +388,17 @@ export class SpecialistPortalService {
       });
     }
 
+    // Assisted booking phase 0 (D15): a booking a pharmacy made gets its dispensing copy (no diagnosis) next to the full
+    // PDF. Best effort: the prescription is saved either way, and a missing copy is made on the booker's first read.
+    if (updated.pharmacyId) {
+      try {
+        await ensureDispensingCopy(updated as never);
+      } catch (error) {
+        logger.warn('Dispensing copy not made at prescription save', { bookingId: String(updated._id),
+          error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
     return updated;
   }
 
@@ -478,27 +484,9 @@ export class SpecialistPortalService {
     testsAdvised: string[];
     advice: string;
   }): Promise<string> {
-    const uploadDir =
-      CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files');
     const bookingId = String(input.booking._id);
-    const bookingDir = path.join(uploadDir, 'bookings', bookingId);
-    fs.mkdirSync(bookingDir, { recursive: true });
-
-    const timestamp = Date.now();
-    const htmlPath = path.join(
-      os.tmpdir(),
-      `prescription-${bookingId}-${timestamp}.html`
-    );
-    const pdfFileName = `prescription-${timestamp}.pdf`;
-    const pdfPath = path.join(bookingDir, pdfFileName);
-
     try {
-      fs.writeFileSync(htmlPath, this.buildPrescriptionHtml(input), 'utf8');
-      await this.execFileAsync(
-        process.env.WKHTMLTOPDF_BINARY || 'wkhtmltopdf',
-        [htmlPath, pdfPath]
-      );
-      return `/api/static/bookings/${bookingId}/${pdfFileName}`;
+      return await writeBookingPdf(bookingId, `prescription-${Date.now()}.pdf`, this.buildPrescriptionHtml(input));
     } catch (error: any) {
       throw new AppError({
         status: 500,
@@ -507,12 +495,6 @@ export class SpecialistPortalService {
           error?.message ||
           'Failed to generate prescription PDF',
       });
-    } finally {
-      try {
-        fs.unlinkSync(htmlPath);
-      } catch (_error) {
-        // Ignore temp cleanup errors.
-      }
     }
   }
 
@@ -657,57 +639,14 @@ export class SpecialistPortalService {
   }
 
   private formatDisplayDate(date: string): string {
-    if (!date || date.length !== 8) {
-      return date || 'N/A';
-    }
-
-    const year = Number(date.slice(0, 4));
-    const month = Number(date.slice(4, 6));
-    const day = Number(date.slice(6, 8));
-    const value = new Date(year, month - 1, day);
-    if (Number.isNaN(value.getTime())) {
-      return date;
-    }
-
-    return value.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatDisplayDate(date);
   }
 
   private calculateAge(dateOfBirth?: string): number | null {
-    if (!dateOfBirth || dateOfBirth.length !== 8) {
-      return null;
-    }
-
-    const year = Number(dateOfBirth.slice(0, 4));
-    const month = Number(dateOfBirth.slice(4, 6));
-    const day = Number(dateOfBirth.slice(6, 8));
-    const dob = new Date(year, month - 1, day);
-    if (Number.isNaN(dob.getTime())) {
-      return null;
-    }
-
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < dob.getDate())
-    ) {
-      age -= 1;
-    }
-
-    return age;
+    return ageFromDob(dateOfBirth);
   }
 
   private escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    return escapeHtml(value);
   }
 }

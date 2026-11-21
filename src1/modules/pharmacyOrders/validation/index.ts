@@ -41,6 +41,9 @@ export const createOrderSchema = Joi.object({
   notes: Joi.string().trim().max(1000).optional(),
   linkedConsultationId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional(),
   linkedDiagnosticOrderId: Joi.string().trim().optional(),
+  // Assisted booking phase 0 (§9.3): an order from the prescription of a booking this pharmacy made (keyed).
+  prescriptionFromBookingId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional(),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).optional(),
 }).custom((value, helpers) => {
   if (value.deliveryMode === 'delivery' && !value.deliveryAddress?.trim()) {
     return helpers.error('any.invalid');

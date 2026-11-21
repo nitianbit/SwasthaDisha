@@ -120,6 +120,12 @@ const prescriptionSchema = new Schema<IBookingPrescription>(
       type: String,
       trim: true,
     },
+    // Assisted booking phase 0 (D15): the server-made dispensing copy (no diagnosis) and the prescription content it shows.
+    dispensingCopy: {
+      type: new Schema({ url: { type: String, required: true }, hash: { type: String, required: true }, at: { type: Date, required: true } },
+        { _id: false }),
+      default: undefined,
+    },
   },
   { _id: false }
 );
@@ -542,6 +548,8 @@ bookingSchema.index({ userId: 1, createRequestKey: 1 }, { unique: true, partialF
 bookingSchema.index({ userId: 1, bookingDate: 1 });
 bookingSchema.index({ pharmacyId: 1, status: 1 });
 bookingSchema.index({ pharmacyId: 1, bookingDate: 1 });
+// Assisted booking phase 0: the booking pharmacy's list, newest first (cursor <createdAt ms>_<id>).
+bookingSchema.index({ pharmacyId: 1, createdAt: -1, _id: -1 });
 bookingSchema.index({ corporateId: 1, status: 1 });
 bookingSchema.index({ corporateId: 1, bookingDate: 1 });
 bookingSchema.index({ bookingType: 1, status: 1 });

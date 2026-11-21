@@ -18,7 +18,9 @@ import { rebindStored } from '@/modules/file/access';
  * was reloaded before it learnt the outcome of a request can only make a NEW request after the old key is either found
  * (it was performed) or abandoned here (it can never be performed). No time-based guess is involved.
  */
-export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout' | 'lab_booking_create' | 'instant_request_create';
+export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout' | 'lab_booking_create' | 'instant_request_create'
+  /** Assisted booking phase 0: a pharmacy's medicine order from a booking's prescription (pharmacy-owned). */
+  | 'pharmacy_rx_order';
 
 /**
  * Inside the operation's transaction: refuses a key that was abandoned, and claims it as used. The claim is written in
@@ -53,7 +55,8 @@ const KEY = /^[A-Za-z0-9_-]{8,64}$/;
 export const requestKeyRouter = Router();
 /** Q9: the record a used key produced, in the caller's scope (exact key). */
 async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
-  return kind === 'customer_return' ? CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+  return kind === 'pharmacy_rx_order' ? rxOrderFor(owner, key)
+    : kind === 'customer_return' ? CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'supplier_return' ? SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'pharmacy_checkout'
       ? PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
@@ -64,7 +67,12 @@ async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
     : BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
 }
 
-const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
+const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create',
+  'pharmacy_rx_order'];
+const rxOrderFor = (pharmacyId: string, key: string) => (/^[0-9a-fA-F]{24}$/.test(pharmacyId)
+  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'prescriptionFromBooking.requestKey': { $eq: key } })
+    .select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+  : Promise.resolve(null));
 const CUSTOMER_KINDS: OnceOnlyKind[] = ['booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
 
 async function ownerFor(req: AuthRequest, kind: OnceOnlyKind): Promise<string> {
@@ -97,7 +105,7 @@ requestKeyRouter.get('/lookup', catchAsync(async (req: AuthRequest, res: Respons
 requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Response) => {
   const kind = req.body?.kind as OnceOnlyKind;
   const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-  if (!KEY.test(key) || !['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'].includes(kind)) {
+  if (!KEY.test(key) || !ALL_KINDS.includes(kind)) {
     throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'kind and key are required' });
   }
   const user = req.user;
@@ -114,7 +122,8 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
   if (state === 'abandoned') { res.status(200).json({ success: true, data: { state } }); return; }
   // Used: the record was written in the same transaction as the claim, so it exists; return it (exact key, caller's
   // scope) so the client can always resolve the request, however far back it is in any list.
-  const record = kind === 'customer_return' ? await CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+  const record = kind === 'pharmacy_rx_order' ? await rxOrderFor(owner, key)
+    : kind === 'customer_return' ? await CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'supplier_return' ? await SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'pharmacy_checkout'
       ? await PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()

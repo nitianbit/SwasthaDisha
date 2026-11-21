@@ -41,6 +41,7 @@ import pharmacyMedicineRouter from '@/modules/pharmacyMedicines/routes';
 import pharmacyInventoryRouter from '@/modules/pharmacyInventory/routes';
 import pharmacyCustomerRouter from '@/modules/pharmacyCustomers/routes';
 import pharmacyOrderRouter from '@/modules/pharmacyOrders/routes';
+import pharmacyBookingRouter from '@/modules/assisted/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
 import pharmacyInventoryImportRouter from '@/modules/pharmacyInventoryImports/routes';
@@ -110,6 +111,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/pharmacy-cart', authenticate, denyRoles('partner'), pharmacyCartRouter);
   app.use('/api/v1/pharmacy-customers', authenticate, denyRoles('partner'), pharmacyCustomerRouter);
   app.use('/api/v1/pharmacy-orders', authenticate, denyRoles('partner'), pharmacyOrderRouter);
+  // Assisted booking phase 0: the consultations a pharmacy booked, in the booker view (prescription without diagnosis).
+  app.use('/api/v1/pharmacy-bookings', authenticate, denyRoles('partner'), pharmacyBookingRouter);
   app.use('/api/v1/pharmacy-suppliers', authenticate, denyRoles('partner'), pharmacySupplierRouter);
   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, denyRoles('partner'), orderHealthCheckRouter);
   app.use('/api/v1/pharmacy-wallet', authenticate, denyRoles('partner'), pharmacyWalletRouter);
