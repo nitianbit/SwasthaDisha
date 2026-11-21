@@ -342,4 +342,6 @@ settlementAdminRouter.post('/accounts/:accountId/adjustments', acc, validate(fin
 settlementAdminRouter.get('/payouts', validate(finV.payoutsQuerySchema, 'query'), catchAsync(fin.adminPayouts));
 // Q16a: past paid ledger consultations never marked completed or no-show (so never paid to the doctor).
 settlementAdminRouter.get('/unmarked-consultations', validate(finV.unmarkedConsultationsQuerySchema, 'query'), catchAsync(fin.adminUnmarkedConsultations));
+// Q16a: legacy payout months a moved no-show flagged for recalculation (ids only).
+settlementAdminRouter.get('/legacy-recalculations', validate(finV.pageQuerySchema, 'query'), catchAsync(fin.adminLegacyRecalculations));
 settlementAdminRouter.post('/payouts/:payoutId/void', validate(finV.payoutIdParamSchema, 'params'), validate(finV.voidPayoutSchema, 'body'), catchAsync(fin.adminVoidPayout));

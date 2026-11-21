@@ -73,7 +73,9 @@ import { parseSettlementCutover, checkSettlementCutoverConfig, settlementSystemF
 import { LabBookingService } from '@/modules/partners/services/labBookings';
 import { saveSlotTemplate, istDate, addDays } from '@/modules/partners/services/slots';
 import * as clinic from '@/modules/partners/services/clinic';
-import { adminUnmarkedConsultations } from '@/modules/partners/services/finance';
+import { adminUnmarkedConsultations, adminLegacyRecalculations } from '@/modules/partners/services/finance';
+import { runDoctorIdCaseAudit } from '@/scripts/q16aDoctorIdCaseAudit';
+import { SpecialistRepository } from '@/modules/specialists/repository';
 import { PayoutService } from '@/modules/payouts/services';
 import { PayoutBillingModel, PayoutDisbursalModel } from '@/modules/payouts/model';
 import { runSettlementCutover } from '@/scripts/q3SettlementCutover';
@@ -221,7 +223,7 @@ async function main() {
     assert.equal(moved.status, 'confirmed');
   });
 
-  await check('owner rule: a customer refund is judged against the EARLIER of the original and the current appointment (a reschedule never reopens a closed window)', async () => {
+  await check('refund rule: a move made AFTER the refund deadline keeps that closed window; a move made while it was open is judged on the current time', async () => {
     // Inside the no-refund window (10 h away): the move is allowed, the booking stays non-refundable afterwards.
     const u = await customer();
     const soon = new Date(Date.now() + 10 * 3_600_000);
@@ -230,7 +232,9 @@ async function main() {
     await BookingModel.updateOne({ _id: id }, { $set: { walletFunding: { total: 400, revision: 1, closed: false, captures: [] } } });
     const moved = await bookings.rescheduleBooking(id, { slotId: await slotAt(drM, new Date(Date.now() + 6 * DAY)) }, { _id: u.id, userType: 'user' });
     assert.deepEqual(moved.originalAppointment, { bookingDate: before!.bookingDate, bookingTime: before!.bookingTime });
-    await assert.rejects(() => bookings.cancelBooking(id, { cancellationReason: 'x' }, { _id: u.id, userType: 'user' }), code('CANCELLATION_WINDOW_CLOSED'));
+    assert.deepEqual([moved.refundLock?.bookingDate, moved.refundLock?.bookingTime], [before!.bookingDate, before!.bookingTime], 'moved after the deadline: locked');
+    await assert.rejects(() => bookings.cancelBooking(id, { cancellationReason: 'x' }, { _id: u.id, userType: 'user' }),
+      (e: any) => { code('CANCELLATION_WINDOW_CLOSED')(e); assert.match(e.message, /rescheduled after its cancellation window/); return true; });
     // A second move keeps the first original time.
     const again = await bookings.rescheduleBooking(id, { slotId: await slotAt(drM, new Date(Date.now() + 7 * DAY)) }, { _id: u.id, userType: 'user' });
     assert.deepEqual(again.originalAppointment, moved.originalAppointment);
@@ -242,13 +246,66 @@ async function main() {
     const u2 = await customer();
     const id2 = await paidBooking(u2.id, drM, {}, new Date(Date.now() + 5 * DAY));
     await BookingModel.updateOne({ _id: id2 }, { $set: { walletFunding: { total: 400, revision: 1, closed: false, captures: [] } } });
-    await bookings.rescheduleBooking(id2, { slotId: await slotAt(drM, new Date(Date.now() + 6 * DAY + 3_600_000)) }, { _id: u2.id, userType: 'user' });
+    const open = await bookings.rescheduleBooking(id2, { slotId: await slotAt(drM, new Date(Date.now() + 6 * DAY + 3_600_000)) }, { _id: u2.id, userType: 'user' });
+    assert.equal(open.refundLock, undefined, 'moved while the window was open: nothing locked');
+    // Later the ORIGINAL time's deadline passes (simulated on the stored history): the booking is still judged on its
+    // current time alone, so the refund stays available.
+    await BookingModel.updateOne({ _id: id2 }, { $set: { originalAppointment: { bookingDate: ymd(today), bookingTime: '00:01' } } });
     await bookings.cancelBooking(id2, { cancellationReason: 'x' }, { _id: u2.id, userType: 'user' });
     assert.equal(await balance(u2.id), 400);
     // An admin move does not record an original time.
     const id3 = await paidBooking(u2.id, drM);
     const admMoved = await bookings.rescheduleBooking(id3, { slotId: await slotAt(drM, futureStart()) }, { _id: ADMIN, userType: 'admin' });
     assert.equal(admMoved.originalAppointment, undefined);
+  });
+
+  await check('re-review A: a coupon taken at pay-again becomes the booking price (wallet-covered and gateway capture), so the earning follows it', async () => {
+    await CouponModel.create({ code: 'RETRY100', discountType: 'fixed', discountValue: 100, applicableTo: 'all', eligibleFor: 'all',
+      startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as any);
+    const payStub = {
+      reconcileBookingPayments: async () => ({ checked: 0, unknown: 0 }), resumableOrder: async () => null,
+      createOrder: async (d: any) => {
+        const rec = await PaymentRecordModel.create({ userId: d.userId, context: 'booking', contextId: d.contextId, baseAmount: d.baseAmount, discountAmount: d.discountAmount,
+          finalAmount: d.finalAmount, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'ord_' + new Types.ObjectId().toHexString(), status: 'created',
+          couponCode: d.couponCode, notes: d.notes });
+        return { paymentRecord: rec.toObject(), razorpayOrder: { id: rec.razorpayOrderId, currency: 'INR' }, razorpayKeyId: 'k' };
+      },
+      createDirectPaidBookingRecordIn: (d: any, s: any, id: any) => (payments as any).createDirectPaidBookingRecordIn(d, s, id),
+    };
+    const retrySvc = Object.assign(Object.create(BookingService.prototype), {
+      bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
+      paymentService: payStub, couponService: new CouponService(new CouponRepository()), slotRepository: new SlotRepository(),
+      bookingReminderScheduler: { scheduleBookingReminders: async () => undefined, clearBookingReminders: async () => undefined },
+      sendPaidBookingEmailNotification: async () => undefined, notificationService: { create: async () => undefined },
+    }) as BookingService;
+    const unpaid = async (userId: string) => {
+      const slotId = await slotAt(drM, futureStart(), { serviceModes: ['in-person'] });
+      const sl = await SlotModel.findById(slotId).lean() as any;
+      return String((await createBookingWithHolds({ bookingType: 'consultation', userId, specialistId: drM, doctorName: 'Dr', slotId, bookingDate: sl.date, bookingTime: sl.startTime,
+        consultationMode: 'in-person', serviceMode: 'in-person', price: 500, originalPrice: 500, status: 'pending', paymentStatus: 'pending' } as any))._id);
+    };
+    // Wallet-covered: settled directly.
+    const u = await customer(1000);
+    const id = await unpaid(u.id);
+    await retrySvc.retryBookingPayment(id, { _id: u.id, userType: 'user' }, { couponCode: 'RETRY100', useWalletBalance: true } as any);
+    const row = await BookingModel.findById(id).lean();
+    assert.deepEqual([row!.paymentStatus, row!.price, row!.originalPrice, await balance(u.id)], ['paid', 400, 500, 600]);
+    await setAppointment(id, new Date(Date.now() - MIN));
+    await bookings.update(id, { status: 'completed' } as any);
+    assert.deepEqual((await earnings(id)).map((e) => e.amountMinor), [40000], 'the earning follows what was charged');
+    // Gateway: the winning capture writes the record's terms.
+    const u2 = await customer(0);
+    const id2 = await unpaid(u2.id);
+    const r = await retrySvc.retryBookingPayment(id2, { _id: u2.id, userType: 'user' }, { couponCode: 'RETRY100' } as any) as any;
+    assert.equal(r.paymentRequired, true);
+    const rec = await PaymentRecordModel.findById(r.payment.paymentTransactionId).lean();
+    const capSvc = Object.assign(Object.create(PaymentService.prototype), { bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(),
+      walletRepository: new WalletRepository(), bookingReminderScheduler: { scheduleBookingReminders: async () => undefined },
+      sendPaidBookingEmailNotification: async () => undefined, finalizePaymentProcessing: async (x: unknown) => x,
+      userRepository: {}, specialistRepository: {}, slotRepository: new SlotRepository() });
+    await (capSvc as any).processBookingPayment({ ...rec, status: 'paid' }).catch(() => undefined); // follow-up work may fail here
+    const row2 = await BookingModel.findById(id2).lean();
+    assert.deepEqual([row2!.paymentStatus, row2!.price, row2!.originalPrice], ['paid', 400, 500]);
   });
 
   // ───────────────────────────── M1: started slots and the no-show grace ─────────────────────────────
@@ -282,6 +339,69 @@ async function main() {
     assert.ok(rows.every((r) => r.startTime > nowHHMM), `no started slot of today: ${rows.filter((r) => r.startTime <= nowHHMM).map((r) => r.startTime)}`);
   });
 
+  await check('re-review N1: a started multi-seat window stays bookable and listed until it ENDS; a one-patient slot is refused from its start', async () => {
+    const d = await doctor('Dr Session');
+    const u = await customer();
+    const session = await slotAt(d, new Date(Date.now() - 10 * MIN), { maxBookings: 5 });
+    const row = await SlotModel.findById(session).lean() as any;
+    const b = await createBookingWithHolds({ bookingType: 'consultation', userId: u.id, specialistId: d, slotId: session, bookingDate: row.date, bookingTime: 'x',
+      consultationMode: 'video', serviceMode: 'video', price: 500, status: 'pending', paymentStatus: 'pending' } as any);
+    assert.ok(b._id);
+    assert.ok((await slotSvc.getAvailableSlots(d)).some((x) => String(x._id) === session), 'listed until its end');
+    const ended = await slotAt(d, new Date(Date.now() - 40 * MIN), { maxBookings: 5 });
+    const er = await SlotModel.findById(ended).lean() as any;
+    await assert.rejects(() => createBookingWithHolds({ bookingType: 'consultation', userId: u.id, specialistId: d, slotId: ended, bookingDate: er.date, bookingTime: 'x',
+      consultationMode: 'video', serviceMode: 'video', price: 500, status: 'pending', paymentStatus: 'pending' } as any), code('SLOT_STARTED'));
+  });
+
+  await check('re-review N2: cancelling the booking of a slot switched off by hand gives the seat back but keeps the slot closed', async () => {
+    const d = await doctor('Dr Release');
+    const u = await customer();
+    const id = await paidBooking(u.id, d);
+    const slotId = (await BookingModel.findById(id).lean())!.slotId!;
+    await slotSvc.update(slotId, { isAvailable: false });
+    await bookings.cancelByDoctor(id, { _id: d, userType: 'specialist' }, 'x');
+    const s = await SlotModel.findById(slotId).lean() as any;
+    assert.deepEqual([s.currentBookings, s.isAvailable, s.manuallyClosed], [0, false, true]);
+  });
+
+  await check('re-review N3: paged slot lists filter availability in the query (exact totals, no empty pages); staff can still read a past range', async () => {
+    const d = await doctor('Dr Paged');
+    const yesterday = addDays(today, -1);
+    for (const h of ['09:00', '10:00', '11:00']) await slotAt(d, new Date(`${yesterday}T${h}:00+05:30`));
+    const f1 = await slotAt(d, futureStart());
+    const f2 = await slotAt(d, futureStart());
+    const p1 = await slotSvc.getAll({ specialistId: d, page: 1, limit: 2 });
+    assert.deepEqual([p1.total, p1.data.map((x) => String(x._id)).sort()], [2, [f1, f2].sort()]);
+    const staff = await slotSvc.getAll({ specialistId: d, page: 1, limit: 10, dateFrom: ymd(yesterday), staffView: true });
+    assert.equal(staff.total, 5, 'an admin/doctor reading an explicit range sees the past slots');
+    const cust = await slotSvc.getAll({ specialistId: d, page: 1, limit: 10, dateFrom: ymd(yesterday) });
+    assert.equal(cust.total, 2, 'customers never see them');
+  });
+
+  await check('re-review N8: expansion uses the injected clock (template save and the nightly run); /slots/available without a date filters past days in the query', async () => {
+    const d = await doctor('Dr Clock');
+    const tomorrowNoon = new Date(`${addDays(today, 1)}T12:00:00+05:30`);
+    const win = [{ start: '08:00', end: '16:00', modes: ['video'] }];
+    await saveTemplate(d, { slotMinutes: 60, days: Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((x) => [x, win])) as any }, tomorrowNoon);
+    const starts = (await SlotModel.find({ specialistId: d, date: ymd(addDays(today, 1)) }).lean() as any[]).map((x) => x.startTime).sort();
+    assert.deepEqual(starts, ['13:00', '14:00', '15:00'], 'nothing that has started by the injected time');
+    let fromDate: unknown = 'not called';
+    const spy = Object.assign(Object.create(SlotService.prototype), { slotRepository: { findAvailableSlots: async (_a: unknown, _b: unknown, _c: unknown, f: unknown) => { fromDate = f; return []; } } }) as SlotService;
+    await spy.getAvailableSlots(d);
+    assert.equal(fromDate, ymd(today));
+  });
+
+  await check('re-review N7: payment answers carry the customer booking view (no settlement account, desk internals or keys)', async () => {
+    const u = await customer();
+    const id = await paidBooking(u.id, drM);
+    await BookingModel.updateOne({ _id: id }, { $set: { settlement: { settlementAccountId: 'acc-secret', beneficiaryName: 'Dr' } } });
+    const rec = await PaymentRecordModel.create({ userId: u.id, context: 'booking', contextId: id, baseAmount: 500, discountAmount: 100, finalAmount: 400, currency: 'INR',
+      paymentGateway: 'razorpay', razorpayOrderId: 'ord_' + new Types.ObjectId().toHexString(), status: 'paid' } as any);
+    const out = await (payments as any).buildAlreadyProcessedResponse(rec.toObject());
+    assert.equal(JSON.stringify(out.entity).includes('acc-secret'), false);
+  });
+
   // ───────────────────────────── Item 3: legacy payouts bill a moved no-show once ─────────────────────────────
   await check('legacy payouts bill a moved no-show in its ORIGINAL month only (never in the month it moved to)', async () => {
     const d = await doctor('Dr Legacy');
@@ -297,6 +417,34 @@ async function main() {
     const oct = await payout.calculateBillingSnapshot(d, 202610);
     const nov = await payout.calculateBillingSnapshot(d, 202611);
     assert.deepEqual([oct.total, oct.totalAppointments, nov.total, nov.totalAppointments], [700, 1, 0, 0]);
+  });
+
+  await check('re-review E: a moved no-show changing state flags its ORIGINAL legacy month for recalculation (listed for admins); recalculating takes it in, once', async () => {
+    (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined;
+    try {
+      const d = await doctor('Dr Legacy Flag');
+      const u = await customer();
+      const start = futureStart();
+      const id = await paidBooking(u.id, d, { price: 600, originalPrice: 600 }, start);
+      const origMonth = Number(ymd(istDate(start)).slice(0, 6));
+      await bookings.markNoShow(id, { _id: d, userType: 'specialist' }, new Date(Date.now() + 10 * DAY));
+      const payout = new PayoutService(new BookingRepository(), new SpecialistRepository()) as any;
+      await payout.calculateBillings({ specialist_id: d, months: [origMonth] });
+      assert.equal((await PayoutBillingModel.findOne({ specialistId: d, month: origMonth }).lean())!.total, 0, 'billed while a no-show: excluded');
+      const next = new Date(start.getTime() + 40 * DAY);
+      await bookings.rescheduleNoShow(id, { _id: d, userType: 'specialist' }, { slotId: await slotAt(d, next), requestKey: rk('ns') });
+      await setAppointment(id, new Date(Date.now() - MIN));
+      await BookingModel.updateOne({ _id: id }, { $set: { bookingDate: ymd(istDate(next)) } });
+      await bookings.update(id, { status: 'completed' } as any, undefined, new Date(next.getTime() + DAY));
+      const flagged = await PayoutBillingModel.findOne({ specialistId: d, month: origMonth }).lean() as any;
+      assert.deepEqual([flagged.needsRecalculation, flagged.recalculationReasons], [true, [id]]);
+      const listed = await adminLegacyRecalculations({});
+      assert.ok(listed.items.some((x) => x.doctorId === d && x.month === origMonth && x.bookingIds.includes(id)));
+      const [bill] = await payout.calculateBillings({ specialist_id: d, months: [origMonth] });
+      assert.deepEqual([bill.total, bill.needsRecalculation], [600, undefined]);
+      const nextMonth = Number(ymd(istDate(next)).slice(0, 6));
+      assert.equal((await payout.calculateBillingSnapshot(d, nextMonth)).total, 0, 'never in the month it moved to');
+    } finally { (CONFIG as any).SETTLEMENT_CUTOVER_AT = new Date(Date.now() - MIN).toISOString(); }
   });
 
   // ───────────────────────────── Admin cancel of a moved no-show ─────────────────────────────
@@ -321,13 +469,19 @@ async function main() {
     const u2 = await customer();
     const id2 = await movedNoShow(u2.id, drM);
     const slot2 = (await BookingModel.findById(id2).lean())!.slotId;
+    await BookingModel.updateOne({ _id: id2 }, { $set: { walletFunding: { total: 400, revision: 1, closed: false, captures: [] } } });
     const kept = await bookings.adminCancelMovedNoShow(id2, { _id: ADMIN }, { reason: 'Doctor unavailable', refund: false });
     assert.deepEqual([kept.status, kept.paymentStatus, kept.refunded], ['cancelled', 'paid', 0]);
+    const keptRow = await BookingModel.findById(id2).lean() as any;
+    assert.deepEqual([keptRow.walletFunding.closed, keptRow.walletFunding.total, keptRow.noShowCancel.forfeitedAmount], [true, 0, 400],
+      'funding closed (no money shown as held); kept as forfeited');
     assert.equal(await balance(u2.id), 0);
     assert.equal((await SlotModel.findById(slot2).lean() as any).currentBookings, 0, 'seat released');
-    // A repeat (customer or admin) never refunds it later.
+    // A repeat (customer or admin) never refunds it later; the admin's second cancel is refused (409 ALREADY_CANCELLED).
     await bookings.cancelBooking(id2, { cancellationReason: 'x' }, { _id: u2.id, userType: 'user' });
     assert.equal(await balance(u2.id), 0);
+    await assert.rejects(() => bookings.adminCancelMovedNoShow(id2, { _id: ADMIN }, { reason: 'again', refund: false }), code('ALREADY_CANCELLED'));
+    await assert.rejects(() => bookings.adminCancelMovedNoShow(id, { _id: ADMIN }, { reason: 'again', refund: true }), code('ALREADY_CANCELLED'));
     assert.equal((await earnings(id2)).length, 0);
     // Not a moved no-show: the dedicated command refuses it.
     const plain = await paidBooking(u2.id, drM);
@@ -393,6 +547,40 @@ async function main() {
     // Provider-borne: completing it earns the fee after the coupon.
     await bookings.update(String(out.booking._id), { status: 'completed' } as any);
     assert.deepEqual((await earnings(String(out.booking._id))).map((e) => e.amountMinor), [15000]);
+  });
+
+  await check('re-review C: a doctor whose fee falls below the coupon minimum and costs more than was paid is left out of the offer; accepting is a 409, never a 500', async () => {
+    await CouponModel.create({ code: 'HALFMIN900', discountType: 'percentage', discountValue: 50, minimumPurchaseAmount: 900, applicableTo: 'all', eligibleFor: 'all',
+      startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as any);
+    const c = await instantDoctor('Dr Min C', 800, 'Afford');
+    const d = await instantDoctor('Dr Min D', 1000, 'Afford');
+    const u = await customer(500);
+    const r = await instant.create(u.id, ask('Afford', { couponCode: 'HALFMIN900' }));
+    const id = String((r.request as any)._id);
+    const row = await InstantRequestModel.findById(id).lean();
+    assert.deepEqual(row!.offeredTo, [d], 'only the doctor the paid amount covers');
+    // Even when offered (e.g. a request offered before this rule), accepting is refused cleanly.
+    await InstantRequestModel.updateOne({ _id: id }, { $addToSet: { offeredTo: c }, $push: { offerFees: { doctorId: c, feeMinor: 80000 } } });
+    assert.equal((await instant.myOffers(c)).find((o) => o.requestId === id)!.feeWithinQuote, false);
+    await assert.rejects(() => instant.accept(c, id), code('OFFER_NO_LONGER_AFFORDABLE'));
+    assert.equal((await InstantRequestModel.findById(id).lean())!.fundingState, 'held', 'nothing changed');
+    assert.equal(await balance(u.id), 0);
+  });
+
+  await check('re-review D: a doctor offered before keeps min(earlier frozen fee, current fee) on every re-offer', async () => {
+    const a = await instantDoctor('Dr Reoffer A', 300, 'Reoffer');
+    await instantDoctor('Dr Reoffer B', 2000, 'Reoffer');
+    const u = await customer(2000);
+    const r = await instant.create(u.id, ask('Reoffer'));
+    const id = String((r.request as any)._id);
+    await instant.setPresence(a, { available: true, modes: ['video'], instantFeeMinor: 150000 });
+    const later = new Date(Date.now() + 6 * MIN);
+    await instant.heartbeat(a, later);
+    await instant.reoffer(u.id, id, { kind: 'any' }, later);
+    assert.equal((await InstantRequestModel.findById(id).lean())!.offerFees!.find((o) => o.doctorId === a)!.feeMinor, 30000);
+    const out = await instant.accept(a, id, later);
+    assert.equal(out.booking.originalPrice, 300, 'never the raised fee');
+    assert.equal(await balance(u.id), 1700);
   });
 
   await check('instant: an admin cancels an accepted consultation with a full refund (cause admin); a no-show needs 15 minutes after acceptance', async () => {
@@ -494,6 +682,16 @@ async function main() {
     const acc = await ensureSettlementAccount('doctor', upper, 'Dr Case');
     const acc2 = await ensureSettlementAccount('doctor', d, 'Dr Case');
     assert.equal(String(acc._id), String(acc2._id));
+    // Re-review G: when both spellings exist the lower-case account wins; the read-only audit lists them (ids only).
+    const d2 = await doctor('Dr Case Two');
+    const upperAcc = await SettlementAccountModel.create({ ownerKind: 'doctor', ownerId: d2.toUpperCase(), beneficiaryName: 'X', isActive: true } as any);
+    const lowerAcc = await SettlementAccountModel.create({ ownerKind: 'doctor', ownerId: d2, beneficiaryName: 'X', isActive: true } as any);
+    assert.equal(String((await ensureSettlementAccount('doctor', d2.toUpperCase(), 'X'))._id), String(lowerAcc._id));
+    const audit = await runDoctorIdCaseAudit();
+    const doubled = audit.doubledAccounts.find((x) => x.doctorId === d2);
+    assert.deepEqual([doubled?.canonicalAccountId, doubled?.accountIds.length], [String(lowerAcc._id), 2]);
+    assert.ok(doubled!.accountIds.includes(String(upperAcc._id)));
+    assert.equal(JSON.stringify(audit).includes('beneficiaryName'), false, 'ids only');
     assert.equal(await SettlementAccountModel.countDocuments({ ownerKind: 'doctor', ownerId: new RegExp(`^${d}$`, 'i') }), 1);
     assert.equal(String(b.settlement?.settlementAccountId), String(acc._id));
     // The same time under the other spelling is refused (one guard, one set of intervals).
@@ -526,7 +724,7 @@ async function main() {
     assert.equal(parseSettlementCutover('2026-12-01').at!.toISOString(), '2026-11-30T18:30:00.000Z');
     assert.equal(parseSettlementCutover('2026-12-01T09:30').at!.toISOString(), '2026-12-01T04:00:00.000Z');
     assert.equal(parseSettlementCutover('2026-12-01T00:00:00Z').at!.toISOString(), '2026-12-01T00:00:00.000Z');
-    for (const bad of ['01/12/2026', 'tomorrow', '2026-02-30']) assert.ok(parseSettlementCutover(bad).error, bad);
+    for (const bad of ['01/12/2026', 'tomorrow', '2026-02-30', '2026-02-30T10:00', '2026-02-30T10:00:00+05:30', '2026-13-01T00:00:00Z']) assert.ok(parseSettlementCutover(bad).error, bad);
     const saved = CONFIG.SETTLEMENT_CUTOVER_AT;
     const logged: string[] = [];
     try {
@@ -629,13 +827,15 @@ async function main() {
     await setAppointment(done, new Date(Date.now() - 2 * DAY));
     await bookings.update(done, { status: 'completed' } as any);
     const future = await paidBooking(u.id, d);
+    const free = await paidBooking(u.id, d, { price: 0, originalPrice: 0 });
+    await setAppointment(free, new Date(Date.now() - 3 * DAY));
     const p1 = await adminUnmarkedConsultations({ doctorId: d, limit: 2 });
     assert.equal(p1.total, 3);
     assert.equal(p1.items.length, 2);
     const p2 = await adminUnmarkedConsultations({ doctorId: d, limit: 2, cursor: p1.nextCursor! });
     const all = [...p1.items, ...p2.items].map((x) => x.bookingId).sort();
     assert.deepEqual(all, [...ids].sort());
-    assert.ok(!all.includes(done) && !all.includes(future));
+    assert.ok(!all.includes(done) && !all.includes(future) && !all.includes(free), 'completed, future and zero-price rows are not listed');
     assert.deepEqual(Object.keys(p1.items[0]!).filter((k) => ['bookingId', 'doctorId', 'bookingDate'].includes(k)).sort(), ['bookingDate', 'bookingId', 'doctorId']);
   });
 
@@ -659,9 +859,17 @@ async function main() {
     await assert.rejects(() => clinic.closeDeskAppointment(desk, id, 'completed', new Date()), code('NOT_STARTED_YET'));
     await assert.rejects(() => bookings.update(id, { status: 'pending' } as any), code('DESK_STATUS_NOT_ALLOWED'));
     await setAppointment(id, new Date(Date.now() - 5 * MIN));
-    await assert.rejects(async () => clinic.rescheduleDeskAppointment(desk, id, await deskSlot()), code('BOOKING_ALREADY_STARTED'));
     await assert.rejects(() => clinic.closeDeskAppointment(desk, id, 'no_show', new Date()), code('APPOINTMENT_NOT_STARTED'));
     assert.equal((await clinic.closeDeskAppointment(desk, id, 'completed', new Date())).status, 'completed');
+  });
+
+  await check('re-review N4: the desk may move a late patient after the appointment started (not paid through us)', async () => {
+    const made = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: nextPhone() }, requestKey: rk('desk') });
+    const id = made.booking.bookingId;
+    await setAppointment(id, new Date(Date.now() - 20 * MIN));
+    const target = await deskSlot();
+    const moved = await clinic.rescheduleDeskAppointment(desk, id, target);
+    assert.deepEqual([moved.status, moved.slotId], ['confirmed', target]);
   });
 
   await check('a doctor cancelling a desk appointment: no wallet refund is promised, and the clinic audit trail records it', async () => {
@@ -752,6 +960,14 @@ async function main() {
     assert.deepEqual((await earnings(id)).map((e) => e.amountMinor), [40000]);
   });
 
+  await check('re-review N6: a lab no-show only after the arrival window ENDS (not as soon as it opens)', async () => {
+    const u = await customer();
+    const id = await labBooking(u.id);
+    await PartnerLabBookingModel.updateOne({ _id: id }, { $set: { 'slot.startsAt': new Date(Date.now() - 10 * MIN) } }); // 08:00–08:30 window, opened 10 min ago
+    await assert.rejects(() => labSvc.markNoShow(labOwn, id, new Date()), code('SLOT_NOT_STARTED'));
+    assert.equal(((await labSvc.markNoShow(labOwn, id, new Date(Date.now() + 21 * MIN))) as any).status, 'no_show');
+  });
+
   await check('lab: a moved no-show is cancelled by an admin only, with or without a refund', async () => {
     const moved = async (u: string) => {
       const id = await labBooking(u);
@@ -772,6 +988,8 @@ async function main() {
     const k = await labSvc.adminCancelMovedNoShow(ADMIN, id2, { reason: 'Lab closed', refund: false });
     assert.deepEqual([k.refunded, (k.booking as any).status, (k.booking as any).paymentStatus], [0, 'cancelled', 'paid']);
     assert.equal(await balance(u2.id), 0);
+    await assert.rejects(() => labSvc.adminCancelMovedNoShow(ADMIN, id2, { reason: 'again', refund: true }), code('ALREADY_CANCELLED'));
+    await assert.rejects(() => labSvc.adminCancelMovedNoShow(ADMIN, id, { reason: 'again', refund: false }), code('ALREADY_CANCELLED'));
     assert.ok(await PartnerAuditEventModel.exists({ partnerId: labId, action: 'lab_booking.no_show_cancelled' }));
     const plain = await labBooking(u2.id);
     await assert.rejects(() => labSvc.adminCancelMovedNoShow(ADMIN, plain, { reason: 'x', refund: true }), code('BOOKING_NOT_MOVED_NO_SHOW'));

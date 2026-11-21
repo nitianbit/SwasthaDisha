@@ -85,6 +85,26 @@ export function chargedFeeFor(r: Pick<IInstantRequest, 'offerFees' | 'quotedAmou
   return Math.min(currentFeeMinor, frozen ?? r.quotedAmountMinor);
 }
 
+/**
+ * Q16a re-review (C): whether the money the customer put in (quote − coupon) covers this fee once the coupon is computed
+ * again on it. A fee below the coupon's minimum gets no coupon and may then cost more than was paid: such a doctor is
+ * left out of the offer, and accepting is refused (409 OFFER_NO_LONGER_AFFORDABLE), never a 500.
+ */
+export function feeAffordable(r: Pick<IInstantRequest, 'couponTerms' | 'discountMinor' | 'quotedAmountMinor'>, feeMinor: number): boolean {
+  return feeMinor <= r.quotedAmountMinor && feeMinor - couponDiscountForFee(r, feeMinor) <= r.quotedAmountMinor - r.discountMinor;
+}
+
+/**
+ * Q16a re-review (D): the frozen fees after a re-offer — a doctor offered before keeps min(earlier frozen fee, current
+ * fee); entries of doctors not in this offer are kept (a later re-offer to them keeps their earlier fee too).
+ */
+export function mergeOfferFees(prior: { doctorId: string; feeMinor: number }[] | undefined, offers: { doctorId: string; feeMinor: number }[]) {
+  const before = new Map((prior ?? []).map((o) => [o.doctorId, o.feeMinor]));
+  const now = offers.map((o) => ({ doctorId: o.doctorId, feeMinor: Math.min(o.feeMinor, before.get(o.doctorId) ?? o.feeMinor) }));
+  const ids = new Set(now.map((o) => o.doctorId));
+  return [...(prior ?? []).filter((o) => !ids.has(o.doctorId)), ...now];
+}
+
 export type InstantNotifier = (n: { userId: string; userType: 'user' | 'specialist'; title: string; message: string; key: string; data?: Record<string, unknown> }) => Promise<void>;
 export const defaultInstantNotifier: InstantNotifier = async (n) => {
   try {
@@ -392,14 +412,20 @@ export class InstantConsultService {
    * Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote, coupon's
    * doctors only). Q16a: each with the fee frozen for this offer (never above the quote the patient paid).
    */
-  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds'>, now: Date): Promise<{ doctorId: string; feeMinor: number }[]> {
+  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds' | 'couponTerms' | 'discountMinor'>
+    & { offerFees?: IInstantRequest['offerFees'] }, now: Date): Promise<{ doctorId: string; feeMinor: number }[]> {
     if (r.target.kind === 'specific') {
       const doctorId = String(r.target.doctorId);
       const p = await DoctorPresenceModel.findOne({ doctorId }).select({ instantFeeMinor: 1 }).lean();
-      return [{ doctorId, feeMinor: Math.min(p?.instantFeeMinor ?? r.quotedAmountMinor, r.quotedAmountMinor) }];
+      return mergeOfferFees(r.offerFees, [{ doctorId, feeMinor: Math.min(p?.instantFeeMinor ?? r.quotedAmountMinor, r.quotedAmountMinor) }])
+        .filter((o) => o.doctorId === doctorId);
     }
+    const prior = new Map((r.offerFees ?? []).map((o) => [o.doctorId, o.feeMinor]));
+    // D: a doctor offered before keeps min(earlier frozen, current); C: only doctors the customer's money covers.
     return (await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor,
-      ...(r.couponDoctorIds ? { onlyDoctorIds: r.couponDoctorIds } : {}) }, now)).map((d) => ({ doctorId: d.doctorId, feeMinor: d.instantFeeMinor }));
+      ...(r.couponDoctorIds ? { onlyDoctorIds: r.couponDoctorIds } : {}) }, now))
+      .map((d) => ({ doctorId: d.doctorId, feeMinor: Math.min(d.instantFeeMinor, prior.get(d.doctorId) ?? d.instantFeeMinor) }))
+      .filter((o) => feeAffordable(r, o.feeMinor));
   }
 
   /** The held state: funding recorded (coupon + wallet + gateway == quote) and the first offer generation opened. */
@@ -467,7 +493,7 @@ export class InstantConsultService {
       return { requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
         gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt,
         quotedAmountMinor: r.quotedAmountMinor, quotedAmount: rupees(r.quotedAmountMinor), yourFeeMinor, offeredFeeMinor, chargeFeeMinor,
-        feeWithinQuote: chargeFeeMinor !== null && chargeFeeMinor <= r.quotedAmountMinor };
+        feeWithinQuote: chargeFeeMinor !== null && feeAffordable(r as IInstantRequest, chargeFeeMinor) };
     });
   }
 
@@ -525,6 +551,8 @@ export class InstantConsultService {
       // charged); a lower current fee is charged as it is. The coupon is computed again on the fee charged.
       const fee = chargedFeeFor(r, String(doctorId), presence.instantFeeMinor);
       if (fee > r.quotedAmountMinor) throw err(409, 'FEE_ABOVE_QUOTE', 'Your fee is above what this patient paid');
+      // Q16a re-review (C): below the coupon's minimum the fee may cost more than the patient paid: refused, never a 500.
+      if (!feeAffordable(r, fee)) throw err(409, 'OFFER_NO_LONGER_AFFORDABLE', "What the patient paid does not cover your fee for this request");
       const { allocated, returned } = allocateFunding(r.funding as MoneySplit, fee, couponDiscountForFee(r, fee));
 
       const bookingId = new Types.ObjectId();
@@ -594,8 +622,9 @@ export class InstantConsultService {
       }
       const online = await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor }, now);
       const d = online.find((x) => x.doctorId === String(target.doctorId));
-      if (!d) throw err(409, 'DOCTOR_NOT_ONLINE', 'This doctor is not available within your paid amount');
-      offers = [{ doctorId: d.doctorId, feeMinor: d.instantFeeMinor }];
+      const fee = d ? Math.min(d.instantFeeMinor, (r.offerFees ?? []).find((o) => o.doctorId === d.doctorId)?.feeMinor ?? d.instantFeeMinor) : 0;
+      if (!d || !feeAffordable(r, fee)) throw err(409, 'DOCTOR_NOT_ONLINE', 'This doctor is not available within your paid amount');
+      offers = [{ doctorId: d.doctorId, feeMinor: fee }];
     } else {
       offers = await this.offerTargets({ ...r, target }, now);
       if (!offers.length) throw err(409, 'NO_DOCTOR_ONLINE', 'No doctor is online within your paid amount right now');
@@ -603,7 +632,7 @@ export class InstantConsultService {
     const offeredTo = offers.map((o) => o.doctorId);
     const updated = await InstantRequestModel.findOneAndUpdate(
       { _id: r._id, userId: { $eq: userId }, status: 'offered', fundingState: 'held', offerGeneration: r.offerGeneration, statusVersion: r.statusVersion },
-      { $set: { target, offeredTo, offerFees: offers, offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS) },
+      { $set: { target, offeredTo, offerFees: mergeOfferFees(r.offerFees, offers), offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS) },
         $inc: { offerGeneration: 1, statusVersion: 1 } },
       { new: true }
     ).lean() as IInstantRequest | null;

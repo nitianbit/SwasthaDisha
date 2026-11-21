@@ -62,7 +62,8 @@ export interface IInstantRequest {
   couponTerms?: { discountType: 'percentage' | 'fixed'; discountValue: number; maximumDiscountAmount?: number; minimumPurchaseAmount?: number };
   /**
    * Q16a: each offered doctor's fee frozen when the offer is made (at hold and at every re-offer; the current
-   * generation only). At acceptance the doctor charges min(frozen fee, current fee).
+   * generation and every doctor offered before; a re-offer keeps a doctor at min(earlier frozen, current fee)). At
+   * acceptance the doctor charges min(frozen fee, current fee).
    */
   offerFees?: { doctorId: string; feeMinor: number }[];
   /** What the customer put in (set when the funding is held): total == quotedAmountMinor. */

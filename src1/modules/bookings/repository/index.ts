@@ -33,6 +33,21 @@ export function legacyBillingMonthFilter(from?: string, to?: string): Record<str
   ] };
 }
 
+/**
+ * Q16a re-review (E): a legacy booking moved after a no-show is billed in its ORIGINAL month. When it later changes in
+ * a way the bill counts (moved back to confirmed, completed, a second no-show), an already computed billing row of that
+ * month is flagged `needsRecalculation` in the same transaction (the booking id is listed; ids only). The admin
+ * recalculates the month (calculate billings clears the flag); the booking is never billed in the month it moved to.
+ */
+export async function flagLegacyOriginalMonth(b: { _id?: unknown; specialistId?: string; settlementSystem?: string; noShows?: { fromDate?: string }[] },
+  session?: import('mongoose').ClientSession): Promise<void> {
+  const from = b.noShows?.[0]?.fromDate;
+  if (!b.specialistId || !from || !/^\d{8}$/.test(from) || ['ledger', 'clinic'].includes(String(b.settlementSystem ?? 'legacy'))) return;
+  const { PayoutBillingModel } = await import('@/modules/payouts/model');
+  await PayoutBillingModel.updateOne({ specialistId: { $in: [String(b.specialistId), String(b.specialistId).toLowerCase()] }, month: Number(from.slice(0, 6)) },
+    { $set: { needsRecalculation: true }, $addToSet: { recalculationReasons: String(b._id) } }, { session: session ?? undefined });
+}
+
 @Service()
 export class BookingRepository extends BaseRepository<IBooking> {
   constructor() {

@@ -682,6 +682,8 @@ export async function adminUnmarkedConsultations(q: UnmarkedConsultationQuery, n
   if (q.to && q.to.replace(/-/g, '') < today) { day.$lte = q.to.replace(/-/g, ''); delete day.$lt; }
   const filter: Record<string, unknown> = {
     bookingType: { $in: ['consultation', 'second-opinion'] }, settlementSystem: 'ledger', paymentStatus: 'paid',
+    // Q16a re-review (H): a free (zero-price) consultation earns nothing either way: not listed.
+    price: { $gt: 0 },
     status: { $in: ['pending', 'confirmed'] }, bookingDate: day,
     ...(q.doctorId ? { specialistId: { $in: [canon(q.doctorId), String(q.doctorId)] } } : {}),
   };
@@ -694,4 +696,15 @@ export async function adminUnmarkedConsultations(q: UnmarkedConsultationQuery, n
       priceMinor: Math.round(Number(b.price ?? 0) * 100), bookedAt: b.createdAt,
     })),
   };
+}
+
+/**
+ * Q16a re-review (E): legacy payout months flagged for recalculation — a moved no-show billed in that (original) month
+ * changed after the month was computed. Ids only; recalculating the month (payouts "calculate billings") clears it.
+ */
+export async function adminLegacyRecalculations(q: { cursor?: string; limit?: number }) {
+  const { PayoutBillingModel } = await import('@/modules/payouts/model');
+  const page = await cursorPage<Record<string, any>>(PayoutBillingModel, { needsRecalculation: true }, 'createdAt', q, 100);
+  return { total: page.total, nextCursor: page.nextCursor,
+    items: page.items.map((b) => ({ billingId: String(b._id), doctorId: b.specialistId, month: b.month, bookingIds: b.recalculationReasons ?? [] })) };
 }

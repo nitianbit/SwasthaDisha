@@ -443,13 +443,20 @@ const bookingSchema = new Schema<IBooking>(
     },
     noShowReschedules: { type: Number },
     // Q16a: an admin cancelled this moved no-show; refund false = the money stays (nobody earns it).
-    // Q16a: the appointment before the first customer reschedule (never overwritten); refund window = earlier of it and the current one.
+    // Q16a: the appointment before the first customer reschedule (history; never overwritten).
     originalAppointment: {
       type: new Schema({ bookingDate: { type: String, required: true }, bookingTime: { type: String, required: true } }, { _id: false }),
       default: undefined,
     },
+    // Q16a: set when a customer moved the booking AFTER its refund deadline had passed; that closed window still applies.
+    refundLock: {
+      type: new Schema({ bookingDate: { type: String, required: true }, bookingTime: { type: String, required: true }, movedAt: { type: Date, required: true } },
+        { _id: false }),
+      default: undefined,
+    },
     noShowCancel: {
-      type: new Schema({ at: { type: Date, required: true }, by: { type: String, required: true }, refund: { type: Boolean, required: true } }, { _id: false }),
+      type: new Schema({ at: { type: Date, required: true }, by: { type: String, required: true }, refund: { type: Boolean, required: true },
+        forfeitedAmount: { type: Number, min: 0 } }, { _id: false }),
       default: undefined,
     },
     // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.

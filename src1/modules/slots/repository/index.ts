@@ -74,7 +74,9 @@ export class SlotRepository extends BaseRepository<ISlot> {
   async findAvailableSlots(
     specialistId?: string,
     wellnessPackageId?: string,
-    date?: string
+    date?: string,
+    /** Q16a: without a date, only slots on or after this day (YYYYMMDD). */
+    fromDate?: string
   ): Promise<ISlot[]> {
     const query: any = {
       isAvailable: true,
@@ -92,6 +94,8 @@ export class SlotRepository extends BaseRepository<ISlot> {
 
     if (date) {
       query.date = date;
+    } else if (fromDate) {
+      query.date = { $gte: fromDate };
     }
 
     return this.findAll(query, { sort: { date: 1, startTime: 1 } });
@@ -127,13 +131,45 @@ export class SlotRepository extends BaseRepository<ISlot> {
   async findWithPagination(
     filter: SlotQueryParams = {},
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    /** Q16a: an extra condition applied before paging (customer-facing availability). */
+    extra?: Record<string, unknown>
   ): Promise<{
     data: ISlot[];
     total: number;
     page: number;
     totalPages: number;
   }> {
+    const query: any = { ...this.paginationFilter(filter), ...(extra ?? {}) };
+    const skip = (page - 1) * limit;
+    const sort: any = {};
+
+    if (filter.sortBy) {
+      sort[filter.sortBy] = filter.sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.date = 1;
+      sort.startTime = 1;
+    }
+
+    const [data, total] = await Promise.all([
+      SlotModel.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      SlotModel.countDocuments(query),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /** The stored-field filter of a paged slot read (without the Q16a availability condition). */
+  paginationFilter(filter: SlotQueryParams = {}): Record<string, unknown> {
     const query: any = {};
 
     if (filter.specialistId) {
@@ -177,32 +213,7 @@ export class SlotRepository extends BaseRepository<ISlot> {
 
     // Only return slots with available capacity (currentBookings < maxBookings)
     query.$expr = { $lt: ['$currentBookings', '$maxBookings'] };
-
-    const skip = (page - 1) * limit;
-    const sort: any = {};
-
-    if (filter.sortBy) {
-      sort[filter.sortBy] = filter.sortOrder === 'desc' ? -1 : 1;
-    } else {
-      sort.date = 1;
-      sort.startTime = 1;
-    }
-
-    const [data, total] = await Promise.all([
-      SlotModel.find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      SlotModel.countDocuments(query),
-    ]);
-
-    return {
-      data,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
+    return query;
   }
 
   async incrementBookingCount(id: string): Promise<ISlot | null> {

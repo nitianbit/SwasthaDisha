@@ -63,10 +63,19 @@ export function parseAppointment({
 }
 
 /**
- * `earlierAppointments` (Q16a, owner rule of 23 Nov 2026): times the booking had before a customer moved it (the
- * original appointment as first booked). They count only for the refund deadline — the earliest deadline of the
- * current and earlier times applies, so a reschedule can never reopen a window that had already closed — never for
- * "already started" (that is the current appointment's).
+ * Q16a: the refund deadline of one appointment (24 hours before it; 48 hours before a Monday appointment), or null.
+ */
+export function refundDeadlineOf(appointment: CancellationAppointment): Date | null {
+  const a = parseAppointment(appointment);
+  if (!a) return null;
+  return new Date(a.at.getTime() - (a.weekday === 1 ? 48 : 24) * HOUR_MS);
+}
+
+/**
+ * `earlierAppointments` (Q16a re-review rule): an appointment the customer moved away from AFTER its refund deadline
+ * had passed (the booking's `refundLock`). It counts only for the refund deadline — so such a move never reopens the
+ * closed window — never for "already started" (that is the current appointment's). A move made while the window was
+ * still open records nothing, and the booking is judged on its current time alone.
  */
 export function enforceUserCancellationWindow(
   appointments: CancellationAppointment[],
@@ -119,7 +128,7 @@ export function enforceUserCancellationWindow(
       status: 400,
       code: 'CANCELLATION_WINDOW_CLOSED',
       message: cancellationDeadline.original
-        ? `Booking cannot be cancelled for a refund: its cancellation window (${cancellationDeadline.cutoffHours} hours before the original appointment time) closed before it was rescheduled`
+        ? `Booking cannot be cancelled for a refund: it was rescheduled after its cancellation window (${cancellationDeadline.cutoffHours} hours before the earlier appointment time) had closed`
         : `Booking cannot be cancelled within ${cancellationDeadline.cutoffHours} hours of the appointment time`,
     });
   }

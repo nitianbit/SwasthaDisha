@@ -123,7 +123,7 @@ export async function saveTemplate(doctorId: string,
   const template = await writeTemplate(doctorId,
     { $set: { slotMinutes: input.slotMinutes, days: input.days, isActive: true }, $setOnInsert: { doctorId: String(doctorId), leaveDates: [] } }, true,
     input.expectedUpdatedAt);
-  const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS);
+  const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS, now); // Q16a (N8): the injected clock
   return { template, expansion };
 }
 
@@ -141,7 +141,7 @@ export async function setLeave(doctorId: string, date: string, onLeave: boolean,
     const template = await DoctorScheduleTemplateModel.findOneAndUpdate({ doctorId: String(doctorId) },
       onLeave ? { $addToSet: { leaveDates: date }, $setOnInsert: { doctorId: String(doctorId), slotMinutes: 30, days: {}, isActive: true } }
         : { $pull: { leaveDates: date } }, { upsert: onLeave, new: true, session: s }).lean();
-    const expansion = await expandDoctorSlotsIn(doctorId, today, DOCTOR_ROLLING_DAYS, s);
+    const expansion = await expandDoctorSlotsIn(doctorId, today, DOCTOR_ROLLING_DAYS, s, now); // Q16a (N8)
     const inWindow = iso(date) >= today && iso(date) < addDays(today, DOCTOR_ROLLING_DAYS);
     if (!inWindow && iso(date) >= today) {
       const day = await reconcileLeaveDayIn(doctorId, date, onLeave, s);
@@ -291,7 +291,7 @@ export async function expandDoctorsAtBranch(branchId: string, now = new Date()):
 export async function expandAllDoctorTemplates(now = new Date()): Promise<number> {
   let inserted = 0;
   for await (const t of DoctorScheduleTemplateModel.find({ isActive: true }).select({ doctorId: 1 }).lean().cursor() as AsyncIterable<{ doctorId: string }>) {
-    inserted += (await expandDoctorSlots(t.doctorId, istDate(now), DOCTOR_ROLLING_DAYS)).inserted;
+    inserted += (await expandDoctorSlots(t.doctorId, istDate(now), DOCTOR_ROLLING_DAYS, now)).inserted; // Q16a (N8)
   }
   return inserted;
 }

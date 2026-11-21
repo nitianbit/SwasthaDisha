@@ -57,7 +57,7 @@ export interface IPartnerLabBooking {
   expiryChecks?: number;
   /** Q16a: 'admin_no_show' = a moved no-show cancelled by an admin; `refund` false = the money was kept (nobody earns it). */
   cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show'; note?: string; by: string; byKind: 'customer' | 'member' | 'admin' | 'system'; at: Date;
-    refund?: boolean };
+    refund?: boolean; forfeitedMinor?: number };
   reschedule: { version: number; pending: boolean; previousSlot?: ILabBookingSlot; reason?: string; at?: Date; by?: string };
   collector?: { memberId?: string; name: string; phone?: string };
   report: { draftFiles: string[]; releasedFiles: string[]; releases: ILabReportRelease[]; /** Q11 */ uploadKeys?: string[] };
@@ -166,6 +166,7 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
       byKind: { type: String, enum: ['customer', 'member', 'admin', 'system'] },
       at: { type: Date },
       refund: { type: Boolean },
+      forfeitedMinor: { type: Number, min: 0 },
     },
     reschedule: {
       version: { type: Number, required: true, default: 0 },

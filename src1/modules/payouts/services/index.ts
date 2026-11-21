@@ -400,6 +400,8 @@ export class PayoutService {
             due,
             status,
           },
+          // Q16a: a recalculation takes in every moved no-show that flagged this month.
+          $unset: { needsRecalculation: 1, recalculationReasons: 1 },
         },
         { upsert: true, new: true }
       ).lean();

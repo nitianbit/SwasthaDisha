@@ -22,8 +22,11 @@ export function parseSettlementCutover(raw: unknown): { at: Date | null; error?:
   else if (LOCAL_DATE_TIME.test(v)) text = `${v}+05:30`;
   else if (ZONED_DATE_TIME.test(v)) text = v;
   const at = text ? new Date(text) : null;
-  // A date that does not exist (e.g. 2026-02-30) is refused, never rolled over.
-  const real = !!at && !Number.isNaN(at.getTime()) && (!DATE_ONLY.test(v) || new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v);
+  // A date that does not exist (e.g. 2026-02-30, also inside a date-time) is refused, never rolled over.
+  const day = v.slice(0, 10);
+  const realDay = /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())
+    && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+  const real = !!at && !Number.isNaN(at.getTime()) && realDay;
   if (!real) {
     return { at: null, error: `SETTLEMENT_CUTOVER_AT=${JSON.stringify(v)} is not a valid cutover (use 2026-12-01, 2026-12-01T09:30 (India time) or an ISO time with a zone); every booking stays with the legacy payouts until it is fixed` };
   }

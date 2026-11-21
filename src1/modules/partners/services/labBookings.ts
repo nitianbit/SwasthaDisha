@@ -27,6 +27,16 @@ import { attachFiles, grantFiles, rebindStored, uploadPathOf } from '@/modules/f
 import type { AuthRequest } from '@/modules/middleware/auth';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
+
+/** Q16a re-review (N6): the end of a booked lab slot — its start plus the slot's own length (HH:mm start → end). */
+export function labSlotEnd(slot: { startsAt: Date | string; startTime?: string; endTime?: string }): Date {
+  const start = new Date(slot.startsAt);
+  const min = (t?: string) => (typeof t === 'string' && /^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : NaN);
+  let len = min(slot.endTime) - min(slot.startTime);
+  if (!Number.isFinite(len)) len = 0;
+  if (len < 0) len += 24 * 60; // a window running past midnight
+  return new Date(start.getTime() + len * 60_000);
+}
 /** Customers may cancel (full refund) until 2 hours before the slot, or any time while a lab reschedule is unanswered. */
 export const LAB_CANCEL_CUTOFF_MS = 2 * 3_600_000;
 /** A slot must start at least this long after booking. */
@@ -524,6 +534,7 @@ export class LabBookingService {
     const refunded = await runLedgerTransaction(async (s) => {
       const b = await PartnerLabBookingModel.findById(id).session(s).lean() as IPartnerLabBooking | null;
       if (!b) throw notFound();
+      if (b.status === 'cancelled') throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be cancelled`);
       if (!((b.noShows?.length ?? 0) > 0)) throw err(409, 'BOOKING_NOT_MOVED_NO_SHOW', 'This booking was not moved after a no-show; use the ordinary cancellation');
       const actor: PartnerActor = { memberId: `admin:${adminId}`, partnerId: b.partnerId, role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' };
@@ -531,9 +542,15 @@ export class LabBookingService {
         const records = await this.fenceRecords(id, s);
         return this.cancelIn(b, records, { reason: 'admin_no_show', note, actor: { kind: 'partner', actor } }, s, now);
       }
+      // Q16a re-review (F): kept as FORFEITED — the funding record is closed (no money shown as held; a late capture goes
+      // back to the wallet) and the amount kept is recorded on the cancellation.
+      const wf = b.walletFunding as { total?: number; revision?: number; captures?: { amount: number; state: string }[] } | undefined;
+      const forfeitedMinor = wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter((c) => c.state === 'applied')
+        .reduce((a, c) => a + Number(c.amount || 0), 0)) * 100) : Number(b.pricing.payableMinor || 0);
       const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
         $set: { status: 'cancelled', 'lifecycle.cancelledAt': now, 'reschedule.pending': false,
-          cancellation: { reason: 'admin_no_show', note, ...byOf({ kind: 'partner', actor }), at: now, refund: false } },
+          cancellation: { reason: 'admin_no_show', note, ...byOf({ kind: 'partner', actor }), at: now, refund: false, forfeitedMinor },
+          ...(wf ? { 'walletFunding.closed': true, 'walletFunding.total': 0, 'walletFunding.revision': Number(wf.revision || 0) + 1, 'walletFunding.updatedAt': now } : {}) },
         $inc: { statusVersion: 1 },
       }, { session: s });
       if (r.modifiedCount !== 1) throw changed();
@@ -712,8 +729,9 @@ export class LabBookingService {
       if (guards.noPendingReschedule && b.reschedule?.pending) {
         throw err(409, 'RESCHEDULE_PENDING', 'The customer has not answered the new time yet');
       }
-      if (guards.slotStarted && guards.slotStarted < new Date(b.slot.startsAt)) {
-        throw err(409, 'SLOT_NOT_STARTED', 'A no-show can be marked only after the slot time');
+      // Q16a re-review (N6): a no-show only once the arrival window (lab visit or home collection) has ENDED.
+      if (guards.slotStarted && guards.slotStarted < labSlotEnd(b.slot)) {
+        throw err(409, 'SLOT_NOT_STARTED', 'A no-show can be marked only after the slot has ended');
       }
       const updated = await PartnerLabBookingModel.findOneAndUpdate(
         { _id: id, status: b.status, statusVersion: b.statusVersion },

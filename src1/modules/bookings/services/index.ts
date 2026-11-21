@@ -1,4 +1,4 @@
-import { BookingRepository } from '@/modules/bookings/repository';
+import { BookingRepository, flagLegacyOriginalMonth } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { Types } from 'mongoose';
@@ -36,7 +36,7 @@ import { NotificationService } from '@/modules/notification/services';
 import { SlotService } from '@/modules/slots/services';
 import { Service } from 'typedi';
 import { CouponService } from '@/modules/coupon/services';
-import { PaymentService } from '@/modules/payment/services';
+import { PaymentService, bookingPriceTermsOf } from '@/modules/payment/services';
 import { PaymentRepository } from '@/modules/payment/repository';
 import { BookingReminderScheduler } from '@/modules/bookings/services/bookingReminderScheduler';
 import {
@@ -144,11 +144,11 @@ export class BookingService {
    * by anyone; customers must cancel at least 24 h before (48 h for a Monday appointment).
    */
   private enforceUserCancellationWindow(booking: IBooking, requester: { userType: string }): void {
-    // Q16a (owner rule, 23 Nov 2026): the refund deadline is the earlier of the original appointment (stored on the first
-    // customer reschedule) and the current one, so rescheduling never reopens a closed window. Desk bookings are not
+    // Q16a (re-review rule): a booking the customer moved AFTER its refund deadline had passed keeps that closed window
+    // (`refundLock`); a move made while the window was open leaves it judged on its current time. Desk bookings are not
     // paid through us (no captured money, no window); doctor and admin cancellations pass no window at all.
-    const original = booking.originalAppointment && !booking.clinicDesk ? [booking.originalAppointment] : [];
-    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType, new Date(), original);
+    const locked = booking.refundLock && !booking.clinicDesk ? [booking.refundLock] : [];
+    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType, new Date(), locked);
   }
 
   private isEligibleForNewFollowUpBenefit(booking: IBooking): boolean {
@@ -1479,6 +1479,7 @@ export class BookingService {
         const done = await BookingModel.findOneAndUpdate(ledger ? { ...fence, paymentStatus: 'paid' } : fence, { $set: data }, { new: true, session }).lean() as IBooking | null;
         if (done) {
           await postConsultationEarningIn(done, session, { by: 'system', byKind: 'system' });
+          await flagLegacyOriginalMonth(done, session); // Q16a (E): a moved no-show's original month counts it now
           await releaseInterval('instant', String(id).toLowerCase(), session); // an instant consult frees the doctor at once
         }
         return done;
@@ -1672,6 +1673,7 @@ export class BookingService {
       const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
+      if ((done.noShows?.length ?? 0) > 0) await flagLegacyOriginalMonth(done, session); // Q16a (E): a second no-show leaves the bill
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
       await releaseInterval('instant', String(bookingId).toLowerCase(), session);
       // Q14 (owner, 18 Nov 2026): the doctor is not paid for a no-show (the customer is still not refunded; the platform
@@ -2044,6 +2046,8 @@ export class BookingService {
         },
       }, {
         paymentStatus: 'paid',
+        // Q16a (A): a coupon taken at pay-again is the booking's price from now on (earning and legacy payout follow it).
+        ...bookingPriceTermsOf({ baseAmount, discountAmount }),
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: grossAmount },

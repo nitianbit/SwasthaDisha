@@ -65,4 +65,9 @@ export interface SlotQueryParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  /**
+   * Q16a re-review (N3): an admin or doctor reading slots for an explicit date range (past ones included) gets them as
+   * stored; every other read is customer-facing availability (started and holiday slots left out in the query).
+   */
+  staffView?: boolean;
 }

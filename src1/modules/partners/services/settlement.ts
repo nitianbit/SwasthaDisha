@@ -27,10 +27,12 @@ export async function ensureSettlementAccount(
 ): Promise<ISettlementAccount> {
   const ownerId = canonicalOwnerId(ownerIdIn);
   if (/^[0-9a-f]{24}$/.test(ownerId)) {
-    const existing = await SettlementAccountModel.findOne({ ownerKind, ownerId: { $in: [ownerId, ownerId.toUpperCase(), String(ownerIdIn)] } })
+    // Q16a re-review (G): the canonical (lower-case) account wins whenever it exists; another spelling only when it is
+    // the only one (oldest first). `npm run audit:q16a-doctor-id-case` lists owners with several spellings.
+    const canonical = await SettlementAccountModel.findOne({ ownerKind, ownerId }).session(session ?? null).lean();
+    if (canonical) return canonical as ISettlementAccount;
+    const anyCase = await SettlementAccountModel.findOne({ ownerKind, ownerId: new RegExp(`^${ownerId}$`, 'i') }).sort({ createdAt: 1, _id: 1 })
       .session(session ?? null).lean();
-    if (existing) return existing as ISettlementAccount;
-    const anyCase = await SettlementAccountModel.findOne({ ownerKind, ownerId: new RegExp(`^${ownerId}$`, 'i') }).session(session ?? null).lean();
     if (anyCase) return anyCase as ISettlementAccount;
   }
   const upsert = () => SettlementAccountModel.findOneAndUpdate(

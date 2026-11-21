@@ -59,6 +59,7 @@ import {
   PaymentContext,
   VerifyPaymentRequest,
 } from '@/modules/payment/types';
+import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 
 interface RazorpayOrderResponse {
   id: string;
@@ -110,6 +111,17 @@ export interface PaymentContextHandler {
 const CONTEXT_HANDLERS = new Map<PaymentContext, PaymentContextHandler>();
 export function registerPaymentContextHandler(context: PaymentContext, handler: PaymentContextHandler): void {
   CONTEXT_HANDLERS.set(context, handler);
+}
+
+/**
+ * Q16a (A): the booking price terms of a paying record — `originalPrice` its base amount, `price` the base minus the
+ * coupon discount (what create sets with a coupon). Empty for a record without terms (nothing is rewritten).
+ */
+export function bookingPriceTermsOf(r: { baseAmount?: unknown; discountAmount?: unknown }): { price?: number; originalPrice?: number } {
+  const base = Number(r.baseAmount);
+  if (r.baseAmount === undefined || r.baseAmount === null || !Number.isFinite(base) || base < 0) return {};
+  const discount = Math.max(0, Number(r.discountAmount || 0));
+  return { originalPrice: base, price: Math.round(Math.max(0, base - discount) * 100) / 100 };
 }
 
 @Service()
@@ -1023,7 +1035,7 @@ export class PaymentService {
       return {
         context: 'booking',
         paymentRecord,
-        entity: booking || {},
+        entity: publicNoShowView(booking || {}), // Q16a (N7): the customer booking view
       };
     }
 
@@ -1085,6 +1097,9 @@ export class PaymentService {
       applyPatch: {
         paymentStatus: 'paid',
         paymentTransactionId: thisRecord,
+        // Q16a (A): the winning record's terms become the booking's price (a coupon taken at pay-again included), so the
+        // earning and the legacy payout follow what the customer was actually charged.
+        ...bookingPriceTermsOf(paymentRecord),
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: Number(paymentRecord.finalAmount || booking.price || 0) },
@@ -2097,7 +2112,8 @@ export class PaymentService {
       return {
         context: 'booking',
         paymentRecord: result.paymentRecord,
-        entity: result.entity,
+        // Q16a re-review (N7): the customer booking view (no desk internals, settlement account or request keys).
+        entity: publicNoShowView(result.entity),
       };
     }
 

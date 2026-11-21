@@ -106,3 +106,6 @@ export const adminAbandonAdjustmentKey = async (req: Request, res: Response, _n:
 export const adminUnmarkedConsultations = async (req: Request, res: Response, _n: NextFunction) =>
   paged(res, await f.adminUnmarkedConsultations({ ...pageOpts(req.query as Record<string, unknown>), doctorId: req.query.doctorId as string | undefined,
     ...period(req.query as Record<string, unknown>) }));
+// Q16a re-review (E): legacy months to recalculate after a moved no-show changed.
+export const adminLegacyRecalculations = async (req: Request, res: Response, _n: NextFunction) =>
+  paged(res, await f.adminLegacyRecalculations(pageOpts(req.query as Record<string, unknown>)));

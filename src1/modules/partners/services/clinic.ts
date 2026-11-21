@@ -779,8 +779,9 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
   const updated = await rescheduleWithHolds({
     bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id),
     // Q13: the target slot must not have started (checked when the move takes a new slot), and the version must match.
-    // Q16a: nor the appointment being moved (a missed one is marked no-show and moved with that command).
-    desk: { ...deskScopeOf(actor), refuseStartedClock: clockOf(clock) }, expectedUpdatedAt, refuseStartedSource: clockOf(clock),
+    // Q16a re-review (N4): the appointment being moved may have started — desk appointments are not paid through us, so
+    // the clinic may move a late patient any time before it marks them completed or no-show.
+    desk: { ...deskScopeOf(actor), refuseStartedClock: clockOf(clock) }, expectedUpdatedAt,
     patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
   });

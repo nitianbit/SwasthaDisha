@@ -11,18 +11,37 @@ import {
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { branchHolidays } from '@/modules/doctors/services/schedule';
+import SlotModel from '@/modules/slots/model';
+import BranchModel from '@/modules/partners/model/branch';
+import { istDate } from '@/modules/partners/services/slots';
 
 /**
  * Q16a (M1, M4): what a booking admission would refuse is not listed as available — a slot that has started (India
  * time; a slot whose time does not parse is never admitted either) and an in-clinic slot on its branch's holiday.
+ * Re-review N1 (owner): a multi-seat window (maxBookings > 1) stays listed until it ENDS, as admission allows.
  */
-export async function bookableNow<T extends { date?: string; startTime?: string; endTime?: string; duration?: number; branchId?: string }>(
+const openUntil = (s: { maxBookings?: number }, w: { start: Date; end: Date }) => (Number(s.maxBookings ?? 1) > 1 ? w.end : w.start);
+export async function bookableNow<T extends { date?: string; startTime?: string; endTime?: string; duration?: number; branchId?: string; maxBookings?: number }>(
   slots: T[], now = new Date()): Promise<T[]> {
-  const future = slots.filter((s) => { const w = slotIntervalOf(s); return !!w && w.start.getTime() > now.getTime(); });
+  const future = slots.filter((s) => { const w = slotIntervalOf(s); return !!w && openUntil(s, w).getTime() > now.getTime(); });
   const branches = future.map((s) => s.branchId).filter((b): b is string => typeof b === 'string' && !!b);
   if (!branches.length) return future;
   const holidays = await branchHolidays(branches);
   return future.filter((s) => !s.branchId || !holidays.get(String(s.branchId))?.has(String(s.date)));
+}
+
+/**
+ * Q16a re-review (N3): the same availability rule as a database condition, so pages and totals are exact: from today
+ * (India date), without today's slots that are no longer bookable (computed from today's candidates of `base`), and
+ * without in-clinic slots on their branch's holiday.
+ */
+export async function bookableQuery(base: Record<string, unknown>, now = new Date()): Promise<Record<string, unknown>> {
+  const today = istDate(now).replace(/-/g, '');
+  const todays = await SlotModel.find({ ...base, date: today }).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1 }).lean() as any[];
+  const closed = todays.filter((s) => { const w = slotIntervalOf(s); return !w || openUntil(s, w).getTime() <= now.getTime(); }).map((s) => s._id);
+  const branches = await BranchModel.find({ holidays: { $elemMatch: { $gte: istDate(now) } } }).select({ holidays: 1 }).lean() as { _id: unknown; holidays?: string[] }[];
+  const holidayRows = branches.map((b) => ({ branchId: String(b._id), date: { $in: (b.holidays ?? []).map((h) => String(h).replace(/-/g, '')) } }));
+  return { $and: [{ date: { $gte: today } }, ...(closed.length ? [{ _id: { $nin: closed } }] : []), ...(holidayRows.length ? [{ $nor: holidayRows }] : [])] };
 }
 
 @Service()
@@ -189,14 +208,12 @@ export class SlotService {
   }> {
     // If pagination params are provided, use pagination
     if (queryParams.page && queryParams.limit) {
-      const result = await this.slotRepository.findWithPagination(
-        queryParams,
-        queryParams.page,
-        queryParams.limit
-      );
-      // Filter to only available slots (currentBookings < maxBookings). Q16a: started and holiday slots are hidden
-      // from the page (the page total still counts them).
-      return { ...result, data: await bookableNow(result.data) };
+      // Q16a re-review (N3): customer-facing availability is filtered in the query, before paging (exact pages and
+      // totals); staff reading an explicit date range get the stored slots, past ones included.
+      const explicitRange = !!(queryParams.date || queryParams.dateFrom || queryParams.dateTo);
+      const extra = queryParams.staffView && explicitRange ? undefined
+        : await bookableQuery(this.slotRepository.paginationFilter(queryParams));
+      return this.slotRepository.findWithPagination(queryParams, queryParams.page, queryParams.limit, extra);
     }
 
     // Otherwise return all matching records, but filter to only available slots
@@ -283,7 +300,8 @@ export class SlotService {
       (slot) => slot.isAvailable && slot.isActive && slot.currentBookings && slot.maxBookings && slot.currentBookings < slot.maxBookings
     );
 
-    return { data: await bookableNow(data) };
+    const staffRange = queryParams.staffView && !!(queryParams.date || queryParams.dateFrom || queryParams.dateTo);
+    return { data: staffRange ? data : await bookableNow(data) };
   }
 
   async update(id: string, data: UpdateSlotRequest): Promise<ISlot> {
@@ -383,10 +401,12 @@ export class SlotService {
     date?: string,
     mode?: 'chat' | 'call' | 'video' | 'in-person'
   ): Promise<ISlot[]> {
+    // Q16a re-review (N8): without a date, past days are left out in the query (today's started slots in memory).
     const slots = await bookableNow(await this.slotRepository.findAvailableSlots(
       specialistId,
       wellnessPackageId,
-      date
+      date,
+      date ? undefined : istDate(new Date()).replace(/-/g, '')
     ));
     // Q4: only slots offered for the requested mode, and never a one-patient slot overlapping time the doctor already
     // holds through another path (e.g. an instant consultation).

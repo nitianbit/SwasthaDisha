@@ -3,8 +3,9 @@ import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
-import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
+import { parseAppointment, refundDeadlineOf } from '@/modules/common/utils/cancellationWindow';
 import BookingModel from '@/modules/bookings/model';
+import { flagLegacyOriginalMonth } from '@/modules/bookings/repository';
 import { IBooking } from '@/modules/bookings/types';
 import SlotModel from '@/modules/slots/model';
 import { undoCouponUsageIn } from '@/modules/coupon/usage';
@@ -154,12 +155,16 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
     throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
   }
-  // Q16a (M1): a slot that has started (India time) is never admitted, on every path (Q13 did this for the desk only).
+  // Q16a (M1): a one-patient slot that has started (India time) is never admitted, on every path (Q13 did this for the
+  // desk only). Re-review N1 (owner): a multi-seat window (maxBookings > 1: package windows, doctor sessions) stays
+  // bookable until it ENDS, as before.
   const refuseStarted = desk?.refuseStartedClock ?? startedClock ?? (() => new Date());
   {
     const w = slotIntervalOf(slot as SlotRow);
     // Sampled now, at admission (each transaction attempt), not when the request arrived.
-    if (!w || w.start.getTime() <= refuseStarted().getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
+    if (!w || (max > 1 ? w.end : w.start).getTime() <= refuseStarted().getTime()) {
+      throw conflict('SLOT_STARTED', max > 1 ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
+    }
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
@@ -218,8 +223,10 @@ async function releaseSlot(slotId: string, s: ClientSession) {
   const slot = await SlotModel.findById(slotId).session(s).lean();
   const current = slot?.currentBookings ?? 0;
   if (!slot || !(current > 0)) return;
+  // Q16a re-review (N2): a slot switched off by hand stays closed; only its seat is given back.
   const r = await SlotModel.updateOne({ _id: slotId, currentBookings: current },
-    { $inc: { currentBookings: -1 }, $set: { isAvailable: slot.isActive !== false && current - 1 < (slot.maxBookings ?? 1) } }, { session: s });
+    { $inc: { currentBookings: -1 }, $set: { isAvailable: slot.isActive !== false && (slot as { manuallyClosed?: boolean }).manuallyClosed !== true
+      && current - 1 < (slot.maxBookings ?? 1) } }, { session: s });
   if (r.modifiedCount !== 1) throw changed();
 }
 
@@ -358,6 +365,8 @@ export async function cancelBookingSettlement(p: {
     // Q4b: an instant consultation's money is held by its InstantRequest; only the instant cancel command refunds it.
     if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'Use the instant consultation cancel command');
     const already = booking.status === 'cancelled';
+    // Q16a re-review (F): the admin's moved-no-show cancel is one decision; a second one is refused, not answered 200.
+    if (already && p.movedNoShow) throw conflict('ALREADY_CANCELLED', 'This booking is already cancelled');
     if (already && !booking.walletFunding?.closed) return { booking, refunded: 0, alreadyCancelled: true };
     if (!already && !CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_CANCELLABLE', `A ${booking.status} booking cannot be cancelled`);
@@ -412,6 +421,16 @@ export async function cancelBookingSettlement(p: {
     if (!keepMoney) {
       await undoCouponUsageIn(records.map(r => String(r._id)), s);
       refunded = await settleMoney(booking, id, records, p.wallets, s);
+    } else {
+      // Q16a re-review (F): the money is kept as FORFEITED — the funding record is closed (it no longer shows money held;
+      // a late capture is returned to the wallet) and the amount kept is recorded on the cancel.
+      const wf = booking.walletFunding as { total?: number; revision?: number; captures?: { amount: number; state: string }[] } | undefined;
+      const forfeited = wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter(c => c.state === 'applied')
+        .reduce((a, c) => a + Number(c.amount || 0), 0)) * 100) / 100 : Number(booking.price || 0);
+      await BookingModel.updateOne({ _id: id, status: 'cancelled' }, { $set: {
+        'noShowCancel.forfeitedAmount': forfeited,
+        ...(wf ? { 'walletFunding.closed': true, 'walletFunding.total': 0, 'walletFunding.revision': Number(wf.revision || 0) + 1, 'walletFunding.updatedAt': new Date() } : {}),
+      } }, { session: s });
     }
 
     if (slot) await releaseSlot(slot, s);
@@ -500,14 +519,16 @@ export async function rescheduleWithHolds(p: {
   expectedUpdatedAt?: Date | string | null;
   /**
    * Q16a: refuse the move once the CURRENT appointment has started (the clock is read in the transaction), as a
-   * cancellation is refused — set for customers and the clinic desk, so a missed appointment cannot be moved away from
-   * its no-show (and then cancelled for a refund). Admins and no-show moves do not set it.
+   * cancellation is refused — set for customers, so a missed appointment cannot be moved away from its no-show (and
+   * then cancelled for a refund). Admins, the clinic desk (nothing paid through us; re-review N4) and no-show moves do
+   * not set it.
    */
   refuseStartedSource?: () => Date;
   /**
-   * Q16a (owner rule, 23 Nov 2026): a customer move keeps the appointment as it was before the FIRST such move
-   * (`originalAppointment`, never overwritten); the refund window is judged against the earlier of that and the
-   * current time. Not for desk appointments (not paid through us) nor no-show moves.
+   * Q16a: a customer move. It keeps the appointment as it was before the FIRST such move (`originalAppointment`,
+   * history only) and — when the move happens AFTER the pre-move appointment's refund deadline (clock read in the
+   * transaction) — locks that closed window (`refundLock`, the first one kept), so the move can never reopen it. Not for
+   * desk appointments (not paid through us) nor no-show moves.
    */
   recordOriginalAppointment?: boolean;
   /**
@@ -610,12 +631,20 @@ export async function rescheduleWithHolds(p: {
       fromSlotId: current ?? undefined, fromDate: booking.bookingDate, fromTime: booking.bookingTime, toSlotId: target,
       requestKey: p.noShow.requestKey, requestHash: p.noShow.requestHash } } } : {};
     const unset = { ...clinicUnset, ...(p.noShow ? { noShow: 1 as const } : {}) };
-    const originalSet = p.recordOriginalAppointment && !p.noShow && !booking.clinicDesk && !booking.originalAppointment
-      ? { originalAppointment: { bookingDate: booking.bookingDate, bookingTime: booking.bookingTime } } : {};
+    const customerMove = !!p.recordOriginalAppointment && !p.noShow && !booking.clinicDesk;
+    const before = { bookingDate: booking.bookingDate, bookingTime: booking.bookingTime };
+    const deadline = customerMove && !booking.refundLock ? refundDeadlineOf(before) : null;
+    const movedAt = (p.refuseStartedSource ?? (() => new Date()))();
+    const originalSet = {
+      ...(customerMove && !booking.originalAppointment ? { originalAppointment: before } : {}),
+      ...(deadline && movedAt.getTime() >= deadline.getTime() ? { refundLock: { ...before, movedAt } } : {}),
+    };
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },
       { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet, ...noShowSet, ...originalSet }, ...noShowPush, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
       { new: true, session: s }).lean() as IBooking | null;
     if (!updated) throw changed();
+    // Q16a (E): a no-show moved back to confirmed counts again in its original legacy month.
+    if (p.noShow) await flagLegacyOriginalMonth(updated, s);
     if (p.inTx) await p.inTx(updated, s);
     return updated;
   });

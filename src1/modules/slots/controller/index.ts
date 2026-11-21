@@ -58,6 +58,8 @@ export class SlotController {
         : undefined,
       sortBy: req.query.sortBy as string,
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
+      // Q16a re-review (N3): admins and doctors may read an explicit (past) date range as stored.
+      staffView: ['admin', 'specialist'].includes(String((req as Request & { user?: { userType?: string } }).user?.userType)),
     };
 
     const result = await this.slotService.getAll(queryParams);
