@@ -2,8 +2,11 @@
 // the released pharmacy app's verify (`module: 'pharmacy-wallet'`) was refused by validation, so the record stayed
 // `created` while the gateway kept the money.
 //
-//   npm run audit:s6-uncredited-wallet-topups                 one JSON report to stdout, a summary to stderr
-//   npm run audit:s6-uncredited-wallet-topups -- --no-gateway skip the Razorpay lookup even if keys are set
+//   npm run -s audit:s6-uncredited-wallet-topups                 one JSON report to stdout, a summary to stderr
+//   npm run -s audit:s6-uncredited-wallet-topups -- --no-gateway skip the Razorpay lookup even if keys are set
+//   (or: npx tsx src1/scripts/auditS6UncreditedWalletTopups.ts [--no-gateway])
+// Use `npm run -s` (silent): without it npm prints its own banner lines on stdout before the JSON.
+// stdout is always one JSON document: the report, or on any error { ok: false, error: { code, message } } with exit 1.
 //
 // Pharmacy top-ups are the records the service credits to a pharmacy wallet: context wallet_recharge AND a
 // payerPharmacyId AND notes.flow 'pharmacy_wallet_recharge'. For those it lists in `rows`:
@@ -24,10 +27,15 @@
 // A clean row (no admin top-up since createdAt, nothing refunded, no dispute listed) is NOT proof that the top-up was
 // never compensated: this report cannot see a dispute or chargeback the disputes list does not show, a bank transfer or
 // other payment made outside Razorpay, or a hand-written wallet entry that is not referenceType 'topup'. The runbook
-// adds a check of the payment in the Razorpay dashboard (disputes / chargebacks) and with support for every row. It writes nothing to MongoDB and creates no collection or index; it never calls a Razorpay
-// write (no capture, refund or order creation).
+// adds a check of the payment in the Razorpay dashboard (disputes / chargebacks) and with support for every row.
+// Disputes are read by paging GET /disputes (count 100, skip advanced by the items received, until an empty page, at most
+// 200 pages, 20 s timeout per request, a short pause between pages): this relies on Razorpay returning every dispute
+// across those pages; a missing items array, a timeout or the page cap makes the lookup "unavailable" (never "none").
+// `gatewayLookupFailed`: records whose Razorpay lookup failed; such rows count as needsCompensationCheck (unknown).
+// It writes nothing to MongoDB and creates no collection or index; it never calls a Razorpay write (no capture, refund
+// or order creation).
 //
-// Crediting a listed row after S6 is deployed: `npm run credit:s6-wallet-topup -- --record=<paymentTransactionId>`
+// Crediting a listed row after S6 is deployed: `npm run -s credit:s6-wallet-topup -- --record=<paymentTransactionId>`
 // (dry run; add --commit to apply). See src1/scripts/creditS6WalletTopup.ts. Do NOT use the admin manual credit
 // (POST /pharmacy-wallet/topup with pharmacyId) for these: it is not linked to the payment record, so a later verify or
 // reconcile of the same record would credit the pharmacy a second time. Re-run this audit afterwards: credited rows drop.
@@ -71,12 +79,32 @@ export interface S6Anomaly {
   paymentTransactionId: string; status: string; isProcessed: boolean; hasPayerPharmacyId: boolean; payerPharmacyIdValid: boolean; hasPharmacyFlow: boolean;
   amount: number; createdAt: string | null;
 }
+export interface S6LookupFailure { paymentTransactionId: string; status: string; section: 'rows' | 'failed'; reason: string }
 export interface S6TopupAudit {
   generatedAt: string; gatewayChecked: boolean; scanned: number; rows: S6TopupRow[]; failedWithCapture: S6FailedRow[] | 'not checked (no gateway)';
-  anomalies: S6Anomaly[];
+  gatewayLookupFailed: S6LookupFailure[]; anomalies: S6Anomaly[];
   summary: Record<Finding, number> & { needsCompensationCheck: number; capturedNotCredited: number | null; capturedNotCreditedAmount: number | null;
-    failedWithCapture: number | null; anomalies: number };
+    failedWithCapture: number | null; gatewayLookupFailed: number; anomalies: number };
 }
+
+/** Readable text for a thrown error; Razorpay SDK errors are { statusCode, error: { code, description } } without .message. */
+export function errorText(e: unknown): string {
+  const x = e as { statusCode?: number; error?: { code?: string; description?: string }; code?: unknown; message?: string } | null;
+  const parts = [x?.statusCode ? `HTTP ${x.statusCode}` : '', x?.error?.code ?? '', x?.error?.description ?? '', x?.error ? '' : (x?.message ?? '')]
+    .filter(Boolean);
+  return (parts.length ? parts.join(' ') : String(e)).slice(0, 200);
+}
+export function errorCode(e: unknown): string {
+  const x = e as { error?: { code?: string }; code?: unknown; name?: string } | null;
+  return String(x?.error?.code ?? x?.code ?? x?.name ?? 'ERROR');
+}
+/** Rejects after `ms` (the Razorpay SDK has no request timeout option). */
+export function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([p, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); })])
+    .finally(() => clearTimeout(timer));
+}
+export interface GatewayReadOptions { timeoutMs?: number; pageDelayMs?: number; maxPages?: number }
 
 /** Raw Razorpay order payments (paise), as GET /orders/{id}/payments returns them. */
 export type OrderPaymentsReader = (orderId: string) => Promise<{ id: string; amount: number; status: string; amount_refunded?: number }[]>;
@@ -99,28 +127,41 @@ export function razorpayClientFromEnv(): Razorpay | undefined {
   if (!CONFIG.RAZORPAY_KEY_ID || !CONFIG.RAZORPAY_KEY_SECRET) return undefined;
   return new Razorpay({ key_id: CONFIG.RAZORPAY_KEY_ID, key_secret: CONFIG.RAZORPAY_KEY_SECRET });
 }
-export function orderPaymentsReaderFor(client: { orders: { fetchPayments: (orderId: string) => Promise<unknown> } }): OrderPaymentsReader {
+export function orderPaymentsReaderFor(client: { orders: { fetchPayments: (orderId: string) => Promise<unknown> } },
+  opts: GatewayReadOptions = {}): OrderPaymentsReader {
   return async (orderId) => {
-    const res = (await client.orders.fetchPayments(orderId)) as { items?: { id: string; amount: number | string; status: string; amount_refunded?: number | string }[] };
-    return (res.items ?? []).map((p) => ({ id: p.id, amount: Number(p.amount), status: p.status, amount_refunded: Number(p.amount_refunded || 0) }));
+    const res = (await withTimeout(client.orders.fetchPayments(orderId), opts.timeoutMs ?? 20_000, 'Razorpay order payments lookup')) as
+      { items?: { id: string; amount: number | string; status: string; amount_refunded?: number | string }[] };
+    if (!Array.isArray(res?.items)) throw new Error('Razorpay order payments answer has no items array');
+    return res.items.map((p) => ({ id: p.id, amount: Number(p.amount), status: p.status, amount_refunded: Number(p.amount_refunded || 0) }));
   };
 }
 
 /** Read-only: pages through GET /disputes (the SDK has no per-payment lookup); undefined when the client has none. */
-export function disputesReaderFor(client: { disputes?: { all: (p: { count: number; skip: number }) => Promise<unknown> } }): DisputesReader | undefined {
+// Pages until an empty page (skip advances by the items received), so short pages are not taken as the end; relies on
+// Razorpay returning every dispute across the pages. A missing items array, a timeout or the page cap throws.
+export function disputesReaderFor(client: { disputes?: { all: (p: { count: number; skip: number }) => Promise<unknown> } },
+  opts: GatewayReadOptions = {}): DisputesReader | undefined {
   const api = client.disputes;
   if (!api) return undefined;
+  const maxPages = opts.maxPages ?? 200;
+  const pause = opts.pageDelayMs ?? 250;
   return async () => {
     const byPayment = new Map<string, DisputeView[]>();
-    for (let skip = 0; ; skip += 100) {
-      const res = (await api.all({ count: 100, skip })) as { items?: { id: string; payment_id: string; status: string; amount: number | string }[] };
-      const items = res.items ?? [];
-      for (const d of items) {
+    let skip = 0;
+    for (let page = 0; ; page++) {
+      if (page >= maxPages) throw new Error(`disputes paging stopped at the ${maxPages}-page cap`);
+      if (page > 0 && pause > 0) await new Promise((r) => setTimeout(r, pause));
+      const res = (await withTimeout(api.all({ count: 100, skip }), opts.timeoutMs ?? 20_000, 'Razorpay disputes lookup')) as
+        { items?: { id: string; payment_id: string; status: string; amount: number | string }[] };
+      if (!Array.isArray(res?.items)) throw new Error('Razorpay disputes answer has no items array');
+      if (!res.items.length) return byPayment;
+      for (const d of res.items) {
         const list = byPayment.get(d.payment_id) ?? [];
         list.push({ id: d.id, status: d.status, amount: rupees(Number(d.amount || 0)) });
         byPayment.set(d.payment_id, list);
       }
-      if (items.length < 100) return byPayment;
+      skip += res.items.length;
     }
   };
 }
@@ -160,10 +201,11 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     if (!readDisputes) disputes = { unavailable: 'no disputes lookup in the gateway client' };
     else {
       try { disputes = await readDisputes(); } catch (error) {
-        disputes = { unavailable: 'disputes lookup failed: ' + String((error as { error?: { code?: string } })?.error?.code ?? (error as Error)?.message ?? error).slice(0, 80) };
+        disputes = { unavailable: 'disputes lookup failed: ' + errorText(error) };
       }
     }
   }
+  const gatewayLookupFailed: S6LookupFailure[] = [];
   const failed: { id: string; pharmacyId: string; orderId: string | null; paise: number; finalPaise: number; status: string; createdAt: unknown }[] = [];
   let scanned = 0;
   for await (const r of PaymentRecordModel.find(PHARMACY_TOPUP_FILTER)
@@ -201,7 +243,10 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
             if ((!Array.isArray(row.disputes) || row.disputes.length) && finding !== 'credited_not_processed') row.needsCompensationCheck = true;
           }
         } catch (error) {
-          row.gateway = { checked: false, reason: 'gateway lookup failed: ' + String((error as { error?: { code?: string } })?.error?.code ?? (error as Error)?.message ?? error).slice(0, 80) };
+          row.gateway = { checked: false, reason: 'gateway lookup failed: ' + errorText(error) };
+          // Unknown at the gateway: refunds and disputes could not be checked.
+          if (finding !== 'credited_not_processed') row.needsCompensationCheck = true;
+          gatewayLookupFailed.push({ paymentTransactionId: id, status: r.status, section: 'rows', reason: row.gateway.reason });
         }
       }
     }
@@ -214,7 +259,10 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     for (const f of failed) {
       if (!f.orderId) continue;
       let view: GatewayView;
-      try { view = await gatewayView(read, f.orderId, f.finalPaise); } catch { continue; }
+      try { view = await gatewayView(read, f.orderId, f.finalPaise); } catch (error) {
+        gatewayLookupFailed.push({ paymentTransactionId: f.id, status: f.status, section: 'failed', reason: 'gateway lookup failed: ' + errorText(error) });
+        continue;
+      }
       if (!view.capturedPaymentId) continue;
       failedWithCapture.push({ paymentTransactionId: f.id, pharmacyId: f.pharmacyId, razorpayOrderId: f.orderId, amount: rupees(f.paise), status: f.status,
         createdAt: iso(f.createdAt), gateway: view, review: 'manual: failed record with a captured payment; not handled by the credit script' });
@@ -242,10 +290,11 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     capturedNotCredited = owed.length;
     capturedNotCreditedAmount = rupees(owed.reduce((a, r) => a + Math.round(((r.gateway as GatewayView).capturedAmount ?? 0) * 100), 0));
   }
-  return { generatedAt: new Date().toISOString(), gatewayChecked: !!read, scanned, rows, failedWithCapture, anomalies,
+  return { generatedAt: new Date().toISOString(), gatewayChecked: !!read, scanned, rows, failedWithCapture, gatewayLookupFailed, anomalies,
     summary: { unsettled: count('unsettled'), paid_not_credited: count('paid_not_credited'), credited_not_processed: count('credited_not_processed'),
       needsCompensationCheck: rows.filter((r) => r.needsCompensationCheck).length, capturedNotCredited, capturedNotCreditedAmount,
-      failedWithCapture: Array.isArray(failedWithCapture) ? failedWithCapture.length : null, anomalies: anomalies.length } };
+      failedWithCapture: Array.isArray(failedWithCapture) ? failedWithCapture.length : null, gatewayLookupFailed: gatewayLookupFailed.length,
+      anomalies: anomalies.length } };
 }
 
 /** Keeps stdout for the JSON report: every console log line (service logs included) goes to stderr. */
@@ -255,6 +304,20 @@ export function logsToStderr(): void {
       (t as unknown as { stderrLevels: Record<string, boolean> }).stderrLevels = Object.fromEntries(Object.keys(logger.levels).map((l) => [l, true]));
     }
   }
+}
+
+/**
+ * Ends the CLI once stdout has drained, with the exit code already set. A gateway request that timed out can leave its
+ * socket open and keep Node's event loop alive, so the process is ended explicitly rather than left to drain.
+ */
+export function exitAfterFlush(): void {
+  process.stdout.write('', () => process.exit(process.exitCode ?? 0));
+}
+
+/** On any error stdout still carries one JSON document; exit code 1 (set first, then exit after stdout drains). */
+export function reportError(error: unknown): void {
+  process.stdout.write(JSON.stringify({ ok: false, error: { code: errorCode(error), message: errorText(error) } }) + '\n');
+  process.exitCode = 1;
 }
 
 async function main() {
@@ -270,7 +333,7 @@ async function main() {
       `credited but not marked processed: ${s.credited_not_processed}; need a compensation check: ${s.needsCompensationCheck}; ` +
       `anomalies: ${s.anomalies}; ` +
       (report.gatewayChecked ? `captured at Razorpay and not credited: ${s.capturedNotCredited} (Rs ${s.capturedNotCreditedAmount}); ` +
-        `failed records with a capture (manual review): ${s.failedWithCapture}\n`
+        `failed records with a capture (manual review): ${s.failedWithCapture}; gateway lookups failed: ${s.gatewayLookupFailed}\n`
         : 'gateway not checked (no Razorpay keys in the environment, or --no-gateway)\n'));
   } finally {
     await mongoose.disconnect();
@@ -278,5 +341,6 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((error) => { console.error(error); process.exit(1); });
+  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); })
+    .finally(exitAfterFlush);
 }
