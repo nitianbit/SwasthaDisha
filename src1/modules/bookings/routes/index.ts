@@ -28,7 +28,8 @@ const bookingRouter = Router();
 const bookingController = new BookingController();
 
 // S5 review: a doctor that is not verified and active reads its existing bookings without patient contacts, meeting
-// link, concern, notes, documents, prescription or report (only id, type, time, mode and status).
+// link, concern, notes, documents, prescription or report (only id, type, time, mode and status). S5f: every method -
+// the commands a doctor token reaches here (cancel, reschedule, retry / reconcile payment) answer the same reduced view.
 bookingRouter.use(catchAsync(restrictIneligibleDoctorReads));
 
 // S2: these generic booking routes serve customers, admins, HR, specialists and pharmacies only (partner and any other

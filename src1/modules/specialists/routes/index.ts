@@ -201,6 +201,7 @@ specialistRouter.patch(
   validate(idParamSchema, 'params'),
   validate(updateAppointmentStatusSchema, 'body'),
   catchAsync(requireEligibleDoctorUnlessCancel),
+  catchAsync(restrictIneligibleDoctorReads), // S5f: the cancel's answer carries no patient details for an ineligible doctor
   catchAsync(specialistController.updateMyAppointmentStatus)
 );
 
