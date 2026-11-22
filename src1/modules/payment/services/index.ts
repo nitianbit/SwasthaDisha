@@ -69,13 +69,33 @@ interface RazorpayOrderResponse {
   status: string;
 }
 
+import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
+import { assistedFlags } from '@/modules/assisted/flags';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+
+const rechargeSweepFrom = () => assistedFlags.rechargeSweepFrom();
+/** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
+async function rechargeLotsWritable(): Promise<boolean> {
+  if (!assistedFlags.pharmacy()) return false;
+  try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
+}
+
 interface RazorpayPaymentDetails {
   id: string;
   order_id?: string;
   amount: number;
   currency: string;
   status: string;
+  /** Assisted booking phase 1a (P2): Razorpay's fee in paise (GST included), when reported. */
+  fee?: number;
 }
+
+/** P2: Razorpay `fee` alone (it already includes GST); anything else is "not known yet". */
+const feeOf = (raw: unknown): number | undefined => {
+  const n = Number(raw);
+  return raw !== null && raw !== undefined && Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+};
 
 const PHARMACY_ORDER_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const PHARMACY_ORDER_PAYMENT_TIMEOUT_NOTE =
@@ -132,6 +152,12 @@ export function bookingPriceTermsOf(r: { baseAmount?: unknown; discountAmount?: 
 @Service()
 export class PaymentService {
   private razorpayClient?: Razorpay;
+  /**
+   * Stage merge (S6 back-credit script + phase 1a ledger): called with the id of the wallet_recharge credit row a
+   * transaction attempt wrote (not on a replay). The S6 script compares it with the committed row to know whether ITS
+   * run credited the top-up; an aborted attempt's id never matches the committed row.
+   */
+  onWalletRechargeCredited?: (entryId: string) => void;
 
   constructor(
     private paymentRepository: PaymentRepository,
@@ -483,6 +509,23 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Review of b378f61 (item 1): read only — the order id Razorpay holds for a payment id, for an admin naming a top-up
+   * by a payment id the database never stored. `available: false` when gateway keys are not configured.
+   */
+  async gatewayOrderIdOfPayment(razorpayPaymentId: string): Promise<{ available: false } | { available: true; orderId: string | null }> {
+    let client: Razorpay;
+    try { client = this.getRazorpayClient(); } catch { return { available: false }; }
+    try {
+      const p = await client.payments.fetch(razorpayPaymentId) as { order_id?: unknown };
+      return { available: true, orderId: typeof p?.order_id === 'string' && p.order_id ? p.order_id : null };
+    } catch (error: any) {
+      const status = Number(error?.statusCode ?? error?.status);
+      if (status === 400 || status === 404 || error?.error?.code === 'BAD_REQUEST_ERROR') return { available: true, orderId: null };
+      throw new AppError({ status: 502, code: 'RAZORPAY_PAYMENT_FETCH_FAILED', message: 'The gateway could not be asked about this payment; try the order id or the record id' });
+    }
+  }
+
   private getRazorpayClient(): Razorpay {
     if (this.razorpayClient) {
       return this.razorpayClient;
@@ -763,6 +806,10 @@ export class PaymentService {
   }
 
   private handleExistingRecordStatus(paymentRecord: IPaymentRecord): void {
+    if (paymentRecord.chargebackAt) {
+      throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
+        message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
+    }
     if (paymentRecord.status === 'paid') {
       return;
     }
@@ -827,6 +874,7 @@ export class PaymentService {
         amount: Number(payment.amount),
         currency: payment.currency,
         status: payment.status,
+        fee: feeOf((payment as { fee?: unknown }).fee),
       };
     } catch (error: any) {
       throw new AppError({
@@ -930,7 +978,8 @@ export class PaymentService {
     data: VerifyPaymentRequest
   ): Promise<IPaymentRecord> {
     const updated = await this.paymentRepository.update(
-      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
+      // A top-up blocked after a lost card dispute (`chargebackAt`) is never marked paid again.
+      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] }, chargebackAt: { $exists: false } },
       {
         status: 'paid',
         razorpayPaymentId: data.razorpayPaymentId,
@@ -965,7 +1014,19 @@ export class PaymentService {
     this.validateRazorpayPaymentForRecord(paymentRecord, data, razorpayPayment);
     await this.handleGatewayTerminalStatus(paymentRecord, data, razorpayPayment);
 
-    return this.markPaymentAsPaid(paymentRecord, data);
+    const paid = await this.markPaymentAsPaid(paymentRecord, data);
+    return this.rememberGatewayFee(paid, razorpayPayment.fee);
+  }
+
+  /** P2: keeps Razorpay's fee on the record (once known; never overwritten). Best effort: the payment stands without it. */
+  private async rememberGatewayFee(record: IPaymentRecord, fee: number | undefined): Promise<IPaymentRecord> {
+    if (fee === undefined || record.gatewayFeeMinor !== undefined) return record;
+    try {
+      await PaymentRecordModel.updateOne({ _id: record._id, gatewayFeeMinor: { $exists: false } }, { $set: { gatewayFeeMinor: fee } });
+      return { ...record, gatewayFeeMinor: fee };
+    } catch {
+      return record;
+    }
   }
 
   async markAsProcessed(paymentRecordId: string): Promise<void> {
@@ -1515,6 +1576,9 @@ export class PaymentService {
   ): Promise<unknown> {
     const pharmacyId = paymentRecord.payerPharmacyId!;
     await this.pharmacyWalletRepository.upsertWallet(pharmacyId);
+    // Assisted booking phase 1a (§5.3, P2): a card top-up opens a withdrawable lot while the pharmacy switch is on and
+    // the lot index exists (otherwise the money is credited non-withdrawable, the conservative side).
+    const lots = await rechargeLotsWritable();
 
     try {
       return await this.runPharmacyPaymentCoreTransaction(async (session) => {
@@ -1530,46 +1594,27 @@ export class PaymentService {
         if (existingTransaction) {
           return this.pharmacyWalletRepository.findOne({ pharmacyId }, session);
         }
+        // Review of db252c1 (item a): the credit claims the record in this transaction — a write, so a concurrent
+        // chargeback that blocks the uncredited top-up and this credit can never both commit. Refused once blocked.
+        const claimed = await PaymentRecordModel.updateOne(
+          { _id: paymentRecord._id, status: 'paid', chargebackAt: { $exists: false } },
+          { $set: { walletCreditedAt: new Date() } }, { session });
+        if (claimed.modifiedCount !== 1) {
+          throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
+            message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
+        }
 
         const amountPaise =
           paymentRecord.baseAmountPaise ?? Math.round(paymentRecord.baseAmount * 100);
-        const updated = await this.pharmacyWalletRepository.atomicCredit(
-          pharmacyId,
-          amountPaise / 100,
-          session
-        );
-        if (!updated) {
-          throw new AppError({
-            status: 500,
-            code: 'PHARMACY_WALLET_CREDIT_FAILED',
-            message: 'Failed to credit pharmacy wallet after payment',
-          });
-        }
-
-        const balanceAfterPaise = updated.balancePaise ?? Math.round(updated.balance * 100);
-        const balanceBeforePaise = balanceAfterPaise - amountPaise;
-        await this.pharmacyWalletTransactionRepository.save(
-          {
-            pharmacyId,
-            walletId: String(updated._id),
-            transactionType: 'credit',
-            amount: amountPaise / 100,
-            amountPaise,
-            balanceBefore: balanceBeforePaise / 100,
-            balanceAfter: balanceAfterPaise / 100,
-            balanceBeforePaise,
-            balanceAfterPaise,
-            status: 'completed',
-            referenceType: 'wallet_recharge',
-            referenceId: paymentRecord._id!,
-            description: 'Pharmacy wallet recharge via Razorpay',
-            notes: paymentRecord.razorpayPaymentId,
-            transactionDate: getTodayYyyymmdd(),
-          },
-          { session }
-        );
-
-        return updated;
+        // §17.3: through the ledger (signed amount, operation key, version); credits post whatever the wallet state.
+        const posted = await postPharmacyMovementIn({
+          pharmacyId, kind: 'credit', amountPaise, operationKey: `wallet_recharge:${paymentRecord._id}`,
+          referenceType: 'wallet_recharge', referenceId: String(paymentRecord._id), description: 'Pharmacy wallet recharge via Razorpay',
+          notes: paymentRecord.razorpayPaymentId,
+          ...(lots ? { lot: { paymentRecordId: String(paymentRecord._id), gatewayFeeMinor: paymentRecord.gatewayFeeMinor ?? null } } : {}),
+        }, session);
+        if (!posted.replayed) this.onWalletRechargeCredited?.(String(posted.entry._id));
+        return posted.wallet;
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
@@ -1804,9 +1849,10 @@ export class PaymentService {
     const razorpayClient = this.getRazorpayClient();
     try {
       const res = (await razorpayClient.orders.fetchPayments(orderId)) as unknown as {
-        items?: { id: string; order_id: string; amount: number | string; currency: string; status: string }[];
+        items?: { id: string; order_id: string; amount: number | string; currency: string; status: string; fee?: unknown }[];
       };
-      return (res.items ?? []).map((p) => ({ id: p.id, order_id: p.order_id, amount: Number(p.amount), currency: p.currency, status: p.status }));
+      return (res.items ?? []).map((p) => ({ id: p.id, order_id: p.order_id, amount: Number(p.amount), currency: p.currency, status: p.status,
+        fee: feeOf(p.fee) }));
     } catch (error: any) {
       throw new AppError({
         status: 502,
@@ -1858,6 +1904,7 @@ export class PaymentService {
       } else {
         paymentRecord = updated;
       }
+      paymentRecord = await this.rememberGatewayFee(paymentRecord, captured.fee);
       logger.info('[Payment][reconcile] captured payment applied from the gateway', {
         paymentTransactionId: paymentRecord._id, razorpayOrderId: orderId, razorpayPaymentId: captured.id,
       });
@@ -1892,9 +1939,15 @@ export class PaymentService {
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
     const records = await PaymentRecordModel.find({
       // D3: pharmacy order payments too, so a lost browser continuation never strands a capture.
-      context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] }, ...UNSETTLED_ATTEMPT,
+      // Assisted booking phase 1a (§6.4): pharmacy wallet top-ups created from WALLET_RECHARGE_SWEEP_FROM on join the sweep
+      // (older captured-but-uncredited ones are on the admin list instead).
+      ...UNSETTLED_ATTEMPT,
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
-      $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
+      $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] },
+        { $or: [
+          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] } },
+          ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
+        ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
     let unsettled = 0;
     for (const r of records) {

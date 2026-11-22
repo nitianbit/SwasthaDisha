@@ -281,6 +281,21 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
     linkedConsultationId: { type: Schema.Types.ObjectId as any, ref: 'Booking', index: true },
     linkedDiagnosticOrderId: { type: String, index: true },
     linkedHealthCheckId: { type: Schema.Types.ObjectId as any, ref: 'OrderHealthCheck' },
+    // Assisted booking phase 0 (§9.3): an order made from the prescription of a booking this pharmacy made. The server
+    // bound the booking's dispensing copy (fileUrl, in prescriptionUrls) until bindingExpiresAt unless dispensed (N12);
+    // once per (pharmacy, requestKey) with the request's content hash.
+    prescriptionFromBooking: {
+      type: new Schema({
+        bookingId: { type: String, required: true },
+        fileUrl: { type: String, required: true },
+        bindingExpiresAt: { type: Date, required: true },
+        requestKey: { type: String, required: true },
+        requestHash: { type: String, required: true },
+        // When the order was first packed (dispensed): the binding outlives its expiry only if this came before it.
+        dispensedAt: { type: Date },
+      }, { _id: false }),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
@@ -291,6 +306,9 @@ pharmacyOrderSchema.index({ customerId: 1, status: 1 });
 // P8: one order per (customer, checkout request key).
 pharmacyOrderSchema.index({ customerId: 1, checkoutRequestKey: 1 }, { unique: true, partialFilterExpression: { checkoutRequestKey: { $type: 'string' } } });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
+// Assisted booking phase 0: one order per (pharmacy, prescription-order request key).
+pharmacyOrderSchema.index({ pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 }, { unique: true,
+  partialFilterExpression: { 'prescriptionFromBooking.requestKey': { $type: 'string' } } });
 pharmacyOrderSchema.index({ 'refill.paymentDueBy': 1, status: 1 }, { sparse: true });
 // Pharmacist review queue: pending prescriptions per pharmacy, oldest first.
 pharmacyOrderSchema.index({ pharmacyId: 1, prescriptionStatus: 1, createdAt: 1 });

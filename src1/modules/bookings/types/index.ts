@@ -47,6 +47,8 @@ export interface IBookingPrescription {
   prescribedAt?: string;
   prescribedBySpecialistId?: string;
   prescribedBySpecialistName?: string;
+  /** Assisted booking phase 0 (D15): the dispensing copy (no diagnosis) and the hash of the content it shows. */
+  dispensingCopy?: { url?: string; hash?: string; at?: Date };
 }
 
 export interface IBookingPrescriptionMedicine {
@@ -90,6 +92,8 @@ export interface IVirtualMeeting {
   updatedAt?: Date;
   cancelledAt?: Date;
 }
+
+export type BookingSource = 'self' | 'pharmacy_assisted' | 'lab_assisted' | 'doctor_assisted' | 'clinic_desk' | 'lab_desk';
 
 export interface IBooking {
   _id?: string;
@@ -162,6 +166,12 @@ export interface IBooking {
   instantRequestId?: string;
   /** Q13: every extension of an instant consultation (a keyed one happens once). */
   instantExtensions?: { requestKey?: string; minutes: number; endTime: Date; at: Date }[];
+  /** Assisted booking (§5.1): who booked; derived for older rows (clinicDesk → clinic_desk, otherwise self). */
+  source?: BookingSource;
+  /** Assisted booking (§5.1, P5): the earning rule frozen at create; completion reads it. */
+  earningRule?: 'provider_coupon_v2';
+  /** Assisted booking phase 1a (§5.1): the booker's block (see assisted/types). */
+  assisted?: import('@/modules/assisted/types').AssistedBlock;
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   
@@ -359,6 +369,8 @@ export interface BookingPaymentDetailsResponse {
 }
 
 export interface BookingQueryParams {
+  /** Assisted booking phase 1a (§17.5): leave out bookings the holder reported as not theirs. */
+  hideDisputed?: boolean;
   userId?: string;
   pharmacyId?: string;
   dependentId?: string;

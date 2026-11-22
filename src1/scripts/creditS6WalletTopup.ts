@@ -86,17 +86,11 @@ export const exitCodeOf = (o: CreditOutcome) =>
  */
 export function walletRechargePaymentService(client: RazorpayOrdersClient): { service: PaymentService; written: string[] } {
   const written: string[] = [];
-  const txRepo = new PharmacyWalletTransactionRepository();
-  const save = txRepo.save;
-  txRepo.save = (async (data: Parameters<typeof save>[0], options?: Parameters<typeof save>[1]) => {
-    const saved = await save(data, options);
-    if ((data as { referenceType?: string })?.referenceType === 'wallet_recharge') written.push(String((saved as { _id?: unknown })?._id));
-    return saved;
-  }) as typeof save;
+  // Stage merge: the credit is posted by the pharmacy wallet ledger (assisted phase 1a), which reports each row it wrote.
   const service = Object.assign(Object.create(PaymentService.prototype), {
     paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(), walletTransactionRepository: new WalletTransactionRepository(),
-    pharmacyWalletRepository: new PharmacyWalletRepository(), pharmacyWalletTransactionRepository: txRepo,
-    razorpayClient: client,
+    pharmacyWalletRepository: new PharmacyWalletRepository(), pharmacyWalletTransactionRepository: new PharmacyWalletTransactionRepository(),
+    razorpayClient: client, onWalletRechargeCredited: (entryId: string) => { written.push(entryId); },
   }) as PaymentService;
   return { service, written };
 }

@@ -22,6 +22,7 @@
     "migrate:q3-settlement-cutover": "tsx src1/scripts/q3SettlementCutover.ts",
     "migrate:q4-reservations": "tsx src1/scripts/q4ReservationBackfill.ts",
     "migrate:q16b-partner-id-case": "tsx src1/scripts/q16bPartnerIdCase.ts",
+    "migrate:assisted-pharmacy-wallets": "tsx src1/scripts/assistedPharmacyWallets.ts",
     "audit:q16a-doctor-id-case": "tsx src1/scripts/q16aDoctorIdCaseAudit.ts",
     "seed:demo": "tsx src1/scripts/seedDemoAccounts.ts",
     "test:api": "tsx test/test-api.ts",

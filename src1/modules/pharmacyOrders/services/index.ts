@@ -39,6 +39,12 @@ export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
 import logger from '@/services/logger';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
+import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { assertRxOrderRequest, bindRxOrderFile, prepareRxOrder, type RxOrderTerms } from '@/modules/assisted/rxOrder';
+import { AssistedAuditEventModel } from '@/modules/assisted/model';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
@@ -592,6 +598,8 @@ export class PharmacyOrderService {
       checkoutRequestKey?: string;
       /** P8: the cart this checkout came from (id + version), so a replay can finish emptying exactly that cart. */
       checkoutCart?: { id: string; updatedAt: Date };
+      /** Assisted booking phase 0: an order from a booking's prescription (checked terms, key and content hash). */
+      rxOrder?: RxOrderTerms & { requestKey: string; requestHash: string };
     } = {}
   ): Promise<{
     order: IPharmacyOrder;
@@ -606,6 +614,12 @@ export class PharmacyOrderService {
       discountAmount: number;
     };
   }> {
+    if (data.prescriptionFromBookingId !== undefined && !options.rxOrder) {
+      return this.createFromPrescription(pharmacyId, data, createdById, createdByRole);
+    }
+    if (data.requestKey !== undefined && !options.rxOrder) {
+      throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'A requestKey is for orders made from a prescription' });
+    }
     this.validateOrderParty(data);
     this.assertUniqueMedicines(data.items);
 
@@ -681,6 +695,9 @@ export class PharmacyOrderService {
         if (!data.customerId) throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'Request keys are for customer orders' });
         await claimRequestKey(scopeOf('pharmacy_checkout', String(data.customerId)), options.checkoutRequestKey, session);
       }
+      // Assisted booking phase 0: the prescription order's key is claimed with the order (abandoned keys refuse); the
+      // unique {pharmacyId, prescriptionFromBooking.requestKey} makes a second order under it impossible.
+      if (options.rxOrder) await claimRequestKey(scopeOf('pharmacy_rx_order', pharmacyId), options.rxOrder.requestKey, session);
       const allocations = await this.inventoryService.reserveOrderStockBulk(
         pharmacyId,
         inventoryItems,
@@ -721,14 +738,22 @@ export class PharmacyOrderService {
           deliveryMode: data.deliveryMode,
           deliveryAddress: data.deliveryAddress,
           isWalkIn: data.isWalkIn ?? false,
-          prescriptionUrls: data.prescriptionUrls ?? [],
+          // Assisted booking phase 0: the dispensing copy, put here by the server (bound after the commit).
+          prescriptionUrls: options.rxOrder ? [options.rxOrder.fileUrl] : data.prescriptionUrls ?? [],
           prescriptionStatus,
           notes: data.notes,
           linkedConsultationId: data.linkedConsultationId,
           linkedDiagnosticOrderId: data.linkedDiagnosticOrderId,
+          ...(options.rxOrder ? { prescriptionFromBooking: { bookingId: options.rxOrder.bookingId, fileUrl: options.rxOrder.fileUrl,
+            bindingExpiresAt: options.rxOrder.bindingExpiresAt, requestKey: options.rxOrder.requestKey, requestHash: options.rxOrder.requestHash } } : {}),
         },
         { session }
       );
+      if (options.rxOrder) {
+        await AssistedAuditEventModel.create([{ at: new Date(), actorKind: 'pharmacy', actorId: String(createdById), orgKind: 'pharmacy',
+          orgId: pharmacyId, action: 'rx_order.created', bookingId: options.rxOrder.bookingId, orderId: String(created._id),
+          requestKey: options.rxOrder.requestKey, detail: { items: reservedItems.length, prescriptionStatus } }], { session });
+      }
 
       return created;
     });
@@ -936,6 +961,49 @@ export class PharmacyOrderService {
     return { order: now, paymentRequired: true, payment };
   }
 
+  /**
+   * Assisted booking phase 0 (§9.3): a medicine order from the prescription of a booking this pharmacy made, exactly
+   * once per (pharmacy, requestKey). The same key and content answer the first order again (`replayed: true`); other
+   * content under the key is 409 IDEMPOTENCY_KEY_REUSED; an abandoned key is 409 REQUEST_ABANDONED.
+   */
+  private async createFromPrescription(pharmacyId: string, data: CreateOrderRequest, createdById: string, createdByRole: string) {
+    if (createdByRole !== 'pharmacy' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Pharmacy access is required' });
+    }
+    const requestKey = assertRxOrderRequest(data);
+    const { requestKey: _key, ...content } = data;
+    const requestHash = requestHashOf({ kind: 'rx_order', ...content });
+    await assertUniqueIndex(PharmacyOrderModel, { pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 });
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
+    const replay = async () => {
+      const prior = await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId),
+        'prescriptionFromBooking.requestKey': { $eq: requestKey } }).lean() as IPharmacyOrder | null;
+      if (!prior) return null;
+      if (prior.prescriptionFromBooking?.requestHash !== requestHash) {
+        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different order' });
+      }
+      await bindRxOrderFile(prior);
+      return this.checkoutReplay(prior);
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    const terms = await prepareRxOrder(pharmacyId, data);
+    try {
+      const result = await this.create(pharmacyId, { ...content, prescriptionFromBookingId: undefined, prescriptionUrls: [],
+        customerId: terms.customerId, linkedConsultationId: terms.bookingId }, createdById, createdByRole,
+      { rxOrder: { ...terms, requestKey, requestHash } });
+      await bindRxOrderFile(result.order);
+      return result;
+    } catch (error) {
+      // A concurrent first request under the same key committed first: answer with its order.
+      if ((error as { code?: number })?.code === 11000) {
+        const again = await replay();
+        if (again) return again;
+      }
+      throw error;
+    }
+  }
+
   /** P8: the answer to a repeated keyed checkout: the order the key produced, payable again if it is still unpaid. */
   async checkoutReplay(order: IPharmacyOrder): Promise<{ order: IPharmacyOrder; paymentRequired: boolean; payment?: PharmacyPaymentDetails; replayed: true }> {
     // A keyed order's customer is locked (ORDER_CHECKOUT_PARTY_LOCKED), so it is still the customer who placed it.
@@ -1072,6 +1140,21 @@ export class PharmacyOrderService {
     // P8: a customer's keyed checkout order keeps its customer (the key's identity; replay and recovery find it by it).
     if (changesOrderParty && order.checkoutRequestKey) {
       throw new AppError({ status: 409, code: 'ORDER_CHECKOUT_PARTY_LOCKED', message: 'The customer of an app order cannot be changed' });
+    }
+    // Assisted booking phase 0: an order made from a booking's prescription keeps that booking's patient (the bound
+    // dispensing copy is readable by the order's customer).
+    if ((changesOrderParty || Object.prototype.hasOwnProperty.call(data, 'linkedConsultationId')) && order.prescriptionFromBooking) {
+      throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_PARTY_LOCKED',
+        message: "The patient of an order made from a booking's prescription cannot be changed" });
+    }
+    // Review finding 9: the bound dispensing copy stays the order's prescription (it cannot be removed or replaced).
+    if (order.prescriptionFromBooking && Object.prototype.hasOwnProperty.call(data, 'prescriptionUrls')) {
+      const sent = Array.isArray(data.prescriptionUrls) ? data.prescriptionUrls : [];
+      const kept = sent.length === (order.prescriptionUrls ?? []).length && sent.every((u, i) => u === order.prescriptionUrls?.[i]);
+      if (!kept) {
+        throw new AppError({ status: 409, code: 'ORDER_PRESCRIPTION_LOCKED',
+          message: "The prescription of an order made from a booking's prescription cannot be changed" });
+      }
     }
     if (changesOrderParty && Object.prototype.hasOwnProperty.call(order, 'recoveryRequest')) {
       throw new AppError({
@@ -1260,7 +1343,7 @@ export class PharmacyOrderService {
         { $eq: [{ $type: '$_id' }, 'objectId'] },
         { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
       ] },
-      ...(changesOrderParty ? { recoveryRequest: { $exists: false }, checkoutRequestKey: { $exists: false } } : {}),
+      ...(changesOrderParty ? { recoveryRequest: { $exists: false }, checkoutRequestKey: { $exists: false }, prescriptionFromBooking: { $exists: false } } : {}),
       // P8: a financial edit commits only while no payment is admitted (pending, nothing linked) - checked at write time,
       // so an edit validated before a payment was linked cannot change the order afterwards.
       ...(changesFinancialData ? { paymentStatus: { $eq: 'pending' }, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } : {}),
@@ -1394,7 +1477,10 @@ export class PharmacyOrderService {
             : {}),
           ...(shouldReturnInventory ? { paymentStatus: { $in: ['pending', 'failed', null] } } : {}),
         },
-        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}) },
+        { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}),
+          // Assisted booking phase 0 (N12, review finding 7): when an order made from a prescription was dispensed.
+          ...(payload.status === 'packed' && order.prescriptionFromBooking && !order.prescriptionFromBooking.dispensedAt
+            ? { 'prescriptionFromBooking.dispensedAt': new Date() } : {}) },
         { new: true, session }
       );
 

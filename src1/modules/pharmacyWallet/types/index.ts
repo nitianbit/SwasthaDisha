@@ -3,7 +3,15 @@ export type PharmacyWalletTxType =
   | 'debit'
   | 'consultation_payment'
   | 'refund'
-  | 'adjustment';
+  | 'adjustment'
+  | 'booking_debit'
+  | 'refund_credit'
+  | 'withdrawal_hold'
+  | 'withdrawal_release'
+  | 'withdrawal_void'
+  | 'chargeback'
+  | 'receivable_setoff'
+  | 'opening_balance';
 
 export interface IPharmacyWallet {
   _id?: string;
@@ -11,6 +19,13 @@ export interface IPharmacyWallet {
   balance: number;
   balancePaise?: number;
   isActive?: boolean;
+  withdrawableMinor?: number;
+  receivableMinor?: number;
+  frozen?: boolean;
+  frozenReason?: string;
+  frozenAt?: Date;
+  version?: number;
+  ledgerOpenedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -32,6 +47,11 @@ export interface IPharmacyWalletTransaction {
   description?: string;
   notes?: string;
   transactionDate?: string;
+  signedAmountPaise?: number;
+  operationKey?: string;
+  withdrawableDeltaPaise?: number;
+  receivableDeltaPaise?: number;
+  lotAllocations?: { lotId: string; amountPaise: number }[];
   createdAt?: Date;
   updatedAt?: Date;
 }

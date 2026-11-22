@@ -5,6 +5,8 @@ export interface IDependent {
   relationship: string; // e.g., "Me", "Father", "Mother", "Spouse", "Son", "Daughter", etc.
   age?: number;
   gender?: string;
+  /** Assisted booking (§5.2). */
+  preferredLanguage?: string;
   phone?: string;
   email?: string;
   dateOfBirth?: string; // YYYYMMDD format

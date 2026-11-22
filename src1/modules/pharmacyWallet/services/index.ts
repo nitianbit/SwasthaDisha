@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
-import { startSession } from 'mongoose';
+import { startSession, Types } from 'mongoose';
+import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { BookingRepository } from '@/modules/bookings/repository';
@@ -14,6 +15,31 @@ import {
 } from '@/modules/pharmacyWallet/types';
 import { AppError } from '@/modules/common/types';
 import { PaymentService } from '@/modules/payment/services';
+import PaymentRecordModel from '@/modules/payment/model';
+
+/**
+ * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
+ * `credit` / `recharge` / `refund` and `debit` / `payment` / `booking`; anything else falls to the title text (a refund
+ * of a "booking" would read as a debit). So every row answers with an app type by its sign, and the stored kind as
+ * `movementType`. `credit`, `debit` and `refund` rows are unchanged.
+ */
+const APP_TYPES = ['credit', 'debit', 'refund'];
+const ZERO_DEBIT_KINDS = ['chargeback', 'receivable_setoff', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
+export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletTransaction & { movementType: string } {
+  const kind = String(t.transactionType);
+  if (APP_TYPES.includes(kind)) return { ...t, movementType: kind };
+  const signed = Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
+    : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100);
+  // A zero-amount row (a chargeback the balance could not cover) reads as what its kind is.
+  const credit = signed > 0 || (signed === 0 && !ZERO_DEBIT_KINDS.includes(kind));
+  return { ...t, transactionType: (credit ? 'credit' : 'debit') as IPharmacyWalletTransaction['transactionType'], movementType: kind };
+}
+
+/** Assisted booking phase 1a (§17.6): the wallet answer adds the withdrawable amount and the freeze (absent = 0 / false). */
+export function walletView(w: IPharmacyWallet): Record<string, unknown> {
+  return { ...w, withdrawableMinor: Number(w.withdrawableMinor ?? 0), frozen: w.frozen === true,
+    receivableMinor: Number(w.receivableMinor ?? 0) };
+}
 
 @Service()
 export class PharmacyWalletService {
@@ -64,6 +90,25 @@ export class PharmacyWalletService {
     };
   }
 
+  /**
+   * Assisted booking phase 1a (§6.4, W3b pattern): "check my top-up" — reconciles one of this pharmacy's Razorpay top-ups
+   * with the gateway and credits it once if it was captured. Another pharmacy's (or a missing) record is 404.
+   */
+  async checkTopup(pharmacyId: string, paymentTransactionId: string): Promise<{ state: 'credited' | 'unpaid'; wallet: Record<string, unknown> | null }> {
+    const notFound = () => new AppError({ status: 404, code: 'PAYMENT_RECORD_NOT_FOUND', message: 'Payment record not found' });
+    if (!/^[0-9a-fA-F]{24}$/.test(String(paymentTransactionId))) throw notFound();
+    const record = await PaymentRecordModel.findById(paymentTransactionId).lean() as Record<string, any> | null;
+    if (!record || record.context !== 'wallet_recharge' || record.notes?.flow !== 'pharmacy_wallet_recharge'
+        || String(record.payerPharmacyId ?? '').toLowerCase() !== String(pharmacyId).toLowerCase()) throw notFound();
+    if (!this.paymentService) {
+      throw new AppError({ status: 500, code: 'PAYMENT_SERVICE_UNAVAILABLE', message: 'Payment service is unavailable' });
+    }
+    const out = await this.paymentService.reconcilePaymentAndProcess({ paymentTransactionId: String(record._id),
+      userId: String(record.payerUserId || record.userId), requesterUserType: 'pharmacy', requesterPharmacyId: pharmacyId });
+    const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
+    return { state: out.state === 'paid' ? 'credited' : 'unpaid', wallet: wallet ? walletView(wallet) : null };
+  }
+
   async getOrCreateWallet(pharmacyId: string): Promise<IPharmacyWallet> {
     try {
       return await this.walletRepo.upsertWallet(pharmacyId);
@@ -109,31 +154,14 @@ export class PharmacyWalletService {
     try {
       let result: IPharmacyWallet | undefined;
       await session.withTransaction(async () => {
-        const updated = await this.walletRepo.atomicCredit(pharmacyId, req.amount, session);
-        if (!updated) {
-          throw new AppError({ status: 500, code: 'TOPUP_FAILED', message: 'Failed to top up wallet' });
-        }
-        const balanceAfterPaise = updated.balancePaise ?? Math.round(updated.balance * 100);
-        const balanceBeforePaise = balanceAfterPaise - amountPaise;
-
-        await this.txRepo.save({
-          pharmacyId,
-          walletId: String(updated._id),
-          transactionType: 'credit',
-          amount: amountPaise / 100,
-          amountPaise,
-          balanceBefore: balanceBeforePaise / 100,
-          balanceAfter: balanceAfterPaise / 100,
-          balanceBeforePaise,
-          balanceAfterPaise,
-          status: 'completed',
-          referenceType: 'topup',
-          referenceId: normalizedKey,
-          description: 'Admin top-up',
-          notes: req.notes,
-          transactionDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
-        }, { session });
-        result = updated;
+        // Assisted booking phase 1a (§17.3): through the ledger (signed amount, operation key, version). An admin credit
+        // is never withdrawable (no lot) and posts whatever the wallet state.
+        const posted = await postPharmacyMovementIn({
+          pharmacyId, kind: 'credit', amountPaise,
+          operationKey: `admin_topup:${normalizedKey || new Types.ObjectId().toHexString()}`,
+          referenceType: 'topup', referenceId: normalizedKey as string, description: 'Admin top-up', notes: req.notes,
+        }, session);
+        result = posted.wallet;
       });
       if (!result) {
         throw new AppError({ status: 500, code: 'TOPUP_FAILED', message: 'Failed to top up wallet' });
@@ -225,6 +253,8 @@ export class PharmacyWalletService {
             status: 'completed',
             referenceType: 'consultation',
             referenceId: req.consultationId,
+            // §17.3: every new row is signed (this unrouted legacy writer included).
+            signedAmountPaise: -Math.round(req.amount * 100),
             description: 'Consultation payment from pharmacy wallet',
             notes: req.notes,
             transactionDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
@@ -281,6 +311,7 @@ export class PharmacyWalletService {
   async getTransactions(
     params: WalletTxQueryParams
   ): Promise<{ data: IPharmacyWalletTransaction[]; total: number; page: number; totalPages: number }> {
-    return this.txRepo.findWithPagination(params, params.page ?? 1, params.limit ?? 20);
+    const page = await this.txRepo.findWithPagination(params, params.page ?? 1, params.limit ?? 20);
+    return { ...page, data: page.data.map(transactionView) };
   }
 }

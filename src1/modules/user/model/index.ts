@@ -160,7 +160,7 @@ const userSchema = new Schema<IUser>(
     },
     createdSource: {
       type: String,
-      enum: ['self_signup', 'pharmacy_app', 'partner_invoice', 'clinic_desk'],
+      enum: ['self_signup', 'pharmacy_app', 'partner_invoice', 'clinic_desk', 'assisted_booking'],
       default: 'self_signup',
       index: true,
     },
@@ -181,6 +181,8 @@ const userSchema = new Schema<IUser>(
       type: String,
       index: true,
     },
+    // Assisted booking (§5.2): the language for care and SMS; a booking fills it only while empty.
+    preferredLanguage: { type: String, trim: true },
   },
   {
     timestamps: true,

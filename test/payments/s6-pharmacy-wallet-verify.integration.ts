@@ -99,7 +99,12 @@ function checkout(orderId: string, amountPaise: number) {
 }
 
 async function pharmacy() {
-  return { pharmacyId: new Types.ObjectId().toHexString(), userId: new Types.ObjectId().toHexString() };
+  const pharmacyId = new Types.ObjectId().toHexString();
+  // Stage merge (assisted phase 0/1a review): /payments/verify and /reconcile of a BOOKING payment need an operational
+  // pharmacy (its answer carries the booker view), so each test pharmacy is a real active, verified one.
+  await mongoose.connection.collection('pharmacies').insertOne({ _id: new Types.ObjectId(pharmacyId), name: 'S6 pharmacy ' + pharmacyId.slice(-4),
+    phone: '97' + String(Date.now()).slice(-8), isActive: true, isVerified: true } as never);
+  return { pharmacyId, userId: new Types.ObjectId().toHexString() };
 }
 async function customer() {
   const user = new Types.ObjectId().toHexString();

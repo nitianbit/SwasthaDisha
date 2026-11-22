@@ -17,6 +17,7 @@ import { Container } from 'typedi';
 import { CONFIG } from '@/config/config';
 import UserModel from '@/modules/user/model';
 import BookingModel from '@/modules/bookings/model';
+import PharmacyModel from '@/modules/pharmacies/model';
 import { BookingRepository } from '@/modules/bookings/repository';
 import { BookingService } from '@/modules/bookings/services';
 import { DependentService } from '@/modules/dependents/services';
@@ -68,6 +69,10 @@ async function main() {
     // S5 review: the doctors are verified, active accounts (an ineligible doctor reads its bookings without patient details).
     await mongoose.connection.collection('specialists').insertMany([specA, specB].map((id) => ({ _id: new Types.ObjectId(id), name: 'Dr ' + id.slice(-4),
       isActive: true, isVerified: true })));
+    // Assisted booking phase 0 (review finding 5): a pharmacy reaches /bookings only while operational, so both are real
+    // verified pharmacies.
+    await PharmacyModel.collection.insertMany([pharmA, pharmB].map((p, i) => ({ _id: new Types.ObjectId(p), name: 'S2 pharmacy ' + i,
+      phone: '970000020' + i, email: `s2-pharmacy-${i}@example.test`, isActive: true, isVerified: true })) as never);
     const tokens = {
       custA: sign({ _id: custA, userType: 'user' }),
       custB: sign({ _id: custB, userType: 'user' }),

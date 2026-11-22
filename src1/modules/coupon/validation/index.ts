@@ -160,6 +160,8 @@ export const createCouponSchema = Joi.object({
   usageLimitPerUser: usageLimitPerUserSchema,
   totalUsageLimit: totalUsageLimitSchema,
   isActive: isActiveSchema,
+  fundedBy: Joi.string().valid('provider', 'platform').optional(),
+  partnerUsable: Joi.boolean().optional(),
 })
   .custom((value, helpers) => {
     // Validate that endDate >= startDate
@@ -219,6 +221,8 @@ export const updateCouponSchema = Joi.object({
   usageLimitPerUser: usageLimitPerUserSchema,
   totalUsageLimit: totalUsageLimitSchema,
   isActive: isActiveSchema,
+  fundedBy: Joi.string().valid('provider', 'platform').optional(),
+  partnerUsable: Joi.boolean().optional(),
 })
   .min(1)
   .custom((value, helpers) => {

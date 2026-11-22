@@ -41,11 +41,13 @@ export interface IUser {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
   linkedPharmacyId?: string;
+  /** Assisted booking (§5.2): care and SMS language (a booking fills it only while empty). */
+  preferredLanguage?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -82,7 +84,7 @@ export interface CreateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
@@ -121,7 +123,7 @@ export interface UpdateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;

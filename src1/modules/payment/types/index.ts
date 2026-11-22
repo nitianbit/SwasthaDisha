@@ -6,6 +6,8 @@ export interface IPaymentRecord {
   userId: string;
   payerUserId?: string;
   payerPharmacyId?: string;
+  /** Assisted booking phase 1a (P2): Razorpay `fee` of the capture, paise. */
+  gatewayFeeMinor?: number;
   context: PaymentContext;
   contextId: string; // Booking ID for booking context, generated reference for wallet recharge
   baseAmount: number;
@@ -26,6 +28,10 @@ export interface IPaymentRecord {
   isProcessed: boolean;
   /** D3: pharmacy order captures only - applied to the order or returned to the wallet (set once). */
   pharmacySettlement?: 'applied' | 'returned';
+  /** Pharmacy top-ups: when the wallet credit was claimed (once). */
+  walletCreditedAt?: Date;
+  /** Pharmacy top-ups: a card dispute lost before any credit; never credited afterwards. */
+  chargebackAt?: Date;
   notes?: Record<string, unknown>;
   paidAt?: Date;
   /** Background recovery schedule (W3b). */

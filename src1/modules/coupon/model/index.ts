@@ -113,6 +113,10 @@ const couponSchema = new Schema<ICoupon>(
       default: true,
       index: true,
     }, // Whether coupon is currently active
+    // Assisted booking (decision B, N1): who bears the discount. Corporate coupons default to 'platform' (migration and
+    // create); a platform-funded coupon is refused on partner bookings unless an admin set partnerUsable.
+    fundedBy: { type: String, enum: ['provider', 'platform'], default: 'provider' },
+    partnerUsable: { type: Boolean, default: false },
   },
   {
     timestamps: true,

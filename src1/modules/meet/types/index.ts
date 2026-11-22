@@ -49,6 +49,9 @@ export type MeetEventPayload = {
     timeZone: string;
   };
   attendees?: EventAttendee[];
+  /** Assisted booking phase 1a: guests never see each other (the booker's address is not shown to the doctor's other guests). */
+  guestsCanSeeOtherGuests?: boolean;
+  guestsCanInviteOthers?: boolean;
   conferenceData: {
     createRequest: {
       requestId: string;

@@ -6,9 +6,11 @@ import { requireAdmin } from '@/modules/middleware/auth';
 import { adminClearBodySchema, clearBookingPrescription, clearBookingReport } from '@/modules/bookings/adminClear';
 import { restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
 import { BookingController } from '@/modules/bookings/controller';
-import { AuthRequest } from '@/modules/middleware/auth';
+import { AuthRequest, assertOperationalPharmacy } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { gatePharmacyBookingCreate, gatePharmacyBookingRetry } from '@/modules/bookings/pharmacyBookingGate';
+import { notMine } from '@/modules/assisted/controller/phase1a';
+import { notMineSchema } from '@/modules/assisted/validation';
 import {
   cancelBookingSchema,
   createBookingSchema,
@@ -40,6 +42,12 @@ bookingRouter.use((req: AuthRequest, _res, next) => {
     ? undefined
     : new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access to this booking resource is not permitted' }));
 });
+// Assisted booking phase 0 (review finding 5): a pharmacy's access ends with its authority — every booking route answers
+// a pharmacy that is not operational (inactive, unverified or archived) 403, as /pharmacy-bookings does.
+bookingRouter.use(catchAsync(async (req: AuthRequest, _res, next) => {
+  if (req.user?.userType === 'pharmacy') await assertOperationalPharmacy(req);
+  next();
+}));
 
 // S4: create bodies never carry the server-owned prescription / report (dropped and logged; see serverOwnedFields).
 bookingRouter.use(dropServerOwnedCreateFields);
@@ -111,6 +119,14 @@ bookingRouter.post(
   validate(idParamSchema, 'params'),
   validate(cancelBookingSchema, 'body'),
   catchAsync(bookingController.cancelBooking)
+);
+
+// Assisted booking phase 1a (§17.5): the account holder reports a partner-made booking as not theirs.
+bookingRouter.post(
+  '/:id/not-mine',
+  validate(idParamSchema, 'params'),
+  validate(notMineSchema, 'body'),
+  catchAsync(notMine)
 );
 
 bookingRouter.post(

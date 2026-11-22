@@ -1,5 +1,7 @@
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import { withPatientNames } from '@/modules/bookings/utils/patientNames';
+import { bookerView, bookerViews, withBookerBooking } from '@/modules/assisted/bookerView';
+import { assistedAdminView, assistedPublicView, notDisputed } from '@/modules/assisted/views';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
 import { rebindStored, withFiles } from '@/modules/file/access';
@@ -47,6 +49,31 @@ export class BookingController {
     }
 
     return actor;
+  }
+
+  /**
+   * The no-show scrub for every caller, then (assisted booking phase 1a, §6.7) a partner-paid booking without the
+   * partner's money for everyone but admins.
+   */
+  private viewFor<T>(req: AuthRequest, value: T): T {
+    const scrubbed = publicNoShowView(value);
+    return req.user?.userType === 'admin' ? assistedAdminView(scrubbed) : assistedPublicView(scrubbed);
+  }
+
+  /** §17.5: a holder's lists leave out the bookings they reported as not theirs (direct reads still work). */
+  private listFor<T>(req: AuthRequest, rows: T[]): T[] {
+    return req.user?.userType === 'user' && Array.isArray(rows) ? rows.filter((r) => notDisputed(r as never)) : rows;
+  }
+
+  /** Assisted booking phase 0: the booking pharmacy's id when the caller is a pharmacy (its answers use the booker view). */
+  private bookerPharmacyOf(req: AuthRequest): string | undefined {
+    return req.user?.userType === 'pharmacy' ? String(req.user.pharmacyId || req.user._id) : undefined;
+  }
+
+  /** A pharmacy's create / retry / reconcile answers: the strict booker view of the booking inside (review finding 4). */
+  private async bookerAnswerFor<T>(req: AuthRequest, value: T): Promise<T> {
+    const pharmacyId = this.bookerPharmacyOf(req);
+    return pharmacyId ? withBookerBooking(value, pharmacyId) : value;
   }
 
   private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
@@ -289,7 +316,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking created and payment initiated successfully'
         : 'Booking created successfully',
-      data: publicNoShowView(result),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -321,7 +348,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Wellness package booking created and payment initiated successfully'
         : 'Wellness package booking created successfully',
-      data: publicNoShowView(result),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -353,7 +380,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Specialist booking created and payment initiated successfully'
         : 'Specialist booking created successfully',
-      data: publicNoShowView(result),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -364,10 +391,12 @@ export class BookingController {
     const result = await this.bookingService.getById(id, userId);
     // Q15: admins see the patient's name as on the admin list rows; other callers see the booking unchanged.
     const row = req.user?.userType === 'admin' ? (await withPatientNames([result as any]))[0] as unknown as typeof result : result;
+    // Assisted booking phase 0 (§9.2): a pharmacy reads its bookings only in the booker view.
+    const pharmacyId = this.bookerPharmacyOf(req);
 
     res.status(200).json({
       success: true,
-      data: publicNoShowView(row),
+      data: pharmacyId ? await bookerView(row as never, pharmacyId, { copies: 'inline' }) : this.viewFor(req, row),
     });
   };
 
@@ -385,9 +414,10 @@ export class BookingController {
       pharmacyId: req.user?.pharmacyId,
     });
 
+    // payment-details: its booking part is ten payment fields only (no clinical data), for the pharmacy's payment flow.
     res.status(200).json({
       success: true,
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -431,6 +461,8 @@ export class BookingController {
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
       forUser: req.query.forUser === 'true',
       ownerScope: staffScope,
+      // §17.5: a holder's list leaves out what they reported as not theirs.
+      ...(req.user?.userType === 'user' ? { hideDisputed: true } : {}),
     };
 
     const result = requiredCorporateId === undefined
@@ -438,12 +470,15 @@ export class BookingController {
       : await this.bookingService.getAll(queryParams, requiredCorporateId);
     // Q15: admin rows name the patient (family member or account holder); other callers see the rows unchanged.
     const rows = req.user?.userType === 'admin' ? await withPatientNames(result.data as any[]) as unknown as typeof result.data : result.data;
+    // Assisted booking phase 0 (§9.2): a pharmacy lists its bookings only in the booker view.
+    const pharmacyId = this.bookerPharmacyOf(req);
+    const view = pharmacyId ? await bookerViews(rows as never[], pharmacyId) as unknown as typeof rows : this.viewFor(req, this.listFor(req, rows));
 
     if (result.total !== undefined) {
       // Paginated response
       res.status(200).json({
         success: true,
-        data: publicNoShowView(rows),
+        data: view,
         pagination: {
           page: result.page!,
           limit: queryParams.limit!,
@@ -455,7 +490,7 @@ export class BookingController {
       // Non-paginated response
       res.status(200).json({
         success: true,
-        data: publicNoShowView(rows),
+        data: view,
       });
     }
   };
@@ -471,7 +506,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking updated successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -518,10 +553,11 @@ export class BookingController {
         : staffScope
           ? (await this.bookingService.getAll({ userId, ownerScope: staffScope })).data
           : await this.bookingService.getByUserId(effectiveUserId);
+    const pharmacyId = this.bookerPharmacyOf(req);
 
     res.status(200).json({
       success: true,
-      data: publicNoShowView(result),
+      data: pharmacyId ? await bookerViews(result as never[], pharmacyId) : this.viewFor(req, this.listFor(req, result)),
     });
   };
 
@@ -540,7 +576,7 @@ export class BookingController {
 
       res.status(200).json({
         success: true,
-        data: publicNoShowView(result.data.filter(
+        data: this.viewFor(req, result.data.filter(
           (booking) => booking.status === 'pending' || booking.status === 'confirmed'
         )),
       });
@@ -556,7 +592,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: publicNoShowView(result),
+      data: this.viewFor(req, this.listFor(req, result)),
     });
   };
 
@@ -568,7 +604,7 @@ export class BookingController {
     });
     res.setHeader('Cache-Control', 'private, no-store');
     // Q16d (F6): the same view as every other booking route (no desk, settlement or no-show internals).
-    res.status(200).json({ success: true, data: publicNoShowView(result) });
+    res.status(200).json({ success: true, data: await this.bookerAnswerFor(req, this.viewFor(req, result)) });
   };
 
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
@@ -591,7 +627,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking payment initiated successfully'
         : 'Booking payment completed successfully',
-      data: publicNoShowView(result),
+      data: await this.bookerAnswerFor(req, this.viewFor(req, result)),
     });
   };
 
@@ -611,7 +647,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 
@@ -631,7 +667,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking rescheduled successfully',
-      data: publicNoShowView(result),
+      data: this.viewFor(req, result),
     });
   };
 }

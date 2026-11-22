@@ -26,6 +26,8 @@ export class PharmacyCustomerService {
   ): Promise<{ customer: IPharmacyCustomer; userId: string; isNewUser: boolean }> {
     // S3: the partner confirms the patient agreed ("patient agreed" tick). An explicit `false` is refused; a missing
     // answer (the released pharmacy app sends none) is still accepted and recorded as 'not_recorded'.
+    // 'patient_agreed' is the pharmacy's own tick: it never unlocks the account name (assisted/names.ts; only the
+    // customer's own order, 'customer_order', does).
     if (data.consent === false) {
       throw new AppError({ status: 400, code: 'CONSENT_REQUIRED', message: 'The patient must agree before being linked to your pharmacy' });
     }
@@ -78,10 +80,16 @@ export class PharmacyCustomerService {
 
     // Upsert the pharmacy-customer relationship
     const existing = await this.pharmacyCustomerRepo.findByPharmacyAndUser(data.pharmacyId, userId);
+    // Assisted booking (§17.4): the name this pharmacy typed is kept on its link (the first one typed).
+    const typedName = typeof data.name === 'string' && data.name.trim() ? data.name.trim().replace(/\s+/g, ' ') : undefined;
     if (existing) {
-      // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer.
-      if (!existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed')) {
-        const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, consentRecord);
+      const typedFill = typedName && !(typeof existing.typedName === 'string' && existing.typedName.trim()) ? { typedName } : {};
+      // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer. A link the
+      // customer made by ordering (`customer_order`) keeps that record (the pharmacy's tick never replaces it).
+      const recordConsent = !existing.consent || (consent === 'patient_agreed' && existing.consent === 'not_recorded');
+      if (recordConsent || Object.keys(typedFill).length) {
+        const consentFill = recordConsent ? consentRecord : {};
+        const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, { ...consentFill, ...typedFill });
         return { customer: updated || existing, userId, isNewUser: false };
       }
       return { customer: existing, userId, isNewUser: false };
@@ -97,9 +105,34 @@ export class PharmacyCustomerService {
       createdByRole,
       createdById,
       ...consentRecord,
+      ...(typedName ? { typedName } : {}),
     });
 
     return { customer, userId, isNewUser };
+  }
+
+  /**
+   * Assisted booking (§17.4): the pharmacy edits the name it typed for a linked account holder (`id` = the link id or the
+   * customer's user id). Audited. Another pharmacy's link, or none, is 404.
+   */
+  async setTypedName(pharmacyId: string, id: string, typedName: string, actorId: string): Promise<IPharmacyCustomer> {
+    const notFound = () => new AppError({ status: 404, code: 'CUSTOMER_NOT_LINKED', message: 'This user is not linked to your pharmacy' });
+    if (!/^[0-9a-fA-F]{24}$/.test(String(id)) || !/^[0-9a-fA-F]{24}$/.test(String(pharmacyId))) throw notFound();
+    const name = String(typedName ?? '').trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 200) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'typedName must have 1 to 200 characters' });
+    const { inTransaction } = await import('@/modules/partners/services');
+    const { auditIn } = await import('@/modules/assisted/support');
+    const PharmacyCustomerModel = (await import('@/modules/pharmacyCustomers/model')).default;
+    const { Types } = await import('mongoose');
+    return inTransaction(async (s) => {
+      const pid = new Types.ObjectId(pharmacyId);
+      const link = await PharmacyCustomerModel.findOneAndUpdate({ pharmacyId: pid, $or: [{ _id: new Types.ObjectId(id) }, { userId: new Types.ObjectId(id) }] },
+        { $set: { typedName: name } }, { new: true, session: s }).lean() as IPharmacyCustomer | null;
+      if (!link) throw notFound();
+      await auditIn({ actorKind: 'pharmacy', actorId: String(actorId).toLowerCase(), orgKind: 'pharmacy', orgId: String(pharmacyId).toLowerCase(),
+        action: 'customer.typed_name', detail: { linkId: String(link._id), userId: String(link.userId) } }, s);
+      return link;
+    });
   }
 
   async getCustomers(
@@ -167,8 +200,8 @@ export class PharmacyCustomerService {
   /**
    * S3: an order for a customer needs a link. A pharmacy orders only for a customer already linked to it (403
    * CUSTOMER_NOT_LINKED otherwise; a link is made with the patient's consent through POST /pharmacy-customers). A
-   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order'. The user's
-   * linkedPharmacyId is never touched here.
+   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order' (an existing link is
+   * upgraded to it). The user's linkedPharmacyId is never touched here.
    */
   async ensureLinked(
     pharmacyId: string,
@@ -188,6 +221,16 @@ export class PharmacyCustomerService {
         code: 'USER_NOT_FOUND',
         message: 'User not found',
       });
+    }
+
+    // Review of db252c1 (names): the customer's own order is the customer's consent — an existing link this pharmacy
+    // made (`patient_agreed`, `not_recorded`, none) is upgraded to `customer_order`.
+    const ownOrder = createdByRole === 'user' && String(userId) === String(createdById);
+    if (linked && ownOrder) {
+      await this.pharmacyCustomerRepo.update(
+        { pharmacyId, userId, consent: { $ne: 'customer_order' } } as never,
+        { consent: 'customer_order', consentRecordedAt: new Date(), consentRecordedById: createdById }
+      );
     }
 
     if (!linked) {

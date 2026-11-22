@@ -4,6 +4,7 @@ import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/ser
 type EarningBooking = {
   _id?: unknown; specialistId?: string; doctorName?: string; settlementSystem?: string; paymentStatus?: string;
   price?: number; originalPrice?: number; settlement?: { settlementAccountId?: string };
+  earningRule?: string; assisted?: { split?: { providerMinor?: number; baseMinor?: number; cutMinor?: number; rule?: string } } | null;
 };
 
 /**
@@ -15,7 +16,13 @@ type EarningBooking = {
  */
 export async function postConsultationEarningIn(b: EarningBooking, s: ClientSession, actor: { by: string; byKind: 'system' | 'admin' }): Promise<void> {
   if (b.settlementSystem !== 'ledger' || b.paymentStatus !== 'paid' || !b.specialistId) return;
-  const amountMinor = Math.round(Number(b.price ?? 0) * 100);
+  // Assisted booking phase 1a (§8.3, P5): a row frozen with `provider_coupon_v2` earns its split — base (after a
+  // provider-funded coupon; the list price for a platform-funded one) minus the cut, which is 0 until phase 4.
+  const split = b.earningRule === 'provider_coupon_v2' ? b.assisted?.split : undefined;
+  const v2 = !!split && Number.isSafeInteger(split.providerMinor) && Number.isSafeInteger(split.baseMinor);
+  const amountMinor = v2 ? Number(split!.providerMinor) : Math.round(Number(b.price ?? 0) * 100);
+  const grossMinor = v2 ? Number(split!.baseMinor) : amountMinor;
+  const commissionMinor = v2 ? Number(split!.cutMinor ?? 0) : 0;
   if (!(amountMinor > 0)) return;
   let accountId = b.settlement?.settlementAccountId;
   if (!accountId) {
@@ -23,7 +30,7 @@ export async function postConsultationEarningIn(b: EarningBooking, s: ClientSess
     accountId = String(account._id);
   }
   await postLedgerEntry({
-    settlementAccountId: accountId, kind: 'earning', amountMinor, grossMinor: amountMinor, commissionMinor: 0,
+    settlementAccountId: accountId, kind: 'earning', amountMinor, grossMinor, commissionMinor,
     source: 'consultation', sourceId: String(b._id), by: actor.by, byKind: actor.byKind,
   }, s);
 }

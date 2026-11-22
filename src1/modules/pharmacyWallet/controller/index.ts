@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
-import { PharmacyWalletService } from '@/modules/pharmacyWallet/services';
+import { PharmacyWalletService, walletView } from '@/modules/pharmacyWallet/services';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 
@@ -32,7 +32,7 @@ export class PharmacyWalletController {
     const pharmacyId = this.resolvePharmacyId(req);
     const shouldCreate = req.user?.userType !== 'admin';
     const result = await this.service.getWallet(pharmacyId, shouldCreate);
-    res.status(200).json({ success: true, data: result });
+    res.status(200).json({ success: true, data: result ? walletView(result) : result });
   };
 
   getTransactions = async (req: AuthRequest, res: Response, _next: NextFunction) => {
@@ -76,6 +76,13 @@ export class PharmacyWalletController {
       req.header('Idempotency-Key') || undefined
     );
     res.status(200).json({ success: true, message: 'Wallet topped up', data: result });
+  };
+
+  /** POST /pharmacy-wallet/topups/:paymentTransactionId/check (assisted booking phase 1a, §17.6). */
+  checkTopup = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.checkTopup(req.user?.pharmacyId || '', req.params.paymentTransactionId);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: result });
   };
 
   payConsultation = async (req: AuthRequest, res: Response, _next: NextFunction) => {

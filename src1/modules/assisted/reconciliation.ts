@@ -1,0 +1,238 @@
+import { Types } from 'mongoose';
+import logger from '@/services/logger';
+import { istDateIso } from '@/modules/common/utils/istDate';
+import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
+import BookingModel from '@/modules/bookings/model';
+import type { IBooking } from '@/modules/bookings/types';
+import SlotModel from '@/modules/slots/model';
+import PaymentRecordModel from '@/modules/payment/model';
+import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
+import { refreshWithdrawableIn, withdrawableOfIn } from '@/modules/pharmacyWallet/ledger';
+import { LedgerEntryModel } from '@/modules/partners/model/settlement';
+import { inTransaction } from '@/modules/partners/services';
+import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules/assisted/model';
+import { assistedFlags, assistedLimits } from '@/modules/assisted/flags';
+import { raiseAlertIn } from '@/modules/assisted/limits';
+
+/**
+ * Assisted booking phase 1a (design §8.2, §8.8, P10): the daily reconciliation and the stuck-money report. Mismatches are
+ * REPORTED (and alerted), never fixed. The admin route runs the same checks live (read only); the daily job stores the
+ * report for the India day, raises alerts and fills gateway fees of top-up lots.
+ */
+type Row = Record<string, any>;
+const DAY = 86_400_000;
+const HOUR = 3_600_000;
+const lower = (v: unknown) => String(v ?? '').toLowerCase();
+const LIST_MAX = 200;
+
+export interface Mismatch { check: string; ref: string; detail: Record<string, unknown> }
+
+/** §8.2: balance = Σ entries; paise = rupees; withdrawable = Σ eligible lots ≤ balance; receivable ⇒ frozen. */
+async function walletInvariants(): Promise<{ checked: number; notMigrated: string[]; mismatches: Mismatch[] }> {
+  const wallets = await PharmacyWalletModel.find({}).lean() as Row[];
+  const mismatches: Mismatch[] = [];
+  const notMigrated: string[] = [];
+  for (const w of wallets) {
+    const pid = String(w.pharmacyId);
+    const paise = Number.isSafeInteger(w.balancePaise) ? Number(w.balancePaise) : Math.round(Number(w.balance ?? 0) * 100);
+    if (Math.round(Number(w.balance ?? 0) * 100) !== paise) mismatches.push({ check: 'wallet_paise', ref: pid, detail: { balance: w.balance, balancePaise: w.balancePaise } });
+    const missing = await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: w.pharmacyId, status: 'completed', signedAmountPaise: { $exists: false } });
+    // A wallet with unsigned (pre-1a) rows waits for the migration; one whose rows are all signed (opened by the
+    // migration, or created by the 1a ledger) is checked whatever its ledgerOpenedAt says.
+    if (missing > 0) { notMigrated.push(pid); continue; }
+    const [sum] = await PharmacyWalletTransactionModel.aggregate([{ $match: { pharmacyId: w.pharmacyId, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$signedAmountPaise' } } }]);
+    if (Number(sum?.total ?? 0) !== paise) mismatches.push({ check: 'wallet_balance', ref: pid, detail: { balancePaise: paise, entriesPaise: Number(sum?.total ?? 0) } });
+    const withdrawable = await withdrawableOfIn(pid, null);
+    if (withdrawable !== Number(w.withdrawableMinor ?? 0) || withdrawable > paise) {
+      mismatches.push({ check: 'wallet_withdrawable', ref: pid, detail: { withdrawableMinor: Number(w.withdrawableMinor ?? 0), lotsMinor: withdrawable, balancePaise: paise } });
+    }
+    if (Number(w.receivableMinor ?? 0) > 0 && w.frozen !== true) mismatches.push({ check: 'wallet_receivable_unfrozen', ref: pid, detail: { receivableMinor: w.receivableMinor } });
+  }
+  return { checked: wallets.length, notMigrated, mismatches };
+}
+
+async function walletsOwing() {
+  const rows = await PharmacyWalletModel.find({ $or: [{ receivableMinor: { $gt: 0 } }, { balancePaise: { $lt: 0 } }, { balance: { $lt: 0 } }] })
+    .select({ pharmacyId: 1, balancePaise: 1, receivableMinor: 1, frozen: 1 }).limit(LIST_MAX).lean() as Row[];
+  return rows.map((w) => ({ pharmacyId: String(w.pharmacyId), balancePaise: Number(w.balancePaise ?? 0), receivableMinor: Number(w.receivableMinor ?? 0),
+    frozen: w.frozen === true }));
+}
+
+/** §8.8: one funding per paid booking; every refund row posted; provider + cut = base and earned once on completion. */
+async function bookingChecks(scope: { since: Date | null; flagged: string[] }): Promise<{ checked: number; mismatches: Mismatch[] }> {
+  // Review: the daily run covers bookings changed in the last 7 days plus any already flagged; `full` scans everything.
+  const window = scope.since
+    ? { $or: [{ updatedAt: { $gte: scope.since } }, { _id: { $in: scope.flagged.filter((id) => Types.ObjectId.isValid(id)) } }] } : {};
+  const rows = await BookingModel.find({ 'assisted.funding.method': 'wallet', ...window }).select({ status: 1, paymentStatus: 1, assisted: 1, settlement: 1 })
+    .lean() as unknown as IBooking[];
+  const mismatches: Mismatch[] = [];
+  for (const b of rows) {
+    const id = lower(b._id);
+    const a = b.assisted!;
+    const f = a.funding;
+    if (f.amountMinor > 0) {
+      const debits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted:${id}:debit` }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
+      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+        mismatches.push({ check: 'one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
+      }
+    }
+    const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
+    if (refunded > 0) {
+      const credit = await PharmacyWalletTransactionModel.findOne({ operationKey: `assisted:${id}:refund` }).select({ amountPaise: 1 }).lean();
+      if (!credit || Number(credit.amountPaise) !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
+    }
+    if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'cancelled_not_refunded', ref: id, detail: {} });
+    if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'refunded_not_cancelled', ref: id, detail: { status: b.status } });
+    const sp = a.split;
+    if (sp.providerMinor + sp.cutMinor !== sp.baseMinor) mismatches.push({ check: 'split_sum', ref: id, detail: { ...sp } });
+    if (b.status === 'completed' && sp.providerMinor > 0) {
+      const earned = await LedgerEntryModel.find({ source: 'consultation', sourceId: { $in: [id, String(b._id)] }, kind: 'earning' }).select({ amountMinor: 1 }).lean();
+      if (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor) {
+        mismatches.push({ check: 'provider_earning', ref: id, detail: { entries: earned.length, providerMinor: sp.providerMinor } });
+      }
+    }
+    if (b.status === 'no_show') {
+      const earned = await LedgerEntryModel.countDocuments({ source: 'consultation', sourceId: { $in: [id, String(b._id)] }, kind: 'earning' });
+      if (earned > 0) mismatches.push({ check: 'no_show_earned', ref: id, detail: { entries: earned } });
+    }
+  }
+  return { checked: rows.length, mismatches };
+}
+
+/** Paid pharmacy top-ups with no wallet credit (and, before the sweep's start date, attempts nobody checks). */
+export async function uncreditedTopups(now: Date = new Date()) {
+  // Review: without a sweep date the list covers the last 30 days (older attempts are not scanned on every read).
+  const sweepFrom0 = assistedFlags.rechargeSweepFrom();
+  const recent = sweepFrom0 ? {} : { createdAt: { $gte: new Date(now.getTime() - 30 * DAY) } };
+  const paid = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', status: 'paid', ...recent })
+    .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1, razorpayPaymentId: 1 }).sort({ createdAt: 1 }).limit(5000).lean() as Row[];
+  const uncredited: Row[] = [];
+  for (const r of paid) {
+    const tx = await PharmacyWalletTransactionModel.exists({ referenceType: 'wallet_recharge', referenceId: String(r._id), status: 'completed' });
+    if (!tx) uncredited.push({ paymentTransactionId: String(r._id), pharmacyId: r.payerPharmacyId, amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100),
+      createdAt: r.createdAt, state: 'paid_not_credited' });
+    if (uncredited.length >= LIST_MAX) break;
+  }
+  const sweepFrom = assistedFlags.rechargeSweepFrom();
+  const unchecked = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', status: 'created',
+    paymentGateway: 'razorpay', createdAt: { $lt: new Date(Math.min(now.getTime() - HOUR, sweepFrom ? sweepFrom.getTime() : now.getTime())),
+      ...(sweepFrom ? {} : { $gte: new Date(now.getTime() - 30 * DAY) }) } })
+    .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(LIST_MAX).lean() as Row[];
+  return [...uncredited, ...unchecked.map((r) => ({ paymentTransactionId: String(r._id), pharmacyId: r.payerPharmacyId,
+    amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'not_checked_with_gateway' }))];
+}
+
+/** §8.8 stuck-money report. Items of later phases (Razorpay refund rows, late captures, withdrawals) are listed empty. */
+export async function stuckMoney(now: Date = new Date()) {
+  const pendingPastDeadline = await BookingModel.find({ 'assisted.funding': { $exists: true }, status: 'pending', paymentStatus: 'pending',
+    createdAt: { $lt: new Date(now.getTime() - 30 * 60_000 - HOUR) } }).select({ _id: 1, createdAt: 1 }).limit(LIST_MAX).lean();
+  const open = await BookingModel.find({ 'assisted.funding.state': 'captured', status: { $in: ['pending', 'confirmed'] }, paymentStatus: 'paid' })
+    .select({ bookingDate: 1, bookingTime: 1, slotId: 1, 'assisted.bookedBy': 1, 'assisted.funding.amountMinor': 1 }).limit(5000).lean() as unknown as IBooking[];
+  const slots = await SlotModel.find({ _id: { $in: open.map((b) => b.slotId).filter((id) => Types.ObjectId.isValid(String(id))) } })
+    .select({ date: 1, startTime: 1, endTime: 1, duration: 1 }).lean();
+  const slotBy = new Map(slots.map((s) => [lower(s._id), s]));
+  const stuckAfterSlot = open.filter((b) => {
+    const s = slotBy.get(lower(b.slotId));
+    const end = (s && s.date === b.bookingDate ? slotIntervalOf(s as never)?.end : null)
+      ?? parseAppointment({ bookingDate: String(b.bookingDate), bookingTime: String(b.bookingTime) })?.at;
+    return !!end && end.getTime() + 7 * DAY < now.getTime();
+  }).slice(0, LIST_MAX).map((b) => ({ bookingId: String(b._id), bookingDate: b.bookingDate, bookerId: b.assisted?.bookedBy.id,
+    amountMinor: b.assisted?.funding.amountMinor }));
+  const frozenWithReceivable = await PharmacyWalletModel.find({ frozen: true, receivableMinor: { $gt: 0 } }).select({ pharmacyId: 1, receivableMinor: 1 }).limit(LIST_MAX).lean();
+  const unknownFeeLots = await WalletTopupLotModel.find({ feeState: 'unknown', closed: false, createdAt: { $lt: new Date(now.getTime() - 2 * DAY) } })
+    .select({ walletRef: 1, paymentRecordId: 1, amountMinor: 1, createdAt: 1 }).limit(LIST_MAX).lean();
+  return {
+    pendingPaymentPastDeadline: pendingPastDeadline.map((b) => ({ bookingId: String(b._id), createdAt: b.createdAt })),
+    refundRowsPending: [] as Row[],
+    lateCaptures: [] as Row[],
+    withdrawalsRequestedOver7Days: [] as Row[],
+    frozenWalletsWithReceivable: frozenWithReceivable.map((w) => ({ pharmacyId: String(w.pharmacyId), receivableMinor: w.receivableMinor })),
+    topupsCapturedNotCredited: await uncreditedTopups(now),
+    paidBookingsStuckAfterSlot: stuckAfterSlot,
+    lotsWithUnknownFeeOver2Days: unknownFeeLots.map((l) => ({ lotId: String(l._id), walletRef: l.walletRef, paymentRecordId: l.paymentRecordId,
+      amountMinor: l.amountMinor, createdAt: l.createdAt })),
+    notBuiltYet: ['razorpay_refund_rows (1b)', 'late_captures (1b)', 'withdrawals (phase 4)'],
+  };
+}
+
+/** Booker cancellation rate over the last 7 days (alert at ≥ 30 % with at least 10 bookings, P10). */
+async function cancelRates(now: Date) {
+  const since = new Date(now.getTime() - 7 * DAY);
+  const rows = await BookingModel.aggregate([
+    { $match: { 'assisted.bookedBy.id': { $exists: true }, createdAt: { $gte: since } } },
+    { $group: { _id: { kind: '$assisted.bookedBy.kind', id: '$assisted.bookedBy.id' }, bookings: { $sum: 1 },
+      cancelled: { $sum: { $cond: [{ $eq: ['$cancellationCause', 'booker'] }, 1, 0] } } } },
+  ]);
+  return rows.map((r) => ({ bookerKind: r._id.kind as string, bookerId: r._id.id as string, bookings: r.bookings as number, cancelledByBooker: r.cancelled as number }));
+}
+
+/** Booking ids an earlier run flagged (reconciliation_mismatch alerts), re-checked until they reconcile. */
+async function flaggedBookingIds(): Promise<string[]> {
+  const rows = await AssistedAlertModel.find({ kind: 'reconciliation_mismatch' }).select({ detail: 1 }).sort({ at: -1 }).limit(1000).lean();
+  return [...new Set(rows.map((r) => String((r.detail as Row | undefined)?.ref ?? '')).filter((id) => /^[0-9a-fA-F]{24}$/.test(id)))];
+}
+
+export async function runReconciliation(now: Date = new Date(), opts: { full?: boolean } = {}) {
+  const scope = opts.full ? { since: null, flagged: [] } : { since: new Date(now.getTime() - 7 * DAY), flagged: await flaggedBookingIds() };
+  const [wallets, bookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(scope), stuckMoney(now), cancelRates(now)]);
+  const pct = assistedLimits.cancelRateAlertPct();
+  const min = assistedLimits.cancelRateAlertMin();
+  const highCancelRates = rates.filter((r) => r.bookings >= min && r.cancelledByBooker * 100 >= pct * r.bookings);
+  const mismatches = [...wallets.mismatches, ...bookings.mismatches];
+  return {
+    day: istDateIso(now),
+    at: now,
+    ok: mismatches.length === 0,
+    checks: {
+      wallets: { checked: wallets.checked, notMigrated: wallets.notMigrated },
+      bookings: { checked: bookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
+      // Chargebacks: wallets that owe Jansetu (a receivable) or show a negative balance.
+      walletsOwing: await walletsOwing(),
+      mismatches,
+      withdrawals: 'not built (phase 4)',
+      razorpayAssisted: 'not built (phase 1b)',
+      highCancelRates,
+    },
+    stuck,
+    alerts: await AssistedAlertModel.find({ day: { $gte: istDateIso(new Date(now.getTime() - 7 * DAY)) } }).sort({ at: -1 }).limit(LIST_MAX).lean(),
+  };
+}
+
+/** P2: fills the Razorpay fee of lots whose fee was not known at capture (then their money counts as withdrawable). */
+export async function fillUnknownLotFees(fetchFee: (razorpayPaymentId: string) => Promise<number | undefined>, limit = 100): Promise<{ filled: number }> {
+  const lots = await WalletTopupLotModel.find({ feeState: 'unknown', closed: false }).sort({ createdAt: 1 }).limit(limit).lean();
+  let filled = 0;
+  for (const lot of lots) {
+    try {
+      const record = await PaymentRecordModel.findById(lot.paymentRecordId).select({ razorpayPaymentId: 1, gatewayFeeMinor: 1 }).lean() as Row | null;
+      let fee: number | undefined = Number.isSafeInteger(record?.gatewayFeeMinor) ? Number(record!.gatewayFeeMinor) : undefined;
+      if (fee === undefined && record?.razorpayPaymentId) fee = await fetchFee(String(record.razorpayPaymentId));
+      if (fee === undefined || !Number.isSafeInteger(fee) || fee < 0) continue;
+      await inTransaction(async (s) => {
+        const r = await WalletTopupLotModel.updateOne({ _id: lot._id, feeState: 'unknown' }, { $set: { feeState: 'known', gatewayFeeMinor: fee } }, { session: s });
+        if (r.modifiedCount === 1 && lot.walletRef.kind === 'pharmacy') await refreshWithdrawableIn(lot.walletRef.id, s);
+      });
+      if (record && record.gatewayFeeMinor === undefined) await PaymentRecordModel.updateOne({ _id: record._id, gatewayFeeMinor: { $exists: false } }, { $set: { gatewayFeeMinor: fee } });
+      filled += 1;
+    } catch (e) {
+      logger.warn('lot fee fill failed', { lotId: String(lot._id), error: (e as Error)?.message });
+    }
+  }
+  return { filled };
+}
+
+/** The daily job (ASSISTED_RECONCILIATION_ENABLED): store the report, raise alerts, fill fees. Never fixes money. */
+export async function runDailyReconciliation(fetchFee: (razorpayPaymentId: string) => Promise<number | undefined>, now: Date = new Date()) {
+  const fees = await fillUnknownLotFees(fetchFee);
+  const report = await runReconciliation(now);
+  for (const m of report.checks.mismatches) await raiseAlertIn({ kind: 'reconciliation_mismatch', subject: `${m.check}:${m.ref}`, detail: { ...m } });
+  for (const r of report.checks.highCancelRates) {
+    await raiseAlertIn({ kind: 'cancel_rate', bookerKind: r.bookerKind, bookerId: r.bookerId, detail: { ...r } });
+  }
+  await AssistedReconciliationReportModel.updateOne({ day: report.day }, { $set: { day: report.day, at: report.at, ok: report.ok, checks: report.checks,
+    stuck: report.stuck } }, { upsert: true });
+  return { ...report, feesFilled: fees.filled };
+}

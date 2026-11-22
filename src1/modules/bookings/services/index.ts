@@ -1098,6 +1098,8 @@ export class BookingService {
     requester: { _id: string; userType: string; corporateId?: string; pharmacyId?: string }
   ): Promise<BookingPaymentDetailsResponse> {
     const booking = await this.getById(id);
+    // Assisted booking phase 1a (§6.7): a partner-paid booking has no customer payment details.
+    if (booking.assisted && requester.userType !== 'admin') throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
 
     if (
       requester.userType !== 'admin' &&
@@ -1561,6 +1563,11 @@ export class BookingService {
     });
     const booking = result.booking;
     if (result.alreadyCancelled) return booking;
+    // Assisted booking phase 1a (§8.7): the refund went to the partner; the partner, doctor (and patient) are told.
+    if (booking.assisted) {
+      const { afterAssistedCancel } = await import('@/modules/assisted/pharmacyCommands');
+      return afterAssistedCancel(booking, requester.userType === 'user' ? 'patient' : 'admin');
+    }
 
     // After commit, best effort (retried by nothing; they only affect reminders/meetings/notifications).
     try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
@@ -1612,6 +1619,11 @@ export class BookingService {
     });
     const booking = result.booking;
     if (result.alreadyCancelled) return booking;
+    // Assisted booking phase 1a: the refund went to the partner (never "back in your wallet" for the patient).
+    if (booking.assisted) {
+      const { afterAssistedCancel } = await import('@/modules/assisted/pharmacyCommands');
+      return afterAssistedCancel(booking, requester.userType === 'admin' ? 'admin' : 'doctor');
+    }
     try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
     catch (error) { console.error('Failed to clear booking reminders:', error); }
     // Q16a (L8): a clinic-paid appointment had no online payment, so no wallet refund is promised.
@@ -1649,6 +1661,10 @@ export class BookingService {
     });
     const booking = result.booking;
     if (result.alreadyCancelled) return { ...booking, refunded: 0 };
+    if (booking.assisted) {
+      const { afterAssistedCancel } = await import('@/modules/assisted/pharmacyCommands');
+      return { ...(await afterAssistedCancel(booking, 'admin', input.refund === true)), refunded: result.refunded };
+    }
     try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
     catch (error) { console.error('Failed to clear booking reminders:', (error as Error)?.message); }
     try {
@@ -1783,6 +1799,11 @@ export class BookingService {
         ? await this.getById(bookingId)
         : await this.getById(bookingId, requester._id);
 
+    // Assisted booking phase 1a (§6.7, ASSUMED D11): the partner who booked moves it, not the patient.
+    if (booking.assisted && requester.userType !== 'admin') {
+      throw new AppError({ status: 409, code: 'ASSISTED_RESCHEDULE_BY_PARTNER', message: 'Ask the partner who booked this consultation to move it' });
+    }
+
     if (booking.status === 'cancelled') {
       throw new AppError({
         status: 400,
@@ -1898,6 +1919,7 @@ export class BookingService {
   /** Owner/admin: checks every payment attempt of this booking with the gateway (W3b); returns the current booking. */
   async reconcileBookingPayments(bookingId: string, requester: { _id: string; userType: string; pharmacyId?: string }) {
     const booking = await this.getById(bookingId);
+    if (booking.assisted) throw new AppError({ status: 409, code: 'PARTNER_PAID_BOOKING', message: 'This booking was paid by the partner who booked it' });
     const canAccess = requester.userType === 'admin'
       || (requester.userType === 'pharmacy' && requester.pharmacyId && String(booking.pharmacyId) === String(requester.pharmacyId))
       || String(booking.userId) === String(requester._id);
@@ -1912,6 +1934,8 @@ export class BookingService {
     options: RetryBookingPaymentRequest = {}
   ): Promise<BookingPaymentInitResponse> {
     const booking = await this.getById(bookingId);
+    // Assisted booking phase 1a (§6.7): the booker pays through its own routes; nobody pays again here.
+    if (booking.assisted) throw new AppError({ status: 409, code: 'PARTNER_PAID_BOOKING', message: 'This booking was paid by the partner who booked it' });
 
     const canAccess =
       requester.userType === 'admin' ||
