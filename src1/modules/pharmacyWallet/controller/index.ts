@@ -4,6 +4,7 @@ import { Container } from 'typedi';
 import { PharmacyWalletService, walletView } from '@/modules/pharmacyWallet/services';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
+import { ADMIN_TOPUP_KEY } from '@/modules/pharmacyWallet/validation';
 
 export class PharmacyWalletController {
   private service: PharmacyWalletService;
@@ -80,8 +81,8 @@ export class PharmacyWalletController {
     if (!key) {
       throw new AppError({ status: 400, code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'An Idempotency-Key header is required for an admin top-up' });
     }
-    if (key.length > 100) {
-      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Idempotency-Key is at most 100 characters' });
+    if (!ADMIN_TOPUP_KEY.test(key)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Idempotency-Key must be 8 to 100 letters, digits, _ or -' });
     }
     const result = await this.service.topup(pharmacyId, req.body, key, String(req.user?._id ?? ''));
     // r6: the same wallet shape as GET /pharmacy-wallet (adds withdrawableMinor, frozen, receivableMinor).
@@ -92,8 +93,8 @@ export class PharmacyWalletController {
   adminTopupByKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = this.resolvePharmacyId(req);
     const key = String(req.params.key ?? '').trim();
-    if (!key || key.length > 100) {
-      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'key must be the Idempotency-Key of the top-up (1 to 100 characters)' });
+    if (!ADMIN_TOPUP_KEY.test(key)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'key must be the Idempotency-Key of the top-up (8 to 100 letters, digits, _ or -)' });
     }
     const result = await this.service.adminTopupByKey(pharmacyId, key);
     res.setHeader('Cache-Control', 'private, no-store');

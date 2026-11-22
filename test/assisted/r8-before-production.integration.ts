@@ -214,6 +214,30 @@ async function main() {
       } finally { await PharmacyWalletTransactionModel.syncIndexes(); resetIndexChecks(); }
     });
 
+    // ───────────────────────── B5: admin Idempotency-Key characters ─────────────────────────
+    await check('B5: an admin top-up key (header and by-key :key) must be ^[A-Za-z0-9_-]{8,100}$; the pharmacy\'s own top-up is unchanged', async () => {
+      const before = await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P });
+      for (const bad of ['.', '..', 'has space key', 'कुंजी-कुंजी-कुंजी', 'abc.def.ghi', 'abcdefg', 'k'.repeat(101)]) {
+        // fetch sends header values as bytes; a non-Latin key goes as its UTF-8 bytes (as a browser would refuse to send it).
+        const header = Buffer.from(bad, 'utf8').toString('latin1');
+        await expect('ADMIN', 'POST', '/pharmacy-wallet/topup', 400, { pharmacyId: P, amount: 10 }, 'VALIDATION_ERROR', { 'idempotency-key': header });
+      }
+      for (const bad of ['has space key', 'कुंजी-कुंजी-कुंजी', 'abc.def.ghi', 'abcdefg', 'abc%def%gh', 'k'.repeat(101)]) {
+        await expect('ADMIN', 'GET', `/pharmacy-wallet/topups/admin/by-key/${encodeURIComponent(bad)}?pharmacyId=${P}`, 400, undefined, 'VALIDATION_ERROR');
+      }
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P }), before, 'nothing credited');
+      await expect('ADMIN', 'POST', '/pharmacy-wallet/topup', 400, { pharmacyId: P, amount: 10 }, 'IDEMPOTENCY_KEY_REQUIRED');
+      // Valid: the web's key shape (32 hex) and the edges of the pattern.
+      const web = oid() + oid().slice(0, 8);
+      for (const good of [web, 'Ab_-1234', 'k'.repeat(100)]) {
+        await expect('ADMIN', 'POST', '/pharmacy-wallet/topup', 200, { pharmacyId: P, amount: 10 }, undefined, { 'idempotency-key': good });
+        assert.equal((await expect('ADMIN', 'GET', `/pharmacy-wallet/topups/admin/by-key/${good}?pharmacyId=${P}`, 200)).json.data.state, 'credited');
+      }
+      // The pharmacy's own (Razorpay) top-up path takes no key and is not affected.
+      const own = await call('P', 'POST', '/pharmacy-wallet/topup', { amount: 10 }, { 'idempotency-key': '.' });
+      assert.notEqual(own.json.code, 'VALIDATION_ERROR', own.text.slice(0, 200));
+    });
+
     // ───────────────────────── B6: holder.typedName ─────────────────────────
     await check('B6: holder.typedName is the name THIS pharmacy typed on its own link; another pharmacy never sees it; null without a link', async () => {
       const r = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201,

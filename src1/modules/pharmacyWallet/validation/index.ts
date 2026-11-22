@@ -8,3 +8,6 @@ export const topupSchema = Joi.object({
   }),
   notes: Joi.string().trim().max(500).optional(),
 });
+
+/** r8 B5: the admin top-up Idempotency-Key (header and by-key `:key`): 8 to 100 letters, digits, `_` or `-`. */
+export const ADMIN_TOPUP_KEY = /^[A-Za-z0-9_-]{8,100}$/;
