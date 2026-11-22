@@ -74,8 +74,8 @@ const SLOT_READ_CAP = 5000;
 /** r7: one doctor's one day is read whole (a bound far above any real day, so the earliest time is never cut off). */
 const DAY_READ_CAP = 20000;
 /**
- * r8 B2: one doctor's next-slot walk covers at most this many calendar days from its first candidate day (the doctor
- * rolling window plus a margin), and at most WALK_PARALLEL doctors are walked at a time.
+ * r8 B2: the next-slot walk covers at most this many calendar days (the doctor rolling window plus a margin; r8b L2: from
+ * the shared read's cut-off day), and at most WALK_PARALLEL doctors are read at a time.
  */
 const WALK_CALENDAR_DAYS = DOCTOR_ROLLING_DAYS + 7;
 const WALK_PARALLEL = 8;
@@ -136,14 +136,18 @@ async function openSlotsByDoctor(doctorIds: string[], fromYmd: string, toYmd: st
 }
 
 /**
- * r7: one doctor's earliest bookable slot from `firstDay` (r8 B2: its first candidate day, from firstCandidateDays),
- * skipping leave days, within WALK_CALENDAR_DAYS calendar days of `firstDay`: one read of that window (slots index
- * specialistId, date) and, only past DAY_READ_CAP rows, the rest of the window day by day.
+ * r7: one doctor's earliest bookable slot from `firstDay` (r8 B2: its first candidate day, from firstCandidateDays) up to
+ * `last` (the walk's window end), skipping leave days. r8b M1: `firstDay` is read whole first (the usual answer); only
+ * on a miss is the rest of the window read (slots index specialistId, date), and past DAY_READ_CAP rows day by day.
  */
-async function walkFirstOpen(doctorId: string, firstDay: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<OpenSlot | null> {
+async function walkFirstOpen(doctorId: string, firstDay: string, last: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<OpenSlot | null> {
   const leave = adm.leave.get(lower(doctorId)) ?? [];
-  const last = addDaysYmd(firstDay, WALK_CALENDAR_DAYS - 1);
-  const read = await SlotModel.find({ specialistId: doctorId, date: { $gte: firstDay, $lte: last, ...(leave.length ? { $nin: leave } : {}) },
+  const firstDayRows = await SlotModel.find({ specialistId: doctorId, date: firstDay, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
+  const onFirstDay = admitOpen(firstDayRows, adm, mode, now)[0];
+  if (onFirstDay) return onFirstDay;
+  const from = addDaysYmd(firstDay, 1);
+  if (from > last) return null;
+  const read = await SlotModel.find({ specialistId: doctorId, date: { $gte: from, $lte: last, ...(leave.length ? { $nin: leave } : {}) },
     ...candidateFilter(mode) }).sort({ date: 1 }).limit(DAY_READ_CAP + 1).lean() as unknown as SlotRow[];
   const cut = read.length > DAY_READ_CAP ? String(read[DAY_READ_CAP - 1]!.date) : null;
   const first = admitOpen(cut ? read.filter((x) => String(x.date) < cut) : read, adm, mode, now)[0];
@@ -157,11 +161,14 @@ async function walkFirstOpen(doctorId: string, firstDay: string, mode: DoctorQue
   return null;
 }
 
-/** r8 B2: each doctor's first day holding a candidate slot on or after `fromYmd`, in one aggregation (lower-case ids). */
-async function firstCandidateDays(doctorIds: string[], fromYmd: string, mode: DoctorQuery['mode']): Promise<Map<string, string>> {
+/**
+ * r8 B2: each doctor's first day holding a candidate slot from `fromYmd` to `toYmd` (r8b L2: the walk's window end), in
+ * one aggregation (lower-case ids).
+ */
+async function firstCandidateDays(doctorIds: string[], fromYmd: string, toYmd: string, mode: DoctorQuery['mode']): Promise<Map<string, string>> {
   if (!doctorIds.length) return new Map();
   const rows = await SlotModel.aggregate([
-    { $match: { specialistId: { $in: doctorIds }, date: { $gte: fromYmd }, ...candidateFilter(mode) } },
+    { $match: { specialistId: { $in: doctorIds }, date: { $gte: fromYmd, $lte: toYmd }, ...candidateFilter(mode) } },
     { $group: { _id: '$specialistId', first: { $min: '$date' } } },
   ]) as { _id: string; first: string }[];
   return new Map(rows.map((r) => [lower(r._id), String(r.first)]));
@@ -172,11 +179,20 @@ async function daySlotsByDoctor(doctorIds: string[], day: string, mode: DoctorQu
   const shared = await openSlotsByDoctor(doctorIds, day, day, mode, now, adm);
   if (!shared.cutoff) return shared.byDoctor;
   const out = new Map<string, OpenSlot[]>();
-  await Promise.all(doctorIds.map(async (id) => {
+  // r8b L3: at most WALK_PARALLEL doctors at a time.
+  await eachLimited(doctorIds, async (id) => {
     const rows = await SlotModel.find({ specialistId: id, date: day, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
     out.set(lower(id), admitOpen(rows, adm, mode, now));
-  }));
+  });
   return out;
+}
+
+/** r8 B2: runs `fn` over `items`, at most WALK_PARALLEL at a time. */
+async function eachLimited<T>(items: T[], fn: (item: T) => Promise<void>): Promise<void> {
+  const queue = [...items];
+  await Promise.all(Array.from({ length: Math.min(WALK_PARALLEL, queue.length) }, async () => {
+    for (let x = queue.shift(); x !== undefined; x = queue.shift()) await fn(x);
+  }));
 }
 
 /**
@@ -201,15 +217,14 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
   // with nothing bookable there is read on its own from `cutoff` (only when the shared read was capped).
   // r8 B2: their first candidate days in one aggregation (none: nothing to read), then at most WALK_PARALLEL walks at a time.
   if (cutoff) {
+    // r8b L2: one window end for the aggregation and every walk.
+    const last = addDaysYmd(cutoff, WALK_CALENDAR_DAYS - 1);
     const pending = ids.filter((id) => !byDoctor.get(lower(id))?.length);
-    const firstDays = await firstCandidateDays(pending, cutoff, q.mode);
-    const walks = pending.filter((id) => firstDays.has(lower(id)));
-    await Promise.all(Array.from({ length: Math.min(WALK_PARALLEL, walks.length) }, async () => {
-      for (let id = walks.shift(); id; id = walks.shift()) {
-        const first = await walkFirstOpen(id, firstDays.get(lower(id))!, q.mode, now, adm);
-        if (first) byDoctor.set(lower(id), [first]);
-      }
-    }));
+    const firstDays = await firstCandidateDays(pending, cutoff, last, q.mode);
+    await eachLimited(pending.filter((id) => firstDays.has(lower(id))), async (id) => {
+      const first = await walkFirstOpen(id, firstDays.get(lower(id))!, last, q.mode, now, adm);
+      if (first) byDoctor.set(lower(id), [first]);
+    });
   }
   const daySlots = !day || day < today ? new Map<string, OpenSlot[]>()
     : !cutoff || day < cutoff ? byDoctor : await daySlotsByDoctor(ids, day, q.mode, now, adm);

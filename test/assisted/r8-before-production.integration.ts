@@ -263,8 +263,9 @@ async function main() {
       for (const d of late) assert.equal(seen.get(d).startTime, '11:00');
       console.log(`   B2: ${reads} slot reads, at most ${peak} walk reads at once`);
       assert.ok(peak <= 8, `at most 8 walks at once: ${peak}`);
-      // One shared read, one aggregation, one window read for each of the 51 doctors walked (the big one included).
-      assert.ok(reads <= 2 + 51, `slot reads: ${reads}`);
+      // One shared read, one aggregation; the big doctor's first day answers (one read), the 50 others read their first
+      // day and then the rest of the window (r8b M1).
+      assert.ok(reads <= 2 + 1 + 2 * 50, `slot reads: ${reads}`);
     });
 
     // ───────────────────────── B3: branch ids compared the same way when listing and booking ─────────────────────────
