@@ -44,6 +44,15 @@ async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
   }
 }
 
+/**
+ * S5 review: the server-written prescription PDF of a booking is readable (by the booking's parties) only while the
+ * booking's prescription still names it; an admin clear or a newer prescription withdraws it. Admins still read it.
+ */
+async function bookingStillHoldsPrescription(bookingId: string, rel: string): Promise<boolean> {
+  const b = await BookingModel.findById(bookingId).select({ 'prescription.fileUrls': 1 }).lean();
+  return !!b && valuesAt(b, 'prescription.fileUrls').some((v) => uploadPathOf(v) === rel);
+}
+
 async function canReadPharmacyOrder(r: Reader, orderId: string): Promise<boolean> {
   if (!isValidObjectId(orderId)) return false;
   const o = await PharmacyOrderModel.findById(orderId).select({ customerId: 1, pharmacyId: 1, buyerPharmacyId: 1 }).lean();
@@ -253,7 +262,7 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     if (!PARTNER_LAB_REPORT.test(rel) && upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
-    if (rx && await canReadBooking(reader, rx[1]!)) return ok;
+    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)) return ok;
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }

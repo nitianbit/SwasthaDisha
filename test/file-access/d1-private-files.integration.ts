@@ -145,7 +145,9 @@ async function main() {
     const bookingId = new Types.ObjectId();
     await BookingModel.collection.insertOne({ _id: bookingId, userId: new Types.ObjectId(a._id), specialistId: new Types.ObjectId(spec._id),
       pharmacyId: new Types.ObjectId(pharmacy._id), corporateId: new Types.ObjectId((hr.claims as { corporateId: string }).corporateId),
-      status: 'confirmed', paymentStatus: 'paid' } as never);
+      status: 'confirmed', paymentStatus: 'paid',
+      // S5 review: a server-written prescription PDF is readable while the booking's prescription names it.
+      prescription: { fileUrls: [`/api/static/bookings/${bookingId.toHexString()}/prescription-1700000000000.pdf`] } } as never);
 
     await check('a server-written prescription is read by the booking’s customer, specialist, pharmacy and HR only', async () => {
       const rel = `bookings/${bookingId.toHexString()}/prescription-1700000000000.pdf`;

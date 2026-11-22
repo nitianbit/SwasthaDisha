@@ -5,6 +5,10 @@
  * patient-facing doctor and slot lists hide it. Once verified, name / registration number / specialization / degree are
  * admin-only (403 IDENTITY_FIELDS_ADMIN_ONLY). A booking's doctorName always comes from the doctor's record. An admin
  * removes a planted prescription or report (audited). The read-only audit lists such doctors and bookings by id.
+ * Review follow-up: such a doctor reads its bookings without patient contacts, meeting link, concern or history and may
+ * still cancel; a pending booking with it takes no payment (a capture is recorded and returned to the wallet); sign-in
+ * phone / email are admin-only after verification; verification is fenced and recorded; the HR overview hides such
+ * doctors; a cleared prescription PDF is no longer readable.
  * Real authenticate + specialist / booking / slot / corporate routers and services over HTTP against MongoDB; the
  * payment gateway and the PDF renderer are stubs.
  *
@@ -42,6 +46,10 @@ import { PaymentRepository } from '@/modules/payment/repository';
 import { PaymentService } from '@/modules/payment/services';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+import WalletModel from '@/modules/wallet/model';
+import { HRRepository } from '@/modules/hr/repository';
+import { HRService } from '@/modules/hr/services';
+import { decideFileAccess } from '@/modules/file/access';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/s5_unverified_doctors_check?directConnection=true';
@@ -63,7 +71,9 @@ const fakeRazorpay = {
     create: async (o: { amount: number; currency: string }) => ({ id: 'order_s5_' + (++gatewayOrders), amount: o.amount, currency: o.currency, status: 'created' }),
     fetchPayments: async () => ({ items: [] }),
   },
-  payments: { fetch: async () => { throw new Error('not used'); } },
+  // Payments the gateway reports as captured (verify reads them back from the gateway).
+  captured: new Map<string, { id: string; order_id: string; amount: number; currency: string; status: string }>(),
+  payments: { fetch: async (id: string) => { const p = fakeRazorpay.captured.get(id); if (!p) throw new Error('unknown payment'); return p; } },
 };
 
 async function main() {
@@ -114,6 +124,8 @@ async function main() {
   const { default: specialistRouter } = await import('@/modules/specialists/routes');
   const { default: slotRouter } = await import('@/modules/slots/routes');
   const { default: corporateRouter } = await import('@/modules/corporates/routes');
+  Container.set(PaymentService, payments);
+  const { default: paymentRouter } = await import('@/modules/payment/routes');
   const { authenticate } = await import('@/modules/middleware/auth');
   const app = express();
   app.use(express.json());
@@ -121,6 +133,7 @@ async function main() {
   app.use('/api/v1/specialists', authenticate, specialistRouter);
   app.use('/api/v1/slots', authenticate, slotRouter);
   app.use('/api/v1/corporates', authenticate, corporateRouter);
+  app.use('/api/v1/payments', authenticate, paymentRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/v1`;
@@ -137,7 +150,7 @@ async function main() {
       { _id: new Types.ObjectId(ver2), name: 'Dr Second', specialization: 'Dermatology', medicalRegistrationNumber: 'MCI-2002', phone: '9800000004',
         consultationFee: 0, isActive: true, isVerified: true },
     ].map((d) => ({ ...d, createdAt: new Date(), updatedAt: new Date() })) as never);
-    const cust = oid(); const custB = oid();
+    const cust = oid(); const custB = oid(); const adminId = oid();
     await UserModel.collection.insertMany([cust, custB].map((id, i) => ({ _id: new Types.ObjectId(id), userType: 'user', name: 'Patient ' + i,
       phone: '96000000' + (10 + i) })) as never);
     const tokens = {
@@ -147,7 +160,7 @@ async function main() {
       unv: sign({ _id: unv, specialistId: unv, userType: 'specialist' }),
       ina: sign({ _id: ina, specialistId: ina, userType: 'specialist' }),
       ver2: sign({ _id: ver2, specialistId: ver2, userType: 'specialist' }),
-      admin: sign({ _id: oid(), userType: 'admin' }),
+      admin: sign({ _id: adminId, userType: 'admin' }),
     };
     type Who = keyof typeof tokens;
     const call = async (who: Who, method: string, path: string, body?: unknown) => {
@@ -174,8 +187,13 @@ async function main() {
       bookingType: 'consultation', userId: cust, specialistId, slotId, bookingDate: date, bookingTime: '10:00 AM', consultationMode: 'in-person',
       serviceMode: 'in-person', primaryConcern: 'Chest pain', status: 'confirmed', paymentStatus: 'paid', price: 300, documents: [],
       createdAt: new Date(), updatedAt: new Date(), ...extra } as never)).insertedId);
-    const bUnv = await booking(unv, sUnv2, { doctorName: 'Dr Real Famous' });
-    const bVer = await booking(ver, sVer3);
+    // Patient details a booking carries (contacts, address, meeting link, concern, notes, documents).
+    const privateFields = { contactNo: '9123456789', alternateContactNo: '9123456780', notes: 'private note',
+      serviceAddress: { line1: '12 Private Lane', city: 'Pune', pincode: '411001' },
+      virtualMeeting: { provider: 'google_meet', status: 'active', joinUrl: 'https://meet.google.com/s5-secret' },
+      documents: [{ type: 'report', url: '/api/static/general/x.pdf', fileName: 'old.pdf' }] };
+    const bUnv = await booking(unv, sUnv2, { doctorName: 'Dr Real Famous', ...privateFields });
+    const bVer = await booking(ver, sVer3, privateFields);
     const bIna = await booking(ina, sIna1);
 
     // The defect as the review proved it: the sign-up renames itself before anyone verifies it (onboarding still allowed).
@@ -202,7 +220,7 @@ async function main() {
 
     await check('an unverified or inactive doctor cannot change consult status or save a prescription', async () => {
       for (const [who, id] of [['unv', bUnv], ['ina', bIna]] as const) {
-        for (const status of ['confirmed', 'completed', 'cancelled']) {
+        for (const status of ['confirmed', 'completed']) {
           await expect(who, 'PATCH', `/specialists/me/appointments/${id}/status`, 403, { status }, 'SPECIALIST_NOT_VERIFIED');
         }
         await expect(who, 'POST', `/specialists/me/appointments/${id}/prescription`, 403,
@@ -391,6 +409,139 @@ async function main() {
       assert.deepEqual(rows[0].removed.fileUrls, ['/api/static/bookings/x/prescription-1.pdf']);
       assert.equal(JSON.stringify(rows).includes('Morphine'), false);
       assert.equal(rows[1].field, 'report');
+    });
+
+    // ---- S5 review follow-up ----
+    const SECRETS = ['9123456789', '9123456780', 'private note', 'Private Lane', 's5-secret', 'Chest pain', 'old.pdf', '96000000'];
+    const leaks = (v: unknown) => SECRETS.filter((x) => JSON.stringify(v).includes(x));
+
+    await check('review 1: an ineligible doctor reads its bookings without patient contacts, meeting link, concern or history', async () => {
+      const list = (await expect('unv', 'GET', '/specialists/me/appointments?view=all', 200)).json.data as Record<string, unknown>[];
+      const row = list.find((b) => String(b._id) === bUnv)!;
+      assert.ok(row, 'the booking is still listed');
+      assert.equal(row.bookingTime, '10:00 AM'); assert.equal(row.status, 'confirmed'); assert.equal(row.bookingDate, date);
+      assert.deepEqual(leaks(list), []);
+      const day = (await expect('unv', 'GET', `/specialists/me/appointments?view=day&date=${date}`, 200)).json.data;
+      assert.deepEqual(leaks(day), []);
+      const detail = (await expect('unv', 'GET', `/specialists/me/appointments/${bUnv}`, 200)).json.data;
+      assert.equal(String(detail.booking._id), bUnv); assert.equal(detail.booking.status, 'confirmed');
+      assert.equal(detail.patient.name, 'Patient 0');
+      assert.deepEqual(leaks(detail), []);
+      const history = (await expect('unv', 'GET', `/specialists/me/patients/${cust}/history`, 200)).json.data;
+      assert.ok(history.consultations.some((c: { bookingId: string }) => String(c.bookingId) === bUnv));
+      assert.deepEqual(leaks(history), []);
+      // The generic booking reads a doctor may use (S2 scope) are reduced the same way.
+      assert.deepEqual(leaks((await expect('unv', 'GET', '/bookings/' + bUnv, 200)).json.data), []);
+      assert.deepEqual(leaks((await expect('unv', 'GET', '/bookings/user/' + cust, 200)).json.data), []);
+      assert.deepEqual(leaks((await expect('ina', 'GET', '/bookings/' + bIna, 200)).json.data), []);
+      // A verified doctor (control) and the customer still see everything.
+      const full = (await expect('ver', 'GET', `/specialists/me/appointments/${bVer}`, 200)).json.data;
+      assert.equal(full.booking.contactNo, '9123456789'); assert.equal(full.booking.virtualMeeting.joinUrl, 'https://meet.google.com/s5-secret');
+      assert.equal(full.patient.phone, '9600000010');
+      assert.equal((await expect('ver', 'GET', '/bookings/' + bVer, 200)).json.data.notes, 'private note');
+      assert.equal((await expect('cust', 'GET', '/bookings/' + bUnv, 200)).json.data.contactNo, '9123456789');
+    });
+
+    await check('review 6a: an ineligible doctor may still cancel (it refunds the patient); confirm and complete stay refused', async () => {
+      const bUnvCancel = await booking(unv, await slot(unv, '1:00 PM'));
+      const r = await call('unv', 'PATCH', `/specialists/me/appointments/${bUnvCancel}/status`, { status: 'cancelled' });
+      assert.notEqual(r.json.code, 'SPECIALIST_NOT_VERIFIED', 'cancel is not stopped by the S5 guard: ' + JSON.stringify(r.json));
+      assert.notEqual(r.status, 403);
+      for (const status of ['confirmed', 'completed']) {
+        await expect('unv', 'PATCH', `/specialists/me/appointments/${bUnvCancel}/status`, 403, { status }, 'SPECIALIST_NOT_VERIFIED');
+      }
+    });
+
+    await check('review 2: a pending booking with an ineligible doctor takes no payment; a captured payment is recorded and returned to the wallet', async () => {
+      const verP = oid(); const custP = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(verP), name: 'Dr Pay', phone: '9800000009', consultationFee: 300,
+        isActive: true, isVerified: true, createdAt: new Date(), updatedAt: new Date() } as never);
+      await UserModel.collection.insertOne({ _id: new Types.ObjectId(custP), userType: 'user', name: 'Payer', phone: '9600000099' } as never);
+      Object.assign(tokens, { custP: sign({ _id: custP, userType: 'user' }) });
+      const created = await expect('custP' as Who, 'POST', '/bookings/specialist', 201, { specialistId: verP, slotId: await slot(verP, '3:00 PM'),
+        bookingDate: date, bookingTime: '3:00 PM', primaryConcern: 'Fever', consultationMode: 'in-person' });
+      const id = String(created.json.data.booking._id);
+      const pay = created.json.data.payment as { paymentTransactionId: string; razorpayOrderId: string; amount: number };
+      assert.equal(pay.amount, 300);
+      // The doctor loses verification while the patient is paying (as a pre-S5 booking with a self sign-up doctor).
+      await SpecialistModel.updateOne({ _id: verP }, { $set: { isVerified: false } });
+      await expect('custP' as Who, 'POST', `/bookings/${id}/retry-payment`, 400, {}, 'SPECIALIST_NOT_VERIFIED');
+      // The checkout already open captures anyway: verify records it, returns it to the wallet and says why.
+      fakeRazorpay.captured.set('pay_s5_1', { id: 'pay_s5_1', order_id: pay.razorpayOrderId, amount: 30000, currency: 'INR', status: 'captured' });
+      const signature = (await import('node:crypto')).createHmac('sha256', 'secret').update(`${pay.razorpayOrderId}|pay_s5_1`).digest('hex');
+      await expect('custP' as Who, 'POST', '/payments/verify', 400, { paymentTransactionId: pay.paymentTransactionId,
+        razorpayOrderId: pay.razorpayOrderId, razorpayPaymentId: 'pay_s5_1', razorpaySignature: signature }, 'SPECIALIST_NOT_VERIFIED');
+      const record = await PaymentRecordModel.findById(pay.paymentTransactionId).lean() as Record<string, unknown>;
+      assert.equal(record.status, 'refunded'); assert.equal(record.isProcessed, true); assert.equal(record.razorpayPaymentId, 'pay_s5_1');
+      const b = await BookingModel.findById(id).lean();
+      assert.equal(b?.paymentStatus, 'pending'); assert.equal(b?.status, 'pending');
+      assert.equal(Number((await WalletModel.findOne({ userId: custP }).lean())?.balance), 300, 'the captured ₹300 is in the wallet');
+      // Cancelling (and so the refund path) is never refused.
+      const cancelled = await expect('custP' as Who, 'POST', `/bookings/${id}/cancel`, 200, { cancellationReason: 'Doctor unavailable' });
+      assert.equal(cancelled.json.data.status, 'cancelled');
+      assert.equal(Number((await WalletModel.findOne({ userId: custP }).lean())?.balance), 300, 'no double credit');
+    });
+
+    await check('review 3: once verified, the sign-in phone and email are admin-only too (unchanged values still save)', async () => {
+      await expect('ver2', 'PUT', '/specialists/me/profile', 403, { phone: '9811111111' }, 'IDENTITY_FIELDS_ADMIN_ONLY');
+      await expect('ver2', 'PUT', '/specialists/me/profile', 403, { email: 'takeover@example.com' }, 'IDENTITY_FIELDS_ADMIN_ONLY');
+      await SpecialistModel.updateOne({ _id: ver2 }, { $set: { email: 'second@example.com' } });
+      await expect('ver2', 'PUT', '/specialists/me/profile', 403, { email: 'other@example.com', bio: 'x' }, 'IDENTITY_FIELDS_ADMIN_ONLY');
+      const sp = await SpecialistModel.findById(ver2).lean();
+      assert.equal(sp?.phone, '9800000004'); assert.equal(sp?.email, 'second@example.com');
+      await expect('ver2', 'PUT', '/specialists/me/profile', 200, { phone: '9800000004', email: 'Second@Example.com', bio: 'Same contacts' });
+      await expect('unv', 'PUT', '/specialists/me/profile', 200, { phone: '9800000012' }); // before verification: onboarding
+    });
+
+    await check('review 4: admin verification is fenced on what was reviewed (409) and recorded with who verified what', async () => {
+      const docF = oid(); const docG = oid();
+      await SpecialistModel.collection.insertMany([
+        { _id: new Types.ObjectId(docF), name: 'Dr Fence', medicalRegistrationNumber: 'R-1', degree: 'MBBS', specialization: 'ENT',
+          isActive: true, isVerified: false, createdAt: new Date(), updatedAt: new Date('2026-11-20T10:00:00.000Z') },
+        { _id: new Types.ObjectId(docG), name: 'Dr Nofence', medicalRegistrationNumber: 'R-2', isActive: true, isVerified: false,
+          createdAt: new Date(), updatedAt: new Date() },
+      ] as never);
+      const rows = () => mongoose.connection.db.collection('specialistverifications').find({}).toArray();
+      await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedName: 'Dr Other' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
+      await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedRegistrationNumber: 'R-9' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
+      await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedUpdatedAt: '2026-11-21T10:00:00.000Z' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
+      assert.equal((await SpecialistModel.findById(docF).lean())?.isVerified, false);
+      assert.equal((await rows()).length, 0, 'a refused verification writes no row');
+      await expect('admin', 'PUT', '/specialists/' + docF, 200, { isVerified: true, expectedName: ' Dr Fence ', expectedRegistrationNumber: 'R-1',
+        expectedUpdatedAt: '2026-11-20T10:00:00.000Z' });
+      const f = await SpecialistModel.findById(docF).lean() as Record<string, unknown>;
+      assert.equal(f.isVerified, true);
+      for (const k of ['expectedName', 'expectedRegistrationNumber', 'expectedUpdatedAt']) assert.equal(f[k], undefined);
+      await expect('admin', 'PUT', '/specialists/' + docG, 200, { isVerified: true }); // panels without the fence still verify
+      await expect('admin', 'PUT', '/specialists/' + docF, 200, { bio: 'later edit', isVerified: true }); // already verified: no row
+      let r: Record<string, any>[] = [];
+      for (let i = 0; i < 40 && !(r = await rows()).every((x) => x.outcome !== 'pending'); i++) await new Promise((ok) => setTimeout(ok, 25));
+      assert.equal(r.length, 2);
+      const rf = r.find((x) => x.specialistId === docF)!;
+      assert.equal(rf.outcome, 'applied'); assert.equal(rf.verifiedBy, adminId); assert.equal(rf.fenced, true);
+      assert.equal(rf.name, 'Dr Fence'); assert.equal(rf.medicalRegistrationNumber, 'R-1'); assert.equal(rf.degree, 'MBBS');
+      assert.equal(r.find((x) => x.specialistId === docG)!.fenced, false);
+    });
+
+    await check('review 5a: the HR corporate overview lists verified, active doctors only', async () => {
+      const corp = String((await CorporateModel.collection.insertOne({ name: 'HR Co', specialistIds: [ver, unv, ina], createdAt: new Date() } as never)).insertedId);
+      const hr = Object.assign(Object.create(HRService.prototype), { hrRepository: new HRRepository() }) as HRService;
+      const overview = await hr.getCorporateOverview(corp, {}) as unknown as { data: { specialists: { _id: unknown }[] } };
+      assert.deepEqual(overview.data.specialists.map((x) => String(x._id)), [ver]);
+    });
+
+    await check('review 5b: a booking prescription PDF is readable only while the booking still names it (an admin clear withdraws it)', async () => {
+      const current = ((await BookingModel.findById(bVer).lean())?.prescription?.fileUrls ?? [])[0]!;
+      const rel = current.replace('/api/static/', '');
+      const reader = (who: 'cust' | 'ver' | 'admin' | 'custB') => ({ cust: { _id: cust, userType: 'user' }, ver: { _id: ver, specialistId: ver, userType: 'specialist' },
+        admin: { _id: adminId, userType: 'admin' }, custB: { _id: custB, userType: 'user' } })[who];
+      const allowed = async (who: 'cust' | 'ver' | 'admin' | 'custB', path: string) => (await decideFileAccess(reader(who) as never, path)).allow;
+      assert.equal(await allowed('cust', rel), true); assert.equal(await allowed('ver', rel), true); assert.equal(await allowed('custB', rel), false);
+      const superseded = `bookings/${bVer}/prescription-1.pdf`; // an older PDF of the same booking, no longer named by it
+      assert.equal(await allowed('cust', superseded), false);
+      await expect('admin', 'DELETE', `/bookings/${bVer}/prescription`, 200, { reason: 'Review check' });
+      assert.equal(await allowed('cust', rel), false); assert.equal(await allowed('ver', rel), false);
+      assert.equal(await allowed('admin', rel), true);
     });
   } finally {
     server.close();
