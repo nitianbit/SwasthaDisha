@@ -150,7 +150,11 @@ export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }):
   // 5b. A link the customer made by ordering (`createdByRole: 'user'` and created by that same customer) whose consent
   // was not recorded (before S3: none; the first S3 commit: `not_recorded`) is the customer's consent (`customer_order`).
   const ownOrderLinks = { createdByRole: 'user', $or: [{ consent: { $exists: false } }, { consent: null }, { consent: 'not_recorded' }],
-    createdById: { $exists: true, $ne: null }, $expr: { $eq: [{ $toLower: { $toString: '$createdById' } }, { $toLower: { $toString: '$userId' } }] } };
+    createdById: { $exists: true, $ne: null }, // `$convert` with distinct fallbacks: an odd legacy value (object, array) never matches and never aborts the run.
+    $expr: { $eq: [
+      { $toLower: { $convert: { input: '$createdById', to: 'string', onError: '#bad-createdById', onNull: '#null-createdById' } } },
+      { $toLower: { $convert: { input: '$userId', to: 'string', onError: '#bad-userId', onNull: '#null-userId' } } },
+    ] } };
   report.customerOrderConsentsFilled = await PharmacyCustomerModel.collection.countDocuments(ownOrderLinks);
   if (opts.commit && report.customerOrderConsentsFilled > 0) {
     const r = await PharmacyCustomerModel.collection.updateMany(ownOrderLinks, { $set: { consent: 'customer_order' } });

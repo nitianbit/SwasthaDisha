@@ -923,6 +923,10 @@ async function main() {
       const otherCreator = await ins({ userId: new Types.ObjectId(users[1]), createdByRole: 'user', createdById: new Types.ObjectId(users[2]) });
       const noCreator = await ins({ userId: new Types.ObjectId(users[2]), createdByRole: 'user' });
       const agreed = await ins({ userId: new Types.ObjectId(users[3]), createdByRole: 'user', createdById: users[3], consent: 'patient_agreed' });
+      // Odd legacy values (object, array) never match and never abort the run.
+      const [oddU1, oddU2] = [oid(), oid()];
+      const oddObject = await ins({ userId: new Types.ObjectId(oddU1), createdByRole: 'user', createdById: { legacy: oddU1 } });
+      const oddArray = await ins({ userId: new Types.ObjectId(oddU2), createdByRole: 'user', createdById: [oddU2] });
       const consentOf = async (id: unknown) => (await PharmacyCustomerModel.collection.findOne({ _id: id } as never) as any).consent;
       const dry = await migration.migrateAssistedPharmacyWallets({ commit: false });
       assert.equal(dry.customerOrderConsentsFilled, 1);
@@ -932,6 +936,8 @@ async function main() {
       assert.equal(await consentOf(otherCreator), undefined, 'made by someone else');
       assert.equal(await consentOf(noCreator), undefined, 'no creator recorded');
       assert.equal(await consentOf(agreed), 'patient_agreed', 'a recorded consent is never changed');
+      assert.equal(await consentOf(oddObject), undefined, 'an object createdById is left alone');
+      assert.equal(await consentOf(oddArray), undefined, 'an array createdById is left alone');
       assert.equal((await migration.migrateAssistedPharmacyWallets({ commit: true })).customerOrderConsentsFilled, 0, 'a rerun changes nothing');
     });
   } finally {
