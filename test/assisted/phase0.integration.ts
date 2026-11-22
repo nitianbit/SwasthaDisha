@@ -279,7 +279,7 @@ async function main() {
     const assertBookerRow = (row: Record<string, any>) => {
       for (const k of Object.keys(row)) assert.ok(ALLOWED.has(k), `field ${k} is not in the booker view`);
       if (row.prescription) for (const k of Object.keys(row.prescription)) assert.ok(RX_ALLOWED.has(k), `prescription.${k} is not in the booker view`);
-      if (row.holder) assert.deepEqual(Object.keys(row.holder).sort(), ['name', 'pharmacyCustomerId'], 'holder carries the link id and name only');
+      if (row.holder) assert.deepEqual(Object.keys(row.holder).sort(), ['name', 'pharmacyCustomerId', 'typedName'], 'holder carries the link id, name and typed name only');
       if (row.lifecycle) for (const [k, v] of Object.entries(row.lifecycle)) {
         assert.ok(['created', 'confirmed', 'completed', 'cancelled'].includes(k), k); assert.deepEqual(Object.keys(v as object), ['at']);
       }
