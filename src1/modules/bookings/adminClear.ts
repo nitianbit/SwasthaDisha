@@ -7,6 +7,7 @@ import { AppError } from '@/modules/common/types';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import logger from '@/services/logger';
+import { uploadPathOf } from '@/modules/file/access';
 
 /**
  * S5: an admin removes a planted prescription or report from a booking (DELETE /bookings/:id/prescription | /report).
@@ -40,14 +41,20 @@ export async function clearBookingField(bookingId: string, field: ClearedField, 
     if (field === 'prescription') unset['lifecycle.prescriptionUploaded'] = '';
     await BookingModel.updateOne({ _id: bookingId }, { $unset: unset }, { session });
     const fileUrls = Array.isArray(value?.fileUrls) ? value!.fileUrls.map(String) : undefined;
+    // Review of fb4063c7 (1): the assisted dispensing copy goes with the prescription; every withdrawn file is recorded
+    // by its upload path so file access keeps refusing it after the doctor saves a new prescription.
+    const copyUrl = field === 'prescription' && typeof value?.dispensingCopy?.url === 'string' ? String(value.dispensingCopy.url) : undefined;
+    const paths = [...new Set([...(fileUrls ?? []), ...(copyUrl ? [copyUrl] : [])].map((u) => uploadPathOf(u)).filter((x): x is string => !!x))];
     const [row] = await BookingAdminClearModel.create([{
-      bookingId: String(bookingId), field, reason, adminId: String(adminId), clearedAt: new Date(),
+      bookingId: String(bookingId).toLowerCase(), field, reason, adminId: String(adminId), clearedAt: new Date(),
       removed: {
         ...(value?.prescribedBySpecialistId ? { prescribedBySpecialistId: String(value.prescribedBySpecialistId) } : {}),
         ...(value?.prescribedAt ? { prescribedAt: String(value.prescribedAt) } : {}),
         ...(marker ? { markerAt: String(marker) } : {}),
         ...(fileUrls?.length ? { fileUrls } : {}),
+        ...(copyUrl ? { dispensingCopyUrl: copyUrl } : {}),
       },
+      paths,
     }], { session });
     return row;
   });

@@ -70,11 +70,16 @@ export class PharmacyWalletController {
         message: 'pharmacyId is required for admin wallet top-up',
       });
     }
-    const result = await this.service.topup(
-      pharmacyId,
-      req.body,
-      req.header('Idempotency-Key') || undefined
-    );
+    // Review of fb4063c7 (4): an admin credit needs an Idempotency-Key (a resent form never credits twice). No released
+    // client calls this admin route; the pharmacy app's own top-up (above) is unaffected.
+    const key = req.header('Idempotency-Key')?.trim();
+    if (!key) {
+      throw new AppError({ status: 400, code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'An Idempotency-Key header is required for an admin top-up' });
+    }
+    if (key.length > 100) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Idempotency-Key is at most 100 characters' });
+    }
+    const result = await this.service.topup(pharmacyId, req.body, key, String(req.user?._id ?? ''));
     res.status(200).json({ success: true, message: 'Wallet topped up', data: result });
   };
 

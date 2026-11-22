@@ -16,6 +16,8 @@ import {
 import { AppError } from '@/modules/common/types';
 import { PaymentService } from '@/modules/payment/services';
 import PaymentRecordModel from '@/modules/payment/model';
+import PharmacyModel from '@/modules/pharmacies/model';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 
 /**
  * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
@@ -130,26 +132,43 @@ export class PharmacyWalletService {
     return this.walletRepo.findByPharmacy(pharmacyId);
   }
 
+  /**
+   * Admin manual credit (POST /pharmacy-wallet/topup with an admin token). Review of fb4063c7 (4):
+   * - the pharmacy must exist (404 PHARMACY_NOT_FOUND; no wallet is made for an unknown id);
+   * - one credit per Idempotency-Key: the same key and content answers the wallet again (nothing more is credited); the
+   *   same key with another amount or note is 409 IDEMPOTENCY_KEY_REUSED (content hash on the row; an older row without
+   *   one is compared by amount and note);
+   * - the crediting admin is stored on the ledger row (`actor`).
+   */
   async topup(
     pharmacyId: string,
     req: TopupWalletRequest,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    adminId?: string
   ): Promise<IPharmacyWallet> {
+    if (!Types.ObjectId.isValid(pharmacyId) || !/^[0-9a-fA-F]{24}$/.test(pharmacyId) || !(await PharmacyModel.exists({ _id: pharmacyId }))) {
+      throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND', message: 'Pharmacy not found' });
+    }
     await this.getOrCreateWallet(pharmacyId);
     const normalizedKey = idempotencyKey?.trim();
-    if (normalizedKey) {
-      const existing = await this.txRepo.findOne({
-        pharmacyId,
-        referenceType: 'topup',
-        referenceId: normalizedKey,
-      });
-      if (existing) {
-        const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
-        if (wallet) return wallet;
-      }
-    }
-
     const amountPaise = Math.round(req.amount * 100);
+    const notes = req.notes ?? null;
+    const requestHash = requestHashOf({ kind: 'admin_topup', amountPaise, notes });
+    /** The wallet when this key already credited this same content; 409 when it credited something else. */
+    const replayOf = async (): Promise<IPharmacyWallet | null> => {
+      if (!normalizedKey) return null;
+      const existing = await this.txRepo.findOne({ pharmacyId, referenceType: 'topup', referenceId: normalizedKey });
+      if (!existing) return null;
+      const same = existing.requestHash ? existing.requestHash === requestHash
+        : Number(existing.amountPaise ?? Math.round(Number(existing.amount ?? 0) * 100)) === amountPaise && (existing.notes ?? null) === notes;
+      if (!same) {
+        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This Idempotency-Key was already used for a different top-up' });
+      }
+      return this.walletRepo.findByPharmacy(pharmacyId);
+    };
+    const prior = await replayOf();
+    if (prior) return prior;
+
     const session = await startSession();
     try {
       let result: IPharmacyWallet | undefined;
@@ -160,7 +179,11 @@ export class PharmacyWalletService {
           pharmacyId, kind: 'credit', amountPaise,
           operationKey: `admin_topup:${normalizedKey || new Types.ObjectId().toHexString()}`,
           referenceType: 'topup', referenceId: normalizedKey as string, description: 'Admin top-up', notes: req.notes,
+          requestHash, ...(adminId ? { actor: { kind: 'admin' as const, id: String(adminId) } } : {}),
         }, session);
+        if (posted.replayed && posted.entry.requestHash && posted.entry.requestHash !== requestHash) {
+          throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This Idempotency-Key was already used for a different top-up' });
+        }
         result = posted.wallet;
       });
       if (!result) {
@@ -169,7 +192,7 @@ export class PharmacyWalletService {
       return result;
     } catch (error) {
       if (normalizedKey && isDuplicateKeyError(error)) {
-        const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
+        const wallet = await replayOf();
         if (wallet) return wallet;
       }
       throw error;

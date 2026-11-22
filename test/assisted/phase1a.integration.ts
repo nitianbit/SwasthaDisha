@@ -197,7 +197,9 @@ async function main() {
     };
     type Who = keyof typeof tokens;
     const call = async (who: Who | null, method: string, url: string, body?: unknown) => {
-      const r = await fetch(base + url, { method, headers: { ...(who ? { authorization: 'Bearer ' + tokens[who] } : {}), 'content-type': 'application/json' },
+      // Review of fb4063c7 (4): an admin top-up carries a fresh Idempotency-Key, as an admin screen sends one per submit.
+      const topupKey = who === 'ADMIN' && method === 'POST' && url === '/pharmacy-wallet/topup' ? { 'idempotency-key': 'admin-topup-' + oid() } : {};
+      const r = await fetch(base + url, { method, headers: { ...(who ? { authorization: 'Bearer ' + tokens[who] } : {}), 'content-type': 'application/json', ...topupKey },
         body: body === undefined ? undefined : JSON.stringify(body) });
       const text = await r.text();
       let json: any; try { json = JSON.parse(text); } catch { json = { text }; }

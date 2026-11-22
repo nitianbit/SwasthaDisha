@@ -39,6 +39,9 @@ export interface PharmacyMovement {
   lot?: { paymentRecordId: string; gatewayFeeMinor?: number | null };
   /** A refund: the allocations of the spend it reverses. */
   restore?: { lotId: string; amountPaise: number }[];
+  /** Admin top-ups: the request's content hash and the admin (stored on the row). */
+  requestHash?: string;
+  actor?: { kind: 'admin'; id: string };
 }
 
 export interface PostedMovement { entry: IPharmacyWalletTransaction; wallet: IPharmacyWallet; replayed: boolean }
@@ -134,6 +137,7 @@ export async function postPharmacyMovementIn(m: PharmacyMovement, s: ClientSessi
     referenceType: m.referenceType, referenceId: m.referenceId, description: m.description, ...(m.notes ? { notes: m.notes } : {}),
     transactionDate: istTodayYyyymmdd(), signedAmountPaise: signed, operationKey: m.operationKey,
     withdrawableDeltaPaise: withdrawableAfter - withdrawableBefore, ...(lotAllocations?.length ? { lotAllocations } : {}),
+    ...(m.requestHash ? { requestHash: m.requestHash } : {}), ...(m.actor ? { actor: m.actor } : {}),
   }], { session: s });
   // Chargebacks (§5.3): a credit arriving on a wallet that owes a receivable clears it first (`receivable_setoff`).
   const owed = Number(updated.receivableMinor ?? 0);

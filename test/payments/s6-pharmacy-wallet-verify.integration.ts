@@ -380,6 +380,29 @@ async function main() {
       shared.ph = ph; shared.comp = comp.record; shared.refunded = refunded.record;
     });
 
+    await check('a top-up blocked after a lost card dispute is listed apart ("never credit") and the credit script refuses it, no override', async () => {
+      const ph = await pharmacy();
+      const blocked = await topup(ph, 90); // Razorpay captured it; the card dispute was lost before any credit
+      await PaymentRecordModel.updateOne({ _id: blocked.record }, { $set: { status: 'failed', chargebackAt: new Date() } });
+      const blockedRefunded = await topup(ph, 70); // a refunded record keeps its status when it is blocked
+      await PaymentRecordModel.updateOne({ _id: blockedRefunded.record }, { $set: { status: 'refunded', chargebackAt: new Date() } });
+      const report = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader) as any;
+      const ids = (xs: { paymentTransactionId: string }[]) => xs.map((x) => x.paymentTransactionId);
+      assert.equal(ids(report.failedWithCapture).includes(blocked.record), false, 'not a "manual review" row');
+      assert.equal(ids(report.rows).includes(blocked.record), false);
+      const listed = report.blockedAfterLostDispute as { paymentTransactionId: string; review: string; amount: number }[];
+      assert.deepEqual(ids(listed).filter((x) => [blocked.record, blockedRefunded.record].includes(x)).sort(), [blocked.record, blockedRefunded.record].sort());
+      assert.match(listed.find((x) => x.paymentTransactionId === blocked.record)!.review, /never credit/);
+      assert.equal(report.summary.blockedAfterLostDispute, listed.length);
+      assert.ok(Array.isArray((await auditS6UncreditedWalletTopups() as any).blockedAfterLostDispute), 'listed without the gateway too');
+      for (const id of [blocked.record, blockedRefunded.record]) {
+        const o = await creditS6WalletTopup({ recordId: id, commit: true, client: fakeRazorpay, alreadyCompensatedChecked: id, disputesCheckedInDashboard: id });
+        assert.equal(o.decision, 'refused', id); assert.equal(o.committed, false);
+        assert.match(o.reasons.join(' '), /lost card dispute: never credit/);
+      }
+      assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 0);
+    });
+
     await check('credit script: dry run writes nothing; --commit credits once through reconcile as the payer; repeats credit nothing', async () => {
       const ph = await pharmacy();
       const t = await topup(ph, 330);

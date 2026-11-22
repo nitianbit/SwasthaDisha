@@ -61,6 +61,9 @@ const pharmacyWalletTransactionSchema = new Schema<IPharmacyWalletTransaction>(
       type: [new Schema({ lotId: { type: String, required: true }, amountPaise: { type: Number, required: true, min: 1 } }, { _id: false })],
       default: undefined,
     },
+    // Admin top-ups: content hash under the Idempotency-Key, and the admin who credited it.
+    requestHash: { type: String },
+    actor: { type: new Schema({ kind: { type: String, enum: ['admin'], required: true }, id: { type: String, required: true } }, { _id: false }), default: undefined },
   },
   { timestamps: true }
 );

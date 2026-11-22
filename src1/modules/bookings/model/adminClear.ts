@@ -9,7 +9,12 @@ export interface IBookingAdminClear {
   reason: string;
   adminId: string;
   clearedAt: Date;
-  removed: { prescribedBySpecialistId?: string; prescribedAt?: string; markerAt?: string; fileUrls?: string[] };
+  removed: { prescribedBySpecialistId?: string; prescribedAt?: string; markerAt?: string; fileUrls?: string[]; dispensingCopyUrl?: string };
+  /**
+   * Review of fb4063c7 (1): the upload-dir paths of every file this clear withdrew (full PDFs, the dispensing copy), so
+   * a later prescription never makes them readable again (file/access.ts). Rows written before this field have none.
+   */
+  paths?: string[];
 }
 
 const bookingAdminClearSchema = new Schema<IBookingAdminClear>({
@@ -19,10 +24,13 @@ const bookingAdminClearSchema = new Schema<IBookingAdminClear>({
   adminId: { type: String, required: true },
   clearedAt: { type: Date, required: true },
   removed: {
-    type: new Schema({ prescribedBySpecialistId: String, prescribedAt: String, markerAt: String, fileUrls: { type: [String], default: undefined } }, { _id: false }),
+    type: new Schema({ prescribedBySpecialistId: String, prescribedAt: String, markerAt: String, fileUrls: { type: [String], default: undefined },
+      dispensingCopyUrl: String }, { _id: false }),
     default: {},
   },
+  paths: { type: [String], default: undefined },
 }, { versionKey: false });
+bookingAdminClearSchema.index({ paths: 1 });
 
 export const BookingAdminClearModel: Model<IBookingAdminClear> = (mongoose.models.BookingAdminClear as Model<IBookingAdminClear>)
   || model<IBookingAdminClear>('BookingAdminClear', bookingAdminClearSchema);

@@ -37,12 +37,13 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { PharmacyCustomerRepository } from '@/modules/pharmacyCustomers/repository';
 import { PharmacyCustomerService } from '@/modules/pharmacyCustomers/services';
-import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
+import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import { PharmacyWalletService } from '@/modules/pharmacyWallet/services';
 import SpecialistModel from '@/modules/specialists/model';
 import { SpecialistService } from '@/modules/specialists/services';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
+import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/assisted_stage_merge_check?directConnection=true';
@@ -94,7 +95,7 @@ async function main() {
   const { default: pharmacyBookingRouter } = await import('@/modules/assisted/routes');
   const { default: pharmacyWalletRouter } = await import('@/modules/pharmacyWallet/routes');
   const { authenticate } = await import('@/modules/middleware/auth');
-  const { adminCloseBooking } = await import('@/modules/bookings/adminClose');
+  const { adminCloseHandler } = await import('@/modules/bookings/adminClose');
   const { clearBookingField } = await import('@/modules/bookings/adminClear');
   const { decideFileAccess } = await import('@/modules/file/access');
   const { dispensingHashOf } = await import('@/modules/assisted/dispensingCopy');
@@ -164,7 +165,15 @@ async function main() {
       join: { on: 'partner_device' }, acceptedPriceMinor: 50000, primaryConcern: 'fever', paymentMethod: 'wallet', ...extra,
     });
     const balance = async () => Number(((await PharmacyWalletModel.findOne({ pharmacyId: P }).lean()) as any)?.balancePaise ?? 0);
-    await expect('ADMIN', 'POST', '/pharmacy-wallet/topup', 200, { pharmacyId: P, amount: 5000 });
+    /** POST /pharmacy-wallet/topup as the admin, with the Idempotency-Key header (or none). */
+    const adminTopup = async (body: unknown, key?: string) => {
+      const r = await fetch(base + '/pharmacy-wallet/topup', { method: 'POST', body: JSON.stringify(body), headers: { authorization: 'Bearer ' + tokens.ADMIN,
+        'content-type': 'application/json', ...(key ? { 'idempotency-key': key } : {}) } });
+      const text = await r.text();
+      let json: any; try { json = JSON.parse(text); } catch { json = { text }; }
+      return { status: r.status, json, text };
+    };
+    assert.equal((await adminTopup({ pharmacyId: P, amount: 5000 }, 'stage-merge-first-topup')).status, 200);
     assert.equal(await balance(), 500000);
 
     // ───────────────────────── S5: doctors the pharmacy can book ─────────────────────────
@@ -281,7 +290,13 @@ async function main() {
       const before = await balance();
       await SpecialistModel.collection.updateOne({ _id: new Types.ObjectId(D) }, { $set: { isVerified: false } });
       try {
-        const out = await adminCloseBooking(id, ADMIN, { reason: 'doctor not verified', requestKey: newKey() });
+        let answer: any;
+        const res = { status: () => res, json: (b: unknown) => { answer = b; return res; } } as any;
+        await adminCloseHandler({ user: { _id: ADMIN, userType: 'admin' }, params: { bookingId: id },
+          body: { reason: 'doctor not verified', requestKey: newKey() } } as any, res);
+        // Review of fb4063c7 (nit): an assisted booking's money went back to the pharmacy, not the patient.
+        assert.equal(answer.message, 'Booking closed; the pharmacy was refunded');
+        const out = answer.data;
         assert.equal(out.refunded, 500, 'the close audit records rupees, as for every close');
         assert.equal(out.status, 'cancelled');
         assert.equal((out as any).cancellationCause, 'admin');
@@ -328,6 +343,75 @@ async function main() {
         assert.deepEqual(await decideFileAccess(readers[who] as never, rel), { allow: false, status: 404 }, `${who} after the clear`);
       }
       assert.equal((await decideFileAccess(readers.admin as never, rel)).allow, true);
+    });
+
+    /** The doctor saves a new prescription after a clear: new content, marker, full PDF and current copy. */
+    const resave = async (id: string) => {
+      const ms = Date.now();
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: {
+        prescription: { advice: 'new advice', medicines: [{ name: 'Cetirizine 10' }], testsAdvised: [], prescribedAt: new Date().toISOString(),
+          prescribedBySpecialistId: D, prescribedBySpecialistName: 'Dr Asha Menon', fileUrls: [`/api/static/bookings/${id}/prescription-${ms}.pdf`] },
+        'lifecycle.prescriptionUploaded': { at: new Date().toISOString() } } });
+      const b = await BookingModel.findById(id).lean() as any;
+      const url = `/api/static/bookings/${id}/rx-dispense-${ms}.pdf`;
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { 'prescription.dispensingCopy': { url, hash: dispensingHashOf(b), at: new Date() } } });
+      return { copy: url.replace('/api/static/', ''), pdf: `bookings/${id}/prescription-${ms}.pdf` };
+    };
+    const who = {
+      patient: { _id: X, userType: 'user' }, doctor: { _id: D, specialistId: D, userType: 'specialist' },
+      pharmacy: { _id: P, pharmacyId: P, userType: 'pharmacy' }, admin: { _id: ADMIN, userType: 'admin' },
+    } as const;
+    const readable = async (r: object, rel: string) => (await decideFileAccess(r as never, rel)).allow;
+
+    await check('review 1: a cleared prescription\'s copy and PDF stay withdrawn after the doctor saves a new one; the new ones are read', async () => {
+      const { id, rel } = await prescribed(D);
+      const oldPdf = `bookings/${id}/prescription-1700000000001.pdf`;
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { 'prescription.fileUrls': [`/api/static/${oldPdf}`] } });
+      assert.equal(await readable(who.patient, oldPdf), true, 'the patient reads the PDF before');
+      await clearBookingField(id, 'prescription', ADMIN, 'planted prescription');
+      const row = await BookingAdminClearModel.findOne({ bookingId: id }).lean() as any;
+      assert.deepEqual([...row.paths].sort(), [oldPdf, rel].sort(), 'the clear records every file it withdrew');
+      const now = await resave(id);
+      for (const r of [who.patient, who.doctor, who.pharmacy]) {
+        assert.equal(await readable(r, rel), false, `${r.userType}: the cleared copy stays withdrawn`);
+        assert.equal(await readable(r, oldPdf), false, `${r.userType}: the cleared PDF stays withdrawn`);
+        assert.equal(await readable(r, now.copy), true, `${r.userType}: the new copy is read`);
+      }
+      for (const r of [who.patient, who.doctor]) assert.equal(await readable(r, now.pdf), true, `${r.userType}: the new PDF is read`);
+      assert.equal(await readable(who.admin, rel), true, 'admins still read the cleared copy');
+    });
+
+    await check('review 1: a clear recorded before the fix (no file list) withdraws every copy made before it', async () => {
+      const { id, rel } = await prescribed(D);
+      await clearBookingField(id, 'prescription', ADMIN, 'planted prescription');
+      await BookingAdminClearModel.collection.updateOne({ bookingId: id }, { $unset: { paths: '', 'removed.dispensingCopyUrl': '' } });
+      const now = await resave(id);
+      assert.equal(await readable(who.patient, rel), false);
+      assert.equal(await readable(who.doctor, rel), false);
+      assert.equal(await readable(who.patient, now.copy), true);
+    });
+
+    // ───────────────────────── Admin top-up (review 4) ─────────────────────────
+    await check('review 4: admin top-up needs a key, an existing pharmacy, the same content under a key; the admin is recorded', async () => {
+      const before = await balance();
+      const none = await adminTopup({ pharmacyId: P, amount: 100 });
+      assert.equal(none.status, 400, none.text); assert.equal(none.json.code, 'IDEMPOTENCY_KEY_REQUIRED');
+      const ghost = oid();
+      const missing = await adminTopup({ pharmacyId: ghost, amount: 100 }, 'stage-merge-ghost-1');
+      assert.equal(missing.status, 404, missing.text); assert.equal(missing.json.code, 'PHARMACY_NOT_FOUND');
+      assert.equal(await PharmacyWalletModel.countDocuments({ pharmacyId: ghost }), 0, 'no stray wallet');
+      const first = await adminTopup({ pharmacyId: P, amount: 100, notes: 'demo' }, 'stage-merge-key-1');
+      assert.equal(first.status, 200, first.text);
+      assert.equal(await balance(), before + 10000);
+      const row = await PharmacyWalletTransactionModel.findOne({ pharmacyId: P, referenceType: 'topup', referenceId: 'stage-merge-key-1' }).lean() as any;
+      assert.deepEqual({ ...row.actor }, { kind: 'admin', id: ADMIN });
+      const same = await adminTopup({ pharmacyId: P, amount: 100, notes: 'demo' }, 'stage-merge-key-1');
+      assert.equal(same.status, 200, same.text);
+      for (const changed of [{ pharmacyId: P, amount: 200, notes: 'demo' }, { pharmacyId: P, amount: 100, notes: 'other' }]) {
+        const r = await adminTopup(changed, 'stage-merge-key-1');
+        assert.equal(r.status, 409, r.text); assert.equal(r.json.code, 'IDEMPOTENCY_KEY_REUSED');
+      }
+      assert.equal(await balance(), before + 10000, 'credited once');
     });
 
     await check('S5: a doctor no longer verified reads no dispensing copy of its own booking', async () => {

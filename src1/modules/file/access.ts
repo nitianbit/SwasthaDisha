@@ -11,6 +11,7 @@ import PartnerOrgModel from '@/modules/partners/model';
 import { hasPrescription, isOperationalPharmacy, rxWindowOpenFor } from '@/modules/assisted/rxAccess';
 import { dispensingHashOf, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
+import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
 
 /**
  * D1 — one access decision for every legacy upload-dir route (/api/static, /api/v1/file/static, /api/v1/file/fetch).
@@ -63,6 +64,23 @@ async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
 async function bookingStillHoldsPrescription(bookingId: string, rel: string): Promise<boolean> {
   const b = await BookingModel.findById(bookingId).select({ 'prescription.fileUrls': 1 }).lean();
   return !!b && valuesAt(b, 'prescription.fileUrls').some((v) => uploadPathOf(v) === rel);
+}
+
+/**
+ * Review of fb4063c7 (1): a file an admin clear withdrew (S5) stays withdrawn for everyone but admins, even after the
+ * doctor saves a new prescription. Clears record the paths they withdrew; a clear recorded before that (no `paths`)
+ * withdraws its own full PDFs and every dispensing copy made up to the clear (copies are named rx-dispense-<ms>).
+ */
+const COPY_MS = /\/rx-dispense-(\d+)(?:-[0-9a-f]{16})?\.pdf$/;
+async function withdrawnByAdminClear(bookingId: string, rel: string): Promise<boolean> {
+  const rows = await BookingAdminClearModel.find({ bookingId: { $in: [bookingId, bookingId.toLowerCase(), bookingId.toUpperCase()] }, field: 'prescription' })
+    .select({ paths: 1, 'removed.fileUrls': 1, clearedAt: 1 }).lean();
+  const copyMs = Number(COPY_MS.exec(rel)?.[1] ?? NaN);
+  return rows.some((row) => {
+    if (Array.isArray(row.paths)) return row.paths.includes(rel);
+    if ((row.removed?.fileUrls ?? []).some((u) => uploadPathOf(u) === rel)) return true;
+    return Number.isFinite(copyMs) && copyMs <= new Date(row.clearedAt).getTime();
+  });
 }
 
 /**
@@ -326,9 +344,10 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     if (!PARTNER_LAB_REPORT.test(rel) && upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
-    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)) return ok;
+    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)
+      && !(await withdrawnByAdminClear(rx[1]!, rel))) return ok;
     const copy = BOOKING_RX_DISPENSE.exec(rel);
-    if (copy && await canReadDispensingCopy(reader, copy[1]!, rel)) return ok;
+    if (copy && await canReadDispensingCopy(reader, copy[1]!, rel) && !(await withdrawnByAdminClear(copy[1]!, rel))) return ok;
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }

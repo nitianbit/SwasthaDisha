@@ -52,6 +52,9 @@ export interface IPharmacyWalletTransaction {
   withdrawableDeltaPaise?: number;
   receivableDeltaPaise?: number;
   lotAllocations?: { lotId: string; amountPaise: number }[];
+  /** Admin top-ups (review of fb4063c7, 4): the content hash under the Idempotency-Key and who credited it. */
+  requestHash?: string;
+  actor?: { kind: 'admin'; id: string };
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -1760,7 +1760,7 @@ Pharmacy token for every pharmacy row; answers `{ success, data }`; money in pai
 | Top up (Razorpay) | `POST /api/v1/pharmacy-wallet/topup` | `{ amount (₹), notes? }` | `{ paymentRequired, paymentTransactionId, razorpayOrderId, razorpayKeyId, amount, currency }`; then Razorpay Checkout, then `POST /api/v1/payments/verify { paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature, module: 'pharmacy-wallet' }` |
 | Top-up not shown | `POST /api/v1/pharmacy-wallet/topups/:paymentTransactionId/check` | — | `{ state: 'credited' \| 'unpaid', wallet }` |
 | Typed name | `PUT /api/v1/pharmacy-customers/:id/typed-name` | `{ typedName }` | `{ _id, userId, typedName }` |
-| Admin: top up a pharmacy | `POST /api/v1/pharmacy-wallet/topup` (admin token, header `Idempotency-Key`) | `{ pharmacyId, amount (₹), notes? }` | the wallet |
+| Admin: top up a pharmacy | `POST /api/v1/pharmacy-wallet/topup` (admin token, header `Idempotency-Key` required, one per submit) | `{ pharmacyId, amount (₹), notes? }` | the wallet; 400 `IDEMPOTENCY_KEY_REQUIRED`, 404 `PHARMACY_NOT_FOUND`, 409 `IDEMPOTENCY_KEY_REUSED` |
 | Admin: a pharmacy's wallet | `GET /api/v1/pharmacy-wallet?pharmacyId=` and `/transactions?pharmacyId=` | — | as above |
 | Admin: move a booking | `POST /api/v1/admin/assisted-bookings/:id/move` | `{ toPhone, asFamily?, holderName?, reason, requestKey, expectedUpdatedAt? }` | `{ booking, replayed }` |
 | Admin: "not mine" queue | `GET /api/v1/admin/assisted/review-items`, `POST …/:id/dismiss` | `?state&limit`; `{ reason? }` | items |
@@ -1782,13 +1782,15 @@ before `npm ci`).
 3. **Migration, dry run:** `npm run migrate:assisted-pharmacy-wallets; echo "exit=$?"`. Read the JSON: `signedFilled`,
    `openings` (one per wallet whose balance differs from the sum of its rows), `typedNamesFilled`,
    `customerOrderConsentsFilled`, coupons. Exit 2 means `signAnomalies` or `openedWalletMismatches` are listed: read
-   them before going on (they are never changed by the script; stage demo data may have some).
+   them before going on. Sign anomalies (a row whose balance change contradicts its type) get their signed amount filled
+   in as recorded (balance after − before) and are listed for review; their type is never changed. Opened-wallet
+   mismatches are listed and never written. Stage demo data may have some.
 4. **Migration, write:** `npm run migrate:assisted-pharmacy-wallets -- --commit; echo "exit=$?"`. Run the dry run again:
    it must report nothing left to do (a rerun is a no-op).
 5. **Indexes:** `npm run sync-indexes 2>&1 | tee /tmp/sync-indexes.log; grep FAILED /tmp/sync-indexes.log` (expect no
    FAILED line). New: `wallet_topup_lots`, `coupon_redemptions`, `assisted_counters`, `assisted_alerts`,
    `assisted_review_items`, `assisted_reconciliation_reports`, `assisted_audit_events`, and indexes on `bookings`,
-   `pharmacy_wallet_transactions`, `pharmacy_wallets`, `pharmacy_orders`.
+   `pharmacy_wallet_transactions`, `pharmacy_wallets`, `pharmacy_orders`, and `bookingadminclears {paths}` (§20.6).
 6. **Switches on.** Add to `.env` (the time is now, India time):
    ```
    WALLET_RECHARGE_SWEEP_FROM=2026-11-22T12:00:00+05:30
@@ -1800,17 +1802,21 @@ before `npm ci`).
    `TS_NODE_PROJECT=tsconfig.runtime.json pm2 restart swasthadisha-api --update-env`. (`.env` is read at start; a variable
    that pm2 itself holds in its saved environment wins over `.env`, so check `pm2 env <id> | grep ASSISTED` if a switch
    seems ignored.)
-7. **Fund a demo pharmacy (admin top-up, non-withdrawable).** Find the pharmacy:
+7. **Fund a demo pharmacy (admin top-up, non-withdrawable).** Load the backend's `.env` into this shell first (mongosh
+   needs `MONGODB_URL`): `cd /opt/swasthadisha/backend && set -a && source .env && set +a`. Find the pharmacy:
    `mongosh "$MONGODB_URL" --quiet --eval 'db.pharmacies.find({isActive:true,isVerified:true},{name:1,phone:1}).limit(20).forEach(p=>printjson(p))'`.
-   Sign in to the staff site as an admin, copy the `Authorization: Bearer …` value of any API request from the
-   browser's network tab, then:
+   Sign in to the staff site as an admin, copy the token after `Authorization: Bearer ` of any API request from the
+   browser's network tab, and paste it without echoing it or keeping it in the shell history: `read -rs ADMIN_TOKEN`
+   (paste, Enter). Then:
    ```
    curl -sS -X POST https://swasthadisha.etryx.in/api/v1/pharmacy-wallet/topup \
      -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' -H 'Idempotency-Key: stage-demo-topup-001' \
      -d '{"pharmacyId":"<pharmacy _id>","amount":5000,"notes":"stage testing"}'
    ```
-   `amount` is in rupees (₹5,000 here). Use a new `Idempotency-Key` for each further top-up; resending the same key
-   credits nothing more. Check: `curl -sS "https://swasthadisha.etryx.in/api/v1/pharmacy-wallet?pharmacyId=<id>" -H "Authorization: Bearer $ADMIN_TOKEN"`.
+   `amount` is in rupees (₹5,000 here). The `Idempotency-Key` header is required (400 `IDEMPOTENCY_KEY_REQUIRED`
+   without it). Use a new key for each further top-up: resending the same key and body credits nothing more, and the same
+   key with another amount or note is 409 `IDEMPOTENCY_KEY_REUSED`. An unknown `pharmacyId` is 404 `PHARMACY_NOT_FOUND`.
+   The ledger row records the admin (`actor`). Finish with `unset ADMIN_TOKEN`. Check: `curl -sS "https://swasthadisha.etryx.in/api/v1/pharmacy-wallet?pharmacyId=<id>" -H "Authorization: Bearer $ADMIN_TOKEN"`.
    The pharmacy must be active and verified to book; the doctors it books must be verified and active.
 8. **What to check first.**
    - As the pharmacy: `GET /api/v1/pharmacy-assisted/doctors` answers 200 (503 = the switch is not read) and lists only
@@ -1826,6 +1832,11 @@ before `npm ci`).
    - The manual Meet check of §19.2 item 11 (pharmacy device joins as a guest the doctor admits); record it here.
 9. **Roll back** (any time): set `ASSISTED_BOOKING_ENABLED_PHARMACY=false` and restart. Existing assisted bookings can still
    be cancelled, rescheduled and refunded; keep `ASSISTED_ADMIN_TOOLS_ENABLED=true` during a rollback (§19.4).
+   **Never roll the CODE back while assisted bookings are open.** Code without phase 1a does not know partner money: its
+   cancel would refund the pharmacy ₹0 and still mark the booking refunded. To go back to older code, first cancel every
+   open assisted booking on this code (each refund goes to its pharmacy's wallet), check that
+   `db.bookings.countDocuments({source:'pharmacy_assisted', status:{$in:['pending','confirmed']}})` is 0, and only then
+   deploy the older code. A switch-only rollback (above) is always safe.
 
 ### 20.5 Open gaps (not built here)
 
@@ -1841,3 +1852,16 @@ before `npm ci`).
   should also withdraw it.
 - Phase 1b and later (Razorpay per booking, lab/doctor bookers, referral cuts, withdrawals, SMS) are not built (§19.2
   item 13).
+
+### 20.6 Review fixes (Opus xhigh review of `fb4063c7`)
+
+Branch `m0/r5-assisted-stage-fixes` (from `fb4063c7`). Each fix has a check that fails on `fb4063c7`.
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 (LOW, patient data) | After an admin clear, the cleared prescription's dispensing copy became readable again to the patient and doctor once the doctor saved a new prescription | The clear's audit row records `removed.dispensingCopyUrl` and `paths` (the upload paths of every file it withdrew: full PDFs and the copy); file access refuses those paths for everyone but admins, for the full PDF and the copy. A clear recorded before this fix (no `paths`) withdraws its own PDFs and every copy made up to the clear (`rx-dispense-<ms>`, ms ≤ the clear). Index `bookingadminclears {paths}` (sync-indexes). Order bindings are unchanged (open, §20.5) | `stage-merge` checks "review 1" (2) |
+| 2 (LOW, ₹) | A top-up blocked after a lost card dispute (`chargebackAt`, status failed) showed in the S6 audit's `failedWithCapture` as "manual review" | The audit selects `chargebackAt` and lists such records (any status) in `blockedAfterLostDispute` with `review: 'blocked after a lost dispute: never credit'` (with or without the gateway; never in `rows` or `failedWithCapture`; counted in the summary and the stderr line). The credit script refuses them first, with no override | `s6-pharmacy-wallet-verify` "blocked after a lost card dispute" |
+| 3 | Rollback | §20.4 step 9: never roll the code back while assisted bookings are open | — |
+| 4 | Admin top-up | 404 `PHARMACY_NOT_FOUND` for an unknown pharmacy (no stray wallet); content hash (`requestHash`: paise amount and note) on the ledger row — the same key with other content is 409 `IDEMPOTENCY_KEY_REUSED` (older rows without a hash are compared by amount and note); the admin is stored as `actor: { kind: 'admin', id }`; the `Idempotency-Key` header is required for an admin (400 `IDEMPOTENCY_KEY_REQUIRED`, at most 100 characters). No released client calls the admin route (checked: the released pharmacy app calls only its own Razorpay top-up; no admin panel or `jansetu-web` screen calls it) | `stage-merge` "review 4" |
+| 5 | Nits | Runbook: `.env` exported for mongosh, `read -rs ADMIN_TOKEN`, step 3 wording. The admin close answers "Booking closed; the pharmacy was refunded" for an assisted booking | `stage-merge` S5c check |
+
