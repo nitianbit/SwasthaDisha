@@ -9,20 +9,25 @@ import { reconcilePaymentSchema, verifyPaymentSchema } from '@/modules/payment/v
 const paymentRouter = Router();
 const paymentController = new PaymentController();
 
+// Review (phase 0 leftover; verify: review of 800dfc0, item 3): a pharmacy that is not operational (inactive, archived or
+// not verified) is answered 403 on verify and reconcile, as on the booking reads. A top-up it already paid is still
+// credited by the recovery sweep (WALLET_RECHARGE_SWEEP_FROM) or listed for admins as uncredited (credits always post).
+const operationalPharmacyOnly = catchAsync(async (req: AuthRequest, _res, next) => {
+  if (req.user?.userType === 'pharmacy') await assertOperationalPharmacy(req);
+  next();
+});
+
 paymentRouter.post(
   '/verify',
+  operationalPharmacyOnly,
   validate(verifyPaymentSchema, 'body'),
   catchAsync(paymentController.verify)
 );
 
 // Settles a payment from Razorpay's own record of the order when the browser's verification never arrived (W3b).
-// Review (phase 0 leftover): a pharmacy that is not operational is answered 403, as on the booking reads.
 paymentRouter.post(
   '/reconcile',
-  catchAsync(async (req: AuthRequest, _res, next) => {
-    if (req.user?.userType === 'pharmacy') await assertOperationalPharmacy(req);
-    next();
-  }),
+  operationalPharmacyOnly,
   validate(reconcilePaymentSchema, 'body'),
   catchAsync(paymentController.reconcile)
 );

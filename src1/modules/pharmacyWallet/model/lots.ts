@@ -16,6 +16,11 @@ export interface IWalletTopupLot {
   disputeState: 'none' | 'open' | 'lost';
   closed: boolean;
   remainingMinor: number;
+  /**
+   * Review of 800dfc0 (item 1): recorded at a chargeback of a top-up credited without a lot (switch off, before
+   * sync-indexes or before phase 1a): closed from the start, nothing in it, never withdrawable.
+   */
+  openedAtChargeback?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -32,6 +37,7 @@ const lotSchema = new Schema<IWalletTopupLot>({
   disputeState: { type: String, required: true, enum: ['none', 'open', 'lost'], default: 'none' },
   closed: { type: Boolean, required: true, default: false },
   remainingMinor: { type: Number, required: true, min: 0 },
+  openedAtChargeback: { type: Boolean },
 }, { timestamps: true, strict: 'throw' });
 lotSchema.index({ paymentRecordId: 1 }, { unique: true });
 lotSchema.index({ 'walletRef.kind': 1, 'walletRef.id': 1, createdAt: 1 });

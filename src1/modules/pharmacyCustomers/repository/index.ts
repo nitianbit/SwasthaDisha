@@ -4,7 +4,7 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { IPharmacyCustomer, PharmacyCustomerQueryParams } from '@/modules/pharmacyCustomers/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
-import { pharmacyFacingHolderNames } from '@/modules/assisted/names';
+import { NAME_SHOWN_CONSENTS, pharmacyFacingHolderNames } from '@/modules/assisted/names';
 
 @Service()
 export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer> {
@@ -44,8 +44,9 @@ export class PharmacyCustomerRepository extends BaseRepository<IPharmacyCustomer
           $or: [
             { typedName: search },
             { 'user.phone': search },
-            // Phase 1a decision: a consented link shows (so may search) the account name; never the email.
-            { 'user.name': search, consent: { $in: ['patient_agreed', 'customer_order'] } },
+            // Review of 800dfc0 (item 2): only a link the customer made by ordering shows (so may search) the account
+            // name; never the email.
+            { 'user.name': search, consent: { $in: NAME_SHOWN_CONSENTS } },
           ],
         },
       });

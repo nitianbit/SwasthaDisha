@@ -10,7 +10,8 @@ import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { inTransaction } from '@/modules/partners/services';
-import { pharmacyWalletIn, recordChargebackIn } from '@/modules/pharmacyWallet/ledger';
+import { pharmacyWalletIn, recordChargebackIn, recordPaymentChargebackIn } from '@/modules/pharmacyWallet/ledger';
+import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
@@ -113,4 +114,31 @@ export const chargeback = async (req: AuthRequest, res: Response) => {
     return r;
   });
   send(res, { entry: out.entry, wallet: out.wallet, replayed: out.replayed });
+};
+
+/**
+ * POST /admin/wallet-payments/:paymentId/chargeback { reason } — review of 800dfc0 (item 1): a card dispute lost on a
+ * top-up named by its payment (payment record id or Razorpay payment id), for top-ups credited without a lot. Same rules
+ * and the same once-per-payment key as the lot route (a top-up with a lot is charged back through its lot). Audited in
+ * the same transaction. A racing twin that inserted the payment's lot first: this attempt runs once more and answers
+ * replayed.
+ */
+export const paymentChargeback = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  const reason = String(req.body.reason).trim();
+  const run = () => inTransaction(async (s) => {
+    const r = await recordPaymentChargebackIn(req.params.paymentId, s);
+    if (!r.replayed) {
+      await auditIn({ actorKind: 'admin', actorId: String(req.user?._id).toLowerCase(), orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
+        action: 'wallet.chargeback', detail: { lotId: r.lotId, paymentRecordId: r.paymentRecordId, withoutLot: r.withoutLot, reason,
+          debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
+    }
+    return r;
+  });
+  let out: Awaited<ReturnType<typeof run>>;
+  try { out = await run(); } catch (e) {
+    if (!isDuplicateKeyError(e)) throw e;
+    out = await run();
+  }
+  send(res, { entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId, withoutLot: out.withoutLot });
 };

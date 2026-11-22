@@ -76,4 +76,6 @@ export const reviewQuerySchema = Joi.object({ state: Joi.string().valid('open', 
 export const freezeSchema = Joi.object({ frozen: Joi.boolean().required(), reason: Joi.string().trim().min(1).max(500).required() });
 export const notMineSchema = Joi.object({ note: Joi.string().trim().max(500) });
 export const lotIdParamSchema = Joi.object({ lotId: objectId.required() });
+/** A pharmacy top-up's payment record id, or its Razorpay payment id. */
+export const paymentIdParamSchema = Joi.object({ paymentId: Joi.alternatives().try(objectId, Joi.string().pattern(/^pay_[A-Za-z0-9]{6,40}$/)).required() });
 export const chargebackSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required() });

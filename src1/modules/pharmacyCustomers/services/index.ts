@@ -26,6 +26,8 @@ export class PharmacyCustomerService {
   ): Promise<{ customer: IPharmacyCustomer; userId: string; isNewUser: boolean }> {
     // S3: the partner confirms the patient agreed ("patient agreed" tick). An explicit `false` is refused; a missing
     // answer (the released pharmacy app sends none) is still accepted and recorded as 'not_recorded'.
+    // 'patient_agreed' is the pharmacy's own tick: it never unlocks the account name (assisted/names.ts; only the
+    // customer's own order, 'customer_order', does).
     if (data.consent === false) {
       throw new AppError({ status: 400, code: 'CONSENT_REQUIRED', message: 'The patient must agree before being linked to your pharmacy' });
     }
@@ -82,9 +84,11 @@ export class PharmacyCustomerService {
     const typedName = typeof data.name === 'string' && data.name.trim() ? data.name.trim().replace(/\s+/g, ' ') : undefined;
     if (existing) {
       const typedFill = typedName && !(typeof existing.typedName === 'string' && existing.typedName.trim()) ? { typedName } : {};
-      // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer.
-      if (!existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed') || Object.keys(typedFill).length) {
-        const consentFill = !existing.consent || (consent === 'patient_agreed' && existing.consent !== 'patient_agreed') ? consentRecord : {};
+      // S3: a link with no consent record, or one now confirmed by the patient, records this call's answer. A link the
+      // customer made by ordering (`customer_order`) keeps that record (the pharmacy's tick never replaces it).
+      const recordConsent = !existing.consent || (consent === 'patient_agreed' && existing.consent === 'not_recorded');
+      if (recordConsent || Object.keys(typedFill).length) {
+        const consentFill = recordConsent ? consentRecord : {};
         const updated = await this.pharmacyCustomerRepo.update({ pharmacyId: data.pharmacyId, userId }, { ...consentFill, ...typedFill });
         return { customer: updated || existing, userId, isNewUser: false };
       }

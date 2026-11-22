@@ -1,6 +1,7 @@
 /**
  * Assisted booking phase 1a — fixes of the review of b4ae54e (ASSISTED_BOOKING_DESIGN.md §19.6). One check per fix; each
- * fails on b4ae54e. Same wiring as test/assisted/phase1a.integration.ts (its own database).
+ * fails on b4ae54e. Checks 12–15 (and the changed 8a) are the fixes of the review of 800dfc0 (§19.7); each fails on
+ * 800dfc0. Same wiring as test/assisted/phase1a.integration.ts (its own database).
  *
  * Original suite header: Assisted booking phase 1a (ASSISTED_BOOKING_DESIGN.md §17, §6, §8, §13 row 1a): a pharmacy books a doctor consultation
  * for a walk-in patient and pays from its Jansetu wallet. Money (one debit under concurrency and replay; refunds on every
@@ -50,6 +51,7 @@ import { CouponModel } from '@/modules/coupon/model';
 import { CouponRepository } from '@/modules/coupon/repository';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
 import { errorHandler } from '@/modules/middleware';
+import crypto from 'node:crypto';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/assisted_phase1a_review_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -80,11 +82,17 @@ async function check(name: string, fn: () => Promise<void>) {
 }
 
 /** Razorpay stand-in: the order payments it reports are set per test. */
-const gateway: { payments: Record<string, { id: string; order_id: string; amount: number; currency: string; status: string; fee?: number }[]> } = { payments: {} };
+type GatewayPayment = { id: string; order_id: string; amount: number; currency: string; status: string; fee?: number };
+const gateway: { payments: Record<string, GatewayPayment[]> } = { payments: {} };
 const fakeRazorpay = {
   orders: { create: async (o: { amount: number; currency: string }) => ({ id: 'order_p1a_' + oid(), amount: o.amount, currency: o.currency, status: 'created' }),
     fetchPayments: async (orderId: string) => ({ items: gateway.payments[orderId] ?? [] }) },
-  payments: { fetch: async () => { throw new Error('not used'); } },
+  // The browser verify (check 14) fetches the payment by id.
+  payments: { fetch: async (id: string) => {
+    const p = Object.values(gateway.payments).flat().find((x) => x.id === id);
+    if (!p) throw new Error('unknown payment');
+    return p;
+  } },
 };
 const noop = new Proxy({}, { get: () => async () => undefined });
 
@@ -114,6 +122,7 @@ async function main() {
     slotRepository: { findById: async (id: string) => SlotModel.findById(id).lean() },
   }) as BookingService;
   Container.set(BookingService, bookingService);
+  Container.set(PaymentService, payments);
   Container.set(DependentService, Object.assign(Object.create(DependentService.prototype), { dependentRepository: new DependentRepository() }));
   Container.set(PharmacyCustomerService, Object.assign(Object.create(PharmacyCustomerService.prototype), {
     pharmacyCustomerRepo: new PharmacyCustomerRepository(), pharmacyRepo: new PharmacyRepository(), userRepo: new UserRepository() }));
@@ -145,6 +154,7 @@ async function main() {
   const { default: pharmacyCustomerRouter } = await import('@/modules/pharmacyCustomers/routes');
   const { default: pharmacyWalletRouter } = await import('@/modules/pharmacyWallet/routes');
   const { default: specialistRouter } = await import('@/modules/specialists/routes');
+  const { default: paymentRouter } = await import('@/modules/payment/routes');
   const { authenticate } = await import('@/modules/middleware/auth');
   for (const name of mongoose.modelNames()) {
     const m = mongoose.model(name);
@@ -161,6 +171,7 @@ async function main() {
   app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
   app.use('/api/v1/pharmacy-wallet', authenticate, pharmacyWalletRouter);
   app.use('/api/v1/specialists', authenticate, specialistRouter);
+  app.use('/api/v1/payments', authenticate, paymentRouter);
   // Review 9: an error carrying arbitrary fields, to see what the error handler lets out.
   const { AppError } = await import('@/modules/common/types');
   app.post('/api/v1/__err/:code', (req, _res, next) => next(Object.assign(new AppError({ status: 409, code: req.params.code, message: 'x' }),
@@ -409,17 +420,18 @@ async function main() {
       await expect('C' as Who, 'POST', '/pharmacy-assisted/consultations', 409, consult(await futureSlot(), { phone: '9600000912', patient: { relation: 'self', name: 'Dispute Two' } }), 'INSUFFICIENT_BALANCE');
     });
 
-    await check('8a names: a consented link shows the account name on every pharmacy-facing list; otherwise typed or masked', async () => {
+    await check('8a names: typed or masked on every pharmacy-facing list (a patient_agreed link included)', async () => {
       const T = oid();
       await UserModel.collection.insertOne({ _id: new Types.ObjectId(T), userType: 'user', phone: '9600000921', name: 'Tenzin Wangmo Bhutia', createdSource: 'self_signup' } as never);
       await PharmacyCustomerModel.create({ pharmacyId: P, userId: T, consent: 'not_recorded', typedName: 'Tenzin (typed)' } as never);
       const rows = [{ userId: { _id: X, name: 'Rina Kumari Das', phone: '9600000201', email: 'rina@example.test' } },
         { userId: { _id: T, name: 'Tenzin Wangmo Bhutia', phone: '9600000921' } }, { userId: { _id: Y, name: 'Bikash', phone: '9600000202' } }];
       const named = await withLinkNames(rows, P, 'userId') as any[];
-      assert.deepEqual(named.map((r) => r.userId.name), ['Rina Kumari Das', 'Tenzin (typed)', 'Bi…'], 'consented, typed, no link (masked)');
+      // Review of 800dfc0 (item 2, assumed): the pharmacy's own "patient agreed" tick shows the typed name, not the account's.
+      assert.deepEqual(named.map((r) => r.userId.name), ['Rina Das', 'Tenzin (typed)', 'Bi…'], 'patient_agreed (typed), typed, no link (masked)');
       assert.equal(named[0].userId.email, undefined, 'never the email');
       const view = await expect('P', 'GET', `/pharmacy-bookings/${rxBooking}`, 200);
-      assert.equal(view.json.data.patientName, 'Rina Kumari Das');
+      assert.equal(view.json.data.patientName, 'Rina Das');
     });
 
     await check('8b wallet history: every row reads as a credit or a debit in the released app exactly as its signed amount says', async () => {
@@ -511,6 +523,205 @@ async function main() {
       await Job.insertMany(Array.from({ length: 25 }, () => ({ consumer: DISPENSING_COPY_CONSUMER, uniqueId: oid(), processAfter: now - 1, payload: { bookingId: oid() } })) as never);
       await dispensingCopyConsumer.init();
       assert.equal(await Job.countDocuments({ consumer: DISPENSING_COPY_CONSUMER }), 0, 'more than one batch of 10 in one run');
+    });
+
+    // ── Review of 800dfc0 (§19.7) ──
+    const pharmacyWithToken = async (name: string, phone: string) => {
+      const id = oid();
+      await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(id), name, phone, isActive: true, isVerified: true } as never);
+      (tokens as any)[id] = sign({ _id: id, pharmacyId: id, userType: 'pharmacy' });
+      return id;
+    };
+    /** A card top-up of `amount` rupees, captured and credited through the pharmacy's own top-up check. */
+    const rechargeOf = async (pharmacyId: string, amount: number) => {
+      const orderId = 'order_cb2_' + oid();
+      const rec = await PaymentRecordModel.create({ userId: pharmacyId, payerUserId: pharmacyId, payerPharmacyId: pharmacyId, context: 'wallet_recharge',
+        contextId: `pharmacy_${pharmacyId}_${oid()}`, baseAmount: amount, discountAmount: 0, finalAmount: amount, baseAmountPaise: amount * 100,
+        finalAmountPaise: amount * 100, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: orderId, status: 'created',
+        notes: { flow: 'pharmacy_wallet_recharge', pharmacyId } } as never);
+      const payId = 'pay_' + oid().slice(-14);
+      gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: amount * 100, currency: 'INR', status: 'captured', fee: 100 }];
+      await expect(pharmacyId as Who, 'POST', `/pharmacy-wallet/topups/${String((rec as any)._id)}/check`, 200);
+      return { recordId: String((rec as any)._id), payId };
+    };
+    /** As above with the pharmacy switch off: credited without a lot (as before phase 1a or before sync-indexes). */
+    const lotlessRecharge = async (pharmacyId: string, amount: number) => {
+      flagsOff();
+      try { return await rechargeOf(pharmacyId, amount); } finally { flagsOn(); }
+    };
+    const sumOf = async (pharmacyId: string) => (await PharmacyWalletTransactionModel.find({ pharmacyId }).lean() as any[])
+      .reduce((a, r) => a + Number(r.signedAmountPaise ?? 0), 0);
+
+    await check('12 chargeback by payment: a top-up without a lot is charged back once (either route, concurrently too), audited', async () => {
+      const W = await pharmacyWithToken('Lotless Pharmacy', '9700000401');
+      const t = await lotlessRecharge(W, 500);
+      assert.equal(await WalletTopupLotModel.countDocuments({ paymentRecordId: t.recordId }), 0, 'credited without a lot');
+      assert.deepEqual(await balanceOf(W), { paise: 50000, withdrawable: 0 });
+      await expect(W as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000941', patient: { relation: 'self', name: 'Spent One' } }));
+      assert.equal((await balanceOf(W)).paise, 0, 'the top-up was spent on a booking');
+      // Before: the lot route was the only way and there is no lot.
+      const cb = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
+      assert.equal(cb.json.data.replayed, false); assert.equal(cb.json.data.withoutLot, true); assert.equal(cb.json.data.paymentRecordId, t.recordId);
+      const w = await PharmacyWalletModel.findOne({ pharmacyId: W }).lean() as any;
+      assert.equal(w.balancePaise, 0); assert.equal(w.receivableMinor, 50000, 'the spent top-up is owed'); assert.equal(w.frozen, true);
+      const lot = await WalletTopupLotModel.findOne({ paymentRecordId: t.recordId }).lean() as any;
+      assert.equal(String(lot._id), cb.json.data.lotId);
+      assert.deepEqual([lot.closed, lot.disputeState, lot.remainingMinor, lot.amountMinor, lot.openedAtChargeback], [true, 'lost', 0, 50000, true]);
+      // Once per payment: by record id, by Razorpay id again, and through the lot route.
+      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.recordId}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
+      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
+      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W, transactionType: 'chargeback' }), 1);
+      const audits = await assistedModels.AssistedAuditEventModel.find({ action: 'wallet.chargeback', orgId: W }).lean() as any[];
+      assert.equal(audits.length, 1); assert.equal(audits[0].detail.withoutLot, true); assert.equal(audits[0].detail.paymentRecordId, t.recordId);
+      assert.equal(await sumOf(W), (await balanceOf(W)).paise, 'balance = Σ entries');
+      await expect(W as Who, 'POST', '/pharmacy-assisted/consultations', 409, consult(await futureSlot(), { phone: '9600000942', patient: { relation: 'self', name: 'Spent Two' } }), 'WALLET_RECEIVABLE');
+
+      // A top-up WITH a lot charged back on the lot route: the payment route answers that same chargeback.
+      const W2 = await pharmacyWithToken('Lotted Pharmacy', '9700000402');
+      const t2 = await rechargeOf(W2, 300);
+      const lot2 = await WalletTopupLotModel.findOne({ paymentRecordId: t2.recordId }).lean() as any;
+      assert.ok(lot2, 'credited with a lot');
+      await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot2._id)}/chargeback`, 200, { reason: 'lost' });
+      const viaPayment = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t2.payId}/chargeback`, 200, { reason: 'lost again' });
+      assert.equal(viaPayment.json.data.replayed, true); assert.equal(viaPayment.json.data.lotId, String(lot2._id)); assert.equal(viaPayment.json.data.withoutLot, false);
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W2, transactionType: 'chargeback' }), 1);
+
+      // Concurrently, by both ids at once: one chargeback.
+      const W3 = await pharmacyWithToken('Race Pharmacy', '9700000403');
+      const t3 = await lotlessRecharge(W3, 200);
+      const both = await Promise.all([t3.recordId, t3.payId, t3.recordId].map((id) => call('ADMIN', 'POST', `/admin/wallet-payments/${id}/chargeback`, { reason: 'race' })));
+      assert.deepEqual(both.map((r) => r.status), [200, 200, 200], both.map((r) => r.text.slice(0, 200)).join(' | '));
+      assert.equal(both.filter((r) => r.json.data.replayed === false).length, 1, 'exactly one is the chargeback');
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W3, transactionType: 'chargeback' }), 1);
+      assert.equal(await WalletTopupLotModel.countDocuments({ paymentRecordId: t3.recordId }), 1);
+      assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'wallet.chargeback', orgId: W3 }), 1);
+      const w3 = await PharmacyWalletModel.findOne({ pharmacyId: W3 }).lean() as any;
+      assert.deepEqual([w3.balancePaise, w3.receivableMinor, w3.frozen], [0, 0, true]);
+
+      // A pre-phase-1a credit row (rupees only, no paise, no operation key): charged back by its amount.
+      const W4 = await pharmacyWithToken('Old Pharmacy', '9700000404');
+      const old = await PaymentRecordModel.create({ userId: W4, payerUserId: W4, payerPharmacyId: W4, context: 'wallet_recharge', contextId: `pharmacy_${W4}_old`,
+        baseAmount: 300, discountAmount: 0, finalAmount: 300, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_old_' + oid(),
+        razorpayPaymentId: 'pay_old' + oid().slice(-10), status: 'paid', isProcessed: true, notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: W4 } } as never);
+      const ow = await PharmacyWalletModel.collection.insertOne({ pharmacyId: new Types.ObjectId(W4), balance: 300, balancePaise: 30000, isActive: true } as never);
+      await PharmacyWalletTransactionModel.collection.insertOne({ pharmacyId: new Types.ObjectId(W4), walletId: ow.insertedId, transactionType: 'credit', amount: 300,
+        balanceBefore: 0, balanceAfter: 300, status: 'completed', referenceType: 'wallet_recharge', referenceId: String((old as any)._id), signedAmountPaise: 30000 } as never);
+      const oc = await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((old as any)._id)}/chargeback`, 200, { reason: 'old dispute' });
+      assert.equal(oc.json.data.entry.amountPaise, 30000);
+      const w4 = await PharmacyWalletModel.findOne({ pharmacyId: W4 }).lean() as any;
+      assert.deepEqual([w4.balancePaise, w4.receivableMinor ?? 0, w4.frozen], [0, 0, true]);
+
+      // Refusals: never credited, not a pharmacy top-up, unknown ids; the lot index is required (fail closed).
+      const unc = await PaymentRecordModel.create({ userId: W4, payerUserId: W4, payerPharmacyId: W4, context: 'wallet_recharge', contextId: `pharmacy_${W4}_unc`,
+        baseAmount: 5, discountAmount: 0, finalAmount: 5, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_unc2_' + oid(), status: 'paid',
+        notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: W4 } } as never);
+      await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((unc as any)._id)}/chargeback`, 409, { reason: 'x' }, 'TOPUP_NOT_CREDITED');
+      const booking = await PaymentRecordModel.create({ userId: X, context: 'booking', contextId: oid(), baseAmount: 5, discountAmount: 0, finalAmount: 5,
+        currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_bk_' + oid(), razorpayPaymentId: 'pay_bk' + oid().slice(-10), status: 'paid' } as never);
+      await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((booking as any)._id)}/chargeback`, 404, { reason: 'x' }, 'TOPUP_NOT_FOUND');
+      await expect('ADMIN', 'POST', `/admin/wallet-payments/${(booking as any).razorpayPaymentId}/chargeback`, 404, { reason: 'x' }, 'TOPUP_NOT_FOUND');
+      await expect('ADMIN', 'POST', `/admin/wallet-payments/${oid()}/chargeback`, 404, { reason: 'x' }, 'TOPUP_NOT_FOUND');
+      await expect('ADMIN', 'POST', '/admin/wallet-payments/not-a-payment/chargeback', 400, { reason: 'x' });
+      await expect(W as Who, 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 403, { reason: 'x' });
+      const W5 = await pharmacyWithToken('Index Pharmacy', '9700000405');
+      const t5 = await lotlessRecharge(W5, 100);
+      const { resetIndexChecks } = await import('@/modules/common/utils/requiredIndex');
+      await WalletTopupLotModel.collection.dropIndex('paymentRecordId_1');
+      resetIndexChecks();
+      try {
+        await expect('ADMIN', 'POST', `/admin/wallet-payments/${t5.recordId}/chargeback`, 503, { reason: 'x' }, 'INDEXES_OUTDATED');
+        assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W5, transactionType: 'chargeback' }), 0);
+      } finally { await WalletTopupLotModel.syncIndexes(); resetIndexChecks(); }
+      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t5.recordId}/chargeback`, 200, { reason: 'x' })).json.data.replayed, false);
+    });
+
+    await check('13 names: only a customer\'s own order shows (and finds) the account name; book-then-cancel shows the typed or masked name', async () => {
+      const Z1 = oid(); const Z2 = oid(); const Z3 = oid();
+      await UserModel.collection.insertMany([
+        { _id: new Types.ObjectId(Z1), userType: 'user', phone: '9600000931', name: 'Zara Lyngdoh Real', createdSource: 'self_signup', otpVerified: true },
+        { _id: new Types.ObjectId(Z2), userType: 'user', phone: '9600000932', name: 'Kiran Real Sangma', createdSource: 'self_signup', otpVerified: true },
+        { _id: new Types.ObjectId(Z3), userType: 'user', phone: '9600000933', name: 'Customer Ordered Name', createdSource: 'self_signup', otpVerified: true },
+      ] as never);
+      // Book then cancel for an existing account: the pharmacy sees the name it typed, never the account's.
+      const a = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000931', patient: { relation: 'self', name: 'Zara Typed' } }));
+      const ca = await expect('P', 'POST', `/pharmacy-assisted/bookings/${a.json.data.booking._id}/cancel`, 200, {});
+      assert.equal(ca.text.includes('Lyngdoh'), false, 'the cancel answer');
+      const va = await expect('P', 'GET', `/pharmacy-bookings/${a.json.data.booking._id}`, 200);
+      assert.equal(va.json.data.patientName, 'Zara Typed');
+      const la = await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200);
+      assert.equal(la.text.includes('Lyngdoh'), false, 'the booker list');
+      // A family-member booking without a holder name: the family member's name; the holder masked.
+      const b = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000932',
+        patient: { relation: 'Mother', name: 'Mother Sangma', gender: 'Female' } }));
+      await expect('P', 'POST', `/pharmacy-assisted/bookings/${b.json.data.booking._id}/cancel`, 200, {});
+      assert.equal((await expect('P', 'GET', `/pharmacy-bookings/${b.json.data.booking._id}`, 200)).json.data.patientName, 'Mother Sangma');
+      const list = await expect('P', 'GET', '/pharmacy-customers?limit=100', 200);
+      const rowOf = (u: string) => list.json.data.find((r: any) => String(r.userId._id) === u);
+      assert.equal(rowOf(Z1).userId.name, 'Zara Typed'); assert.equal(rowOf(Z1).consent, 'patient_agreed');
+      assert.equal(rowOf(Z2).userId.name, 'Kiran S.', 'no typed holder name: masked');
+      assert.equal(list.text.includes('Lyngdoh'), false); assert.equal(list.text.includes('Kiran Real'), false);
+      assert.equal((await expect('P', 'GET', '/pharmacy-customers?search=Lyngdoh', 200)).json.data.length, 0, 'not searchable by the account name');
+      assert.equal((await expect('P', 'GET', '/pharmacy-customers?search=Sangma', 200)).json.data.length, 0);
+      assert.equal((await expect('P', 'GET', '/pharmacy-customers?search=Zara%20Typed', 200)).json.data.length, 1, 'searchable by the typed name');
+      // The customer ordered from this pharmacy themselves: the account name, searchable; the pharmacy's later tick
+      // (a booking, the customer form) keeps that consent.
+      await PharmacyCustomerModel.create({ pharmacyId: P, userId: Z3, consent: 'customer_order', createdByRole: 'user', createdById: Z3 } as never);
+      await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000933', patient: { relation: 'self', name: 'Typed Z3' } }));
+      await expect('P', 'POST', '/pharmacy-customers', 201, { phone: '9600000933', name: 'Typed Z3 Again', consent: true });
+      const z3 = await PharmacyCustomerModel.findOne({ pharmacyId: P, userId: Z3 }).lean() as any;
+      assert.equal(z3.consent, 'customer_order', 'the customer\'s own consent is kept');
+      const l3 = await expect('P', 'GET', '/pharmacy-customers?search=Ordered', 200);
+      assert.equal(l3.json.data.length, 1); assert.equal(l3.json.data[0].userId.name, 'Customer Ordered Name');
+    });
+
+    await check('14 /payments/verify answers a non-operational pharmacy 403; an operational pharmacy\'s own verify credits its top-up', async () => {
+      const V = await pharmacyWithToken('Verify Pharmacy', '9700000406');
+      const orderId = 'order_v_' + oid();
+      const payId = 'pay_v' + oid().slice(-12);
+      const rec = await PaymentRecordModel.create({ userId: V, payerUserId: V, payerPharmacyId: V, context: 'wallet_recharge', contextId: `pharmacy_${V}_${oid()}`,
+        baseAmount: 250, discountAmount: 0, finalAmount: 250, baseAmountPaise: 25000, finalAmountPaise: 25000, currency: 'INR', paymentGateway: 'razorpay',
+        razorpayOrderId: orderId, status: 'created', notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: V } } as never);
+      gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: 25000, currency: 'INR', status: 'captured', fee: 100 }];
+      const body = { paymentTransactionId: String((rec as any)._id), razorpayOrderId: orderId, razorpayPaymentId: payId,
+        razorpaySignature: crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex') };
+      for (const [set, code] of [[{ isActive: false }, 'PHARMACY_INACTIVE'], [{ isVerified: false }, 'PHARMACY_NOT_VERIFIED'], [{ archivedAt: new Date() }, 'PHARMACY_INACTIVE']] as const) {
+        await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: set });
+        try { await expect(V as Who, 'POST', '/payments/verify', 403, body, code); }
+        finally { await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: { isActive: true, isVerified: true }, $unset: { archivedAt: '' } }); }
+      }
+      assert.equal((await PaymentRecordModel.findById((rec as any)._id).lean() as any).status, 'created', 'nothing was applied');
+      assert.equal((await balanceOf(V)).paise, 0);
+      const ok = await expect(V as Who, 'POST', '/payments/verify', 200, body);
+      assert.equal(ok.json.data.paymentRecord.status, 'paid');
+      assert.equal((await balanceOf(V)).paise, 25000, 'the operational pharmacy\'s own top-up is credited');
+      // A customer is not affected by the gate.
+      await expect('X', 'POST', '/payments/verify', 404, { ...body, paymentTransactionId: oid() }, 'PAYMENT_RECORD_NOT_FOUND');
+    });
+
+    await check('15 a replayed create answers its receipt at the lookup limit; every other attempt is still counted, audited and uniform', async () => {
+      const RL = await pharmacyWithToken('Limit Pharmacy', '9700000407');
+      await adminTopup(RL, 2000);
+      process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR = '1';
+      try {
+        const body = consult(await futureSlot(), { phone: '9600000951', patient: { relation: 'self', name: 'Replay Person' } });
+        const first = await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 201, body);
+        const again = await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 200, body);
+        assert.equal(again.json.data.replayed, true); assert.equal(again.json.data.booking._id, first.json.data.booking._id);
+        assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'booking.attempted', orgId: RL }), 1, 'the replay is not an attempt');
+        // The one counted attempt used the hour: any other attempt is refused alike for a known and an unknown number.
+        const known = await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 429, consult(await futureSlot(), { phone: '9600000201' }), 'ASSISTED_LIMIT_REACHED');
+        const unknown = await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 429, consult(await futureSlot(), { phone: '9600000952', patient: { relation: 'self', name: 'Nobody Two' } }), 'ASSISTED_LIMIT_REACHED');
+        assert.deepEqual([known.json.code, known.json.limit, known.json.message], [unknown.json.code, unknown.json.limit, unknown.json.message]);
+        // The same key with other content is not a replay: counted (so refused here).
+        await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 429, { ...body, primaryConcern: 'other' }, 'ASSISTED_LIMIT_REACHED');
+      } finally { process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR = '100000'; }
+      // Under the limit, a key reused for other content is refused as before (and audited as an attempt).
+      const body2 = consult(await futureSlot(), { phone: '9600000953', patient: { relation: 'self', name: 'Reuse Person' } });
+      await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 201, body2);
+      const before = await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'booking.attempted', orgId: RL });
+      await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 409, { ...body2, primaryConcern: 'changed' }, 'IDEMPOTENCY_KEY_REUSED');
+      assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'booking.attempted', orgId: RL }), before + 1);
     });
   } finally {
     server.close();

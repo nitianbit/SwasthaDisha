@@ -271,7 +271,7 @@ async function main() {
       'lifecycle', 'virtualMeeting', 'prescription', 'createdAt', 'updatedAt']);
     const RX_ALLOWED = new Set(['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName', 'fileUrls', 'copyPending']);
     const FORBIDDEN_TEXT = [SECRET_DIAGNOSIS, 'diagnosis', 'private note', 'pay_secret', 'key-secret-', '9600000999', 'prescription-1700000000000',
-      'lab says x', 'old-report', 'pharmacy-actor', 'sunita@example', 'lakshmi@example', 'prescribedBySpecialistId',
+      'lab says x', 'old-report', 'pharmacy-actor', 'sunita@example', 'lakshmi@example', 'Sunita Kumari', 'prescribedBySpecialistId',
       'Private doctor message', 'dispensingCopy', 'hash'];
     const assertBookerRow = (row: Record<string, any>) => {
       for (const k of Object.keys(row)) assert.ok(ALLOWED.has(k), `field ${k} is not in the booker view`);
@@ -335,8 +335,9 @@ async function main() {
       const r1 = by.get(b1)!;
       assert.equal(r1.patientName, 'Lakshmi Devi Rao', 'the name the pharmacy typed when it opened the account');
       assert.equal(by.get(b2)!.patientName, 'Child Rao', 'a family member booking names the family member');
-      // Phase 1a decision (overnight, assumed): a link with the patient's consent shows the real account name; without it, masked.
-      assert.equal(by.get(b3)!.patientName, 'Sunita Kumari Das', 'a consented link shows the account name');
+      // Review of 800dfc0 (item 2, assumed): the pharmacy's own "patient agreed" tick never shows the real account name;
+      // no typed name, so masked (only a customer's own order would show it).
+      assert.equal(by.get(b3)!.patientName, 'Sunita D.', 'a patient_agreed link without a typed name shows the name masked');
       assert.equal(by.get(bN)!.patientName, 'Na…', 'a link without recorded consent shows the name masked');
       assert.equal(r1.doctorName, 'Dr Asha Menon'); assert.equal(r1.status, 'completed'); assert.equal(r1.bookingDate, istDay(10));
       assert.equal(r1.source, 'self');
@@ -813,14 +814,14 @@ async function main() {
           linkedPharmacyId: P, otpVerified: true },
         { _id: new Types.ObjectId(W), userType: 'user', phone: '9600000106', name: 'Om', createdSource: 'self_signup' },
       ] as never);
-      // Without recorded consent (phase 1a decision: a consented link shows the account name, as S and L below).
-      await PharmacyCustomerModel.collection.insertMany([{ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(T), consent: 'not_recorded' },
-        { pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(W), consent: 'not_recorded' }] as never);
+      // The pharmacy's own tick (review of 800dfc0, item 2): it does not show the account name.
+      await PharmacyCustomerModel.collection.insertMany([{ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(T), consent: 'patient_agreed' },
+        { pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(W), consent: 'patient_agreed' }] as never);
       for (const u of [T, W, S, L]) {
         await expect('P', 'POST', '/pharmacy-orders', 201, { orderType: 'in_store', customerId: u, items: [{ medicineId: MED, orderedQty: 1 }],
           paymentMode: 'in_store_payment', deliveryMode: 'pickup' });
       }
-      const expected: Record<string, string> = { [T]: 'Tara R.', [W]: '…', [S]: 'Sunita Kumari Das', [L]: 'Lakshmi Devi Rao' };
+      const expected: Record<string, string> = { [T]: 'Tara R.', [W]: '…', [S]: 'Sunita D.', [L]: 'Lakshmi Devi Rao' };
       const list = await expect('P', 'GET', '/pharmacy-orders?limit=100', 200);
       const queue = await expect('P', 'GET', '/pharmacy-orders/prescription-reviews?limit=100', 200);
       for (const rows of [list.json.data, queue.json.data]) {
@@ -830,7 +831,7 @@ async function main() {
           assert.ok(named.every((n: string) => n === name), `${name}: ${JSON.stringify([...new Set(named)])}`);
         }
         const text = JSON.stringify(rows);
-        for (const t of ['RENAMED-BY-HOLDER', 'sunita@example']) assert.equal(text.includes(t), false, t);
+        for (const t of ['RENAMED-BY-HOLDER', 'sunita@example', 'Sunita Kumari']) assert.equal(text.includes(t), false, t);
       }
       // The booker view uses the same rule.
       const tb = await booking({ userId: T, pharmacyId: P }, 1);

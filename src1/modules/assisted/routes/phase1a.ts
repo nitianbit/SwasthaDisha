@@ -34,4 +34,6 @@ adminAssistedRouter.get('/assisted/meet-guest-check/:id', validate(v.idParamSche
 adminAssistedRouter.get('/wallet-recharges/uncredited', catchAsync(c.uncredited));
 adminAssistedRouter.get('/pharmacies/:id/wallet/lots', validate(v.idParamSchema, 'params'), catchAsync(c.lots));
 adminAssistedRouter.post('/wallet-lots/:lotId/chargeback', validate(v.lotIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'), catchAsync(c.chargeback));
+adminAssistedRouter.post('/wallet-payments/:paymentId/chargeback', validate(v.paymentIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
+  catchAsync(c.paymentChargeback));
 adminAssistedRouter.put('/pharmacies/:id/wallet/freeze', validate(v.idParamSchema, 'params'), validate(v.freezeSchema, 'body'), catchAsync(c.freeze));

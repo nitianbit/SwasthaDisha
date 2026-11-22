@@ -775,14 +775,15 @@ async function main() {
     });
 
     // ───────────────────────── Customer list and freeze ─────────────────────────
-    await check('customer list: consented links show the account name, others the typed or masked name; never the email; typed-name edit', async () => {
+    await check('customer list: the typed or masked name (the account name only on a customer\'s own order link); never the email; typed-name edit', async () => {
       const l = await expect('P', 'GET', '/pharmacy-customers?limit=100', 200);
       for (const row of l.json.data) assert.equal(row.userId.email, null);
-      assert.equal(l.text.includes('rina@example'), false);
+      assert.equal(l.text.includes('rina@example'), false); assert.equal(l.text.includes('Rina Kumari Das'), false);
       const x = l.json.data.find((row: any) => String(row.userId._id) === X);
-      assert.equal(x.userId.name, 'Rina Kumari Das', 'the patient chose this pharmacy (consent): the account name (phase 1a decision)');
+      // Review of 800dfc0 (item 2, assumed): the pharmacy's own "patient agreed" tick shows the typed name, not the account's.
+      assert.equal(x.userId.name, 'Rina Das');
       const byAccountName = await expect('P', 'GET', '/pharmacy-customers?search=Kumari', 200);
-      assert.equal(byAccountName.json.data.length, 1, 'a consented link is searchable by the name it shows');
+      assert.equal(byAccountName.json.data.length, 0, 'the account name is not searchable on a patient_agreed link');
       const byTyped = await expect('P', 'GET', '/pharmacy-customers?search=Rina%20Das', 200);
       assert.equal(byTyped.json.data.length, 1);
       const byEmail = await expect('P', 'GET', '/pharmacy-customers?search=rina%40example', 200);

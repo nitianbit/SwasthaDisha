@@ -191,16 +191,22 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   assertPharmacyAssistedOn();
   validate(input);
   const phone = canonicalMobile(input.phone)!;
-  // Review 4: a create names a phone like a lookup does, so it counts against the lookup limit and is audited.
+  const storedKey = storedAssistedKey(actor, input.requestKey);
+  const hash = assistedRequestHash(input);
+  await assertAssistedIndexes(!!input.couponCode);
+  // Review of 800dfc0 (item 4): the replay of a booking already made under this key with the same content answers its
+  // receipt first and is not counted, so a retried request never meets a 429 instead of its receipt. That answer depends
+  // only on this booker's own key and content, never on whether the number has an account.
+  const replay = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IBooking | null;
+  if (replay && replay.assisted?.requestHash === hash) return assistedReceipt(replay, true, !!replay.assisted?.identity?.newAccount);
+  // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit and is audited
+  // (a key reused for other content too: it is counted, then refused below).
   if (attempt === 0) {
     await hitLookup(orgKey(actor.pharmacyId));
     const seen = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
     await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.attempted',
       requestKey: input.requestKey, detail: { exists: !!seen, ...(seen ? { userId: String(seen._id) } : {}) } }, null);
   }
-  const storedKey = storedAssistedKey(actor, input.requestKey);
-  const hash = assistedRequestHash(input);
-  await assertAssistedIndexes(!!input.couponCode);
   const prior = await replayOf(storedKey, hash);
   if (prior) return assistedReceipt(prior, true, !!prior.assisted?.identity?.newAccount);
   if (await RequestKeyModel.exists({ scope: assistedKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
@@ -366,7 +372,8 @@ async function linkCustomerIn(actor: PharmacyActor, userId: string, typedName: s
     return;
   }
   const set: Record<string, unknown> = {};
-  if (link.consent !== 'patient_agreed') Object.assign(set, consent);
+  // A link the customer made by ordering (`customer_order`) keeps that record: the pharmacy's tick never replaces it.
+  if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
   if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
   if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
 }

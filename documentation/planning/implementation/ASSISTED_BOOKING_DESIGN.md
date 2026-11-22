@@ -1145,7 +1145,7 @@ Where an earlier section and this one differ, this one wins.
 | **P1** | Pharmacy wallet store fields, sign rules, unique index and opening entry: §17.3 |
 | **P2** | The gateway fee is Razorpay `fee` alone (GST included). A lot is not withdrawable until its fee is stored (§5.3) |
 | **P3** | A wallet-paid booking writes **no payment record**; the wallet entry plus `assisted.funding` are the record. Coupons are counted only through `coupon_redemptions` (§6.4) |
-| **P4** | Names, as set out in §17.4 |
+| **P4** | Names, as set out in §17.4. **Narrowed after review (§19.7 item 2), ASSUMED, awaiting owner confirmation:** the real account name is shown (and searchable) only on a `customer_order` link; a `patient_agreed` link — the pharmacy's own tick — shows the typed name, else the masked holder name |
 | **P5** | **Earnings in 1a.** Completion posts the provider's earning = `split.providerMinor` (provider-borne coupon, cut 0). `assisted.referral` is `null` until phase 4. A no-show earns nothing (§8.6) |
 | **P6** | **Views.** The booker view and the generic-read view keep the raw booking field names minus the hidden fields, so the released pharmacy app keeps working (§17.2) |
 | **P7** | **Limits.** A limit hit answers 429 `ASSISTED_LIMIT_REACHED` with the limit's name. At 20 cancellations in a day by one booker, its new bookings are refused for the rest of the IST day; cancellations stay allowed; an alert is raised |
@@ -1250,7 +1250,8 @@ From then on, balance = Σ `signedAmountPaise` holds and is checked daily. New w
 - **Pharmacy-facing lists keep their response shape.** The name field is filled from the link, never from the
   account:
   - `GET /pharmacy-customers` (`pharmacyCustomers/repository/index.ts:28-54`): `userId.name` = `typedName`, or the
-    masked account name when empty; `userId.email` = `null`; search covers `typedName` and phone only;
+    masked account name when empty; `userId.email` = `null`; search covers `typedName` and phone only (and the account
+    name only on a `customer_order` link, §19.7 item 2);
   - pharmacy order lists, both populates of `customerId` (`pharmacyOrders/repository/index.ts:281`, `:307`):
     `customerId.name` from the link the same way;
   - pharmacy subscriptions (`pharmacySubscriptions/repository/index.ts:121`): `userId.name` from the link.
@@ -1439,10 +1440,12 @@ confirmed that its check then fails.
 | 8 (LOW) | Names | One rule for every pharmacy-facing name (booker view, copy, `GET /pharmacy-orders`, `/pharmacy-orders/prescription-reviews`): the link's `typedName` (1a); until then the account name only for an account this pharmacy opened that its holder never took over (`otpVerified` not true, so it is still the name the pharmacy typed); otherwise masked. A one-word name of two letters or fewer is "…". Admin and customer views are unchanged. Consequence: until 1a adds typed names, the pharmacy order list shows masked names for customers who signed up themselves or took over their account |
 | 9 (LOW) | Notes | `prescription.message` is left out of the booker view. `prescription.dispensingCopy.hash` / `.at` are `select: false`: customers, doctors, HR and admins see only `dispensingCopy.url`; the assisted module selects them explicitly. `PUT /pharmacy-orders/:id` that removes or replaces the bound copy: 409 `ORDER_PRESCRIPTION_LOCKED`. Cursor: a row stored without `createdAt` pages as `n_<id>` after every dated row (each row once) |
 
-**Names, changed in phase 1a (decision, overnight, assumed; §19.6 item 8):** where the pharmacy's link records the
-patient's consent (`patient_agreed` or `customer_order`) the pharmacy sees the real account name — the patient chose
-that pharmacy. Finding 8's typed / opened-not-taken-over / masked rule now applies only to links whose consent is
-`not_recorded` or missing.
+**Names, changed in phase 1a (decision, overnight, assumed; §19.6 item 8), then narrowed (§19.7 item 2, ASSUMED,
+awaiting owner confirmation):** only where the customer linked the pharmacy themselves — consent `customer_order`, the
+customer ordered from it — does the pharmacy see (and search) the real account name. `patient_agreed` is the
+pharmacy's own "patient agreed" tick and unlocks nothing. Every other link (`patient_agreed`, `not_recorded`, missing)
+gets finding 8's rule: the typed name, else the account name of an account this pharmacy opened that its holder never
+took over, else masked ("Rina D.").
 
 **New answers for the web:** `prescription.copyPending`; 409 `ORDER_PRESCRIPTION_LOCKED`; 403 pharmacy admission codes
 on every `/bookings*` route; cursor values may be `n_<id>`.
@@ -1640,7 +1643,7 @@ suite; the names decision (8) and the typed-name backfill (9) also changed check
 | 5 (LOW-MEDIUM) | Customer and doctor views carried `lifecycle.paid.amount` and `.by` | Lifecycle events of assisted rows keep only `at` (and a cancellation `reason`) |
 | 6 (LOW) | The doctor's prescription-save answer was the raw booking | It uses the scrubbed doctor view |
 | 7 (production gate) | No chargeback path | `POST /api/v1/admin/wallet-lots/:lotId/chargeback { reason }` (admin tools switch), with `GET /api/v1/admin/pharmacies/:id/wallet/lots` to find the lot. Once per lot: the lot is closed for good (`disputeState: lost`, nothing left, never restored); the wallet is debited the lot's amount — the part the balance cannot cover becomes `receivableMinor` owed by the partner (the balance itself stays ≥ 0, so balance = Σ entries holds); the wallet is frozen; audited `wallet.chargeback`. A wallet with a receivable cannot fund bookings (409 `WALLET_RECEIVABLE`) or be unfrozen (409); the next credit (top-up or refund) clears the receivable first (`receivable_setoff` row). Reconciliation lists `walletsOwing` |
-| 8 | Released pharmacy app | **Names (decision, overnight, assumed):** a consented link (`patient_agreed`, `customer_order`) shows the real account name on the booker view, order lists, review queue, subscriptions and customer list (also searchable by it); otherwise typed or masked; never the email. **Wallet history:** `WalletScreen.tsx` reads `transactionType` first and knows only credit/recharge/refund and debit/payment/booking (anything else falls to the title, where "Refund of an assisted booking" read as a debit). `GET /pharmacy-wallet/transactions` now answers every other kind as `credit` or `debit` by its signed amount and keeps the stored kind in `movementType`; the app's rule is copied into the check |
+| 8 | Released pharmacy app | **Names (decision, overnight, assumed):** a consented link (`patient_agreed`, `customer_order`) shows the real account name on the booker view, order lists, review queue, subscriptions and customer list (also searchable by it); otherwise typed or masked; never the email. *Narrowed by §19.7 item 2: only `customer_order` now.* **Wallet history:** `WalletScreen.tsx` reads `transactionType` first and knows only credit/recharge/refund and debit/payment/booking (anything else falls to the title, where "Refund of an assisted booking" read as a debit). `GET /pharmacy-wallet/transactions` now answers every other kind as `credit` or `debit` by its signed amount and keeps the stored kind in `movementType`; the app's rule is copied into the check |
 | 9 (LOW) | Small items | The `typedName` backfill skips accounts the holder took over. Meet invites the booker's email only when `join.on = partner_device`. `errorHandler` adds `limit` only to `ASSISTED_LIMIT_REACHED` and `details` only to `PRICE_CHANGED` (the three paise amounts), never other fields. The daily reconciliation checks bookings changed in the last 7 days plus those already flagged; `GET /admin/assisted/reconciliation?full=true` scans all. The uncredited top-up list covers the last 30 days when `WALLET_RECHARGE_SWEEP_FROM` is unset |
 | 10 (phase 0) | `/payments/reconcile` answered a non-operational pharmacy | 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as the booking reads |
 | 11 (phase 0) | The background copy job made 10 copies per run | It drains the queue in batches of 10 until empty, at most 200 per run |
@@ -1648,4 +1651,16 @@ suite; the names decision (8) and the typed-name backfill (9) also changed check
 New answers for the web: 409 `WALLET_RECEIVABLE`; wallet rows carry `movementType` (the stored kind) and
 `receivableDeltaPaise`; `GET /pharmacy-wallet` shows `receivableMinor`; reconciliation adds `walletsOwing` and
 `bookings.scope`; Meet guest check `guestAccess` may be `not_partner_device`.
+
+### 19.7 Review fixes (xhigh review of `800dfc0`)
+
+Each fix has a check in `test/assisted/phase1a-review.integration.ts` (checks 12–15; check 8a changed for item 2) that
+fails on `800dfc0`.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (MEDIUM, production gate) | A top-up credited without a lot (switch off, before sync-indexes, before 1a) could not be charged back (404 `LOT_NOT_FOUND`) | `POST /api/v1/admin/wallet-payments/:paymentId/chargeback { reason }` (admin tools switch); `paymentId` = the top-up's payment record id or Razorpay payment id (`pay_…`). A top-up with a lot is charged back through its lot (same operation key `chargeback:<lotId>`). Without one, a lot is recorded for the payment in the same transaction, already closed (`openedAtChargeback: true`, nothing in it, never withdrawable), and charged back exactly as a lot: balance down to 0 at most, the rest owed as `receivableMinor`, the wallet frozen, audited `wallet.chargeback` (`withoutLot: true`). The lot's unique `paymentRecordId` index (checked first, 503 `INDEXES_OUTDATED`) makes it once per payment across both routes and under concurrency (a racing twin answers `replayed: true`). Answers: 404 `TOPUP_NOT_FOUND` (not a pharmacy top-up), 409 `TOPUP_NOT_CREDITED` (never credited: nothing to take back), 409 `PAYMENT_AMBIGUOUS` (several records carry that Razorpay id: use the record id) |
+| 2 (privacy) | `patient_agreed` (the pharmacy's own tick) unlocked the real account name, so book-then-cancel revealed it | Real name (and search by it) only on a `customer_order` link; otherwise typed, else masked (§17.4, P4) — **ASSUMED, awaiting owner confirmation**. A `customer_order` link keeps that consent when the pharmacy later ticks "patient agreed" (`POST /pharmacy-customers`, an assisted booking) |
+| 3 (LOW) | `/payments/verify` answered a non-operational pharmacy | 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as `/payments/reconcile`; an operational pharmacy's own verify is unchanged |
+| 4 (LOW) | A retried create counted against the lookup limit before its replay was found (429 instead of the receipt) | The same-content replay of this booker's key answers first and is not counted; every other attempt (a key reused for other content included) is counted and audited as before, with one answer for known and unknown numbers |
 

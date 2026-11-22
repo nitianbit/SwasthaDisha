@@ -3,6 +3,8 @@ import { AppError } from '@/modules/common/types';
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
+import { PaymentRecordModel } from '@/modules/payment/model';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import type { IPharmacyWallet, IPharmacyWalletTransaction } from '@/modules/pharmacyWallet/types';
 
 /**
@@ -201,6 +203,60 @@ export async function recordChargebackIn(lotId: string, s: ClientSession): Promi
     ...(lotAllocations.length ? { lotAllocations } : {}),
   }], { session: s });
   return { entry: entry!.toObject() as IPharmacyWalletTransaction, wallet: updated, replayed: false };
+}
+
+/** A card top-up of a pharmacy wallet, named by its payment record id or its Razorpay payment id. */
+const RAZORPAY_PAYMENT_ID = /^pay_[A-Za-z0-9]{6,40}$/;
+const isPharmacyTopup = (r: Record<string, any> | null) => !!r && r.context === 'wallet_recharge' && !!r.payerPharmacyId
+  && (r.notes as { flow?: unknown } | undefined)?.flow === 'pharmacy_wallet_recharge';
+
+/**
+ * Review of 800dfc0 (item 1, production gate): a card dispute lost on a top-up that has NO lot (credited while the
+ * pharmacy switch was off, before sync-indexes, or before phase 1a). `paymentId` is the payment record id or the Razorpay
+ * payment id of the credited top-up. Same rules as a lot chargeback, in the caller's transaction:
+ * - a top-up WITH a lot goes through `recordChargebackIn` (same operation key, so the lot and payment paths never charge
+ *   one payment back twice);
+ * - otherwise a lot is recorded for the payment now, already closed (`openedAtChargeback`, nothing left in it, never
+ *   withdrawable), and charged back exactly as a lot is (balance to 0 at most, the rest owed as `receivableMinor`, the
+ *   wallet frozen). The lot's unique `paymentRecordId` index makes this once per payment under concurrency (a racing
+ *   twin conflicts; its retry answers replayed); it is checked first, fail closed (503 INDEXES_OUTDATED).
+ * Not a pharmacy top-up → 404 TOPUP_NOT_FOUND; a top-up never credited → 409 TOPUP_NOT_CREDITED (nothing to claw back).
+ */
+export async function recordPaymentChargebackIn(paymentId: string, s: ClientSession): Promise<PostedMovement & { lotId: string; paymentRecordId: string; withoutLot: boolean }> {
+  const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
+  const id = String(paymentId ?? '');
+  let records: Record<string, any>[] = [];
+  if (Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id)) {
+    const r = await PaymentRecordModel.findById(id).session(s).lean() as Record<string, any> | null;
+    records = r ? [r] : [];
+  } else if (RAZORPAY_PAYMENT_ID.test(id)) {
+    records = await PaymentRecordModel.find({ razorpayPaymentId: { $eq: id } }).limit(5).session(s).lean() as Record<string, any>[];
+  }
+  records = records.filter(isPharmacyTopup);
+  if (records.length > 1) throw err(409, 'PAYMENT_AMBIGUOUS', 'More than one top-up carries this payment id; use the payment record id');
+  const record = records[0];
+  if (!record) throw notFound();
+  const paymentRecordId = String(record._id);
+  const pharmacyId = String(record.payerPharmacyId).toLowerCase();
+  if (!Types.ObjectId.isValid(pharmacyId)) throw notFound();
+  await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 });
+  const existing = await WalletTopupLotModel.findOne({ paymentRecordId: { $eq: paymentRecordId } }).session(s).lean();
+  if (existing) {
+    if (existing.walletRef.kind !== 'pharmacy' || existing.walletRef.id !== pharmacyId) throw notFound();
+    const r = await recordChargebackIn(String(existing._id), s);
+    return { ...r, lotId: String(existing._id), paymentRecordId, withoutLot: existing.openedAtChargeback === true };
+  }
+  const credit = await PharmacyWalletTransactionModel.findOne({ pharmacyId, referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' })
+    .session(s).lean() as IPharmacyWalletTransaction | null;
+  if (!credit) throw err(409, 'TOPUP_NOT_CREDITED', 'This top-up was never credited to the wallet; there is nothing to take back');
+  const amountMinor = Number.isSafeInteger(credit.amountPaise) && Number(credit.amountPaise) > 0 ? Number(credit.amountPaise) : Math.round(Number(credit.amount ?? 0) * 100);
+  if (!(amountMinor > 0)) throw notFound();
+  const fee = typeof record.gatewayFeeMinor === 'number' && Number.isSafeInteger(record.gatewayFeeMinor) && record.gatewayFeeMinor >= 0 ? record.gatewayFeeMinor : null;
+  const [lot] = await WalletTopupLotModel.create([{ walletRef: { kind: 'pharmacy', id: pharmacyId }, paymentRecordId, amountMinor,
+    ...(fee !== null ? { gatewayFeeMinor: fee } : {}), feeState: fee !== null ? 'known' : 'unknown', disputeState: 'none', closed: true, remainingMinor: 0,
+    openedAtChargeback: true }], { session: s });
+  const r = await recordChargebackIn(String(lot!._id), s);
+  return { ...r, lotId: String(lot!._id), paymentRecordId, withoutLot: true };
 }
 
 /** Recomputes `withdrawableMinor` from the lots (a lot's fee became known), in the caller's transaction. */
