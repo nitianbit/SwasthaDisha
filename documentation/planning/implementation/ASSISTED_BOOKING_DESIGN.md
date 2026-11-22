@@ -1593,10 +1593,12 @@ Answers `{ success, data }`. Money is paise.
   /api/v1/admin/pharmacies/:id/wallet/lots` → the pharmacy's top-up lots (`openedAtChargeback` marks a lot recorded at a
   chargeback). `POST /api/v1/admin/wallet-lots/:lotId/chargeback { reason }` → `{ entry, wallet, replayed }`; 404
   `LOT_NOT_FOUND`. `POST /api/v1/admin/wallet-payments/:paymentId/chargeback { reason }` (`paymentId` = payment record
-  id or Razorpay `pay_…` id) → for a credited top-up `{ blockedUncredited: false, entry, wallet, replayed, lotId,
+  id, Razorpay `order_…` id, or Razorpay `pay_…` id; a payment id the database never stored is resolved through the
+  gateway, read only, §19.9) → for a credited top-up `{ blockedUncredited: false, entry, wallet, replayed, lotId,
   paymentRecordId, withoutLot }`; for one never credited `{ blockedUncredited: true, credited: false, replayed,
   paymentRecordId, message }` (nothing taken; the top-up can never be credited). Errors: 400 `VALIDATION_ERROR`; 404
-  `TOPUP_NOT_FOUND`; 409 `PAYMENT_AMBIGUOUS`, `WALLET_CHANGED` (retry); 503 `INDEXES_OUTDATED`, `ASSISTED_BOOKING_DISABLED`
+  `TOPUP_NOT_FOUND`, `TOPUP_NOT_FOUND_BY_PAYMENT_ID` ("try the order id or the record id"); 502
+  `RAZORPAY_PAYMENT_FETCH_FAILED`; 409 `PAYMENT_AMBIGUOUS`, `WALLET_CHANGED` (retry); 503 `INDEXES_OUTDATED`, `ASSISTED_BOOKING_DISABLED`
   (admin tools off). A blocked top-up answers 409 `TOPUP_BLOCKED` on `POST /api/v1/payments/verify`, `POST
   /api/v1/payments/reconcile` and `POST /api/v1/pharmacy-wallet/topups/:id/check`.
 - `POST /api/v1/payments/verify` and `/reconcile` for a pharmacy: 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`) on a
@@ -1690,4 +1692,13 @@ Checks 16–18 of `test/assisted/phase1a-review.integration.ts` are new, and che
 | names | Pre-S3 customer-made links; later own orders | The migration sets `consent: 'customer_order'` on links with no `consent` and `createdByRole: 'user'` (only where missing; `customerOrderConsentsFilled` in the report; a rerun changes nothing). The customer's own order (`ensureLinked` as the customer) upgrades an existing link (`patient_agreed`, `not_recorded`, none) to `customer_order` |
 
 New answers for the web: 409 `TOPUP_BLOCKED`; the payment chargeback's `blockedUncredited` answer (§19.3).
+
+### 19.9 Review fixes (review of `b378f61`)
+
+Checks 19–20 of `test/assisted/phase1a-review.integration.ts` (and one changed line of check 12) fail on `b378f61`.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (LOW–MEDIUM) | A never-verified top-up could not be blocked by its Razorpay payment id (stored only once verified) | The payment chargeback also accepts the Razorpay order id (always stored). A `pay_…` id the database does not hold is resolved before the transaction: with gateway keys configured, the payment's order id is fetched from Razorpay (read only) and its record used. Otherwise, or when the gateway does not know the id, 404 `TOPUP_NOT_FOUND_BY_PAYMENT_ID` "Not found by payment id; try the order id or the record id". `PAYMENT_AMBIGUOUS` is unchanged |
+| 2 (LOW) | The names migration filter was too wide and too narrow | Only links the customer made (`createdByRole: 'user'` and `createdById` = the link's `userId`) with consent missing, `null` or `not_recorded` become `customer_order`. Idempotent; counted in `customerOrderConsentsFilled` |
 

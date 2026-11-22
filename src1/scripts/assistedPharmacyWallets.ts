@@ -15,8 +15,9 @@
  *    withdrawable; a rerun never resets a later value).
  * 5. §17.4: `typedName` on pharmacy-customer links = the account name where THAT pharmacy created the account
  *    (`createdSource: 'pharmacy_app'`, `linkedPharmacyId` = it). Other links stay empty (masked in lists).
- * 5b. Review of db252c1 (names): a link with no `consent` made by the customer (`createdByRole: 'user'`: their own order
- *    before S3) gets `consent: 'customer_order'` (only where missing; counted in `customerOrderConsentsFilled`).
+ * 5b. Review of db252c1 / b378f61 (names): a link the customer made by ordering (`createdByRole: 'user'`, `createdById` =
+ *    the customer) with no recorded consent (missing, or `not_recorded` from the first S3 commit) gets
+ *    `consent: 'customer_order'` (counted in `customerOrderConsentsFilled`; a rerun finds none).
  * 6. Decision B: `Coupon.fundedBy` = platform for coupons with corporateIds, provider otherwise; `partnerUsable: false`;
  *    only where missing.
  * A second run is a no-op (keys and "only where missing"): a wallet with `ledgerOpenedAt` is never opened again; a
@@ -146,8 +147,10 @@ export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }):
     }
   }
 
-  // 5b. A customer's own order before S3 recorded no consent: it is the customer's consent (`customer_order`).
-  const ownOrderLinks = { createdByRole: 'user', consent: { $exists: false } };
+  // 5b. A link the customer made by ordering (`createdByRole: 'user'` and created by that same customer) whose consent
+  // was not recorded (before S3: none; the first S3 commit: `not_recorded`) is the customer's consent (`customer_order`).
+  const ownOrderLinks = { createdByRole: 'user', $or: [{ consent: { $exists: false } }, { consent: null }, { consent: 'not_recorded' }],
+    createdById: { $exists: true, $ne: null }, $expr: { $eq: [{ $toLower: { $toString: '$createdById' } }, { $toLower: { $toString: '$userId' } }] } };
   report.customerOrderConsentsFilled = await PharmacyCustomerModel.collection.countDocuments(ownOrderLinks);
   if (opts.commit && report.customerOrderConsentsFilled > 0) {
     const r = await PharmacyCustomerModel.collection.updateMany(ownOrderLinks, { $set: { consent: 'customer_order' } });

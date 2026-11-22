@@ -215,13 +215,14 @@ export async function recordChargebackIn(lotId: string, s: ClientSession): Promi
 
 /** A card top-up of a pharmacy wallet, named by its payment record id or its Razorpay payment id. */
 const RAZORPAY_PAYMENT_ID = /^pay_[A-Za-z0-9]{6,40}$/;
+const RAZORPAY_ORDER_ID = /^order_[A-Za-z0-9_]{6,60}$/;
 const isPharmacyTopup = (r: Record<string, any> | null) => !!r && r.context === 'wallet_recharge' && !!r.payerPharmacyId
   && (r.notes as { flow?: unknown } | undefined)?.flow === 'pharmacy_wallet_recharge';
 
 /**
  * Review of 800dfc0 (item 1, production gate): a card dispute lost on a top-up that has NO lot (credited while the
- * pharmacy switch was off, before sync-indexes, or before phase 1a). `paymentId` is the payment record id or the Razorpay
- * payment id of the credited top-up. Same rules as a lot chargeback, in the caller's transaction:
+ * pharmacy switch was off, before sync-indexes, or before phase 1a). The top-up is named by its payment record id (see
+ * `resolveTopupRecordId` for the other ids accepted). Same rules as a lot chargeback, in the caller's transaction:
  * - a top-up WITH a lot goes through `recordChargebackIn` (same operation key, so the lot and payment paths never charge
  *   one payment back twice);
  * - otherwise a lot is recorded for the payment now, already closed (`openedAtChargeback`, nothing left in it, never
@@ -239,20 +240,52 @@ export type PaymentChargeback =
   | (PostedMovement & { blockedUncredited: false; lotId: string; paymentRecordId: string; withoutLot: boolean })
   | { blockedUncredited: true; replayed: boolean; paymentRecordId: string; pharmacyId: string };
 
-export async function recordPaymentChargebackIn(paymentId: string, s: ClientSession): Promise<PaymentChargeback> {
+/** The gateway's answer for a payment id the database does not hold (read only). */
+export type GatewayOrderLookup = (razorpayPaymentId: string) => Promise<{ available: false } | { available: true; orderId: string | null }>;
+
+/**
+ * Review of b378f61 (item 1): the payment record a payment chargeback names, OUTSIDE any transaction (it may ask the
+ * gateway). `paymentId` is the record id, the Razorpay order id (always stored) or the Razorpay payment id (stored only
+ * once verified or reconciled). A payment id the database does not hold is looked up with the gateway (read only: the
+ * payment's order id, then the record of that order) when gateway keys are configured. More than one top-up → 409
+ * PAYMENT_AMBIGUOUS; a payment id that resolves to nothing → 404 TOPUP_NOT_FOUND_BY_PAYMENT_ID (try the order or record
+ * id); anything else unknown → 404 TOPUP_NOT_FOUND.
+ */
+export async function resolveTopupRecordId(paymentId: string, gateway?: GatewayOrderLookup): Promise<string> {
   const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
   const id = String(paymentId ?? '');
+  const byOrder = async (orderId: string) => await PaymentRecordModel.find({ razorpayOrderId: { $eq: orderId } }).limit(5).lean() as Record<string, any>[];
   let records: Record<string, any>[] = [];
-  if (Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id)) {
-    const r = await PaymentRecordModel.findById(id).session(s).lean() as Record<string, any> | null;
+  if (/^[0-9a-fA-F]{24}$/.test(id)) {
+    const r = await PaymentRecordModel.findById(id).lean() as Record<string, any> | null;
     records = r ? [r] : [];
+  } else if (RAZORPAY_ORDER_ID.test(id)) {
+    records = await byOrder(id);
   } else if (RAZORPAY_PAYMENT_ID.test(id)) {
-    records = await PaymentRecordModel.find({ razorpayPaymentId: { $eq: id } }).limit(5).session(s).lean() as Record<string, any>[];
+    records = await PaymentRecordModel.find({ razorpayPaymentId: { $eq: id } }).limit(5).lean() as Record<string, any>[];
+    if (!records.some(isPharmacyTopup)) {
+      const answer = gateway ? await gateway(id) : { available: false as const };
+      const orderId = answer.available ? answer.orderId : null;
+      records = orderId ? await byOrder(orderId) : [];
+      if (!records.some(isPharmacyTopup)) {
+        throw err(404, 'TOPUP_NOT_FOUND_BY_PAYMENT_ID', answer.available
+          ? 'Not found by payment id; try the order id or the record id'
+          : 'Not found by payment id (the gateway could not be asked); try the order id or the record id');
+      }
+    }
   }
   records = records.filter(isPharmacyTopup);
   if (records.length > 1) throw err(409, 'PAYMENT_AMBIGUOUS', 'More than one top-up carries this payment id; use the payment record id');
-  const record = records[0];
-  if (!record) throw notFound();
+  if (!records[0]) throw notFound();
+  return String(records[0]._id);
+}
+
+/** `paymentRecordId`: as resolved by `resolveTopupRecordId`; re-read here, in the transaction. */
+export async function recordPaymentChargebackIn(paymentRecordIdIn: string, s: ClientSession): Promise<PaymentChargeback> {
+  const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
+  if (!/^[0-9a-fA-F]{24}$/.test(String(paymentRecordIdIn ?? ''))) throw notFound();
+  const record = await PaymentRecordModel.findById(paymentRecordIdIn).session(s).lean() as Record<string, any> | null;
+  if (!record || !isPharmacyTopup(record)) throw notFound();
   const paymentRecordId = String(record._id);
   const pharmacyId = String(record.payerPharmacyId).toLowerCase();
   if (!Types.ObjectId.isValid(pharmacyId)) throw notFound();

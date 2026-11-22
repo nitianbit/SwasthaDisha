@@ -502,6 +502,23 @@ export class PaymentService {
     };
   }
 
+  /**
+   * Review of b378f61 (item 1): read only — the order id Razorpay holds for a payment id, for an admin naming a top-up
+   * by a payment id the database never stored. `available: false` when gateway keys are not configured.
+   */
+  async gatewayOrderIdOfPayment(razorpayPaymentId: string): Promise<{ available: false } | { available: true; orderId: string | null }> {
+    let client: Razorpay;
+    try { client = this.getRazorpayClient(); } catch { return { available: false }; }
+    try {
+      const p = await client.payments.fetch(razorpayPaymentId) as { order_id?: unknown };
+      return { available: true, orderId: typeof p?.order_id === 'string' && p.order_id ? p.order_id : null };
+    } catch (error: any) {
+      const status = Number(error?.statusCode ?? error?.status);
+      if (status === 400 || status === 404 || error?.error?.code === 'BAD_REQUEST_ERROR') return { available: true, orderId: null };
+      throw new AppError({ status: 502, code: 'RAZORPAY_PAYMENT_FETCH_FAILED', message: 'The gateway could not be asked about this payment; try the order id or the record id' });
+    }
+  }
+
   private getRazorpayClient(): Razorpay {
     if (this.razorpayClient) {
       return this.razorpayClient;
