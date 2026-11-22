@@ -241,6 +241,39 @@ async function main() {
       }
     });
 
+    // ───────────────────────── B4: the one-doctor slot list is never cut short silently ─────────────────────────
+    const manySlots = (doctor: string, date: string, n: number) => SlotModel.collection.insertMany(Array.from({ length: n }, (_, i) => ({ specialistId: doctor,
+      date, startTime: `${String(9 + Math.floor((i % 600) / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`, endTime: '23:59', duration: 1,
+      maxBookings: 1, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation', serviceModes: ['video'] })) as never);
+    const slotDoctor = async (label: string) => {
+      const id = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(id), name: `Dr ${label}`, specialization: 'Slot Window', consultationFee: 500,
+        isActive: true, isVerified: true } as never);
+      return id;
+    };
+    await check('B4: a doctor with more than 5000 slots in the window gets every bookable slot, the cut-off day and later included', async () => {
+      const M = await slotDoctor('Many');
+      await manySlots(M, day(2), 5001);
+      const later = await slotAt(M, at(3, 9));
+      const last = await slotAt(M, at(13, 9));
+      const r = (await expect('P', 'GET', `/pharmacy-assisted/doctors/${M}/slots?days=14`, 200)).json.data;
+      assert.equal(r.slots.length, 5003, 'all of them');
+      assert.equal(r.slots.filter((x: any) => x.date === day(2)).length, 5001);
+      assert.deepEqual(r.slots.slice(-2).map((x: any) => x.slotId), [later, last]);
+      assert.equal(r.truncated, undefined);
+      // A smaller window: the same rule.
+      const short = (await expect('P', 'GET', `/pharmacy-assisted/doctors/${M}/slots?days=3`, 200)).json.data;
+      assert.equal(short.slots.length, 5001);
+    });
+
+    await check('B4: a single day too large even for a per-day read says truncated: true', async () => {
+      const T = await slotDoctor('Huge Day');
+      await manySlots(T, day(2), 20001);
+      const r = (await expect('P', 'GET', `/pharmacy-assisted/doctors/${T}/slots?days=3`, 200)).json.data;
+      assert.equal(r.truncated, true);
+      assert.equal(r.slots.length, 20000);
+    });
+
     // ───────────────────────── B5: admin Idempotency-Key characters ─────────────────────────
     await check('B5: an admin top-up key (header and by-key :key) must be ^[A-Za-z0-9_-]{8,100}$; the pharmacy\'s own top-up is unchanged', async () => {
       const before = await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P });

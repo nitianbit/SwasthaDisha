@@ -234,12 +234,27 @@ export async function listDoctorSlots(_actor: PharmacyActor, doctorId: string, q
   const today = istTodayYyyymmdd(now);
   const from = q.from && ymd(q.from) > today ? ymd(q.from) : today;
   const days = Math.min(Math.max(Number(q.days) || 7, 1), 14);
-  const { byDoctor } = await openSlotsByDoctor([String(d!._id)], from, addDaysYmd(from, days - 1), q.mode, now, await admissionOf([String(d!._id)]));
+  const id = String(d!._id);
+  const to = addDaysYmd(from, days - 1);
+  const adm = await admissionOf([id]);
+  const { byDoctor, cutoff } = await openSlotsByDoctor([id], from, to, q.mode, now, adm);
+  let slots = byDoctor.get(lower(id)) ?? [];
+  // r8 B4: past the shared read's cut-off, the rest of the window (at most 14 days) is read day by day; a day too large
+  // even for that says `truncated: true` (never a silently partial list).
+  let truncated = false;
+  if (cutoff) {
+    for (let day = cutoff; day <= to; day = addDaysYmd(day, 1)) {
+      const rows = await SlotModel.find({ specialistId: id, date: day, ...candidateFilter(q.mode) }).limit(DAY_READ_CAP + 1).lean() as unknown as SlotRow[];
+      if (rows.length > DAY_READ_CAP) truncated = true;
+      slots = slots.concat(admitOpen(rows.slice(0, DAY_READ_CAP), adm, q.mode, now));
+    }
+  }
   return {
     doctor: { doctorId: String(d!._id), name: d!.name, specialization: d!.specialization, languages: d!.languages ?? [], city: d!.city ?? null,
       experienceYears: d!.experienceYears ?? null, feeMinor: feeMinorOf(d!) },
-    from, to: addDaysYmd(from, days - 1),
-    slots: (byDoctor.get(lower(d!._id)) ?? []).map(slotView),
+    from, to,
+    slots: slots.map(slotView),
+    ...(truncated ? { truncated: true } : {}),
   };
 }
 
