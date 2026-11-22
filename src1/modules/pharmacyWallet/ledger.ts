@@ -186,7 +186,15 @@ export async function recordChargebackIn(lotId: string, s: ClientSession): Promi
   const after = before - fromBalance;
   // The lot's own unspent money left with it (closed above); what else the balance gives up comes out of the other lots
   // (oldest first), so open lots never exceed the balance.
-  const beyondLot = Math.max(0, fromBalance - Number(lot.remainingMinor || 0));
+  // Review of db252c1 (item c): a lot recorded at the chargeback (`openedAtChargeback`: the top-up was credited
+  // non-withdrawable) gives up the non-lot money first, and the other open lots only for the remainder, so card money
+  // that is still honest stays withdrawable.
+  let beyondLot = Math.max(0, fromBalance - Number(lot.remainingMinor || 0));
+  if (lot.openedAtChargeback === true && beyondLot > 0) {
+    const openLotsMinor = (await WalletTopupLotModel.find({ 'walletRef.kind': 'pharmacy', 'walletRef.id': walletRefId(pharmacyId), closed: false,
+      remainingMinor: { $gt: 0 } }).select({ remainingMinor: 1 }).session(s).lean()).reduce((a, l) => a + Number(l.remainingMinor || 0), 0);
+    beyondLot = Math.max(0, beyondLot - Math.max(0, before - openLotsMinor));
+  }
   const lotAllocations = beyondLot > 0 ? await consumeLots(pharmacyId, beyondLot, s) : [];
   const withdrawableBefore = Number(wallet.withdrawableMinor ?? 0);
   const withdrawableAfter = await withdrawableOfIn(pharmacyId, s);
@@ -220,9 +228,18 @@ const isPharmacyTopup = (r: Record<string, any> | null) => !!r && r.context === 
  *   withdrawable), and charged back exactly as a lot is (balance to 0 at most, the rest owed as `receivableMinor`, the
  *   wallet frozen). The lot's unique `paymentRecordId` index makes this once per payment under concurrency (a racing
  *   twin conflicts; its retry answers replayed); it is checked first, fail closed (503 INDEXES_OUTDATED).
- * Not a pharmacy top-up → 404 TOPUP_NOT_FOUND; a top-up never credited → 409 TOPUP_NOT_CREDITED (nothing to claw back).
+ * - a top-up never credited (review of db252c1, item a): nothing is taken; the payment record is BLOCKED in this
+ *   transaction (`chargebackAt`, status `failed`; a refunded one keeps its status), guarded on the status read, so verify,
+ *   reconcile, the top-up check and the sweep refuse it (409 TOPUP_BLOCKED) and it is never credited. The credit claims
+ *   the record with a write in its own transaction, so the block and a credit cannot pass each other: either it was
+ *   credited first (this transaction conflicts, retries and charges it back) or it is blocked and never credited.
+ * Not a pharmacy top-up → 404 TOPUP_NOT_FOUND.
  */
-export async function recordPaymentChargebackIn(paymentId: string, s: ClientSession): Promise<PostedMovement & { lotId: string; paymentRecordId: string; withoutLot: boolean }> {
+export type PaymentChargeback =
+  | (PostedMovement & { blockedUncredited: false; lotId: string; paymentRecordId: string; withoutLot: boolean })
+  | { blockedUncredited: true; replayed: boolean; paymentRecordId: string; pharmacyId: string };
+
+export async function recordPaymentChargebackIn(paymentId: string, s: ClientSession): Promise<PaymentChargeback> {
   const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
   const id = String(paymentId ?? '');
   let records: Record<string, any>[] = [];
@@ -244,11 +261,17 @@ export async function recordPaymentChargebackIn(paymentId: string, s: ClientSess
   if (existing) {
     if (existing.walletRef.kind !== 'pharmacy' || existing.walletRef.id !== pharmacyId) throw notFound();
     const r = await recordChargebackIn(String(existing._id), s);
-    return { ...r, lotId: String(existing._id), paymentRecordId, withoutLot: existing.openedAtChargeback === true };
+    return { ...r, blockedUncredited: false, lotId: String(existing._id), paymentRecordId, withoutLot: existing.openedAtChargeback === true };
   }
   const credit = await PharmacyWalletTransactionModel.findOne({ pharmacyId, referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' })
     .session(s).lean() as IPharmacyWalletTransaction | null;
-  if (!credit) throw err(409, 'TOPUP_NOT_CREDITED', 'This top-up was never credited to the wallet; there is nothing to take back');
+  if (!credit) {
+    if (record.chargebackAt) return { blockedUncredited: true, replayed: true, paymentRecordId, pharmacyId };
+    const blocked = await PaymentRecordModel.updateOne({ _id: record._id, status: record.status, chargebackAt: { $exists: false }, walletCreditedAt: { $exists: false } },
+      { $set: { chargebackAt: new Date(), ...(record.status !== 'refunded' ? { status: 'failed' } : {}) } }, { session: s });
+    if (blocked.modifiedCount !== 1) throw Object.assign(err(409, 'WALLET_CHANGED', 'The top-up changed; please retry'), { retryable: true });
+    return { blockedUncredited: true, replayed: false, paymentRecordId, pharmacyId };
+  }
   const amountMinor = Number.isSafeInteger(credit.amountPaise) && Number(credit.amountPaise) > 0 ? Number(credit.amountPaise) : Math.round(Number(credit.amount ?? 0) * 100);
   if (!(amountMinor > 0)) throw notFound();
   const fee = typeof record.gatewayFeeMinor === 'number' && Number.isSafeInteger(record.gatewayFeeMinor) && record.gatewayFeeMinor >= 0 ? record.gatewayFeeMinor : null;
@@ -256,7 +279,7 @@ export async function recordPaymentChargebackIn(paymentId: string, s: ClientSess
     ...(fee !== null ? { gatewayFeeMinor: fee } : {}), feeState: fee !== null ? 'known' : 'unknown', disputeState: 'none', closed: true, remainingMinor: 0,
     openedAtChargeback: true }], { session: s });
   const r = await recordChargebackIn(String(lot!._id), s);
-  return { ...r, lotId: String(lot!._id), paymentRecordId, withoutLot: true };
+  return { ...r, blockedUncredited: false, lotId: String(lot!._id), paymentRecordId, withoutLot: true };
 }
 
 /** Recomputes `withdrawableMinor` from the lots (a lot's fee became known), in the caller's transaction. */

@@ -112,6 +112,11 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     // D3: the one decision for a pharmacy order capture - applied to the order, or returned to the wallet. Claimed by a
     // compare-and-set from absent; the payment commit and the late-payment refund both go through it.
     pharmacySettlement: { type: String, enum: ['applied', 'returned'], default: undefined },
+    // Assisted booking phase 1a (review of db252c1, item a): a pharmacy top-up is credited once, by the transaction that
+    // sets `walletCreditedAt` from absent while the record is paid and not charged back; a card dispute lost on a top-up
+    // never credited sets `chargebackAt` (and `failed`) so it is never credited, verified or reconciled afterwards.
+    walletCreditedAt: { type: Date },
+    chargebackAt: { type: Date },
   },
   { timestamps: true }
 );

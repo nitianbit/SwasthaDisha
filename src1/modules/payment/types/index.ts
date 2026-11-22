@@ -28,6 +28,10 @@ export interface IPaymentRecord {
   isProcessed: boolean;
   /** D3: pharmacy order captures only - applied to the order or returned to the wallet (set once). */
   pharmacySettlement?: 'applied' | 'returned';
+  /** Pharmacy top-ups: when the wallet credit was claimed (once). */
+  walletCreditedAt?: Date;
+  /** Pharmacy top-ups: a card dispute lost before any credit; never credited afterwards. */
+  chargebackAt?: Date;
   notes?: Record<string, unknown>;
   paidAt?: Date;
   /** Background recovery schedule (W3b). */

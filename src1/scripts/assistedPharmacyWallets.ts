@@ -15,6 +15,8 @@
  *    withdrawable; a rerun never resets a later value).
  * 5. §17.4: `typedName` on pharmacy-customer links = the account name where THAT pharmacy created the account
  *    (`createdSource: 'pharmacy_app'`, `linkedPharmacyId` = it). Other links stay empty (masked in lists).
+ * 5b. Review of db252c1 (names): a link with no `consent` made by the customer (`createdByRole: 'user'`: their own order
+ *    before S3) gets `consent: 'customer_order'` (only where missing; counted in `customerOrderConsentsFilled`).
  * 6. Decision B: `Coupon.fundedBy` = platform for coupons with corporateIds, provider otherwise; `partnerUsable: false`;
  *    only where missing.
  * A second run is a no-op (keys and "only where missing"): a wallet with `ledgerOpenedAt` is never opened again; a
@@ -42,12 +44,13 @@ export interface MigrationReport {
   openedWalletMismatches: { walletId: string; pharmacyId: string; balancePaise: number; entriesPaise: number }[];
   walletsOpened: number;
   typedNamesFilled: number;
+  customerOrderConsentsFilled: number;
   couponsFunded: { platform: number; provider: number };
 }
 
 export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }): Promise<MigrationReport> {
   const report: MigrationReport = { mode: opts.commit ? 'commit' : 'dry-run', signedFilled: 0, signAnomalies: [], balancePaiseFilled: 0, openings: [], openedWalletMismatches: [],
-    walletsOpened: 0, typedNamesFilled: 0, couponsFunded: { platform: 0, provider: 0 } };
+    walletsOpened: 0, typedNamesFilled: 0, customerOrderConsentsFilled: 0, couponsFunded: { platform: 0, provider: 0 } };
 
   // 1. signedAmountPaise on old rows.
   const rows = PharmacyWalletTransactionModel.find({ signedAmountPaise: { $exists: false } }).lean().cursor();
@@ -141,6 +144,14 @@ export async function migrateAssistedPharmacyWallets(opts: { commit: boolean }):
       await PharmacyCustomerModel.collection.updateOne({ _id: link._id, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
         { $set: { typedName: name } });
     }
+  }
+
+  // 5b. A customer's own order before S3 recorded no consent: it is the customer's consent (`customer_order`).
+  const ownOrderLinks = { createdByRole: 'user', consent: { $exists: false } };
+  report.customerOrderConsentsFilled = await PharmacyCustomerModel.collection.countDocuments(ownOrderLinks);
+  if (opts.commit && report.customerOrderConsentsFilled > 0) {
+    const r = await PharmacyCustomerModel.collection.updateMany(ownOrderLinks, { $set: { consent: 'customer_order' } });
+    report.customerOrderConsentsFilled = r.modifiedCount;
   }
 
   // 6. Coupon funding.

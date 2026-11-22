@@ -782,6 +782,10 @@ export class PaymentService {
   }
 
   private handleExistingRecordStatus(paymentRecord: IPaymentRecord): void {
+    if (paymentRecord.chargebackAt) {
+      throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
+        message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
+    }
     if (paymentRecord.status === 'paid') {
       return;
     }
@@ -950,7 +954,8 @@ export class PaymentService {
     data: VerifyPaymentRequest
   ): Promise<IPaymentRecord> {
     const updated = await this.paymentRepository.update(
-      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
+      // A top-up blocked after a lost card dispute (`chargebackAt`) is never marked paid again.
+      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] }, chargebackAt: { $exists: false } },
       {
         status: 'paid',
         razorpayPaymentId: data.razorpayPaymentId,
@@ -1565,6 +1570,15 @@ export class PaymentService {
         );
         if (existingTransaction) {
           return this.pharmacyWalletRepository.findOne({ pharmacyId }, session);
+        }
+        // Review of db252c1 (item a): the credit claims the record in this transaction — a write, so a concurrent
+        // chargeback that blocks the uncredited top-up and this credit can never both commit. Refused once blocked.
+        const claimed = await PaymentRecordModel.updateOne(
+          { _id: paymentRecord._id, status: 'paid', chargebackAt: { $exists: false } },
+          { $set: { walletCreditedAt: new Date() } }, { session });
+        if (claimed.modifiedCount !== 1) {
+          throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
+            message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
         }
 
         const amountPaise =

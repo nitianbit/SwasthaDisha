@@ -1589,6 +1589,19 @@ Answers `{ success, data }`. Money is paise.
   /api/v1/admin/assisted/meet-guest-check/:id`; `GET /api/v1/admin/wallet-recharges/uncredited`; `PUT
   /api/v1/admin/pharmacies/:id/wallet/freeze { frozen, reason }`. Coupon create and update accept `fundedBy`
   (`provider` | `platform`) and `partnerUsable`.
+- Admin chargebacks (admin tools switch; §19.6 item 7, §19.7 item 1, §19.8 item a): `GET
+  /api/v1/admin/pharmacies/:id/wallet/lots` → the pharmacy's top-up lots (`openedAtChargeback` marks a lot recorded at a
+  chargeback). `POST /api/v1/admin/wallet-lots/:lotId/chargeback { reason }` → `{ entry, wallet, replayed }`; 404
+  `LOT_NOT_FOUND`. `POST /api/v1/admin/wallet-payments/:paymentId/chargeback { reason }` (`paymentId` = payment record
+  id or Razorpay `pay_…` id) → for a credited top-up `{ blockedUncredited: false, entry, wallet, replayed, lotId,
+  paymentRecordId, withoutLot }`; for one never credited `{ blockedUncredited: true, credited: false, replayed,
+  paymentRecordId, message }` (nothing taken; the top-up can never be credited). Errors: 400 `VALIDATION_ERROR`; 404
+  `TOPUP_NOT_FOUND`; 409 `PAYMENT_AMBIGUOUS`, `WALLET_CHANGED` (retry); 503 `INDEXES_OUTDATED`, `ASSISTED_BOOKING_DISABLED`
+  (admin tools off). A blocked top-up answers 409 `TOPUP_BLOCKED` on `POST /api/v1/payments/verify`, `POST
+  /api/v1/payments/reconcile` and `POST /api/v1/pharmacy-wallet/topups/:id/check`.
+- `POST /api/v1/payments/verify` and `/reconcile` for a pharmacy: 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`) on a
+  booking payment when the pharmacy is not operational; its own wallet top-up settles regardless (§19.8 item b), as does
+  `POST /api/v1/pharmacy-wallet/topups/:id/check` (any pharmacy token).
 
 ### 19.4 Switches (all off unless the value is exactly `true`)
 
@@ -1659,8 +1672,22 @@ fails on `800dfc0`.
 
 | # | Finding | Fix |
 |---|---|---|
-| 1 (MEDIUM, production gate) | A top-up credited without a lot (switch off, before sync-indexes, before 1a) could not be charged back (404 `LOT_NOT_FOUND`) | `POST /api/v1/admin/wallet-payments/:paymentId/chargeback { reason }` (admin tools switch); `paymentId` = the top-up's payment record id or Razorpay payment id (`pay_…`). A top-up with a lot is charged back through its lot (same operation key `chargeback:<lotId>`). Without one, a lot is recorded for the payment in the same transaction, already closed (`openedAtChargeback: true`, nothing in it, never withdrawable), and charged back exactly as a lot: balance down to 0 at most, the rest owed as `receivableMinor`, the wallet frozen, audited `wallet.chargeback` (`withoutLot: true`). The lot's unique `paymentRecordId` index (checked first, 503 `INDEXES_OUTDATED`) makes it once per payment across both routes and under concurrency (a racing twin answers `replayed: true`). Answers: 404 `TOPUP_NOT_FOUND` (not a pharmacy top-up), 409 `TOPUP_NOT_CREDITED` (never credited: nothing to take back), 409 `PAYMENT_AMBIGUOUS` (several records carry that Razorpay id: use the record id) |
+| 1 (MEDIUM, production gate) | A top-up credited without a lot (switch off, before sync-indexes, before 1a) could not be charged back (404 `LOT_NOT_FOUND`) | `POST /api/v1/admin/wallet-payments/:paymentId/chargeback { reason }` (admin tools switch); `paymentId` = the top-up's payment record id or Razorpay payment id (`pay_…`). A top-up with a lot is charged back through its lot (same operation key `chargeback:<lotId>`). Without one, a lot is recorded for the payment in the same transaction, already closed (`openedAtChargeback: true`, nothing in it, never withdrawable), and charged back exactly as a lot: balance down to 0 at most, the rest owed as `receivableMinor`, the wallet frozen, audited `wallet.chargeback` (`withoutLot: true`). The lot's unique `paymentRecordId` index (checked first, 503 `INDEXES_OUTDATED`) makes it once per payment across both routes and under concurrency (a racing twin answers `replayed: true`). Answers: 404 `TOPUP_NOT_FOUND` (not a pharmacy top-up), 409 `PAYMENT_AMBIGUOUS` (several records carry that Razorpay id: use the record id); a top-up never credited: see §19.8 item a (was 409 `TOPUP_NOT_CREDITED`) |
 | 2 (privacy) | `patient_agreed` (the pharmacy's own tick) unlocked the real account name, so book-then-cancel revealed it | Real name (and search by it) only on a `customer_order` link; otherwise typed, else masked (§17.4, P4) — **ASSUMED, awaiting owner confirmation**. A `customer_order` link keeps that consent when the pharmacy later ticks "patient agreed" (`POST /pharmacy-customers`, an assisted booking) |
-| 3 (LOW) | `/payments/verify` answered a non-operational pharmacy | 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as `/payments/reconcile`; an operational pharmacy's own verify is unchanged |
+| 3 (LOW) | `/payments/verify` answered a non-operational pharmacy | 403 (`PHARMACY_INACTIVE`, `PHARMACY_NOT_VERIFIED`), as `/payments/reconcile`; an operational pharmacy's own verify is unchanged. *Narrowed to booking payments by §19.8 item b* |
 | 4 (LOW) | A retried create counted against the lookup limit before its replay was found (429 instead of the receipt) | The same-content replay of this booker's key answers first and is not counted; every other attempt (a key reused for other content included) is counted and audited as before, with one answer for known and unknown numbers |
+
+### 19.8 Review fixes (review of `db252c1`)
+
+Checks 16–18 of `test/assisted/phase1a-review.integration.ts` are new, and check 14 is changed. All four fail on
+`db252c1`. With the credit's status guard removed, check 16's race finds a blocked top-up that is still credited.
+
+| # | Finding | Fix |
+|---|---|---|
+| a (MEDIUM, production gate) | A lost dispute on a top-up never credited recorded nothing, so a later capture could still credit it as withdrawable money | The payment chargeback **blocks** it instead. In its transaction it sets `PaymentRecord.chargebackAt` and `status: failed` (a refunded record keeps its status), guarded on the status read and on no credit claim. Audited `wallet.chargeback` (`blockedUncredited: true`). The answer is 200 `{ blockedUncredited: true, credited: false, message }`. Verify, reconcile, the top-up check and the sweep refuse a blocked record (409 `TOPUP_BLOCKED`; the sweep only takes `created`/unprocessed `paid` records). Mark-paid never revives it. The credit claims the record in its own transaction (`walletCreditedAt` set, guarded on `status: paid` and no `chargebackAt`), so the block and the credit always touch the same document. One of them conflicts and retries, so the only outcomes are: credited and then charged back, or blocked and never credited |
+| b (LOW) | The verify gate stranded a top-up paid by a pharmacy that became non-operational | `/payments/verify` and `/reconcile` answer 403 only on a **booking** payment (that answer carries the booker view). The pharmacy's own top-up settles and is credited (its own money), and so does `/pharmacy-wallet/topups/:id/check` (any pharmacy token). The wallet still funds nothing, because every spending route requires an operational pharmacy |
+| c (LOW) | A lot recorded at the chargeback took from other open lots first, so the withdrawable amount came out too low | The non-lot money goes first; open lots give up only the remainder. Check 17: ₹500 without a lot, ₹800 lot, ₹500 booking (withdrawable ₹300), chargeback of the ₹500 (₹300), refund of the booking (₹800) |
+| names | Pre-S3 customer-made links; later own orders | The migration sets `consent: 'customer_order'` on links with no `consent` and `createdByRole: 'user'` (only where missing; `customerOrderConsentsFilled` in the report; a rerun changes nothing). The customer's own order (`ensureLinked` as the customer) upgrades an existing link (`patient_agreed`, `not_recorded`, none) to `customer_order` |
+
+New answers for the web: 409 `TOPUP_BLOCKED`; the payment chargeback's `blockedUncredited` answer (§19.3).
 

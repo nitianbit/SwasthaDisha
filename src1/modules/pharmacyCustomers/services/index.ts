@@ -200,8 +200,8 @@ export class PharmacyCustomerService {
   /**
    * S3: an order for a customer needs a link. A pharmacy orders only for a customer already linked to it (403
    * CUSTOMER_NOT_LINKED otherwise; a link is made with the patient's consent through POST /pharmacy-customers). A
-   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order'. The user's
-   * linkedPharmacyId is never touched here.
+   * customer's own order links the pharmacy they chose, recorded as consent 'customer_order' (an existing link is
+   * upgraded to it). The user's linkedPharmacyId is never touched here.
    */
   async ensureLinked(
     pharmacyId: string,
@@ -221,6 +221,16 @@ export class PharmacyCustomerService {
         code: 'USER_NOT_FOUND',
         message: 'User not found',
       });
+    }
+
+    // Review of db252c1 (names): the customer's own order is the customer's consent — an existing link this pharmacy
+    // made (`patient_agreed`, `not_recorded`, none) is upgraded to `customer_order`.
+    const ownOrder = createdByRole === 'user' && String(userId) === String(createdById);
+    if (linked && ownOrder) {
+      await this.pharmacyCustomerRepo.update(
+        { pharmacyId, userId, consent: { $ne: 'customer_order' } } as never,
+        { consent: 'customer_order', consentRecordedAt: new Date(), consentRecordedById: createdById }
+      );
     }
 
     if (!linked) {

@@ -1,7 +1,7 @@
 /**
  * Assisted booking phase 1a — fixes of the review of b4ae54e (ASSISTED_BOOKING_DESIGN.md §19.6). One check per fix; each
  * fails on b4ae54e. Checks 12–15 (and the changed 8a) are the fixes of the review of 800dfc0 (§19.7); each fails on
- * 800dfc0. Same wiring as test/assisted/phase1a.integration.ts (its own database).
+ * 800dfc0. Checks 16–18 (and the changed 14) are the fixes of the review of db252c1 (§19.8); each fails on db252c1. Same wiring as test/assisted/phase1a.integration.ts (its own database).
  *
  * Original suite header: Assisted booking phase 1a (ASSISTED_BOOKING_DESIGN.md §17, §6, §8, §13 row 1a): a pharmacy books a doctor consultation
  * for a walk-in patient and pays from its Jansetu wallet. Money (one debit under concurrency and replay; refunds on every
@@ -616,7 +616,9 @@ async function main() {
       const unc = await PaymentRecordModel.create({ userId: W4, payerUserId: W4, payerPharmacyId: W4, context: 'wallet_recharge', contextId: `pharmacy_${W4}_unc`,
         baseAmount: 5, discountAmount: 0, finalAmount: 5, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_unc2_' + oid(), status: 'paid',
         notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: W4 } } as never);
-      await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((unc as any)._id)}/chargeback`, 409, { reason: 'x' }, 'TOPUP_NOT_CREDITED');
+      // Never credited: blocked instead (check 16), nothing taken.
+      const blockedAnswer = await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((unc as any)._id)}/chargeback`, 200, { reason: 'x' });
+      assert.equal(blockedAnswer.json.data.blockedUncredited, true);
       const booking = await PaymentRecordModel.create({ userId: X, context: 'booking', contextId: oid(), baseAmount: 5, discountAmount: 0, finalAmount: 5,
         currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_bk_' + oid(), razorpayPaymentId: 'pay_bk' + oid().slice(-10), status: 'paid' } as never);
       await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((booking as any)._id)}/chargeback`, 404, { reason: 'x' }, 'TOPUP_NOT_FOUND');
@@ -675,28 +677,53 @@ async function main() {
       assert.equal(l3.json.data.length, 1); assert.equal(l3.json.data[0].userId.name, 'Customer Ordered Name');
     });
 
-    await check('14 /payments/verify answers a non-operational pharmacy 403; an operational pharmacy\'s own verify credits its top-up', async () => {
+    await check('14 /payments/verify and /reconcile: 403 for a non-operational pharmacy on a booking payment; its own top-up is still credited', async () => {
       const V = await pharmacyWithToken('Verify Pharmacy', '9700000406');
-      const orderId = 'order_v_' + oid();
-      const payId = 'pay_v' + oid().slice(-12);
-      const rec = await PaymentRecordModel.create({ userId: V, payerUserId: V, payerPharmacyId: V, context: 'wallet_recharge', contextId: `pharmacy_${V}_${oid()}`,
-        baseAmount: 250, discountAmount: 0, finalAmount: 250, baseAmountPaise: 25000, finalAmountPaise: 25000, currency: 'INR', paymentGateway: 'razorpay',
-        razorpayOrderId: orderId, status: 'created', notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: V } } as never);
-      gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: 25000, currency: 'INR', status: 'captured', fee: 100 }];
-      const body = { paymentTransactionId: String((rec as any)._id), razorpayOrderId: orderId, razorpayPaymentId: payId,
-        razorpaySignature: crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex') };
-      for (const [set, code] of [[{ isActive: false }, 'PHARMACY_INACTIVE'], [{ isVerified: false }, 'PHARMACY_NOT_VERIFIED'], [{ archivedAt: new Date() }, 'PHARMACY_INACTIVE']] as const) {
-        await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: set });
-        try { await expect(V as Who, 'POST', '/payments/verify', 403, body, code); }
-        finally { await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: { isActive: true, isVerified: true }, $unset: { archivedAt: '' } }); }
+      const signedTopup = async (amount: number) => {
+        const orderId = 'order_v_' + oid();
+        const payId = 'pay_v' + oid().slice(-12);
+        const rec = await PaymentRecordModel.create({ userId: V, payerUserId: V, payerPharmacyId: V, context: 'wallet_recharge', contextId: `pharmacy_${V}_${oid()}`,
+          baseAmount: amount, discountAmount: 0, finalAmount: amount, baseAmountPaise: amount * 100, finalAmountPaise: amount * 100, currency: 'INR',
+          paymentGateway: 'razorpay', razorpayOrderId: orderId, status: 'created', notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: V } } as never);
+        gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: amount * 100, currency: 'INR', status: 'captured', fee: 100 }];
+        return { recordId: String((rec as any)._id), body: { paymentTransactionId: String((rec as any)._id), razorpayOrderId: orderId, razorpayPaymentId: payId,
+          razorpaySignature: crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex') } };
+      };
+      const setV = (set: Record<string, unknown>) => PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: set });
+      const restoreV = () => PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(V) }, { $set: { isActive: true, isVerified: true }, $unset: { archivedAt: '' } });
+      // A booking this pharmacy made, paid by card: its verify/reconcile answer is the booker view.
+      const bookingId = new Types.ObjectId();
+      const bp = istParts(new Date(Date.now() + 9 * DAY));
+      await BookingModel.collection.insertOne({ _id: bookingId, bookingType: 'consultation', userId: X, pharmacyId: V, specialistId: D, doctorName: 'Dr Asha Menon',
+        bookingDate: bp.date, bookingTime: bp.time, status: 'confirmed', paymentStatus: 'paid', price: 500, createdAt: new Date(), updatedAt: new Date() } as never);
+      const bookingRec = await PaymentRecordModel.create({ userId: X, context: 'booking', contextId: String(bookingId), baseAmount: 500, discountAmount: 0,
+        finalAmount: 500, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_vb_' + oid(), razorpayPaymentId: 'pay_vb' + oid().slice(-10),
+        status: 'paid', isProcessed: true, paidAt: new Date() } as never);
+      const bookingBody = { paymentTransactionId: String((bookingRec as any)._id), razorpayOrderId: (bookingRec as any).razorpayOrderId,
+        razorpayPaymentId: (bookingRec as any).razorpayPaymentId, razorpaySignature: 'unused-for-a-paid-record' };
+      const ok = await expect(V as Who, 'POST', '/payments/verify', 200, bookingBody);
+      assert.ok('patientName' in ok.json.data.entity, 'an operational pharmacy gets the booker view');
+      const t1 = await signedTopup(250); const t2 = await signedTopup(100); const t3 = await signedTopup(50);
+      for (const [set, code, topup, how] of [[{ isActive: false }, 'PHARMACY_INACTIVE', t1, 'verify'], [{ isVerified: false }, 'PHARMACY_NOT_VERIFIED', t2, 'reconcile'],
+        [{ archivedAt: new Date() }, 'PHARMACY_INACTIVE', t3, 'check']] as const) {
+        await setV(set);
+        try {
+          // No booker view for a pharmacy that is not operational.
+          await expect(V as Who, 'POST', '/payments/verify', 403, bookingBody, code);
+          await expect(V as Who, 'POST', '/payments/reconcile', 403, { paymentTransactionId: bookingBody.paymentTransactionId }, code);
+          // Its own top-up still settles and is credited (its own money)...
+          if (how === 'verify') await expect(V as Who, 'POST', '/payments/verify', 200, topup.body);
+          else if (how === 'reconcile') await expect(V as Who, 'POST', '/payments/reconcile', 200, { paymentTransactionId: topup.recordId });
+          else await expect(V as Who, 'POST', `/pharmacy-wallet/topups/${topup.recordId}/check`, 200);
+          assert.equal((await PaymentRecordModel.findById(topup.recordId).lean() as any).status, 'paid', `${how} settled it`);
+          // ...but the wallet funds nothing while the pharmacy is not operational.
+          await expect(V as Who, 'POST', '/pharmacy-assisted/consultations', 403, consult(await futureSlot(), { phone: '9600000961', patient: { relation: 'self', name: 'Not Now' } }), code);
+        } finally { await restoreV(); }
       }
-      assert.equal((await PaymentRecordModel.findById((rec as any)._id).lean() as any).status, 'created', 'nothing was applied');
-      assert.equal((await balanceOf(V)).paise, 0);
-      const ok = await expect(V as Who, 'POST', '/payments/verify', 200, body);
-      assert.equal(ok.json.data.paymentRecord.status, 'paid');
-      assert.equal((await balanceOf(V)).paise, 25000, 'the operational pharmacy\'s own top-up is credited');
+      assert.equal((await balanceOf(V)).paise, 40000, 'all three top-ups credited once');
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: V, referenceType: 'wallet_recharge' }), 3);
       // A customer is not affected by the gate.
-      await expect('X', 'POST', '/payments/verify', 404, { ...body, paymentTransactionId: oid() }, 'PAYMENT_RECORD_NOT_FOUND');
+      await expect('X', 'POST', '/payments/verify', 404, { ...t1.body, paymentTransactionId: oid() }, 'PAYMENT_RECORD_NOT_FOUND');
     });
 
     await check('15 a replayed create answers its receipt at the lookup limit; every other attempt is still counted, audited and uniform', async () => {
@@ -722,6 +749,124 @@ async function main() {
       const before = await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'booking.attempted', orgId: RL });
       await expect(RL as Who, 'POST', '/pharmacy-assisted/consultations', 409, { ...body2, primaryConcern: 'changed' }, 'IDEMPOTENCY_KEY_REUSED');
       assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'booking.attempted', orgId: RL }), before + 1);
+    });
+
+    // ── Review of db252c1 ──
+    await check('16 a lost dispute on a top-up never credited blocks it: verify, reconcile, check and sweep refuse it; the race gives one of two outcomes', async () => {
+      const B = await pharmacyWithToken('Blocked Pharmacy', '9700000501');
+      const topupRecord = async (amount: number, status: 'created' | 'paid') => {
+        const orderId = 'order_blk_' + oid();
+        const payId = 'pay_blk' + oid().slice(-12);
+        const rec = await PaymentRecordModel.create({ userId: B, payerUserId: B, payerPharmacyId: B, context: 'wallet_recharge', contextId: `pharmacy_${B}_${oid()}`,
+          baseAmount: amount, discountAmount: 0, finalAmount: amount, baseAmountPaise: amount * 100, finalAmountPaise: amount * 100, currency: 'INR',
+          paymentGateway: 'razorpay', razorpayOrderId: orderId, status, ...(status === 'paid' ? { razorpayPaymentId: payId, paidAt: new Date() } : {}),
+          notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: B } } as never);
+        gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: amount * 100, currency: 'INR', status: 'captured', fee: 100 }];
+        return { recordId: String((rec as any)._id), payId, body: { paymentTransactionId: String((rec as any)._id), razorpayOrderId: orderId, razorpayPaymentId: payId,
+          razorpaySignature: crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex') } };
+      };
+      const credits = (recordId: string) => PharmacyWalletTransactionModel.countDocuments({ referenceType: 'wallet_recharge', referenceId: recordId });
+      // Paid but not credited yet (the browser never came back), then captured-not-verified.
+      for (const status of ['paid', 'created'] as const) {
+        const t = await topupRecord(400, status);
+        const r = await expect('ADMIN', 'POST', `/admin/wallet-payments/${status === 'paid' ? t.payId : t.recordId}/chargeback`, 200, { reason: 'dispute lost early' });
+        assert.deepEqual([r.json.data.blockedUncredited, r.json.data.credited, r.json.data.replayed], [true, false, false]);
+        assert.match(r.json.data.message, /Nothing was credited/);
+        const rec = await PaymentRecordModel.findById(t.recordId).lean() as any;
+        assert.equal(rec.status, 'failed'); assert.ok(rec.chargebackAt);
+        assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.recordId}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
+        await expect(B as Who, 'POST', '/payments/verify', 409, t.body, 'TOPUP_BLOCKED');
+        await expect(B as Who, 'POST', '/payments/reconcile', 409, { paymentTransactionId: t.recordId }, 'TOPUP_BLOCKED');
+        await expect(B as Who, 'POST', `/pharmacy-wallet/topups/${t.recordId}/check`, 409, undefined, 'TOPUP_BLOCKED');
+        process.env.WALLET_RECHARGE_SWEEP_FROM = new Date(Date.now() - DAY).toISOString();
+        try {
+          await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(t.recordId) }, { $set: { createdAt: new Date(Date.now() - 3600_000) } });
+          await payments.sweepUnsettledBookingPayments(new Date(), 500);
+        } finally { delete process.env.WALLET_RECHARGE_SWEEP_FROM; }
+        assert.equal(await credits(t.recordId), 0, `${status}: never credited`);
+        assert.equal((await PaymentRecordModel.findById(t.recordId).lean() as any).status, 'failed');
+        const unc = (await expect('ADMIN', 'GET', '/admin/wallet-recharges/uncredited', 200)).json.data.map((x: any) => x.paymentTransactionId);
+        assert.equal(unc.includes(t.recordId), false, 'not listed as owed to the pharmacy');
+      }
+      assert.equal((await balanceOf(B)).paise, 0);
+      const audits = await assistedModels.AssistedAuditEventModel.find({ action: 'wallet.chargeback', orgId: B }).lean() as any[];
+      assert.equal(audits.length, 2); assert.ok(audits.every((a) => a.detail.blockedUncredited === true));
+      // The race: the block and a credit (top-up check or verify) at once, many times. Either credited then charged
+      // back, or blocked and never credited.
+      const seen = { creditedThenChargedBack: 0, blocked: 0 };
+      for (let i = 0; i < 8; i++) {
+        const P2 = await pharmacyWithToken(`Race Pharmacy ${i}`, `97000006${String(i).padStart(2, '0')}`);
+        const orderId = 'order_rc_' + oid(); const payId = 'pay_rc' + oid().slice(-12);
+        const rec = await PaymentRecordModel.create({ userId: P2, payerUserId: P2, payerPharmacyId: P2, context: 'wallet_recharge', contextId: `pharmacy_${P2}_${oid()}`,
+          baseAmount: 300, discountAmount: 0, finalAmount: 300, baseAmountPaise: 30000, finalAmountPaise: 30000, currency: 'INR', paymentGateway: 'razorpay',
+          razorpayOrderId: orderId, status: 'created', notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: P2 } } as never);
+        gateway.payments[orderId] = [{ id: payId, order_id: orderId, amount: 30000, currency: 'INR', status: 'captured', fee: 100 }];
+        const id = String((rec as any)._id);
+        const creditCall = i % 2 === 0 ? call(P2 as Who, 'POST', `/pharmacy-wallet/topups/${id}/check`)
+          : call(P2 as Who, 'POST', '/payments/verify', { paymentTransactionId: id, razorpayOrderId: orderId, razorpayPaymentId: payId,
+            razorpaySignature: crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex') });
+        const [cb, cr] = await Promise.all([call('ADMIN', 'POST', `/admin/wallet-payments/${id}/chargeback`, { reason: 'race' }), creditCall]);
+        assert.equal(cb.status, 200, cb.text.slice(0, 300));
+        const after = await PaymentRecordModel.findById(id).lean() as any;
+        const c = await credits(id);
+        const k = await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P2, transactionType: 'chargeback' });
+        const w = await PharmacyWalletModel.findOne({ pharmacyId: P2 }).lean() as any;
+        if (cb.json.data.blockedUncredited) {
+          seen.blocked += 1;
+          assert.deepEqual([c, k, after.status, !!after.chargebackAt], [0, 0, 'failed', true], `blocked: ${cr.status} ${cr.text.slice(0, 200)}`);
+          assert.notEqual(cr.status, 200, 'the credit was refused');
+          assert.equal(Number(w?.balancePaise ?? 0), 0);
+        } else {
+          seen.creditedThenChargedBack += 1;
+          assert.deepEqual([c, k, !!after.chargebackAt], [1, 1, false], 'credited once, charged back once');
+          assert.deepEqual([w.balancePaise, w.frozen], [0, true]);
+        }
+        const rows = await PharmacyWalletTransactionModel.find({ pharmacyId: P2 }).lean() as any[];
+        assert.equal(rows.reduce((a, r) => a + Number(r.signedAmountPaise ?? 0), 0), Number(w?.balancePaise ?? 0), 'balance = Σ entries');
+      }
+      console.log('   race outcomes', JSON.stringify(seen));
+    });
+
+    await check('17 a lot recorded at the chargeback gives up non-lot money first: withdrawable stays the honest card money (300, 300, 800)', async () => {
+      const H2 = await pharmacyWithToken('Honest Pharmacy', '9700000502');
+      const noLot = await lotlessRecharge(H2, 500);
+      await rechargeOf(H2, 800);
+      assert.deepEqual(await balanceOf(H2), { paise: 130000, withdrawable: 80000 });
+      const bk = await expect(H2 as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000971', patient: { relation: 'self', name: 'Honest One' } }));
+      assert.deepEqual(await balanceOf(H2), { paise: 80000, withdrawable: 30000 }, 'the booking spent lot money first (300 left)');
+      await expect('ADMIN', 'POST', `/admin/wallet-payments/${noLot.payId}/chargeback`, 200, { reason: 'dispute lost' });
+      assert.deepEqual(await balanceOf(H2), { paise: 30000, withdrawable: 30000 }, 'the ₹500 came out of the non-lot money: still 300');
+      await expect(H2 as Who, 'POST', `/pharmacy-assisted/bookings/${bk.json.data.booking._id}/cancel`, 200, {});
+      assert.deepEqual(await balanceOf(H2), { paise: 80000, withdrawable: 80000 }, 'the refund restores the lot: 800');
+      assert.equal(await sumOf(H2), 80000);
+    });
+
+    await check('18 names: the migration marks pre-S3 customer-made links customer_order (once, counted); a customer\'s own order upgrades a pharmacy\'s link', async () => {
+      const C1 = oid(); const C2 = oid(); const C3 = oid();
+      await UserModel.collection.insertMany([
+        { _id: new Types.ObjectId(C1), userType: 'user', phone: '9600000981', name: 'Old Order Customer', createdSource: 'self_signup' },
+        { _id: new Types.ObjectId(C2), userType: 'user', phone: '9600000982', name: 'Old Pharmacy Link', createdSource: 'self_signup' },
+        { _id: new Types.ObjectId(C3), userType: 'user', phone: '9600000983', name: 'Later Orderer Name', createdSource: 'self_signup' },
+      ] as never);
+      const own = await PharmacyCustomerModel.collection.insertOne({ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(C1), createdByRole: 'user', createdById: C1 } as never);
+      const theirs = await PharmacyCustomerModel.collection.insertOne({ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(C2), createdByRole: 'pharmacy', createdById: P } as never);
+      const dry = await migration.migrateAssistedPharmacyWallets({ commit: false });
+      assert.equal(dry.customerOrderConsentsFilled, 1);
+      assert.equal((await PharmacyCustomerModel.collection.findOne({ _id: own.insertedId }) as any).consent, undefined, 'a dry run writes nothing');
+      const run = await migration.migrateAssistedPharmacyWallets({ commit: true });
+      assert.equal(run.customerOrderConsentsFilled, 1);
+      assert.equal((await PharmacyCustomerModel.collection.findOne({ _id: own.insertedId }) as any).consent, 'customer_order');
+      assert.equal((await PharmacyCustomerModel.collection.findOne({ _id: theirs.insertedId }) as any).consent, undefined, 'a pharmacy-made link is not the customer\'s consent');
+      assert.equal((await migration.migrateAssistedPharmacyWallets({ commit: true })).customerOrderConsentsFilled, 0, 'a rerun changes nothing');
+      // A pharmacy's "patient agreed" link, then the customer's own order there: customer_order (the account name shows).
+      await expect('P', 'POST', '/pharmacy-customers', 201, { phone: '9600000983', name: 'Typed C3', consent: true });
+      const customers = Container.get(PharmacyCustomerService);
+      await customers.ensureLinked(P, C3, P, 'pharmacy');
+      assert.equal((await PharmacyCustomerModel.findOne({ pharmacyId: P, userId: C3 }).lean() as any).consent, 'patient_agreed', 'the pharmacy\'s own order upgrades nothing');
+      await customers.ensureLinked(P, C3, C3, 'user');
+      assert.equal((await PharmacyCustomerModel.findOne({ pharmacyId: P, userId: C3 }).lean() as any).consent, 'customer_order');
+      const l = await expect('P', 'GET', '/pharmacy-customers?search=Later%20Orderer', 200);
+      assert.equal(l.json.data.length, 1); assert.equal(l.json.data[0].userId.name, 'Later Orderer Name');
     });
   } finally {
     server.close();

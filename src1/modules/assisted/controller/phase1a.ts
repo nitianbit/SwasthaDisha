@@ -121,15 +121,21 @@ export const chargeback = async (req: AuthRequest, res: Response) => {
  * top-up named by its payment (payment record id or Razorpay payment id), for top-ups credited without a lot. Same rules
  * and the same once-per-payment key as the lot route (a top-up with a lot is charged back through its lot). Audited in
  * the same transaction. A racing twin that inserted the payment's lot first: this attempt runs once more and answers
- * replayed.
+ * replayed. Review of db252c1 (item a): a top-up never credited is blocked instead (200, `blockedUncredited: true`,
+ * `credited: false`): nothing was in the wallet to take, and it can never be credited now.
  */
 export const paymentChargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
   const reason = String(req.body.reason).trim();
+  const actorId = String(req.user?._id).toLowerCase();
   const run = () => inTransaction(async (s) => {
     const r = await recordPaymentChargebackIn(req.params.paymentId, s);
-    if (!r.replayed) {
-      await auditIn({ actorKind: 'admin', actorId: String(req.user?._id).toLowerCase(), orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
+    if (r.replayed) return r;
+    if (r.blockedUncredited) {
+      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: r.pharmacyId,
+        action: 'wallet.chargeback', detail: { paymentRecordId: r.paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 } }, s);
+    } else {
+      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
         action: 'wallet.chargeback', detail: { lotId: r.lotId, paymentRecordId: r.paymentRecordId, withoutLot: r.withoutLot, reason,
           debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
     }
@@ -140,5 +146,10 @@ export const paymentChargeback = async (req: AuthRequest, res: Response) => {
     if (!isDuplicateKeyError(e)) throw e;
     out = await run();
   }
-  send(res, { entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId, withoutLot: out.withoutLot });
+  if (out.blockedUncredited) {
+    return send(res, { blockedUncredited: true, credited: false, replayed: out.replayed, paymentRecordId: out.paymentRecordId,
+      message: 'Nothing was credited for this top-up, so nothing was taken from the wallet. The top-up is now blocked and will never be credited.' });
+  }
+  send(res, { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
+    withoutLot: out.withoutLot });
 };
