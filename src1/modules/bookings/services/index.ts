@@ -715,6 +715,9 @@ export class BookingService {
     // The payment deadline concerns priced bookings only: a free one is always finished (it never expires).
     const pricedAndLate = Number(booking.price || 0) > 0 && paymentDeadlinePassed(booking, new Date());
     if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !pricedAndLate) {
+      // S5 review: finishing an interrupted create books the doctor now: only a verified, active one (a pure replay of a
+      // finished create below still answers its receipt).
+      if (booking.specialistId) await assertNotIneligibleDoctor(booking.specialistId);
       const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
@@ -1581,7 +1584,8 @@ export class BookingService {
    */
   async cancelByDoctor(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, reason: string,
     // S5c: the admin close adds its audit to the same transaction and may fence the version it reviewed.
-    opts: { inTx?: (b: IBooking, s: ClientSession, refunded: number) => Promise<void>; expectedUpdatedAt?: Date | string | null } = {}): Promise<IBooking> {
+    opts: { inTx?: (b: IBooking, s: ClientSession, refunded: number) => Promise<void>; expectedUpdatedAt?: Date | string | null;
+      /** S5d: the Jansetu team closes it (admin close): cause 'admin' and a neutral customer notice. */ asAdmin?: boolean } = {}): Promise<IBooking> {
     // Q4b: an instant consultation's money lives on its request; its own command refunds the allocation.
     const kind = Types.ObjectId.isValid(bookingId) ? await BookingModel.findById(bookingId).select({ bookingKind: 1 }).lean() as IBooking | null : null;
     if (kind?.bookingKind === 'instant') {
@@ -1592,7 +1596,7 @@ export class BookingService {
       return cancelBookingMeet({ booking: after, reason: after.cancellationReason, bookingRepository: this.bookingRepository });
     }
     const result = await cancelBookingSettlement({
-      bookingId, requester, reason, cause: 'doctor', cancelledAt: istTodayYyyymmdd(), wallets: this.walletRepository,
+      bookingId, requester, reason, cause: opts.asAdmin ? 'admin' : 'doctor', cancelledAt: istTodayYyyymmdd(), wallets: this.walletRepository,
       enforceWindow: () => undefined,
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
       // Q16a (L8): a desk appointment the doctor cancels is recorded in the clinic's audit trail with the cancellation
@@ -1612,10 +1616,15 @@ export class BookingService {
     catch (error) { console.error('Failed to clear booking reminders:', error); }
     // Q16a (L8): a clinic-paid appointment had no online payment, so no wallet refund is promised.
     const clinicPaid = booking.settlementSystem === 'clinic';
+    const byJansetu = 'Your consultation was cancelled by Jansetu.';
     try {
       await this.notificationService.create({
-        userId: String(booking.userId), type: 'booking_cancelled', title: 'Your doctor cancelled the appointment',
-        message: clinicPaid ? `${reason}. Contact the clinic about anything you paid there.` : `${reason}. Your full payment is back in your wallet.`,
+        userId: String(booking.userId), type: 'booking_cancelled',
+        title: opts.asAdmin ? 'Your consultation was cancelled' : 'Your doctor cancelled the appointment',
+        message: opts.asAdmin
+          ? (clinicPaid ? `${byJansetu} Contact the clinic about anything you paid there.`
+            : result.refunded > 0 ? `${byJansetu} Your payment has been refunded to your Jansetu wallet.` : byJansetu)
+          : clinicPaid ? `${reason}. Contact the clinic about anything you paid there.` : `${reason}. Your full payment is back in your wallet.`,
         referenceType: 'booking', referenceId: String(booking._id),
         idempotencyKey: `booking:${booking._id}:doctor_cancelled`,
       });

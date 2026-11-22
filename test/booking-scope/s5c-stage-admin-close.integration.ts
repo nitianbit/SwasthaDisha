@@ -5,6 +5,9 @@
  * {reason, requestKey, expectedUpdatedAt?} - a doctor cancellation by the admin (full refund, no window), once per
  * request key, audited in the same transaction. Controls: the clinic desk still marks arrival, completes and cancels an
  * appointment of such a doctor; verified doctors are unaffected.
+ * S5d: the once-only index is built by sync-indexes (503 INDEXES_OUTDATED without it; one key for two bookings closes
+ * one); the admin's reason stays internal (the patient sees a neutral notice; cause 'admin'); an ineligible doctor's
+ * instant consultation read carries no patient age or gender.
  *
  * Run (throwaway DB only; the script drops its collections):
  *   JWT_SECRET_KEY=local-integration-only SESSION_ORIGINS_CUSTOMER=https://app.jansetu.test SESSION_ORIGINS_WORKSPACE=https://staff.jansetu.test \
@@ -13,6 +16,7 @@
  */
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -29,6 +33,8 @@ import { BookingRepository } from '@/modules/bookings/repository';
 import { BookingService } from '@/modules/bookings/services';
 import { createBookingWithHolds } from '@/modules/bookings/holds';
 import { BookingAdminCloseModel } from '@/modules/bookings/adminClose';
+import { resetIndexChecks } from '@/modules/common/utils/requiredIndex';
+import { InstantConsultService } from '@/modules/doctors/services/instant';
 import { UserRepository } from '@/modules/user/repository';
 import { SlotRepository } from '@/modules/slots/repository';
 import { SpecialistRepository } from '@/modules/specialists/repository';
@@ -73,7 +79,8 @@ Container.set(InvoiceService, new InvoiceService(new InvoiceRepository(), new In
 const bookings = Object.assign(Object.create(BookingService.prototype), {
   bookingRepository: new BookingRepository(), walletRepository: new WalletRepository(),
   bookingReminderScheduler: { clearBookingReminders: async () => undefined, scheduleBookingReminders: async () => undefined },
-  notificationService: new Proxy({}, { get: () => async () => undefined }),
+  notificationService: new Proxy({ create: async (n: { userId: string; title: string; message: string }) => { customerNotices.push(n); } },
+    { get: (t, k) => (k in t ? (t as Record<string | symbol, unknown>)[k] : async () => undefined) }),
   userRepository: new UserRepository(), specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository(),
 }) as BookingService;
 Container.set(BookingService, bookings);
@@ -84,6 +91,11 @@ Container.set(SpecialistPortalService, Object.assign(Object.create(SpecialistPor
   bookingRepository: new BookingRepository(), userRepository: new UserRepository(), bookingService: bookings, specialistService,
   notificationService: new Proxy({}, { get: () => async () => undefined }), slotService: {}, slotRepository: new SlotRepository(),
 }) as SpecialistPortalService);
+
+/** Notices sent through notificationService.create (the patient's cancellation notice among them). */
+const customerNotices: { userId: string; title: string; message: string }[] = [];
+// The doctor's instant booking read only needs the models.
+Container.set(InstantConsultService, Object.create(InstantConsultService.prototype) as InstantConsultService);
 
 let passed = 0;
 const failed: string[] = [];
@@ -152,9 +164,13 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [UserModel, SpecialistModel, SlotModel, BookingModel, PaymentRecordModel, WalletModel, WalletTransactionModel, RequestKeyModel,
     NotificationModel, DependentModel, DoctorReservationModel, DoctorScheduleGuardModel, PartnerModel, MemberModel, BranchModel, PartnerAuditEventModel,
-    SettlementAccountModel, LedgerEntryModel, ScheduleGuardModel, BookingAdminCloseModel] as mongoose.Model<any>[]) {
+    SettlementAccountModel, LedgerEntryModel, ScheduleGuardModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
+  // bookingadmincloses is built only by the deploy step (npm run sync-indexes), as in production.
+  execFileSync('npx', ['tsx', '--tsconfig', 'tsconfig.json', 'src1/scripts/syncIndexes.ts'],
+    { env: { ...process.env, MONGODB_URL: FIXTURE_URL }, stdio: ['ignore', 'ignore', 'ignore'] });
+  resetIndexChecks();
   const ADMIN = new Types.ObjectId().toHexString();
   clinic.setClinicNotifier(async () => undefined);
 
@@ -177,6 +193,79 @@ async function main() {
   const close = (id: string, body: Record<string, unknown>, token = adminTok) => call('POST', `/specialists/admin/bookings/${id}/close`, token, body);
 
   try {
+    await check('S5d: npm run sync-indexes builds the unique (adminId, requestKey) index of bookingadmincloses', async () => {
+      const ix = await BookingAdminCloseModel.collection.listIndexes().toArray().catch(() => []);
+      assert.ok(ix.some((i) => i.unique === true && JSON.stringify(i.key) === '{"adminId":1,"requestKey":1}'), JSON.stringify(ix.map((i) => i.key)));
+    });
+
+    await check('S5d: one request key sent for two bookings at once closes (and refunds) only one', async () => {
+      const dr = await doctor('Dr Race');
+      const b1 = await paidConsultation(dr); const b2 = await paidConsultation(dr);
+      const key = rk('race');
+      const [r1, r2] = await Promise.all([close(b1.id, { reason: 'Race', requestKey: key }), close(b2.id, { reason: 'Race', requestKey: key })]);
+      assert.deepEqual([r1.status, r2.status].sort(), [200, 409], JSON.stringify([r1.json, r2.json]));
+      assert.ok([r1.json.code, r2.json.code].includes('REQUEST_KEY_REUSED'));
+      const states = await Promise.all([b1.id, b2.id].map(async (i) => (await BookingModel.findById(i).lean())!.status));
+      assert.deepEqual(states.sort(), ['cancelled', 'confirmed']);
+      assert.deepEqual((await Promise.all([b1.userId, b2.userId].map(balance))).sort(), [0, 400], 'one refund only');
+      assert.equal(await BookingAdminCloseModel.countDocuments({ requestKey: key }), 1);
+    });
+
+    await check('S5d: without the unique index the admin close answers 503 INDEXES_OUTDATED and changes nothing', async () => {
+      const dr = await doctor('Dr Index');
+      const b = await paidConsultation(dr);
+      await BookingAdminCloseModel.collection.dropIndex('adminId_1_requestKey_1');
+      resetIndexChecks();
+      const r = await close(b.id, { reason: 'Index', requestKey: rk() });
+      assert.deepEqual([r.status, r.json.code], [503, 'INDEXES_OUTDATED']);
+      assert.equal((await BookingModel.findById(b.id).lean())!.status, 'confirmed'); assert.equal(await balance(b.userId), 0);
+      await BookingAdminCloseModel.createIndexes(); resetIndexChecks();
+      assert.equal((await close(b.id, { reason: 'Index', requestKey: rk() })).status, 200);
+    });
+
+    await check('S5d: the admin\'s reason stays internal; the patient sees a neutral notice (refund line only when refunded); cause admin', async () => {
+      const dr = await doctor('Dr Notice');
+      const paid = await paidConsultation(dr);
+      const free = await paidConsultation(dr);
+      await BookingModel.updateOne({ _id: free.id }, { $set: { price: 0, originalPrice: 0 }, $unset: { paymentTransactionId: 1 } });
+      await PaymentRecordModel.deleteMany({ contextId: free.id });
+      customerNotices.length = 0;
+      assert.equal((await close(paid.id, { reason: 'Internal: fake doctor account 123', requestKey: rk() })).status, 200);
+      assert.equal((await close(free.id, { reason: 'Internal: fake doctor account 123', requestKey: rk() })).status, 200);
+      for (const id of [paid.id, free.id]) {
+        const b = await BookingModel.findById(id).lean() as any;
+        assert.equal(b.cancellationReason, 'Cancelled by Jansetu'); assert.equal(b.cancellationCause, 'admin');
+        assert.equal(JSON.stringify(b).includes('fake doctor'), false, 'the admin reason is not on the booking');
+      }
+      const notice = (u: string) => customerNotices.find((n) => n.userId === u)!;
+      assert.equal(notice(paid.userId).message, 'Your consultation was cancelled by Jansetu. Your payment has been refunded to your Jansetu wallet.');
+      assert.equal(notice(free.userId).message, 'Your consultation was cancelled by Jansetu.');
+      assert.equal(JSON.stringify(customerNotices).includes('fake doctor'), false);
+      assert.equal((await BookingAdminCloseModel.findOne({ bookingId: paid.id }).lean())!.reason, 'Internal: fake doctor account 123');
+    });
+
+    await check('S5d: an ineligible doctor reads its instant consultation without the patient\'s age or gender; a verified one sees them', async () => {
+      const unvI = await doctor('Dr Instant Unv'); const verI = await doctor('Dr Instant Ok');
+      const instant = async (dr: string) => {
+        const reqId = new Types.ObjectId();
+        await mongoose.connection.db!.collection('instant_requests').insertOne({ _id: reqId, userId: new Types.ObjectId().toHexString(),
+          patient: { kind: 'self', name: 'Ravi', age: 41, gender: 'Male' }, acceptedFeeMinor: 50000 });
+        const bid = new Types.ObjectId();
+        await BookingModel.collection.insertOne({ _id: bid, bookingType: 'consultation', bookingKind: 'instant', specialistId: dr, instantRequestId: String(reqId),
+          userId: new Types.ObjectId().toHexString(), status: 'confirmed', paymentStatus: 'paid', bookingDate: '20991231', bookingTime: '10:00',
+          consultationMode: 'video', price: 500, updatedAt: new Date() } as never);
+        return String(bid);
+      };
+      const bu = await instant(unvI); const bv = await instant(verI);
+      await setDoctor(unvI, { isVerified: false });
+      const ru = await call('GET', `/specialists/me/instant/bookings/${bu}`, docTok(unvI));
+      assert.equal(ru.status, 200, JSON.stringify(ru.json));
+      assert.equal(ru.json.data.status, 'confirmed'); assert.equal(ru.json.data.bookingId, bu);
+      assert.equal(ru.json.data.patient?.age, undefined); assert.equal(ru.json.data.patient?.gender, undefined);
+      const rv = await call('GET', `/specialists/me/instant/bookings/${bv}`, docTok(verI));
+      assert.equal(rv.json.data.patient.age, 41); assert.equal(rv.json.data.patient.gender, 'Male');
+    });
+
     await check('the stuck case: after its start time the customer cannot cancel and the unverified doctor cannot close it', async () => {
       const dr = await doctor('Dr Stuck');
       const b = await paidConsultation(dr, true);
@@ -201,7 +290,7 @@ async function main() {
       assert.equal(r.json.data.replayed, false); assert.equal(r.json.data.refunded, 400);
       const after = await BookingModel.findById(b.id).lean() as any;
       assert.equal(after.status, 'cancelled'); assert.equal(after.paymentStatus, 'refunded');
-      assert.equal(after.cancellationReason, 'Doctor account not verified');
+      assert.equal(after.cancellationReason, 'Cancelled by Jansetu'); // S5d: the admin's reason is internal
       assert.equal(await balance(b.userId), 400, 'the patient has the full ₹400 back');
       assert.equal((await SlotModel.findById(b.slotId).lean() as any).currentBookings, 0, 'seat released');
       const rows = await BookingAdminCloseModel.find({ bookingId: b.id }).lean();

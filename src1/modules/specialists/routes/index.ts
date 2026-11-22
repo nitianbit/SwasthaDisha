@@ -146,7 +146,8 @@ specialistRouter.put('/me/presence', requireSpecialist, validate(presenceSchema,
 specialistRouter.post('/me/presence/heartbeat', requireSpecialist, catchAsync(instantDoctor.postHeartbeat));
 specialistRouter.get('/me/instant/offers', requireSpecialist, catchAsync(instantDoctor.getOffers));
 specialistRouter.post('/me/instant/:requestId/accept', requireSpecialist, validate(requestIdParamSchema, 'params'), catchAsync(instantDoctor.acceptOffer));
-specialistRouter.get('/me/instant/bookings/:bookingId', requireSpecialist, validate(bookingIdParamSchema, 'params'), catchAsync(instantDoctor.getInstantBooking));
+specialistRouter.get('/me/instant/bookings/:bookingId', requireSpecialist, validate(bookingIdParamSchema, 'params'),
+  catchAsync(restrictIneligibleDoctorReads), catchAsync(instantDoctor.getInstantBooking)); // S5d: no patient details for an ineligible doctor
 specialistRouter.post('/me/instant/bookings/:bookingId/extend', requireSpecialist, validate(bookingIdParamSchema, 'params'), validate(extendSchema, 'body'),
   catchAsync(instantDoctor.extendConsult));
 

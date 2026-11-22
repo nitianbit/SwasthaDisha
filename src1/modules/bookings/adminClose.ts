@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
 import { Response } from 'express';
 import Joi from 'joi';
-import mongoose, { Schema, model, Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { Container } from 'typedi';
 import BookingModel from '@/modules/bookings/model';
+import { BookingAdminCloseModel } from '@/modules/bookings/model/adminClose';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { BookingService } from '@/modules/bookings/services';
 import { AppError } from '@/modules/common/types';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -24,36 +26,12 @@ import logger from '@/services/logger';
  *   resent request answers with the same booking (replayed: true) and the same key for another booking or reason is
  *   409 REQUEST_KEY_REUSED. A booking already cancelled by anyone else is 409 ALREADY_CANCELLED.
  * - Audit (bookingadmincloses): admin, booking, reason, the booking's doctor and statuses before, amount refunded.
+ * - S5d: the reason is internal (audit only). The booking records 'Cancelled by Jansetu' with cause 'admin', and the
+ *   patient is told "Your consultation was cancelled by Jansetu." plus the refund line only when money was refunded.
  */
-export interface IBookingAdminClose {
-  adminId: string;
-  requestKey: string;
-  requestHash: string;
-  bookingId: string;
-  specialistId: string | null;
-  reason: string;
-  statusBefore: string;
-  paymentStatusBefore: string;
-  refunded: number;
-  closedAt: Date;
-}
-
-const closeSchema = new Schema<IBookingAdminClose>({
-  adminId: { type: String, required: true },
-  requestKey: { type: String, required: true },
-  requestHash: { type: String, required: true },
-  bookingId: { type: String, required: true, index: true },
-  specialistId: { type: String, default: null },
-  reason: { type: String, required: true },
-  statusBefore: { type: String, required: true },
-  paymentStatusBefore: { type: String, required: true },
-  refunded: { type: Number, required: true },
-  closedAt: { type: Date, required: true },
-}, { versionKey: false });
-closeSchema.index({ adminId: 1, requestKey: 1 }, { unique: true });
-
-export const BookingAdminCloseModel: Model<IBookingAdminClose> =
-  (mongoose.models.BookingAdminClose as Model<IBookingAdminClose>) || model<IBookingAdminClose>('BookingAdminClose', closeSchema);
+// The model lives in bookings/model/adminClose.ts so sync-indexes builds its unique (admin, requestKey) index.
+export { BookingAdminCloseModel } from '@/modules/bookings/model/adminClose';
+export type { IBookingAdminClose } from '@/modules/bookings/model/adminClose';
 
 export const adminCloseSchema = Joi.object({
   reason: Joi.string().trim().min(3).max(500).required(),
@@ -62,6 +40,8 @@ export const adminCloseSchema = Joi.object({
 });
 
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
+/** S5d: what the patient's booking shows as the cancellation reason (the admin's reason stays in the audit row). */
+export const ADMIN_CLOSE_PUBLIC_REASON = 'Cancelled by Jansetu';
 const hashOf = (bookingId: string, reason: string) => createHash('sha256').update(`${bookingId.toLowerCase()}|${reason.trim()}`).digest('hex');
 
 async function replayOrRefuse(adminId: string, requestKey: string, hash: string): Promise<IBooking | null> {
@@ -74,6 +54,9 @@ async function replayOrRefuse(adminId: string, requestKey: string, hash: string)
 export async function adminCloseBooking(bookingId: string, adminId: string,
   input: { reason: string; requestKey: string; expectedUpdatedAt?: Date | string }): Promise<IBooking & { replayed: boolean; refunded?: number }> {
   if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  // S5d: once-only rests on the unique (admin, requestKey) index (built by sync-indexes); without it, 503 - never two
+  // refunds for one key.
+  await assertUniqueIndex(BookingAdminCloseModel, { adminId: 1, requestKey: 1 });
   const id = String(bookingId).toLowerCase();
   const reason = input.reason.trim();
   const hash = hashOf(id, reason);
@@ -91,8 +74,9 @@ export async function adminCloseBooking(bookingId: string, adminId: string,
   let audited = false;
   let refunded = 0;
   try {
-    const booking = await Container.get(BookingService).cancelByDoctor(id, { _id: adminId, userType: 'admin' }, reason, {
-      expectedUpdatedAt: input.expectedUpdatedAt,
+    // S5d: the admin's reason is internal (audit row only); the patient sees a fixed notice and the cause is 'admin'.
+    const booking = await Container.get(BookingService).cancelByDoctor(id, { _id: adminId, userType: 'admin' }, ADMIN_CLOSE_PUBLIC_REASON, {
+      expectedUpdatedAt: input.expectedUpdatedAt, asAdmin: true,
       inTx: async (after, s, amount) => {
         refunded = Number(amount ?? 0);
         await BookingAdminCloseModel.create([{ adminId, requestKey: input.requestKey, requestHash: hash, bookingId: id,

@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import Joi from 'joi';
-import mongoose, { Schema, model, Model } from 'mongoose';
 import BookingModel from '@/modules/bookings/model';
+import { BookingAdminClearModel, type ClearedField } from '@/modules/bookings/model/adminClear';
+import { assertIndexBuilt } from '@/modules/common/utils/requiredCollection';
 import { AppError } from '@/modules/common/types';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -13,37 +14,18 @@ import logger from '@/services/logger';
  * longer be linked on its strength) and one audit row is written in the same transaction: who, when, why, and the ids
  * and file references that were removed (no medicines, diagnosis or names). The stored files are not deleted.
  */
-export type ClearedField = 'prescription' | 'report';
-
-export interface IBookingAdminClear {
-  bookingId: string;
-  field: ClearedField;
-  reason: string;
-  adminId: string;
-  clearedAt: Date;
-  removed: { prescribedBySpecialistId?: string; prescribedAt?: string; markerAt?: string; fileUrls?: string[] };
-}
-
-const bookingAdminClearSchema = new Schema<IBookingAdminClear>({
-  bookingId: { type: String, required: true, index: true },
-  field: { type: String, required: true, enum: ['prescription', 'report'] },
-  reason: { type: String, required: true, trim: true },
-  adminId: { type: String, required: true },
-  clearedAt: { type: Date, required: true },
-  removed: {
-    type: new Schema({ prescribedBySpecialistId: String, prescribedAt: String, markerAt: String, fileUrls: { type: [String], default: undefined } }, { _id: false }),
-    default: {},
-  },
-}, { versionKey: false });
-
-export const BookingAdminClearModel: Model<IBookingAdminClear> = (mongoose.models.BookingAdminClear as Model<IBookingAdminClear>)
-  || model<IBookingAdminClear>('BookingAdminClear', bookingAdminClearSchema);
+// The model lives in bookings/model/adminClear.ts so sync-indexes creates its collection and index (production runs
+// with autoCreate/autoIndex off).
+export { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
+export type { IBookingAdminClear, ClearedField } from '@/modules/bookings/model/adminClear';
 
 export const adminClearBodySchema = Joi.object({
   reason: Joi.string().trim().min(3).max(500).required().messages({ 'any.required': 'reason is required' }),
 });
 
 export async function clearBookingField(bookingId: string, field: ClearedField, adminId: string, reason: string) {
+  // The audit row is written inside the transaction: its collection must already exist (sync-indexes), else 503.
+  await assertIndexBuilt(BookingAdminClearModel, { bookingId: 1 });
   return runLedgerTransaction(async (session) => {
     const booking = await BookingModel.findById(bookingId).select({ prescription: 1, report: 1, 'lifecycle.prescriptionUploaded': 1 })
       .session(session).lean() as { prescription?: Record<string, any>; report?: Record<string, any>; lifecycle?: { prescriptionUploaded?: { at?: string } } } | null;

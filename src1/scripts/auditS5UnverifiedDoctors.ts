@@ -11,6 +11,13 @@
 //   - linkedPharmacyOrders: pharmacy orders whose linkedConsultationId is one of those bookings;
 //   - nameChangesAfterVerification: not available - specialist edits keep no history (no verifiedAt, no name log).
 // It only reads (find / aggregate without $out or $merge); it writes nothing and creates no collection or index.
+//
+// Acting on the list (main line): the doctor cannot close these bookings itself (its status change is refused, and on
+// main the portal's cancel answers 409 DEDICATED_BOOKING_COMMAND_REQUIRED). The patient or an admin cancels with
+// POST /bookings/:id/cancel before the appointment time (full refund to the wallet); a booking whose time has passed
+// needs the stage-line admin close (S5c) or manual handling. A planted prescription or report is removed with
+// DELETE /bookings/:id/prescription | /report (admin, reason). Deploy: run npm run sync-indexes first (it creates the
+// bookingadminclears and specialistverifications collections the S5 admin commands require; without them they answer 503).
 import mongoose from 'mongoose';
 import { CONFIG } from '@/config/config';
 import SpecialistModel from '@/modules/specialists/model';
