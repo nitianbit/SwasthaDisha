@@ -366,8 +366,8 @@ async function settleMoney(booking: IBooking, id: string, records: PaymentRow[],
 export async function cancelBookingSettlement(p: {
   bookingId: string; requester: { _id: string; userType: string }; reason: string; cancelledAt: string; cause?: string;
   lifecycle: (b: IBooking) => IBooking['lifecycle']; enforceWindow: (b: IBooking) => void; wallets: WalletRepository;
-  /** Runs inside the transaction after a (first) cancellation, e.g. a partner audit. */
-  inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
+  /** Runs inside the transaction after a (first) cancellation, e.g. a partner audit; `refunded` is what was refunded. */
+  inTx?: (b: IBooking, s: ClientSession, refunded: number) => Promise<void>;
   /** Q6: requester 'clinic' — the desk's clinic and branch scope, applied to the booking as read in the transaction. */
   desk?: DeskScope;
   /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
@@ -474,7 +474,7 @@ export async function cancelBookingSettlement(p: {
     await BookingModel.updateOne({ _id: id, status: 'cancelled' },
       { $set: { holds: { version: 1, heldSlotId: null, followUpParentId: null } } }, { session: s });
     const after = await BookingModel.findById(id).session(s).lean() as IBooking;
-    if (p.inTx) await p.inTx(after, s);
+    if (p.inTx) await p.inTx(after, s, refunded);
     return { booking: after, refunded, alreadyCancelled: false };
   });
 }

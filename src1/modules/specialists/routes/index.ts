@@ -15,6 +15,7 @@ import { SpecialistController } from '@/modules/specialists/controller';
 import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialists/eligibility';
 import { requireEligibleDoctorUnlessCancel, restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
 import { takeVerificationFence, fenceAndRecordVerification } from '@/modules/specialists/verification';
+import { adminCloseSchema, adminCloseHandler } from '@/modules/bookings/adminClose';
 import {
   createSpecialistSchema,
   updateSpecialistSchema,
@@ -113,6 +114,10 @@ specialistRouter.post('/admin/bookings/:bookingId/reschedule-no-show', requireAd
 // Q16a: only an admin cancels a moved no-show; `refund` (required) chooses whether the patient is refunded.
 specialistRouter.post('/admin/bookings/:bookingId/cancel-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
   validate(clinicV.adminCancelNoShowSchema, 'body'), catchAsync(adminCancelNoShow));
+// S5c: an admin closes any pending/confirmed consultation with a full refund (as a doctor cancellation, no window), e.g.
+// one whose doctor is no longer verified or active; reason and request key required, audited in the same transaction.
+specialistRouter.post('/admin/bookings/:bookingId/close', requireAdmin, validate(bookingIdParamSchema, 'params'),
+  validate(adminCloseSchema, 'body'), catchAsync(adminCloseHandler));
 specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
 // S5b: accepting (and creating a clinic below) is for verified, active doctors only; declining and leaving stay open.
 specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(requireEligibleDoctor),

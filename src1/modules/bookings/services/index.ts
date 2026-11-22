@@ -2,7 +2,7 @@ import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { BookingRepository, flagLegacyOriginalMonth } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
-import { Types } from 'mongoose';
+import { ClientSession, Types } from 'mongoose';
 import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
@@ -1579,7 +1579,9 @@ export class BookingService {
    * Q4: the booking's own doctor cancels it (the portal's former 409): one settlement transaction like a customer
    * cancellation, always a full refund to the wallet, cause 'doctor'. Admins may do the same.
    */
-  async cancelByDoctor(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, reason: string): Promise<IBooking> {
+  async cancelByDoctor(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, reason: string,
+    // S5c: the admin close adds its audit to the same transaction and may fence the version it reviewed.
+    opts: { inTx?: (b: IBooking, s: ClientSession, refunded: number) => Promise<void>; expectedUpdatedAt?: Date | string | null } = {}): Promise<IBooking> {
     // Q4b: an instant consultation's money lives on its request; its own command refunds the allocation.
     const kind = Types.ObjectId.isValid(bookingId) ? await BookingModel.findById(bookingId).select({ bookingKind: 1 }).lean() as IBooking | null : null;
     if (kind?.bookingKind === 'instant') {
@@ -1595,10 +1597,13 @@ export class BookingService {
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
       // Q16a (L8): a desk appointment the doctor cancels is recorded in the clinic's audit trail with the cancellation
       // (the workspace has no notification inbox; the clinic sees it there and in its appointment list).
-      inTx: async (b, s) => {
-        if (!b.clinicDesk) return;
-        const { recordDoctorDeskCancelIn } = await import('@/modules/partners/services/clinic');
-        await recordDoctorDeskCancelIn(b, requester, reason, s);
+      expectedUpdatedAt: opts.expectedUpdatedAt,
+      inTx: async (b, s, refunded) => {
+        if (b.clinicDesk) {
+          const { recordDoctorDeskCancelIn } = await import('@/modules/partners/services/clinic');
+          await recordDoctorDeskCancelIn(b, requester, reason, s);
+        }
+        if (opts.inTx) await opts.inTx(b, s, refunded);
       },
     });
     const booking = result.booking;
