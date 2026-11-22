@@ -1,5 +1,7 @@
 import { NextFunction, Response } from 'express';
-import mongoose, { Schema, model, Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
+import { SpecialistVerificationModel } from '@/modules/specialists/model/verification';
+import { assertIndexBuilt } from '@/modules/common/utils/requiredCollection';
 import SpecialistModel from '@/modules/specialists/model';
 import { AppError } from '@/modules/common/types';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -16,34 +18,9 @@ import logger from '@/services/logger';
  *   row before the write - who, when, and the name, registration number, degree and specialization being verified - and
  *   marks it applied or not applied once the request answers.
  */
-export interface ISpecialistVerification {
-  specialistId: string | null;
-  verifiedBy: string;
-  requestedAt: Date;
-  outcome: 'pending' | 'applied' | 'not_applied';
-  httpStatus?: number;
-  name?: string;
-  medicalRegistrationNumber?: string;
-  degree?: string;
-  specialization?: string;
-  fenced: boolean;
-}
-
-const verificationSchema = new Schema<ISpecialistVerification>({
-  specialistId: { type: String, default: null, index: true },
-  verifiedBy: { type: String, required: true },
-  requestedAt: { type: Date, required: true },
-  outcome: { type: String, required: true, enum: ['pending', 'applied', 'not_applied'] },
-  httpStatus: Number,
-  name: String,
-  medicalRegistrationNumber: String,
-  degree: String,
-  specialization: String,
-  fenced: { type: Boolean, required: true },
-}, { versionKey: false });
-
-export const SpecialistVerificationModel: Model<ISpecialistVerification> =
-  (mongoose.models.SpecialistVerification as Model<ISpecialistVerification>) || model<ISpecialistVerification>('SpecialistVerification', verificationSchema);
+// The model lives in specialists/model/verification.ts so sync-indexes creates its collection and index.
+export { SpecialistVerificationModel } from '@/modules/specialists/model/verification';
+export type { ISpecialistVerification } from '@/modules/specialists/model/verification';
 
 const FENCE_KEYS = ['expectedName', 'expectedRegistrationNumber', 'expectedUpdatedAt'] as const;
 type Fence = Partial<Record<(typeof FENCE_KEYS)[number], string>>;
@@ -88,6 +65,7 @@ export const fenceAndRecordVerification = async (req: AuthRequest, res: Response
     const v = Object.prototype.hasOwnProperty.call(body, k) ? body[k] : current?.[k];
     return v == null || v === '' ? undefined : String(v);
   };
+  await assertIndexBuilt(SpecialistVerificationModel, { specialistId: 1 }); // the audit's collection exists (sync-indexes), else 503
   const row = await SpecialistVerificationModel.create({
     specialistId: id ? String(id).toLowerCase() : null, verifiedBy: String(req.user?._id ?? ''), requestedAt: new Date(), outcome: 'pending',
     name: value('name'), medicalRegistrationNumber: value('medicalRegistrationNumber'), degree: value('degree'),

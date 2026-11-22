@@ -50,6 +50,7 @@ import WalletModel from '@/modules/wallet/model';
 import { HRRepository } from '@/modules/hr/repository';
 import { HRService } from '@/modules/hr/services';
 import { decideFileAccess } from '@/modules/file/access';
+import { FileGrantModel } from '@/modules/file/model/access';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/s5_unverified_doctors_check?directConnection=true';
@@ -79,6 +80,12 @@ const fakeRazorpay = {
 async function main() {
   await mongoose.connect(FIXTURE_URL);
   await mongoose.connection.dropDatabase();
+  // The deploy step itself (npm run sync-indexes) against this throwaway database: it must build the S5 audit collections.
+  execFileSync('npx', ['tsx', '--tsconfig', 'tsconfig.json', 'src1/scripts/syncIndexes.ts'],
+    { env: { ...process.env, MONGODB_URL: FIXTURE_URL }, stdio: ['ignore', 'ignore', 'ignore'] });
+  const indexKeys = async (collection: string) => (await mongoose.connection.db.collection(collection).listIndexes().toArray().catch(() => []))
+    .map((ix) => JSON.stringify(ix.key));
+  const syncedAuditIndexes = { clears: await indexKeys('bookingadminclears'), verifications: await indexKeys('specialistverifications') };
   await Promise.all([BookingModel.syncIndexes(), SpecialistModel.syncIndexes()]);
 
   // tsx emits no decorator metadata: the services the controllers resolve are wired by hand before the routers load.
@@ -195,6 +202,11 @@ async function main() {
     const bUnv = await booking(unv, sUnv2, { doctorName: 'Dr Real Famous', ...privateFields });
     const bVer = await booking(ver, sVer3, privateFields);
     const bIna = await booking(ina, sIna1);
+
+    await check('review 2-1: npm run sync-indexes creates the S5 audit collections with their indexes', async () => {
+      assert.ok(syncedAuditIndexes.clears.includes('{"bookingId":1}'), 'bookingadminclears: ' + syncedAuditIndexes.clears.join(' '));
+      assert.ok(syncedAuditIndexes.verifications.includes('{"specialistId":1}'), 'specialistverifications: ' + syncedAuditIndexes.verifications.join(' '));
+    });
 
     // The defect as the review proved it: the sign-up renames itself before anyone verifies it (onboarding still allowed).
     await check('an unverified doctor still reads and edits its own profile (onboarding)', async () => {
@@ -442,7 +454,7 @@ async function main() {
       assert.equal((await expect('cust', 'GET', '/bookings/' + bUnv, 200)).json.data.contactNo, '9123456789');
     });
 
-    await check('review 6a: an ineligible doctor may still cancel (it refunds the patient); confirm and complete stay refused', async () => {
+    await check('review 6a: the S5 guard does not stop an ineligible doctor\'s cancel (main: it answers 409; the patient cancels); confirm and complete stay refused', async () => {
       const bUnvCancel = await booking(unv, await slot(unv, '1:00 PM'));
       const r = await call('unv', 'PATCH', `/specialists/me/appointments/${bUnvCancel}/status`, { status: 'cancelled' });
       assert.notEqual(r.json.code, 'SPECIALIST_NOT_VERIFIED', 'cancel is not stopped by the S5 guard: ' + JSON.stringify(r.json));
@@ -450,6 +462,67 @@ async function main() {
       for (const status of ['confirmed', 'completed']) {
         await expect('unv', 'PATCH', `/specialists/me/appointments/${bUnvCancel}/status`, 403, { status }, 'SPECIALIST_NOT_VERIFIED');
       }
+      // On the main line the portal's cancel is a 409 (dedicated command); the patient's own cancel closes it.
+      await expect('cust', 'POST', `/bookings/${bUnvCancel}/cancel`, 200, { cancellationReason: 'Doctor unavailable' });
+      assert.equal((await BookingModel.findById(bUnvCancel).lean())?.status, 'cancelled');
+    });
+
+    await check('review 2-4: an interrupted keyed create is not completed for an ineligible doctor; a finished one still answers its receipt', async () => {
+      const keyed = async (requestKey: string, extra: Record<string, unknown> = {}) => booking(unv, await slot(unv, '5:00 PM'), {
+        createRequestKey: requestKey, status: 'pending', paymentStatus: 'pending', price: 300, originalPrice: 300,
+        createTerms: { basePrice: 300, discountAmount: 0, useWalletBalance: false }, createdAt: new Date(), ...extra });
+      const body = (requestKey: string, slotId: string) => ({ bookingType: 'consultation', requestKey, specialistId: unv, slotId, bookingDate: date, bookingTime: '5:00 PM',
+        primaryConcern: 'Chest pain', consultationMode: 'in-person' });
+      const half = await keyed('s5-interrupted-0001');
+      const halfSlot = String((await BookingModel.findById(half).lean())!.slotId);
+      await expect('cust', 'POST', '/bookings', 400, body('s5-interrupted-0001', halfSlot), 'SPECIALIST_NOT_VERIFIED');
+      const after = await BookingModel.findById(half).lean();
+      assert.equal(after?.paymentTransactionId, undefined, 'no payment order was made'); assert.equal(after?.status, 'pending');
+      const done = await keyed('s5-finished-00001', { paymentTransactionId: oid() });
+      const doneSlot = String((await BookingModel.findById(done).lean())!.slotId);
+      const replay = await expect('cust', 'POST', '/bookings', 201, body('s5-finished-00001', doneSlot));
+      assert.equal(String(replay.json.data.booking._id), done); assert.equal(replay.json.data.replayed, true);
+    });
+
+    await check('review 2-5: an ineligible doctor no longer reads its bookings\' files by URL; the patient and a verified doctor still do', async () => {
+      const bRx = await booking(unv, await slot(unv, '6:00 PM'));
+      const rx = `bookings/${bRx}/prescription-1700000000001.pdf`;
+      await BookingModel.updateOne({ _id: bRx }, { $set: { prescription: { fileUrls: ['/api/static/' + rx] },
+        documents: [{ type: 'report', url: '/api/static/general/s5-patient-report.pdf', fileName: 'r.pdf' }] } });
+      await FileGrantModel.collection.insertOne({ path: 'general/s5-patient-report.pdf', kind: 'booking', model: 'Booking',
+        resourceId: bRx, field: 'documents.url', source: 'attach', state: 'active', gen: 1, createdByType: 'user', createdById: cust, createdAt: new Date() });
+      const as = (r: Record<string, string>, path: string) => decideFileAccess(r as never, path).then((d) => d.allow);
+      const unvR = { _id: unv, specialistId: unv, userType: 'specialist' }; const custR = { _id: cust, userType: 'user' };
+      assert.equal(await as(unvR, rx), false, 'doctor: prescription'); assert.equal(await as(unvR, 'general/s5-patient-report.pdf'), false, 'doctor: document');
+      assert.equal(await as(custR, rx), true, 'patient: prescription'); assert.equal(await as(custR, 'general/s5-patient-report.pdf'), true, 'patient: document');
+      // The doctor's own onboarding documents are not booking files: still readable by it (specialist binding).
+      await FileGrantModel.collection.insertOne({ path: 'general/s5-own-degree.pdf', kind: 'specialist', model: 'Specialist',
+        resourceId: unv, field: 'documents.url', source: 'attach', state: 'active', gen: 1, createdByType: 'specialist', createdById: unv, createdAt: new Date() });
+      await SpecialistModel.updateOne({ _id: unv }, { $set: { documents: [{ type: 'medical-degree', url: '/api/static/general/s5-own-degree.pdf' }] } });
+      assert.equal(await as(unvR, 'general/s5-own-degree.pdf'), true, 'doctor: own degree');
+      // A verified doctor (control): its booking's files.
+      await BookingModel.updateOne({ _id: bVer }, { $set: { prescription: { fileUrls: [`/api/static/bookings/${bVer}/prescription-1700000000002.pdf`] } } });
+      assert.equal(await as({ _id: ver, specialistId: ver, userType: 'specialist' }, `bookings/${bVer}/prescription-1700000000002.pdf`), true);
+    });
+
+    await check('review 2-1b: without their collections the admin clear and the verification answer 503 INDEXES_OUTDATED and change nothing', async () => {
+      const bX = await booking(unv, await slot(unv, '7:00 PM'), { report: { message: 'x' } });
+      const docX = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(docX), name: 'Dr Pending', isActive: true, isVerified: false,
+        createdAt: new Date(), updatedAt: new Date() } as never);
+      for (const c of ['bookingadminclears', 'specialistverifications']) await mongoose.connection.db.dropCollection(c).catch(() => undefined);
+      await expect('admin', 'DELETE', `/bookings/${bX}/report`, 503, { reason: 'Index check' }, 'INDEXES_OUTDATED');
+      assert.ok((await BookingModel.findById(bX).lean())?.report, 'report kept');
+      await expect('admin', 'PUT', '/specialists/' + docX, 503, { isVerified: true }, 'INDEXES_OUTDATED');
+      assert.equal((await SpecialistModel.findById(docX).lean())?.isVerified, false);
+      const names = (await mongoose.connection.db.listCollections().toArray()).map((c) => c.name);
+      assert.equal(names.includes('bookingadminclears') || names.includes('specialistverifications'), false, 'no collection created on the fly');
+      // After sync-indexes (here: the same create + index build) both work.
+      const { BookingAdminClearModel } = await import('@/modules/bookings/model/adminClear');
+      const { SpecialistVerificationModel } = await import('@/modules/specialists/model/verification');
+      for (const M of [BookingAdminClearModel, SpecialistVerificationModel] as mongoose.Model<any>[]) { await M.createCollection(); await M.createIndexes(); }
+      await expect('admin', 'DELETE', `/bookings/${bX}/report`, 200, { reason: 'Index check' });
+      await expect('admin', 'PUT', '/specialists/' + docX, 200, { isVerified: true });
     });
 
     await check('review 2: a pending booking with an ineligible doctor takes no payment; a captured payment is recorded and returned to the wallet', async () => {
@@ -501,7 +574,7 @@ async function main() {
         { _id: new Types.ObjectId(docG), name: 'Dr Nofence', medicalRegistrationNumber: 'R-2', isActive: true, isVerified: false,
           createdAt: new Date(), updatedAt: new Date() },
       ] as never);
-      const rows = () => mongoose.connection.db.collection('specialistverifications').find({}).toArray();
+      const rows = () => mongoose.connection.db.collection('specialistverifications').find({ specialistId: { $in: [docF, docG] } }).toArray();
       await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedName: 'Dr Other' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
       await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedRegistrationNumber: 'R-9' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
       await expect('admin', 'PUT', '/specialists/' + docF, 409, { isVerified: true, expectedUpdatedAt: '2026-11-21T10:00:00.000Z' }, 'SPECIALIST_CHANGED_SINCE_REVIEW');
