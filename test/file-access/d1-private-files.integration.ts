@@ -148,6 +148,9 @@ async function main() {
       status: 'confirmed', paymentStatus: 'paid',
       // S5 review: a server-written prescription PDF is readable while the booking's prescription names it.
       prescription: { fileUrls: [`/api/static/bookings/${bookingId.toHexString()}/prescription-1700000000000.pdf`] } } as never);
+    // S5 re-review: a doctor reads booking files only while verified and active; the fixture's doctors are.
+    await mongoose.connection.collection('specialists').insertMany([spec, otherSpec].map((d) => ({ _id: new Types.ObjectId(d._id), name: 'Dr D1',
+      isActive: true, isVerified: true })) as never);
 
     await check('a server-written prescription is read by the booking’s customer, specialist, pharmacy and HR only', async () => {
       const rel = `bookings/${bookingId.toHexString()}/prescription-1700000000000.pdf`;

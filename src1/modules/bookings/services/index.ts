@@ -699,6 +699,9 @@ export class BookingService {
     // The payment deadline concerns priced bookings only: a free one is always finished (it never expires).
     const pricedAndLate = Number(booking.price || 0) > 0 && paymentDeadlinePassed(booking, new Date());
     if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !pricedAndLate) {
+      // S5 review: finishing an interrupted create books the doctor now: only a verified, active one (a pure replay of a
+      // finished create below still answers its receipt).
+      if (booking.specialistId) await assertNotIneligibleDoctor(booking.specialistId);
       const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {

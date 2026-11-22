@@ -37,8 +37,11 @@ export const requireEligibleDoctor = async (req: AuthRequest, _res: Response, ne
 };
 
 /**
- * Consult status change: a cancellation by the doctor stays possible for a doctor who is not eligible (it refunds the
- * patient in full and only reduces what the doctor can do); confirm, complete and no-show need an eligible doctor.
+ * Consult status change: a cancellation by the doctor is not stopped by this guard for a doctor who is not eligible (it
+ * only reduces what the doctor can do); confirm, complete and no-show need an eligible doctor. On the main line the
+ * portal's cancel then answers 409 DEDICATED_BOOKING_COMMAND_REQUIRED (bookings are cancelled by the patient or an admin
+ * with POST /bookings/:id/cancel, before the appointment time); on the stage line it is the doctor cancellation command
+ * (full refund).
  */
 export const requireEligibleDoctorUnlessCancel = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   if ((req.body as { status?: unknown } | undefined)?.status === 'cancelled') { next(); return; }
@@ -145,6 +148,7 @@ export function restrictDoctorView(data: unknown): unknown {
   const d = data as Record<string, unknown>;
   if ('booking' in d || 'patient' in d || 'consultations' in d) {
     return {
+      ...(pick(d, SAFE_BOOKING_KEYS) as object), // e.g. an instant consultation's bookingId / status / time
       ...('booking' in d ? { booking: restrictBooking(d.booking) } : {}),
       ...('patient' in d ? { patient: pick(d.patient, SAFE_PATIENT_KEYS) } : {}),
       ...(Array.isArray(d.consultations) ? { consultations: d.consultations.map(restrictBooking) } : {}),
