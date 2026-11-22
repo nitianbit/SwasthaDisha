@@ -19,6 +19,7 @@ import PaymentRecordModel from '@/modules/payment/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 
 /**
  * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
@@ -132,6 +133,9 @@ export class PharmacyWalletService {
   async adminTopupByKey(pharmacyId: string, rawKey: string): Promise<{ state: 'credited'; transaction: ReturnType<typeof transactionView>; wallet: Record<string, unknown> | null }
     | { state: 'not_found' }> {
     const key = String(rawKey ?? '').trim();
+    // r8 B1: a hinted read on a missing or different (narrower) partial index would answer not_found; fail closed (503).
+    await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, referenceType: 1, referenceId: 1 });
+    await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, operationKey: 1 });
     let row: IPharmacyWalletTransaction | null = null;
     for (const q of adminTopupByKeyLookups(pharmacyId, key)) {
       row = await PharmacyWalletTransactionModel.findOne(q.filter).hint(q.hint).lean() as IPharmacyWalletTransaction | null;

@@ -184,6 +184,36 @@ async function main() {
     };
 
 
+    // ───────────────────────── B1: by-key read fails closed ─────────────────────────
+    await check('B1: the by-key read answers 503 INDEXES_OUTDATED (never not_found) when either unique index is missing or narrower; works again once fixed', async () => {
+      const { resetIndexChecks } = await import('@/modules/common/utils/requiredIndex');
+      await expect('ADMIN', 'POST', '/pharmacy-wallet/topup', 200, { pharmacyId: P, amount: 25 }, undefined, { 'idempotency-key': 'reight-b1-key' });
+      const url = `/pharmacy-wallet/topups/admin/by-key/reight-b1-key?pharmacyId=${P}`;
+      const missing = `/pharmacy-wallet/topups/admin/by-key/reight-b1-none?pharmacyId=${P}`;
+      assert.equal((await expect('ADMIN', 'GET', url, 200)).json.data.state, 'credited');
+      const coll = PharmacyWalletTransactionModel.collection;
+      const names = { ref: 'pharmacyId_1_referenceType_1_referenceId_1', op: 'pharmacyId_1_operationKey_1' };
+      const keysOf = { ref: { pharmacyId: 1, referenceType: 1, referenceId: 1 }, op: { pharmacyId: 1, operationKey: 1 } };
+      try {
+        for (const which of ['ref', 'op'] as const) {
+          // Same keys, a narrower filter (as after a failed sync-indexes): a hinted read would silently miss rows.
+          await coll.dropIndex(names[which]);
+          await coll.createIndex(keysOf[which], { name: names[which], unique: true, partialFilterExpression: { transactionType: 'never' } });
+          resetIndexChecks();
+          await expect('ADMIN', 'GET', url, 503, undefined, 'INDEXES_OUTDATED');
+          await expect('ADMIN', 'GET', missing, 503, undefined, 'INDEXES_OUTDATED');
+          // Missing altogether.
+          await coll.dropIndex(names[which]);
+          resetIndexChecks();
+          await expect('ADMIN', 'GET', missing, 503, undefined, 'INDEXES_OUTDATED');
+          await PharmacyWalletTransactionModel.syncIndexes();
+          resetIndexChecks();
+          assert.equal((await expect('ADMIN', 'GET', url, 200)).json.data.state, 'credited', `${which}: restored`);
+          assert.deepEqual((await expect('ADMIN', 'GET', missing, 200)).json.data, { state: 'not_found' });
+        }
+      } finally { await PharmacyWalletTransactionModel.syncIndexes(); resetIndexChecks(); }
+    });
+
     // ───────────────────────── B6: holder.typedName ─────────────────────────
     await check('B6: holder.typedName is the name THIS pharmacy typed on its own link; another pharmacy never sees it; null without a link', async () => {
       const r = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201,
