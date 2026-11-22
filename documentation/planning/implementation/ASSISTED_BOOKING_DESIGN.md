@@ -1975,3 +1975,17 @@ it; 1–100 characters). Answers (`Cache-Control: private, no-store`):
 Web flow after a lost top-up answer: call by-key with the form's key; `credited` → show the transaction and wallet (do not
 resend); `not_found` → resend the same body with the same key. Never reuse a key with another amount or note (409
 `IDEMPOTENCY_KEY_REUSED`).
+
+### 21.4 Before production (r8, 2026-11-23)
+
+Branch `m0/r8-before-production` from `e90952cc` (r7, origin/stage). Local commits only. Checks:
+`test/assisted/r8-before-production.integration.ts` (7 checks; each fails on `e90952cc`).
+
+| # | Finding | Fix |
+|---|---|---|
+| B1 (money) | The admin by-key read hints partial unique indexes; a missing or narrower index answered `not_found` (or 500) | Before the two reads, `assertUniqueIndex` checks `{pharmacyId, referenceType, referenceId}` and `{pharmacyId, operationKey}` as the schema declares them; otherwise 503 `INDEXES_OUTDATED`, never `not_found` |
+| B2 | The doctor list's `nextSlot` fallback walked every unresolved doctor at once, up to 60 candidate days each (measured 6 256 queries) | One aggregation (`$match` the candidate filter, `$group` by doctor, `$min` date) gives each doctor's first candidate day (none: no read); each walk reads one window of `DOCTOR_ROLLING_DAYS` + 7 calendar days from it (day by day only past 20 000 rows); at most 8 walks at a time. No `$firstN`/`$topN` |
+| B3 | `clinicBranchContext` compared branch ids exactly, `clinicBranchAdmission` lower-cased: a slot could be listed and then refused | Both compare lower-cased; the clinic lookup in `clinicBranchAdmission` is keyed by the lower-cased partner id |
+| B4 | `GET /pharmacy-assisted/doctors/:id/slots` silently dropped the cut-off day and later past 5000 candidate slots | Past the shared read's cut-off the rest of the window (at most 14 days) is read day by day; a single day above 20 000 rows answers `truncated: true` (absent otherwise) |
+| B5 | The admin top-up `Idempotency-Key` allowed any characters | Admin `POST /pharmacy-wallet/topup` header and the by-key `:key` must match `^[A-Za-z0-9_-]{8,100}$` (after trimming), else 400 `VALIDATION_ERROR`. The web's keys (32 hex) match. The pharmacy's own Razorpay top-up is unchanged |
+| B6 | The web read the typed name by paging `/pharmacy-customers` | The booker view's `holder` is `{ pharmacyCustomerId, name, typedName }`: `typedName` is the name THIS pharmacy typed on its own link (as stored), or null; never another pharmacy's |
