@@ -13,7 +13,7 @@ import SlotModel from '@/modules/slots/model';
 import SpecialistModel from '@/modules/specialists/model';
 import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
-import { clinicBranchAdmission } from '@/modules/doctors/services/schedule';
+import { clinicBranchAdmission, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
 import UserModel from '@/modules/user/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { WalletRepository } from '@/modules/wallet/repository';
@@ -73,8 +73,12 @@ const DOCTOR_FIELDS = { name: 1, specialization: 1, languages: 1, city: 1, pinco
 const SLOT_READ_CAP = 5000;
 /** r7: one doctor's one day is read whole (a bound far above any real day, so the earliest time is never cut off). */
 const DAY_READ_CAP = 20000;
-/** r7: at most this many days holding candidate slots are read, one by one, for one doctor's next bookable slot. */
-const WALK_DAYS = 60;
+/**
+ * r8 B2: one doctor's next-slot walk covers at most this many calendar days from its first candidate day (the doctor
+ * rolling window plus a margin), and at most WALK_PARALLEL doctors are walked at a time.
+ */
+const WALK_CALENDAR_DAYS = DOCTOR_ROLLING_DAYS + 7;
+const WALK_PARALLEL = 8;
 
 /** The stored slots an assisted booking might take (the rest of the rules are checked on each row: admitOpen). */
 const candidateFilter = (mode: DoctorQuery['mode']) => ({
@@ -132,24 +136,35 @@ async function openSlotsByDoctor(doctorIds: string[], fromYmd: string, toYmd: st
 }
 
 /**
- * r7: one doctor's earliest bookable slot on or after `fromYmd`, read day by day (the first day holding a candidate,
- * then that whole day), skipping leave days, for at most WALK_DAYS such days. Each step uses the slots index
- * (specialistId, date).
+ * r7: one doctor's earliest bookable slot from `firstDay` (r8 B2: its first candidate day, from firstCandidateDays),
+ * skipping leave days, within WALK_CALENDAR_DAYS calendar days of `firstDay`: one read of that window (slots index
+ * specialistId, date) and, only past DAY_READ_CAP rows, the rest of the window day by day.
  */
-async function walkFirstOpen(doctorId: string, fromYmd: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<OpenSlot | null> {
+async function walkFirstOpen(doctorId: string, firstDay: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<OpenSlot | null> {
   const leave = adm.leave.get(lower(doctorId)) ?? [];
-  let after: string | null = null;
-  for (let i = 0; i < WALK_DAYS; i++) {
-    const date = { ...(after ? { $gt: after } : { $gte: fromYmd }), ...(leave.length ? { $nin: leave } : {}) };
-    const first = await SlotModel.findOne({ specialistId: doctorId, date, ...candidateFilter(mode) }).sort({ date: 1 }).select({ date: 1 }).lean() as
-      { date?: string } | null;
-    if (!first?.date) return null;
-    const day = await SlotModel.find({ specialistId: doctorId, date: first.date, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
+  const last = addDaysYmd(firstDay, WALK_CALENDAR_DAYS - 1);
+  const read = await SlotModel.find({ specialistId: doctorId, date: { $gte: firstDay, $lte: last, ...(leave.length ? { $nin: leave } : {}) },
+    ...candidateFilter(mode) }).sort({ date: 1 }).limit(DAY_READ_CAP + 1).lean() as unknown as SlotRow[];
+  const cut = read.length > DAY_READ_CAP ? String(read[DAY_READ_CAP - 1]!.date) : null;
+  const first = admitOpen(cut ? read.filter((x) => String(x.date) < cut) : read, adm, mode, now)[0];
+  if (first || !cut) return first ?? null;
+  for (let date = cut; date <= last; date = addDaysYmd(date, 1)) {
+    if (leave.includes(date)) continue;
+    const day = await SlotModel.find({ specialistId: doctorId, date, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
     const open = admitOpen(day, adm, mode, now);
     if (open.length) return open[0]!;
-    after = String(first.date);
   }
   return null;
+}
+
+/** r8 B2: each doctor's first day holding a candidate slot on or after `fromYmd`, in one aggregation (lower-case ids). */
+async function firstCandidateDays(doctorIds: string[], fromYmd: string, mode: DoctorQuery['mode']): Promise<Map<string, string>> {
+  if (!doctorIds.length) return new Map();
+  const rows = await SlotModel.aggregate([
+    { $match: { specialistId: { $in: doctorIds }, date: { $gte: fromYmd }, ...candidateFilter(mode) } },
+    { $group: { _id: '$specialistId', first: { $min: '$date' } } },
+  ]) as { _id: string; first: string }[];
+  return new Map(rows.map((r) => [lower(r._id), String(r.first)]));
 }
 
 /** One day's bookable slots of these doctors; a day too large for one read is read doctor by doctor (r7). */
@@ -184,10 +199,16 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
   const { byDoctor, cutoff } = await openSlotsByDoctor(ids, day && day > today ? day : today, null, q.mode, now, adm);
   // r7: nextSlot is each doctor's true earliest bookable slot. The shared read is complete before `cutoff`; a doctor
   // with nothing bookable there is read on its own from `cutoff` (only when the shared read was capped).
+  // r8 B2: their first candidate days in one aggregation (none: nothing to read), then at most WALK_PARALLEL walks at a time.
   if (cutoff) {
-    await Promise.all(ids.filter((id) => !byDoctor.get(lower(id))?.length).map(async (id) => {
-      const first = await walkFirstOpen(id, cutoff, q.mode, now, adm);
-      if (first) byDoctor.set(lower(id), [first]);
+    const pending = ids.filter((id) => !byDoctor.get(lower(id))?.length);
+    const firstDays = await firstCandidateDays(pending, cutoff, q.mode);
+    const walks = pending.filter((id) => firstDays.has(lower(id)));
+    await Promise.all(Array.from({ length: Math.min(WALK_PARALLEL, walks.length) }, async () => {
+      for (let id = walks.shift(); id; id = walks.shift()) {
+        const first = await walkFirstOpen(id, firstDays.get(lower(id))!, q.mode, now, adm);
+        if (first) byDoctor.set(lower(id), [first]);
+      }
     }));
   }
   const daySlots = !day || day < today ? new Map<string, OpenSlot[]>()

@@ -214,6 +214,59 @@ async function main() {
       } finally { await PharmacyWalletTransactionModel.syncIndexes(); resetIndexChecks(); }
     });
 
+    const manySlots = (doctor: string, date: string, n: number) => SlotModel.collection.insertMany(Array.from({ length: n }, (_, i) => ({ specialistId: doctor,
+      date, startTime: `${String(9 + Math.floor((i % 600) / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`, endTime: '23:59', duration: 1,
+      maxBookings: 1, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation', serviceModes: ['video'] })) as never);
+    const slotDoctor = async (label: string) => {
+      const id = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(id), name: `Dr ${label}`, specialization: 'Slot Window', consultationFee: 500,
+        isActive: true, isVerified: true } as never);
+      return id;
+    };
+    // ───────────────────────── B2: bounded next-free-time fallback ─────────────────────────
+    await check('B2: 300 doctors, 50 with nothing bookable before the cut-off: the same nextSlot values with few slot reads, at most 8 walks at once', async () => {
+      const spec = 'Scale Bound';
+      const big = oid(); const early = Array.from({ length: 249 }, oid);
+      const late = Array.from({ length: 25 }, oid); const never = Array.from({ length: 25 }, oid);
+      // The early ones cost more, so the 51 others rank first (one page of 100 shows them all).
+      await SpecialistModel.collection.insertMany([big, ...early, ...late, ...never].map((d, i) => ({ _id: new Types.ObjectId(d), name: `Dr Bound ${i}`,
+        specialization: spec, consultationFee: early.includes(d) ? 500 : 400, isActive: true, isVerified: true })) as never);
+      const row = (doctor: string, date: string, extra: Record<string, unknown> = {}) => ({ specialistId: doctor, date, startTime: '10:00', endTime: '10:15',
+        duration: 15, maxBookings: 1, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation', serviceModes: ['video'], ...extra });
+      const nowhere = String(new Types.ObjectId());
+      // The 50: a candidate every day from day 2 to day 60 that is never bookable (a branch that does not exist).
+      const blocked = [...late, ...never].flatMap((d) => Array.from({ length: 59 }, (_, i) => row(d, day(2 + i), { serviceModes: ['in-person'], branchId: nowhere })));
+      await SlotModel.collection.insertMany([...early.map((d) => row(d, day(1))), ...blocked,
+        ...late.map((d) => row(d, day(30), { startTime: '11:00', endTime: '11:15' }))] as never);
+      await manySlots(big, day(2), 5001);
+      const expected = new Map<string, string | null>([...early.map((d) => [d, day(1)] as const), ...late.map((d) => [d, day(30)] as const),
+        ...never.map((d) => [d, null] as const), [big, day(2)]]);
+      let reads = 0; let active = 0; let peak = 0;
+      mongoose.set('debug', (coll: string) => { if (coll === SlotModel.collection.name) reads++; });
+      const original = SlotModel.find.bind(SlotModel);
+      (SlotModel as any).find = (...args: unknown[]) => {
+        const q = original(...(args as [never]));
+        if ((args[0] as any)?.specialistId && typeof (args[0] as any).specialistId === 'string') {
+          const exec = q.exec.bind(q);
+          (q as any).exec = async (...a: unknown[]) => { active++; peak = Math.max(peak, active); try { return await exec(...(a as [])); } finally { active--; } };
+        }
+        return q;
+      };
+      let rows: any[];
+      try { rows = (await expect('P', 'GET', `/pharmacy-assisted/doctors?speciality=${encodeURIComponent(spec)}&limit=100`, 200)).json.data; }
+      finally { mongoose.set('debug', false); (SlotModel as any).find = original; }
+      assert.equal(rows!.length, 100);
+      const seen = new Map<string, any>(rows!.map((r: any) => [r.doctorId, r.nextSlot]));
+      for (const d of [big, ...late, ...never]) assert.ok(seen.has(d), `doctor ${d} on the page`);
+      for (const [d, date] of expected) if (seen.has(d)) assert.equal(seen.get(d)?.date ?? null, date, `doctor ${d}`);
+      assert.equal(seen.get(big).startTime, '09:00');
+      for (const d of late) assert.equal(seen.get(d).startTime, '11:00');
+      console.log(`   B2: ${reads} slot reads, at most ${peak} walk reads at once`);
+      assert.ok(peak <= 8, `at most 8 walks at once: ${peak}`);
+      // One shared read, one aggregation, one window read for each of the 51 doctors walked (the big one included).
+      assert.ok(reads <= 2 + 51, `slot reads: ${reads}`);
+    });
+
     // ───────────────────────── B3: branch ids compared the same way when listing and booking ─────────────────────────
     await check('B3: a slot whose branch (or the branch\'s clinic) id is in upper case is listed and bookable alike, never listed then refused', async () => {
       const KB = oid(); const CL = new Types.ObjectId(); const BR = new Types.ObjectId(); const CL2 = new Types.ObjectId(); const BR2 = new Types.ObjectId();
@@ -242,15 +295,6 @@ async function main() {
     });
 
     // ───────────────────────── B4: the one-doctor slot list is never cut short silently ─────────────────────────
-    const manySlots = (doctor: string, date: string, n: number) => SlotModel.collection.insertMany(Array.from({ length: n }, (_, i) => ({ specialistId: doctor,
-      date, startTime: `${String(9 + Math.floor((i % 600) / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`, endTime: '23:59', duration: 1,
-      maxBookings: 1, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation', serviceModes: ['video'] })) as never);
-    const slotDoctor = async (label: string) => {
-      const id = oid();
-      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(id), name: `Dr ${label}`, specialization: 'Slot Window', consultationFee: 500,
-        isActive: true, isVerified: true } as never);
-      return id;
-    };
     await check('B4: a doctor with more than 5000 slots in the window gets every bookable slot, the cut-off day and later included', async () => {
       const M = await slotDoctor('Many');
       await manySlots(M, day(2), 5001);
