@@ -55,7 +55,7 @@ import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
 import {
   AdminTopupsSince, DisputeView, GatewayReadOptions, GatewayView, OBJECT_ID, adminTopupsSince, disputesReaderFor, errorText, gatewayView, logsToStderr,
-  orderPaymentsReaderFor, razorpayClientFromEnv, rechargeCreditOf, recordAmountPaise, recordFinalPaise, reportError,
+  orderPaymentsReaderFor, razorpayClientFromEnv, rechargeCreditOf, recordAmountPaise, recordFinalPaise, reportError, exitAfterFlush,
 } from '@/scripts/auditS6UncreditedWalletTopups';
 
 /** The Razorpay calls made: GET orders/{id}/payments (also by reconcile) and GET disputes. */
@@ -256,5 +256,6 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); });
+  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); })
+    .finally(exitAfterFlush);
 }

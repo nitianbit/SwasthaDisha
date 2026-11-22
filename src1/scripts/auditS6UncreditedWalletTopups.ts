@@ -306,7 +306,15 @@ export function logsToStderr(): void {
   }
 }
 
-/** On any error stdout still carries one JSON document; exit code 1 (set, not forced, so stdout is flushed). */
+/**
+ * Ends the CLI once stdout has drained, with the exit code already set. A gateway request that timed out can leave its
+ * socket open and keep Node's event loop alive, so the process is ended explicitly rather than left to drain.
+ */
+export function exitAfterFlush(): void {
+  process.stdout.write('', () => process.exit(process.exitCode ?? 0));
+}
+
+/** On any error stdout still carries one JSON document; exit code 1 (set first, then exit after stdout drains). */
 export function reportError(error: unknown): void {
   process.stdout.write(JSON.stringify({ ok: false, error: { code: errorCode(error), message: errorText(error) } }) + '\n');
   process.exitCode = 1;
@@ -333,5 +341,6 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); });
+  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); })
+    .finally(exitAfterFlush);
 }
