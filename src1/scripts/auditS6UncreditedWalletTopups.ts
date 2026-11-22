@@ -16,9 +16,15 @@
 // does not handle them; reconcile never revives a failed record). Needs the gateway.
 // `anomalies`: wallet_recharge records with only one of payerPharmacyId / the pharmacy flow - listed for review, no
 // credit advice (the service would not credit them to a pharmacy).
+// `anomalies` also lists pharmacy-flow records whose payerPharmacyId is not an ObjectId (never credited by this tooling).
 // Output: ids, amounts (rupees), dates and status only - no names, phones, e-mails, notes or signatures.
-// With RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET in the environment it asks Razorpay (GET orders/{id}/payments, read only)
-// what each order holds. It writes nothing to MongoDB and creates no collection or index; it never calls a Razorpay
+// With RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET in the environment it asks Razorpay (GET orders/{id}/payments and GET
+// disputes, read only) what each order holds and which disputes name its captured payment.
+//
+// A clean row (no admin top-up since createdAt, nothing refunded, no dispute listed) is NOT proof that the top-up was
+// never compensated: this report cannot see a dispute or chargeback the disputes list does not show, a bank transfer or
+// other payment made outside Razorpay, or a hand-written wallet entry that is not referenceType 'topup'. The runbook
+// adds a check of the payment in the Razorpay dashboard (disputes / chargebacks) and with support for every row. It writes nothing to MongoDB and creates no collection or index; it never calls a Razorpay
 // write (no capture, refund or order creation).
 //
 // Crediting a listed row after S6 is deployed: `npm run credit:s6-wallet-topup -- --record=<paymentTransactionId>`
@@ -27,7 +33,9 @@
 // reconcile of the same record would credit the pharmacy a second time. Re-run this audit afterwards: credited rows drop.
 import mongoose from 'mongoose';
 import Razorpay from 'razorpay';
+import winston from 'winston';
 import { CONFIG } from '@/config/config';
+import logger from '@/services/logger';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 
@@ -35,8 +43,13 @@ type Finding = 'unsettled' | 'paid_not_credited' | 'credited_not_processed';
 /** What Razorpay holds for one order (amounts in rupees). */
 export interface GatewayView {
   checked: true; statuses: string[]; capturedPaymentId: string | null; capturedAmount: number | null;
-  amountMatches: boolean | null; amountRefunded: number;
+  amountMatches: boolean | null;
+  /** All refunds on the order; `capturedRefunded` is the captured payment's own, `otherRefunded` other payments' of the order. */
+  amountRefunded: number; capturedRefunded: number; otherRefunded: number;
 }
+export interface DisputeView { id: string; status: string; amount: number }
+/** Read-only: every Razorpay dispute, keyed by payment id. */
+export type DisputesReader = () => Promise<Map<string, DisputeView[]>>;
 export type GatewayResult = GatewayView | { checked: false; reason: string };
 export interface AdminTopupsSince { count: number; amount: number }
 export interface S6TopupRow {
@@ -47,13 +60,15 @@ export interface S6TopupRow {
   /** An admin top-up since createdAt or a gateway refund: check by hand before crediting (credit script refuses). */
   needsCompensationCheck: boolean;
   gateway?: GatewayResult;
+  /** Disputes Razorpay lists for the captured payment (with the gateway only). */
+  disputes?: DisputeView[] | { unavailable: string };
 }
 export interface S6FailedRow {
   paymentTransactionId: string; pharmacyId: string; razorpayOrderId: string | null; amount: number; status: string;
   createdAt: string | null; gateway: GatewayView; review: 'manual: failed record with a captured payment; not handled by the credit script';
 }
 export interface S6Anomaly {
-  paymentTransactionId: string; status: string; isProcessed: boolean; hasPayerPharmacyId: boolean; hasPharmacyFlow: boolean;
+  paymentTransactionId: string; status: string; isProcessed: boolean; hasPayerPharmacyId: boolean; payerPharmacyIdValid: boolean; hasPharmacyFlow: boolean;
   amount: number; createdAt: string | null;
 }
 export interface S6TopupAudit {
@@ -66,9 +81,10 @@ export interface S6TopupAudit {
 /** Raw Razorpay order payments (paise), as GET /orders/{id}/payments returns them. */
 export type OrderPaymentsReader = (orderId: string) => Promise<{ id: string; amount: number; status: string; amount_refunded?: number }[]>;
 
-/** The service's rule for a pharmacy wallet top-up (PaymentService.isPharmacyWalletRecharge). */
+export const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+/** The service's rule for a pharmacy wallet top-up (PaymentService.isPharmacyWalletRecharge), with a well-formed pharmacy id. */
 export const PHARMACY_TOPUP_FILTER = {
-  context: 'wallet_recharge', payerPharmacyId: { $type: 'string', $ne: '' }, 'notes.flow': 'pharmacy_wallet_recharge',
+  context: 'wallet_recharge', payerPharmacyId: { $regex: OBJECT_ID }, 'notes.flow': 'pharmacy_wallet_recharge',
 } as const;
 
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : null);
@@ -90,6 +106,25 @@ export function orderPaymentsReaderFor(client: { orders: { fetchPayments: (order
   };
 }
 
+/** Read-only: pages through GET /disputes (the SDK has no per-payment lookup); undefined when the client has none. */
+export function disputesReaderFor(client: { disputes?: { all: (p: { count: number; skip: number }) => Promise<unknown> } }): DisputesReader | undefined {
+  const api = client.disputes;
+  if (!api) return undefined;
+  return async () => {
+    const byPayment = new Map<string, DisputeView[]>();
+    for (let skip = 0; ; skip += 100) {
+      const res = (await api.all({ count: 100, skip })) as { items?: { id: string; payment_id: string; status: string; amount: number | string }[] };
+      const items = res.items ?? [];
+      for (const d of items) {
+        const list = byPayment.get(d.payment_id) ?? [];
+        list.push({ id: d.id, status: d.status, amount: rupees(Number(d.amount || 0)) });
+        byPayment.set(d.payment_id, list);
+      }
+      if (items.length < 100) return byPayment;
+    }
+  };
+}
+
 /** Read-only view of an order at Razorpay; `expectedPaise` is the record's payable amount. */
 export async function gatewayView(read: OrderPaymentsReader, orderId: string, expectedPaise: number): Promise<GatewayView> {
   const items = await read(orderId);
@@ -99,6 +134,8 @@ export async function gatewayView(read: OrderPaymentsReader, orderId: string, ex
     capturedAmount: captured ? rupees(Number(captured.amount)) : null,
     amountMatches: captured ? Math.round(Number(captured.amount)) === Math.round(expectedPaise) : null,
     amountRefunded: rupees(items.reduce((a, p) => a + Number(p.amount_refunded || 0), 0)),
+    capturedRefunded: rupees(Number(captured?.amount_refunded || 0)),
+    otherRefunded: rupees(items.filter((p) => p !== captured).reduce((a, p) => a + Number(p.amount_refunded || 0), 0)),
   };
 }
 
@@ -116,8 +153,17 @@ export function rechargeCreditOf(pharmacyId: string, recordId: string) {
     .select({ _id: 1 }).lean();
 }
 
-export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader): Promise<S6TopupAudit> {
+export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, readDisputes?: DisputesReader): Promise<S6TopupAudit> {
   const rows: S6TopupRow[] = [];
+  let disputes: Map<string, DisputeView[]> | { unavailable: string } | undefined;
+  if (read) {
+    if (!readDisputes) disputes = { unavailable: 'no disputes lookup in the gateway client' };
+    else {
+      try { disputes = await readDisputes(); } catch (error) {
+        disputes = { unavailable: 'disputes lookup failed: ' + String((error as { error?: { code?: string } })?.error?.code ?? (error as Error)?.message ?? error).slice(0, 80) };
+      }
+    }
+  }
   const failed: { id: string; pharmacyId: string; orderId: string | null; paise: number; finalPaise: number; status: string; createdAt: unknown }[] = [];
   let scanned = 0;
   for await (const r of PaymentRecordModel.find(PHARMACY_TOPUP_FILTER)
@@ -150,6 +196,10 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader):
         try {
           row.gateway = await gatewayView(read, row.razorpayOrderId, recordFinalPaise(r));
           if (row.gateway.amountRefunded > 0 && finding !== 'credited_not_processed') row.needsCompensationCheck = true;
+          if (row.gateway.capturedPaymentId && disputes) {
+            row.disputes = disputes instanceof Map ? disputes.get(row.gateway.capturedPaymentId) ?? [] : disputes;
+            if ((!Array.isArray(row.disputes) || row.disputes.length) && finding !== 'credited_not_processed') row.needsCompensationCheck = true;
+          }
         } catch (error) {
           row.gateway = { checked: false, reason: 'gateway lookup failed: ' + String((error as { error?: { code?: string } })?.error?.code ?? (error as Error)?.message ?? error).slice(0, 80) };
         }
@@ -171,15 +221,16 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader):
     }
   }
 
-  // Only one of the two pharmacy markers: the service would not credit these to a pharmacy wallet.
+  // Only one of the two pharmacy markers (the service would not credit these to a pharmacy wallet), or a malformed pharmacy id.
   const anomalies: S6Anomaly[] = [];
   for await (const r of PaymentRecordModel.find({ context: 'wallet_recharge',
     $or: [{ 'notes.flow': 'pharmacy_wallet_recharge' }, { payerPharmacyId: { $exists: true, $nin: [null, ''] } }] })
     .select({ payerPharmacyId: 1, 'notes.flow': 1, status: 1, isProcessed: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ _id: 1 }).lean().cursor()) {
     const hasPayerPharmacyId = typeof r.payerPharmacyId === 'string' && r.payerPharmacyId !== '';
+    const payerPharmacyIdValid = hasPayerPharmacyId && OBJECT_ID.test(r.payerPharmacyId as string);
     const hasPharmacyFlow = (r.notes as { flow?: unknown } | undefined)?.flow === 'pharmacy_wallet_recharge';
-    if (hasPayerPharmacyId && hasPharmacyFlow) continue;
-    anomalies.push({ paymentTransactionId: String(r._id), status: r.status, isProcessed: r.isProcessed === true, hasPayerPharmacyId, hasPharmacyFlow,
+    if (payerPharmacyIdValid && hasPharmacyFlow) continue;
+    anomalies.push({ paymentTransactionId: String(r._id), status: r.status, isProcessed: r.isProcessed === true, hasPayerPharmacyId, payerPharmacyIdValid, hasPharmacyFlow,
       amount: rupees(recordAmountPaise(r)), createdAt: iso(r.createdAt) });
   }
 
@@ -197,11 +248,22 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader):
       failedWithCapture: Array.isArray(failedWithCapture) ? failedWithCapture.length : null, anomalies: anomalies.length } };
 }
 
+/** Keeps stdout for the JSON report: every console log line (service logs included) goes to stderr. */
+export function logsToStderr(): void {
+  for (const t of logger.transports) {
+    if (t instanceof winston.transports.Console) {
+      (t as unknown as { stderrLevels: Record<string, boolean> }).stderrLevels = Object.fromEntries(Object.keys(logger.levels).map((l) => [l, true]));
+    }
+  }
+}
+
 async function main() {
+  logsToStderr();
   const client = process.argv.includes('--no-gateway') ? undefined : razorpayClientFromEnv();
   await mongoose.connect(CONFIG.MONGODB_URL, { autoCreate: false, autoIndex: false });
   try {
-    const report = await auditS6UncreditedWalletTopups(client ? orderPaymentsReaderFor(client) : undefined);
+    const report = await auditS6UncreditedWalletTopups(client ? orderPaymentsReaderFor(client) : undefined,
+      client ? disputesReaderFor(client as never) : undefined);
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     const s = report.summary;
     process.stderr.write(`pharmacy top-up records scanned: ${report.scanned}; unsettled: ${s.unsettled}; paid but not credited: ${s.paid_not_credited}; ` +

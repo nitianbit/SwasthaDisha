@@ -15,6 +15,8 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose, { Types } from 'mongoose';
@@ -35,8 +37,8 @@ import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@
 import { PharmacyWalletService } from '@/modules/pharmacyWallet/services';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
-import { auditS6UncreditedWalletTopups, orderPaymentsReaderFor } from '@/scripts/auditS6UncreditedWalletTopups';
-import { creditS6WalletTopup } from '@/scripts/creditS6WalletTopup';
+import { auditS6UncreditedWalletTopups, disputesReaderFor, orderPaymentsReaderFor } from '@/scripts/auditS6UncreditedWalletTopups';
+import { creditS6WalletTopup, exitCodeOf } from '@/scripts/creditS6WalletTopup';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/s6_pharmacy_wallet_verify?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -47,6 +49,8 @@ type GatewayPayment = { id: string; order_id: string; amount: number; currency: 
 /** What Razorpay holds: payments by id and by order. */
 const gatewayPayments = new Map<string, GatewayPayment>();
 let createdOrders = 0;
+/** Razorpay's disputes (GET /disputes). */
+const gatewayDisputes: { id: string; payment_id: string; status: string; amount: number }[] = [];
 const fakeRazorpay = {
   orders: {
     create: async (o: { amount: number; currency: string }) => {
@@ -54,6 +58,9 @@ const fakeRazorpay = {
       return { id: 'order_s6_' + createdOrders + '_' + new Types.ObjectId().toHexString(), amount: o.amount, currency: o.currency, status: 'created' };
     },
     fetchPayments: async (orderId: string) => ({ items: [...gatewayPayments.values()].filter((p) => p.order_id === orderId) }),
+  },
+  disputes: {
+    all: async ({ count, skip }: { count: number; skip: number }) => ({ items: gatewayDisputes.slice(skip, skip + count) }),
   },
   payments: {
     fetch: async (id: string) => {
@@ -115,6 +122,7 @@ const customerBalance = async (u: string) => Number((await WalletModel.findOne({
 const record = async (id: string) => (await PaymentRecordModel.findById(id).lean())!;
 
 const gatewayReader = orderPaymentsReaderFor(fakeRazorpay);
+const disputesReader = disputesReaderFor(fakeRazorpay);
 /** Fixtures handed from the audit check to the credit-script check. */
 const shared: Record<string, unknown> = {};
 
@@ -294,19 +302,22 @@ async function main() {
       const done = await topup(ph, 20);
       assert.equal((await appVerifyTopup(pharmacyToken(ph), payloadOf(done))).status, 200);
       const before = await Promise.all([PaymentRecordModel.countDocuments(), PharmacyWalletTransactionModel.countDocuments(), PharmacyWalletModel.countDocuments()]);
-      const report = await auditS6UncreditedWalletTopups(gatewayReader);
+      const report = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader);
       assert.deepEqual(await Promise.all([PaymentRecordModel.countDocuments(), PharmacyWalletTransactionModel.countDocuments(), PharmacyWalletModel.countDocuments()]),
         before, 'the audit writes nothing');
       const row = (id: string) => report.rows.find((r) => r.paymentTransactionId === id);
       const s = row(stuck.record)!;
       assert.equal(s.finding, 'unsettled'); assert.equal(s.status, 'created'); assert.equal(s.amount, 700); assert.equal(s.pharmacyId, ph.pharmacyId);
-      assert.deepEqual(s.gateway, { checked: true, statuses: ['captured'], capturedPaymentId: stuck.razorpayPaymentId, capturedAmount: 700, amountMatches: true, amountRefunded: 0 });
+      assert.deepEqual(s.gateway, { checked: true, statuses: ['captured'], capturedPaymentId: stuck.razorpayPaymentId, capturedAmount: 700, amountMatches: true, amountRefunded: 0,
+        capturedRefunded: 0, otherRefunded: 0 });
+      assert.deepEqual(s.disputes, []);
       assert.deepEqual(s.adminTopupsSince, { count: 0, amount: 0 }); assert.equal(s.needsCompensationCheck, false);
       const a = row(String(abandoned.paymentTransactionId))!;
       assert.equal(a.finding, 'unsettled');
-      assert.deepEqual(a.gateway, { checked: true, statuses: [], capturedPaymentId: null, capturedAmount: null, amountMatches: null, amountRefunded: 0 });
+      assert.deepEqual(a.gateway, { checked: true, statuses: [], capturedPaymentId: null, capturedAmount: null, amountMatches: null, amountRefunded: 0,
+        capturedRefunded: 0, otherRefunded: 0 });
       assert.equal(row(done.record), undefined, 'a credited top-up is not listed');
-      assert.deepEqual(Object.keys(s).sort(), ['adminTopupsSince', 'amount', 'createdAt', 'creditTransactionId', 'finding', 'gateway', 'isProcessed',
+      assert.deepEqual(Object.keys(s).sort(), ['adminTopupsSince', 'amount', 'createdAt', 'creditTransactionId', 'disputes', 'finding', 'gateway', 'isProcessed',
         'needsCompensationCheck', 'paidAt', 'payerUserId', 'paymentTransactionId', 'pharmacyId', 'razorpayOrderId', 'razorpayPaymentId', 'status'],
         'ids, amounts, dates and status only');
       // A paid record whose credit is missing is reported as owed.
@@ -319,7 +330,7 @@ async function main() {
       assert.equal((await post('reconcile', pharmacyToken(ph), { paymentTransactionId: stuck.record })).body.data?.state, 'paid');
       assert.equal((await post('reconcile', pharmacyToken(ph), { paymentTransactionId: lost.record })).status, 200);
       assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 76000);
-      const after = await auditS6UncreditedWalletTopups(gatewayReader);
+      const after = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader);
       assert.equal(after.rows.some((r) => [stuck.record, lost.record].includes(r.paymentTransactionId)), false);
       assert.equal((await post('reconcile', pharmacyToken(ph), { paymentTransactionId: stuck.record })).status, 200);
       assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 76000, 'repeating the reconcile credits nothing more');
@@ -343,7 +354,7 @@ async function main() {
       const oddB = await PaymentRecordModel.create({ userId: ph.userId, context: 'wallet_recharge', contextId: 'odd_b', baseAmount: 10, discountAmount: 0,
         finalAmount: 10, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'order_odd_b_' + ph.pharmacyId, status: 'created',
         notes: { flow: 'pharmacy_wallet_recharge' } }); // the flow but no payer pharmacy
-      const report = await auditS6UncreditedWalletTopups(gatewayReader);
+      const report = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader);
       const row = (id: string) => report.rows.find((r) => r.paymentTransactionId === id);
       assert.deepEqual(row(comp.record)!.adminTopupsSince, { count: 1, amount: 150 }, 'only admin credits on or after createdAt');
       assert.equal(row(comp.record)!.needsCompensationCheck, true);
@@ -400,7 +411,7 @@ async function main() {
       assert.equal(h.decision, 'credit'); assert.equal(h.result?.walletBalanceChange, 45);
     });
 
-    await check('credit script: an admin top-up since the record or a gateway refund is refused unless that exact record is confirmed', async () => {
+    await check('credit script: an admin top-up since the record is refused unless that exact record is confirmed; a refund on the capture always', async () => {
       const { ph, comp, refunded } = shared as { ph: { pharmacyId: string; userId: string }; comp: string; refunded: string };
       const start = await pharmacyBalancePaise(ph.pharmacyId);
       const r1 = await creditS6WalletTopup({ recordId: comp, commit: true, client: fakeRazorpay });
@@ -409,6 +420,9 @@ async function main() {
       assert.equal(r2.decision, 'refused', 'a confirmation for another record does not count');
       const r3 = await creditS6WalletTopup({ recordId: refunded, commit: true, client: fakeRazorpay });
       assert.equal(r3.decision, 'refused'); assert.match(r3.reasons.join(' '), /refunded/);
+      // D1: a refund on the captured payment itself is never overridable (it would credit the refunded part again).
+      const r3b = await creditS6WalletTopup({ recordId: refunded, commit: true, client: fakeRazorpay, alreadyCompensatedChecked: refunded });
+      assert.equal(r3b.decision, 'refused', 'own refund: no override'); assert.equal(r3b.committed, false);
       assert.equal(await pharmacyBalancePaise(ph.pharmacyId), start, 'nothing credited');
       assert.equal((await record(comp)).status, 'created'); assert.equal((await record(refunded)).status, 'created');
       const dry = await creditS6WalletTopup({ recordId: comp, commit: false, client: fakeRazorpay, alreadyCompensatedChecked: comp });
@@ -434,6 +448,105 @@ async function main() {
         const rec = await record(t.record);
         assert.equal(rec.status, 'paid'); assert.equal(rec.isProcessed, true);
       }
+    });
+    await check('D1: a refund on another payment of the same order is overridable; on the captured payment it is not', async () => {
+      const ph = await pharmacy();
+      const t = await topup(ph, 500);
+      const sibling = 'pay_' + new Types.ObjectId().toHexString();
+      gatewayPayments.set(sibling, { id: sibling, order_id: t.razorpayOrderId, amount: 50000, currency: 'INR', status: 'refunded', amount_refunded: 50000 });
+      const a = await creditS6WalletTopup({ recordId: t.record, commit: true, client: fakeRazorpay });
+      assert.equal(a.decision, 'refused'); assert.match(a.reasons.join(' '), /another payment/); assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 0);
+      const b = await creditS6WalletTopup({ recordId: t.record, commit: true, client: fakeRazorpay, alreadyCompensatedChecked: t.record });
+      assert.equal(b.decision, 'credit'); assert.equal(b.result?.outcome, 'credited'); assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 50000);
+      // Rs 5,000 captured with Rs 2,000 refunded on that payment: refused with or without the confirmation, nothing credited.
+      const u = await topup(ph, 5000);
+      gatewayPayments.get(u.razorpayPaymentId)!.amount_refunded = 200000;
+      for (const flag of [undefined, u.record]) {
+        const o = await creditS6WalletTopup({ recordId: u.record, commit: true, client: fakeRazorpay, alreadyCompensatedChecked: flag });
+        assert.equal(o.decision, 'refused'); assert.equal(o.committed, false); assert.equal(exitCodeOf(o), 2);
+      }
+      assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 50000, 'nothing more'); assert.equal((await record(u.record)).status, 'created');
+    });
+
+    await check('D2: a dispute on the captured payment is shown by the audit and refused by the credit script; no disputes lookup needs the confirmation', async () => {
+      const ph = await pharmacy();
+      const t = await topup(ph, 260);
+      gatewayDisputes.push({ id: 'disp_' + t.record, payment_id: t.razorpayPaymentId, status: 'lost', amount: 26000 });
+      const report = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader);
+      const row = report.rows.find((r) => r.paymentTransactionId === t.record)!;
+      assert.deepEqual(row.disputes, [{ id: 'disp_' + t.record, status: 'lost', amount: 260 }]); assert.equal(row.needsCompensationCheck, true);
+      for (const flag of [undefined, t.record]) {
+        const o = await creditS6WalletTopup({ recordId: t.record, commit: true, client: fakeRazorpay, alreadyCompensatedChecked: flag });
+        assert.equal(o.decision, 'refused'); assert.match(o.reasons.join(' '), /dispute/);
+      }
+      const v = await topup(ph, 70);
+      const noDisputes = { orders: fakeRazorpay.orders };
+      assert.equal((await creditS6WalletTopup({ recordId: v.record, commit: true, client: noDisputes })).decision, 'refused');
+      const ok = await creditS6WalletTopup({ recordId: v.record, commit: true, client: noDisputes, alreadyCompensatedChecked: v.record });
+      assert.equal(ok.decision, 'credit'); assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 7000);
+    });
+
+    await check('D4: a paid and processed record with no credit is reported for manual review, not as a commit or a credit', async () => {
+      const ph = await pharmacy();
+      const t = await topup(ph, 120);
+      await PaymentRecordModel.updateOne({ _id: t.record }, { $set: { status: 'paid', isProcessed: true, razorpayPaymentId: t.razorpayPaymentId, paidAt: new Date() } });
+      for (const commit of [false, true]) {
+        const o = await creditS6WalletTopup({ recordId: t.record, commit, client: fakeRazorpay, alreadyCompensatedChecked: t.record });
+        assert.equal(o.decision, 'processed_without_credit'); assert.equal(o.committed, false); assert.equal(o.result, undefined); assert.equal(exitCodeOf(o), 2);
+      }
+      assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 0);
+    });
+
+    await check('D5: a record whose base (credited) and final (charged) amounts differ is refused', async () => {
+      const ph = await pharmacy();
+      const orderId = 'order_disc_' + new Types.ObjectId().toHexString();
+      const rec = await PaymentRecordModel.create({ userId: ph.userId, payerUserId: ph.userId, payerPharmacyId: ph.pharmacyId, context: 'wallet_recharge',
+        contextId: 'pharmacy_' + ph.pharmacyId + '_d5', baseAmount: 500, discountAmount: 50, finalAmount: 450, baseAmountPaise: 50000, discountAmountPaise: 5000,
+        finalAmountPaise: 45000, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: orderId, status: 'created',
+        notes: { flow: 'pharmacy_wallet_recharge', pharmacyId: ph.pharmacyId } });
+      checkout(orderId, 45000);
+      const o = await creditS6WalletTopup({ recordId: String(rec._id), commit: true, client: fakeRazorpay, alreadyCompensatedChecked: String(rec._id) });
+      assert.equal(o.decision, 'refused'); assert.match(o.reasons.join(' '), /base amount/); assert.equal(o.committed, false);
+      assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 0); assert.equal((await record(String(rec._id))).status, 'created');
+    });
+
+    await check('D6: a pharmacy top-up with a malformed payerPharmacyId does not abort the audit; it is an anomaly and refused', async () => {
+      const ph = await pharmacy();
+      const bad = await PaymentRecordModel.create({ userId: ph.userId, payerUserId: ph.userId, payerPharmacyId: 'not-a-pharmacy-id', context: 'wallet_recharge',
+        contextId: 'pharmacy_bad', baseAmount: 10, discountAmount: 0, finalAmount: 10, currency: 'INR', paymentGateway: 'razorpay',
+        razorpayOrderId: 'order_bad_' + ph.pharmacyId, status: 'created', notes: { flow: 'pharmacy_wallet_recharge' } });
+      try {
+        const report = await auditS6UncreditedWalletTopups(gatewayReader, disputesReader);
+        assert.equal(report.rows.some((r) => r.paymentTransactionId === String(bad._id)), false);
+        const a = report.anomalies.find((x) => x.paymentTransactionId === String(bad._id))!;
+        assert.deepEqual([a.hasPayerPharmacyId, a.payerPharmacyIdValid, a.hasPharmacyFlow], [true, false, true]);
+        const o = await creditS6WalletTopup({ recordId: String(bad._id), commit: true, client: fakeRazorpay, alreadyCompensatedChecked: String(bad._id) });
+        assert.equal(o.decision, 'refused'); assert.equal(exitCodeOf(o), 2);
+      } finally {
+        await PaymentRecordModel.deleteOne({ _id: bad._id });
+      }
+    });
+
+    await check('D7: the CLI prints pure JSON on stdout (service logs on stderr), says "already credited (replay)", and exits 2 for manual review', async () => {
+      const run = promisify(execFile);
+      const cli = (args: string[]) => run('npx', ['tsx', 'src1/scripts/creditS6WalletTopup.ts', ...args], { env: { ...process.env, MONGODB_URL: FIXTURE_URL } })
+        .then((r) => ({ code: 0, stdout: r.stdout }), (e: { code?: number; stdout?: string }) => ({ code: e.code ?? 1, stdout: e.stdout ?? '' }));
+      const ph = await pharmacy();
+      const t = await topup(ph, 35);
+      assert.equal((await appVerifyTopup(pharmacyToken(ph), payloadOf(t))).status, 200);
+      await PaymentRecordModel.updateOne({ _id: t.record }, { $set: { isProcessed: false } }); // credited, not marked processed
+      const fin = await cli([`--record=${t.record}`, '--commit']);
+      assert.equal(fin.code, 0, fin.stdout);
+      const outcome = JSON.parse(fin.stdout) as { decision: string; result?: { outcome: string; walletBalanceChange: number; isProcessed: boolean } };
+      assert.equal(outcome.decision, 'finalize_only'); assert.equal(outcome.result?.outcome, 'already credited (replay)');
+      assert.equal(outcome.result?.walletBalanceChange, 0); assert.equal(outcome.result?.isProcessed, true);
+      assert.equal(await pharmacyBalancePaise(ph.pharmacyId), 3500);
+      const p = await topup(ph, 15);
+      await PaymentRecordModel.updateOne({ _id: p.record }, { $set: { status: 'paid', isProcessed: true, razorpayPaymentId: p.razorpayPaymentId } });
+      const manual = await cli([`--record=${p.record}`, '--commit']);
+      assert.equal(manual.code, 2); assert.equal((JSON.parse(manual.stdout) as { decision: string }).decision, 'processed_without_credit');
+      const missing = await cli(['--record=' + new Types.ObjectId().toHexString()]);
+      assert.equal(missing.code, 2); assert.equal((JSON.parse(missing.stdout) as { decision: string }).decision, 'refused');
     });
   } finally {
     server.close();
