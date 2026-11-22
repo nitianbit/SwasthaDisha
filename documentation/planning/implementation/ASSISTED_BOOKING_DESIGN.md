@@ -1917,9 +1917,10 @@ on, else 503 `ASSISTED_BOOKING_DISABLED`).
   link the typed name is stored but does not show.
 - It renames only this pharmacy's link; the account's own name never changes; another pharmacy's link is 404
   `CUSTOMER_NOT_LINKED`. 400 `VALIDATION_ERROR`. Audited (`customer.typed_name`).
-- Booker view `holder: { pharmacyCustomerId: string | null, name: string | null }`: the ACCOUNT HOLDER (the phone's
-  owner) under the same names rule. For a family-member booking `patientName` is the family member and `holder.name` the
-  holder; the edit changes the holder's name, never the family member's. Never another pharmacy's link.
+- Booker view `holder: { pharmacyCustomerId: string | null, name: string | null, typedName: string | null }`: the
+  ACCOUNT HOLDER (the phone's owner) under the same names rule; `typedName` (r8) is the name THIS pharmacy typed on its
+  own link, as stored (null when none). For a family-member booking `patientName` is the family member and `holder.name`
+  the holder; the edit changes the holder's name, never the family member's. Never another pharmacy's link.
 
 **Admin: find a pharmacy** `GET /api/v1/pharmacies?name=&phone=&city=&isVerified=&isActive=&search=&page=&limit=&sortBy=&sortOrder=`
 (admin token). Admins see every pharmacy (unverified and inactive included) with the full record (`_id, name,
@@ -1941,8 +1942,8 @@ page, limit, total, totalPages }`. An admin top-up row has `referenceType: 'topu
 Idempotency-Key and `actor: { kind: 'admin', id }`. Same 400s as the wallet read. A pharmacy token reads only its own
 (its `pharmacyId` query is ignored).
 
-**Admin: top-up** `POST /api/v1/pharmacy-wallet/topup` (admin token), header `Idempotency-Key` (required, ≤ 100
-characters; make a new one per submit, keep it for a resend of the same form), body `{ pharmacyId, amount (₹, ≥ 1),
+**Admin: top-up** `POST /api/v1/pharmacy-wallet/topup` (admin token), header `Idempotency-Key` (required,
+`^[A-Za-z0-9_-]{8,100}$` after trimming, r8; make a new one per submit, keep it for a resend of the same form), body `{ pharmacyId, amount (₹, ≥ 1),
 notes? (≤ 500) }` → 200 `{ message: 'Wallet topped up', data: <wallet view as above> }`. A resend with the same key and
 content credits nothing more and answers the wallet. Errors: 400 `IDEMPOTENCY_KEY_REQUIRED`, `VALIDATION_ERROR`; 404
 `PHARMACY_NOT_FOUND`; 409 `IDEMPOTENCY_KEY_REUSED` (same key, other amount or note). The credit is never withdrawable (no
@@ -1963,14 +1964,15 @@ Branch `m0/r7-followups` from `694bfaa9` (r6, pushed as origin/stage). Local com
 
 **Admin: was this top-up credited?** `GET /api/v1/pharmacy-wallet/topups/admin/by-key/:key?pharmacyId=<id>` (admin
 token only; others 403). `:key` = the `Idempotency-Key` the admin form sent (URL-encoded; trimmed as the top-up trims
-it; 1–100 characters). Answers (`Cache-Control: private, no-store`):
+it; `^[A-Za-z0-9_-]{8,100}$`, r8). Answers (`Cache-Control: private, no-store`):
 - 200 `{ state: 'credited', transaction, wallet }`: `transaction` is the ledger row as in `GET /pharmacy-wallet/transactions`
   (`transactionType: 'credit'`, `movementType`, `amount` ₹, `amountPaise`, `notes`, `referenceType: 'topup'`,
   `referenceId` = the key, `operationKey`, `actor: { kind: 'admin', id }`, `createdAt`, …); `wallet` is the wallet view of
   `GET /pharmacy-wallet` (or null if none).
 - 200 `{ state: 'not_found' }`: no top-up with this key for this pharmacy (also for another pharmacy's key, or an unknown
   pharmacy). Resending the same form with the SAME key is then safe: it credits at most once.
-- 400 `PHARMACY_ID_REQUIRED` (no `pharmacyId`), `VALIDATION_ERROR` (malformed `pharmacyId`, key empty or over 100).
+- 400 `PHARMACY_ID_REQUIRED` (no `pharmacyId`), `VALIDATION_ERROR` (malformed `pharmacyId`, or a key not matching `^[A-Za-z0-9_-]{8,100}$`); 503 `INDEXES_OUTDATED`
+  when a ledger unique index is missing or different (r8).
 
 Web flow after a lost top-up answer: call by-key with the form's key; `credited` → show the transaction and wallet (do not
 resend); `not_found` → resend the same body with the same key. Never reuse a key with another amount or note (409
@@ -1984,7 +1986,7 @@ Branch `m0/r8-before-production` from `e90952cc` (r7, origin/stage). Local commi
 | # | Finding | Fix |
 |---|---|---|
 | B1 (money) | The admin by-key read hints partial unique indexes; a missing or narrower index answered `not_found` (or 500) | Before the two reads, `assertUniqueIndex` checks `{pharmacyId, referenceType, referenceId}` and `{pharmacyId, operationKey}` as the schema declares them; otherwise 503 `INDEXES_OUTDATED`, never `not_found` |
-| B2 | The doctor list's `nextSlot` fallback walked every unresolved doctor at once, up to 60 candidate days each (measured 6 256 queries) | One aggregation (`$match` the candidate filter, `$group` by doctor, `$min` date) gives each doctor's first candidate day (none: no read); each walk reads one window of `DOCTOR_ROLLING_DAYS` + 7 calendar days from it (day by day only past 20 000 rows); at most 8 walks at a time. No `$firstN`/`$topN` |
+| B2 | The doctor list's `nextSlot` fallback walked every unresolved doctor at once, up to 60 candidate days each (measured 6 256 queries) | One aggregation (`$match` the candidate filter, `$group` by doctor, `$min` date) gives each doctor's first candidate day (none: no read); at most 8 walks at a time. No `$firstN`/`$topN`. r8b: one window end for the aggregation and every walk, the cut-off day + `DOCTOR_ROLLING_DAYS` + 6; a walk reads its first candidate day whole first and the rest of the window (day by day only past 20 000 rows) only on a miss; a large `?date=` day is read 8 doctors at a time |
 | B3 | `clinicBranchContext` compared branch ids exactly, `clinicBranchAdmission` lower-cased: a slot could be listed and then refused | Both compare lower-cased; the clinic lookup in `clinicBranchAdmission` is keyed by the lower-cased partner id |
 | B4 | `GET /pharmacy-assisted/doctors/:id/slots` silently dropped the cut-off day and later past 5000 candidate slots | Past the shared read's cut-off the rest of the window (at most 14 days) is read day by day; a single day above 20 000 rows answers `truncated: true` (absent otherwise) |
 | B5 | The admin top-up `Idempotency-Key` allowed any characters | Admin `POST /pharmacy-wallet/topup` header and the by-key `:key` must match `^[A-Za-z0-9_-]{8,100}$` (after trimming), else 400 `VALIDATION_ERROR`. The web's keys (32 hex) match. The pharmacy's own Razorpay top-up is unchanged |
