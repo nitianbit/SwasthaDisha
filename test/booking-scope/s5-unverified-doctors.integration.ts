@@ -381,6 +381,15 @@ async function main() {
       const p = report.bookings.find((b) => b.bookingId === planted)!;
       assert.equal(p.hasPrescription, true); assert.equal(p.prescriptionMarker, true); assert.equal(p.hasReport, true);
       assert.deepEqual(report.linkedPharmacyOrders.map((o) => o.bookingId), [planted]);
+      // S5 round 3 (L5): each booking's appointment, price and payment, and whether it can still be cancelled.
+      const u = report.bookings.find((b) => b.bookingId === bUnv)!;
+      assert.deepEqual([u.bookingDate, u.bookingTime, u.price, u.paymentStatus, u.timing], [date, '10:00 AM', 300, 'paid', 'upcoming_cancel_before_start']);
+      const later = await auditS5UnverifiedDoctors(new Date('2100-01-01T00:00:00.000Z'));
+      assert.equal(later.bookings.find((b) => b.bookingId === bUnv)!.timing, 'past_start_stuck');
+      await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'cancelled' } });
+      assert.equal((await auditS5UnverifiedDoctors()).bookings.find((b) => b.bookingId === bIna)!.timing, 'closed');
+      await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'confirmed' } });
+      const before2 = await hash();
       const text = JSON.stringify(report);
       for (const pii of ['Dr ', 'demoName', 'Patient', '980000', '960000', 'Morphine', 'Planted', 'Chest pain', '.pdf']) {
         assert.equal(text.includes(pii), false, 'audit output contains ' + pii);
@@ -389,7 +398,8 @@ async function main() {
       const out = execFileSync('npx', ['tsx', '--tsconfig', 'tsconfig.json', 'src1/scripts/auditS5UnverifiedDoctors.ts'],
         { env: { ...process.env, MONGODB_URL: FIXTURE_URL }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
       assert.deepEqual(JSON.parse(out).bookings.map((b: { bookingId: string }) => b.bookingId).sort(), [bUnv, bIna, planted].sort());
-      assert.equal(await hash(), before, 'the audit script wrote nothing');
+      assert.equal(await hash(), before2, 'the audit script wrote nothing');
+      assert.equal(typeof JSON.parse(out).bookings[0].timing, 'string');
     });
 
     await check('admin clears a planted prescription (and its marker) or report; reason required, audited, admin only', async () => {
