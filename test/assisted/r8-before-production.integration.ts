@@ -214,6 +214,33 @@ async function main() {
       } finally { await PharmacyWalletTransactionModel.syncIndexes(); resetIndexChecks(); }
     });
 
+    // ───────────────────────── B3: branch ids compared the same way when listing and booking ─────────────────────────
+    await check('B3: a slot whose branch (or the branch\'s clinic) id is in upper case is listed and bookable alike, never listed then refused', async () => {
+      const KB = oid(); const CL = new Types.ObjectId(); const BR = new Types.ObjectId(); const CL2 = new Types.ObjectId(); const BR2 = new Types.ObjectId();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(KB), name: 'Dr Branch Case', specialization: 'Branch Case', consultationFee: 300,
+        isActive: true, isVerified: true } as never);
+      await PartnerOrgModel.collection.insertMany([CL, CL2].map((c) => ({ _id: c, kind: 'clinic', name: `Reight Clinic ${c}`, isActive: true,
+        verification: { state: 'verified' } })) as never);
+      // BR: the member's scope names the branch in lower case. BR2: the branch (and member) name their clinic in upper case.
+      await BranchModel.collection.insertMany([
+        { _id: BR, partnerId: String(CL), name: 'Branch lower', isActive: true, services: { inClinic: true }, holidays: [] },
+        { _id: BR2, partnerId: String(CL2).toUpperCase(), name: 'Branch upper clinic', isActive: true, services: { inClinic: true }, holidays: [] },
+      ] as never);
+      await MemberModel.collection.insertMany([
+        { partnerId: String(CL), doctorId: KB, phone: '9700000801', role: 'doctor', isActive: true, doctorBranchIds: [String(BR)] },
+        { partnerId: String(CL2).toUpperCase(), doctorId: KB, phone: '9700000801', role: 'doctor', isActive: true, doctorBranchIds: [String(BR2)] },
+      ] as never);
+      const upperBranch = await slotAt(KB, at(5, 9), { serviceModes: ['in-person'], branchId: String(BR).toUpperCase() });
+      const upperClinic = await slotAt(KB, at(5, 10), { serviceModes: ['in-person'], branchId: String(BR2) });
+      const listed = (await expect('P', 'GET', `/pharmacy-assisted/doctors/${KB}/slots?days=14`, 200)).json.data.slots.map((x: any) => x.slotId);
+      assert.deepEqual(listed, [upperBranch, upperClinic], 'both listed');
+      assert.equal((await doctorRow(KB, '?speciality=Branch%20Case')).nextSlot?.slotId, upperBranch);
+      for (const slotId of [upperBranch, upperClinic]) {
+        const r = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(slotId, { consultationMode: 'in-person', join: undefined, acceptedPriceMinor: 30000 }));
+        assert.equal(String(r.json.data.booking.slotId), slotId);
+      }
+    });
+
     // ───────────────────────── B5: admin Idempotency-Key characters ─────────────────────────
     await check('B5: an admin top-up key (header and by-key :key) must be ^[A-Za-z0-9_-]{8,100}$; the pharmacy\'s own top-up is unchanged', async () => {
       const before = await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P });

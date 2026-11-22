@@ -43,7 +43,8 @@ export async function clinicBranchContext(doctorId: string, branchId: string, s?
   if (!member) return null;
   // Q6: a doctor's consultation scope comes from the invitation they accepted; otherwise the member's own scope.
   const scope = doctorScopeOf(member);
-  const inScope = scope.length === 0 || scope.includes(String(branchId));
+  // r8 B3: ids compared in lower case, as clinicBranchAdmission does (a slot listed is never refused for its spelling).
+  const inScope = scope.length === 0 || scope.map((b) => b.toLowerCase()).includes(String(branchId).toLowerCase());
   return inScope ? { partnerId: String(branch.partnerId), branchId: String(branch._id) } : null;
 }
 
@@ -76,7 +77,7 @@ export async function clinicBranchAdmission(doctorIds: string[]): Promise<(docto
   const memberBy = new Map(members.map((m) => [`${String(m.partnerId)}|${low(m.doctorId)}`, m]));
   return (doctorId, branchId, date) => {
     const b = branchBy.get(low(branchId));
-    if (!b || b.isActive === false || !b.services?.inClinic || !clinicOk.has(String(b.partnerId))) return false;
+    if (!b || b.isActive === false || !b.services?.inClinic || !clinicOk.has(low(b.partnerId))) return false;
     const m = memberBy.get(`${String(b.partnerId)}|${low(doctorId)}`);
     if (!m) return false;
     const scope = doctorScopeOf(m);
