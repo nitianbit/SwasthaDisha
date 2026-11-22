@@ -998,28 +998,23 @@ export class PaymentService {
     return processedPayment || paymentRecord;
   }
 
-  private shouldFulfillExternalBooking(
-    paymentRecord: IPaymentRecord,
-    module?: string
-  ): boolean {
-    if (paymentRecord.context === 'wallet_recharge' || CONTEXT_HANDLERS.has(paymentRecord.context)) {
-      return false;
-    }
-    if (paymentRecord.context === 'external_booking') {
-      return true;
-    }
-    return module === 'external-bookings';
+  /**
+   * S6: what a payment is applied to comes only from the stored record's context (set by the server when the order was
+   * created). The client's `module` is never consulted: before, `module: 'external-bookings'` on a booking or pharmacy
+   * order record sent it down the external-booking path.
+   */
+  private shouldFulfillExternalBooking(paymentRecord: IPaymentRecord): boolean {
+    return paymentRecord.context === 'external_booking';
   }
 
   private async buildAlreadyProcessedResponse(
-    paymentRecord: IPaymentRecord,
-    module?: string
+    paymentRecord: IPaymentRecord
   ): Promise<{
     context: PaymentContext;
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
-    if (this.shouldFulfillExternalBooking(paymentRecord, module)) {
+    if (this.shouldFulfillExternalBooking(paymentRecord)) {
       const external = await this.externalBookingRepository.findById(
         paymentRecord.contextId
       );
@@ -2018,7 +2013,8 @@ export class PaymentService {
       module: data.module,
     });
     const paymentRecord = await this.verifyAndMarkPaid(data);
-    const result = await this.processVerifiedPayment(paymentRecord, data.module);
+    // `module` is informational (S6): the stored record decides what is credited.
+    const result = await this.processVerifiedPayment(paymentRecord);
     // S5 review: the capture was recorded and returned to the wallet (processBookingPayment); the payer is told why.
     if (result.context === 'booking' && result.paymentRecord.status === 'refunded') {
       const booking = await this.bookingRepository.findById(paymentRecord.contextId);
@@ -2034,7 +2030,7 @@ export class PaymentService {
    * Everything after a payment record is known to be paid (verify, or reconciliation with the gateway): fulfil the
    * entity once. Shared so both paths apply exactly the same rules.
    */
-  private async processVerifiedPayment(paymentRecord: IPaymentRecord, module?: string): Promise<{
+  private async processVerifiedPayment(paymentRecord: IPaymentRecord): Promise<{
     context: PaymentContext;
     paymentRecord: IPaymentRecord;
     entity: unknown;
@@ -2052,10 +2048,10 @@ export class PaymentService {
         paymentTransactionId: paymentRecord._id,
         bookingId: paymentRecord.contextId,
       });
-      return this.buildAlreadyProcessedResponse(paymentRecord, module);
+      return this.buildAlreadyProcessedResponse(paymentRecord);
     }
 
-    if (this.shouldFulfillExternalBooking(paymentRecord, module)) {
+    if (this.shouldFulfillExternalBooking(paymentRecord)) {
       try {
         logger.info('[Payment][external] fulfillment start after verify', {
           paymentTransactionId: paymentRecord._id,

@@ -57,7 +57,7 @@ export interface VerifyPaymentRequest {
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;
-  /** When `external-bookings`, resolves fulfillment against ExternalBooking instead of Booking. */
+  /** Informational only ('external-bookings' | 'pharmacy-wallet'): the stored record's context decides fulfilment (S6). */
   module?: string;
 }
 
