@@ -18,6 +18,7 @@ import { sweepFailure } from '@/modules/common/utils/sweepFailure';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
 import SpecialistModel from '@/modules/specialists/model';
+import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import BookingModel from '@/modules/bookings/model';
 import { IBooking } from '@/modules/bookings/types';
 import { DoctorPresenceModel, InstantRequestModel, IInstantRequest, InstantMode, MoneySplit } from '@/modules/doctors/model/instant';
@@ -149,11 +150,8 @@ const istParts = (at: Date) => {
   return { date: `${ist.slice(0, 4)}${ist.slice(5, 7)}${ist.slice(8, 10)}`, time: ist.slice(11, 16) };
 };
 
-/**
- * Q13 review: the one eligibility rule for instant consultations — the stored flags must be true (a legacy doctor missing
- * either is not eligible), exactly as discovery (`onlineDoctors`) and speciality listing query it.
- */
-const isEligibleDoctor = (sp: { isActive?: unknown; isVerified?: unknown } | null | undefined) => !!sp && sp.isActive === true && sp.isVerified === true;
+// Q13 review: the one eligibility rule for instant consultations — the stored flags must be true (a legacy doctor missing
+// either is not eligible), exactly as discovery (`onlineDoctors`) and speciality listing query it. S5b: the shared S5 predicate.
 
 /**
  * Q16a (L7): a doctor is busy for instant consultations when any held interval overlaps [now, now + 30 min) — the

@@ -16,6 +16,7 @@ import { ensureSettlementAccount } from '@/modules/partners/services/settlement'
 import { resolveCustomerByPhone } from '@/modules/partners/services/customerResolver';
 import { istDate, isRealDate, addDays } from '@/modules/partners/services/slots';
 import SpecialistModel from '@/modules/specialists/model';
+import { assertBookableDoctor, isEligibleDoctor } from '@/modules/specialists/eligibility';
 import SlotModel from '@/modules/slots/model';
 import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
@@ -316,8 +317,8 @@ async function attachDoctorMember(p: { partnerId: string; doctorId: string; phon
   return m!.toObject() as IMember;
 }
 
-/** Q14: the instant-consultation eligibility rule (Q13): stored isActive and isVerified both true. */
-const eligibleDoctor = (sp: { isActive?: unknown; isVerified?: unknown } | null | undefined) => !!sp && sp.isActive === true && sp.isVerified === true;
+/** Q14: the instant-consultation eligibility rule (Q13): stored isActive and isVerified both true (S5b: the shared S5 predicate). */
+const eligibleDoctor = isEligibleDoctor;
 export const doctorLinkKeyScope = (partnerId: string) => `clinic_doctor_link:${String(partnerId).toLowerCase()}`;
 
 /**
@@ -533,7 +534,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   const slot = await SlotModel.findById(input.slotId).lean() as any;
   if (!slot?.branchId || !slot.specialistId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   const branch = await clinicBranch(actor, String(slot.branchId));
-  const sp = await SpecialistModel.findById(slot.specialistId).select({ name: 1, consultationFee: 1 }).lean() as any;
+  const sp = await SpecialistModel.findById(slot.specialistId).select({ name: 1, consultationFee: 1, isActive: 1, isVerified: 1 }).lean() as any;
   if (!sp) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   // Exactly once per (desk member, request key), whatever customer or slot a repeat names (unique clinicDesk.requestKey).
   const requestKey = storedDeskKey(actor, input.requestKey);
@@ -560,6 +561,10 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   if (await RequestKeyModel.exists({ scope: deskKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
+  // S5b: as booking create, only a verified, active doctor is booked (400 SPECIALIST_NOT_ACTIVE / SPECIALIST_NOT_VERIFIED),
+  // before a customer is resolved or created; slot admission checks it again inside the booking transaction. A receipt
+  // of an appointment already made (above) is still answered.
+  assertBookableDoctor(sp);
   // Q16d (F1): the admission rule (a multi-seat window until it ENDS, a one-patient slot until it starts).
   const bookableUntil = bookableUntilOf(slot);
   if (!bookableUntil || bookableUntil.getTime() <= readClock().getTime()) {

@@ -17,6 +17,7 @@ import { ensureSettlementAccount } from '@/modules/partners/services/settlement'
 import { bookableUntilOf, isWindowSlot, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
+import { assertBookableDoctor } from '@/modules/specialists/eligibility';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import { clinicBranchContext, branchClosedOn } from '@/modules/doctors/services/schedule';
 
@@ -152,6 +153,13 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (!slot || slot.isActive === false || slot.isAvailable === false ||
       !Number.isSafeInteger(current) || !Number.isSafeInteger(max) || current < 0 || current >= max) {
     throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available for booking');
+  }
+  // S5b: every admission and every move (online, desk, no-show, admin) takes a doctor's slot only while the doctor's
+  // record, as this transaction reads it, is verified and active (400 SPECIALIST_NOT_ACTIVE / SPECIALIST_NOT_VERIFIED). A
+  // missing record is not judged here (creating a booking already requires an existing doctor).
+  if (slot.specialistId && /^[0-9a-fA-F]{24}$/.test(String(slot.specialistId))) {
+    const sp = await SpecialistModel.findById(String(slot.specialistId)).select({ isActive: 1, isVerified: 1 }).session(s).lean();
+    if (sp) assertBookableDoctor(sp);
   }
   const time = slotTime(slot, booking);
   // Q4: a doctor's leave day is refused here too, whatever any expansion has (or has not yet) closed.

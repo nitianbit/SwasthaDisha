@@ -1,5 +1,7 @@
 import { AppError } from '@/modules/common/types';
 import SlotModel from '@/modules/slots/model';
+import SpecialistModel from '@/modules/specialists/model';
+import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
@@ -200,6 +202,11 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
   const closedBranchesOn = (date: string) => [...holidays.entries()].filter(([, days]) => days.has(date)).map(([b]) => b);
   // Q16a (M1): a template slot that already started today (India time) is never created.
   const todayYmd = ymd(istDate(now));
+  // S5b: no slot is created for a doctor who is not verified and active, whichever run expands (schedule save, leave
+  // change, clinic link, nightly). Existing slots are left as they are (patient lists hide them; admission refuses them).
+  const sp = /^[0-9a-fA-F]{24}$/.test(String(doctorId))
+    ? await SpecialistModel.findById(String(doctorId)).select({ isActive: 1, isVerified: 1 }).session(s).lean() : null;
+  const mayCreate = isEligibleDoctor(sp);
   // Clinic authority is re-checked on every run: windows at a clinic branch the doctor may no longer use generate
   // nothing, so their template slots close for new bookings (bookings already made are kept).
   const clinicOk = new Map<string, boolean>();
@@ -227,7 +234,7 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
       }
     }
     // Slots of today that already started are not inserted (an existing one is left as it is).
-    const insertable = date === todayYmd
+    const insertable = !mayCreate ? [] : date === todayYmd
       ? wanted.filter((x) => { const at = parseAppointment({ bookingDate: date, bookingTime: x.start })?.at; return !!at && at.getTime() > now.getTime(); })
       : date < todayYmd ? [] : wanted;
     if (insertable.length) {

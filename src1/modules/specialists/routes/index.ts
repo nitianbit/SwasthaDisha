@@ -96,27 +96,31 @@ specialistRouter.get(
 
 // Q4: weekly schedule (per-mode, per-clinic windows) and leave days, expanded into slots for 30 days.
 specialistRouter.get('/me/schedule', requireSpecialist, catchAsync(getMySchedule));
-specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplateSchema, 'body'), catchAsync(putMySchedule));
+// S5b: saving the weekly schedule creates slots, so only a verified, active doctor may (leave days stay open: they only
+// remove availability, and the slot expansion they run creates nothing for an ineligible doctor).
+specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplateSchema, 'body'), catchAsync(requireEligibleDoctor), catchAsync(putMySchedule));
 specialistRouter.post('/me/leave', requireSpecialist, validate(leaveSchema, 'body'), catchAsync(addMyLeave));
 specialistRouter.delete('/me/leave/:date', requireSpecialist, validate(leaveParamSchema, 'params'), catchAsync(removeMyLeave));
 // Q6: the clinics a doctor consults with (invitations to accept/decline, leave) and their own solo practice.
 // Q14: a no-show moved once to a later slot (the booking's doctor; admins for any booking).
 specialistRouter.post('/me/bookings/:bookingId/reschedule-no-show', requireSpecialist, validate(bookingIdParamSchema, 'params'),
-  validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(rescheduleMyNoShow));
+  validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(requireEligibleDoctor), catchAsync(rescheduleMyNoShow));
 specialistRouter.post('/admin/bookings/:bookingId/reschedule-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
   validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(adminRescheduleNoShow));
 // Q16a: only an admin cancels a moved no-show; `refund` (required) chooses whether the patient is refunded.
 specialistRouter.post('/admin/bookings/:bookingId/cancel-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
   validate(clinicV.adminCancelNoShowSchema, 'body'), catchAsync(adminCancelNoShow));
 specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
-specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.acceptInvite));
+// S5b: accepting (and creating a clinic below) is for verified, active doctors only; declining and leaving stay open.
+specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(requireEligibleDoctor),
+  catchAsync(clinicDoc.acceptInvite));
 specialistRouter.post('/me/clinic-invites/:inviteId/decline', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.declineInvite));
 specialistRouter.post('/me/clinics/:partnerId/leave', requireSpecialist, validate(clinicV.partnerIdParamSchema, 'params'), catchAsync(clinicDoc.leaveClinic));
 specialistRouter.get('/me/practice', requireSpecialist, catchAsync(clinicDoc.getMyPractice));
-specialistRouter.post('/me/practice', requireSpecialist, validate(clinicV.soloPracticeSchema, 'body'), catchAsync(clinicDoc.createMyPractice));
+specialistRouter.post('/me/practice', requireSpecialist, validate(clinicV.soloPracticeSchema, 'body'), catchAsync(requireEligibleDoctor), catchAsync(clinicDoc.createMyPractice));
 // Q14: a doctor creates their own clinic (owner + linked doctor at its first branch, pending admin verification).
 specialistRouter.get('/me/clinic', requireSpecialist, catchAsync(clinicDoc.getMyPractice));
-specialistRouter.post('/me/clinic', requireSpecialist, validate(clinicV.doctorClinicSchema, 'body'), catchAsync(clinicDoc.createMyClinic));
+specialistRouter.post('/me/clinic', requireSpecialist, validate(clinicV.doctorClinicSchema, 'body'), catchAsync(requireEligibleDoctor), catchAsync(clinicDoc.createMyClinic));
 specialistRouter.get('/me/clinic/by-key/:key', requireSpecialist, validate(clinicV.doctorClinicKeyParamSchema, 'params'), catchAsync(clinicDoc.myClinicByKey));
 // Q5: the doctor's own earnings — balance, statement (+CSV), payouts, legacy history, payout destination.
 specialistRouter.get('/me/finance', requireSpecialist, catchAsync(fin.doctorFinance));
@@ -125,6 +129,8 @@ specialistRouter.get('/me/finance/statement.csv', requireSpecialist, validate(fi
 specialistRouter.get('/me/finance/payouts', requireSpecialist, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.doctorPayouts));
 specialistRouter.get('/me/finance/history', requireSpecialist, catchAsync(fin.doctorHistory));
 specialistRouter.get('/me/finance/events', requireSpecialist, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.doctorEvents));
+// S5b: open while pending — a doctor may set up payout details during onboarding; every change waits for an admin's
+// verification before any payout, and an unverified doctor earns nothing (cannot be booked).
 specialistRouter.put('/me/finance/payout-details', requireSpecialist, validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putDoctorPayoutDetails));
 // Q4b: instant consultations — "available now", heartbeat, offers, accept, extend.
 specialistRouter.get('/me/presence', requireSpecialist, catchAsync(instantDoctor.getPresence));
