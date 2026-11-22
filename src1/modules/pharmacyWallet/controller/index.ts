@@ -22,6 +22,10 @@ export class PharmacyWalletController {
           message: 'pharmacyId is required for admin wallet queries',
         });
       }
+      // r6: a malformed id is a 400 (it used to reach the database and fail as a 500).
+      if (typeof pharmacyId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+        throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'pharmacyId must be a pharmacy id' });
+      }
       return pharmacyId;
     }
 
@@ -80,7 +84,8 @@ export class PharmacyWalletController {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Idempotency-Key is at most 100 characters' });
     }
     const result = await this.service.topup(pharmacyId, req.body, key, String(req.user?._id ?? ''));
-    res.status(200).json({ success: true, message: 'Wallet topped up', data: result });
+    // r6: the same wallet shape as GET /pharmacy-wallet (adds withdrawableMinor, frozen, receivableMinor).
+    res.status(200).json({ success: true, message: 'Wallet topped up', data: result ? walletView(result) : result });
   };
 
   /** POST /pharmacy-wallet/topups/:paymentTransactionId/check (assisted booking phase 1a, §17.6). */

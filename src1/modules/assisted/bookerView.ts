@@ -1,6 +1,6 @@
 import logger from '@/services/logger';
 import BookingModel from '@/modules/bookings/model';
-import { bookerPatientNames } from '@/modules/assisted/names';
+import { bookerNames } from '@/modules/assisted/names';
 import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
 import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
 
@@ -70,7 +70,7 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
   const clinical = opts.clinical !== false;
   const list = await withCopyState(rows.filter((r) => r && typeof r === 'object').map((r) => (typeof r.toObject === 'function' ? r.toObject() : r)));
   if (!list.length) return [];
-  const [slots, names] = await Promise.all([slotsOf(list), bookerPatientNames(list, pharmacyId)]);
+  const [slots, { patients: names, holders }] = await Promise.all([slotsOf(list), bookerNames(list, pharmacyId)]);
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
   const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
   const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
@@ -79,6 +79,10 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
     v.source = sourceOf(b);
     v.patientName = names.get(String(b._id).toLowerCase()) ?? null;
+    // r6: the account holder as this pharmacy sees it (same names rule) and THIS pharmacy's own link to them: the `:id`
+    // of PUT /pharmacy-customers/:id/typed-name (null when it has no link). Never another pharmacy's link.
+    const holder = holders.get(String(b.userId ?? '').toLowerCase());
+    v.holder = { pharmacyCustomerId: holder?.linkId ?? null, name: holder?.name ?? null };
     if (b.noShow?.at) v.noShow = { at: b.noShow.at };
     const lifecycle: Row = {};
     for (const e of LIFECYCLE_EVENTS) if (b.lifecycle?.[e]?.at) lifecycle[e] = { at: b.lifecycle[e].at };

@@ -33,8 +33,13 @@ export class PharmacyCustomerController {
   setTypedName = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { assertPharmacyAssistedOn } = await import('@/modules/assisted/flags');
     assertPharmacyAssistedOn();
-    const result = await this.service.setTypedName(req.user?.pharmacyId || '', req.params.id, req.body?.typedName, req.user?._id || '');
-    res.status(200).json({ success: true, data: { _id: result._id, userId: result.userId, typedName: result.typedName } });
+    const pharmacyId = req.user?.pharmacyId || '';
+    const result = await this.service.setTypedName(pharmacyId, req.params.id, req.body?.typedName, req.user?._id || '');
+    // r6: `shownName` = the name this pharmacy's screens now show for the holder (names rule: the real account name when
+    // the customer linked the pharmacy by ordering, `customer_order`; otherwise the typed name).
+    const { pharmacyFacingHolderNames } = await import('@/modules/assisted/names');
+    const shownName = (await pharmacyFacingHolderNames([result.userId], pharmacyId)).get(String(result.userId).toLowerCase()) ?? null;
+    res.status(200).json({ success: true, data: { _id: result._id, userId: result.userId, typedName: result.typedName, shownName } });
   };
 
   list = async (req: AuthRequest, res: Response, _next: NextFunction) => {

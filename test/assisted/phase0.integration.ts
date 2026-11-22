@@ -269,7 +269,9 @@ async function main() {
     const ALLOWED = new Set(['_id', 'bookingType', 'bookingKind', 'source', 'assisted', 'userId', 'dependentId', 'patientName', 'pharmacyId',
       'specialistId', 'doctorName', 'primaryConcern', 'consultationMode', 'serviceMode', 'clinicVisit', 'slotId', 'bookingDate', 'bookingTime',
       'contactNo', 'status', 'paymentStatus', 'price', 'originalPrice', 'cancellationReason', 'cancelledAt', 'cancellationCause', 'noShow',
-      'lifecycle', 'virtualMeeting', 'prescription', 'createdAt', 'updatedAt']);
+      'lifecycle', 'virtualMeeting', 'prescription', 'createdAt', 'updatedAt',
+      // r6 (§21): the account holder as this pharmacy sees it, with its own link id (typed-name edit).
+      'holder']);
     const RX_ALLOWED = new Set(['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName', 'fileUrls', 'copyPending']);
     const FORBIDDEN_TEXT = [SECRET_DIAGNOSIS, 'diagnosis', 'private note', 'pay_secret', 'key-secret-', '9600000999', 'prescription-1700000000000',
       'lab says x', 'old-report', 'pharmacy-actor', 'sunita@example', 'lakshmi@example', 'Sunita Kumari', 'prescribedBySpecialistId',
@@ -277,6 +279,7 @@ async function main() {
     const assertBookerRow = (row: Record<string, any>) => {
       for (const k of Object.keys(row)) assert.ok(ALLOWED.has(k), `field ${k} is not in the booker view`);
       if (row.prescription) for (const k of Object.keys(row.prescription)) assert.ok(RX_ALLOWED.has(k), `prescription.${k} is not in the booker view`);
+      if (row.holder) assert.deepEqual(Object.keys(row.holder).sort(), ['name', 'pharmacyCustomerId'], 'holder carries the link id and name only');
       if (row.lifecycle) for (const [k, v] of Object.entries(row.lifecycle)) {
         assert.ok(['created', 'confirmed', 'completed', 'cancelled'].includes(k), k); assert.deepEqual(Object.keys(v as object), ['at']);
       }

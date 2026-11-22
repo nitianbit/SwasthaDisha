@@ -1845,8 +1845,8 @@ before `npm ci`).
 - **Family members of a number** are not listed to the pharmacy (by design, §6.2: the answer never reveals them). A repeat
   booking for the same family member reuses it by `{ relation, name }` (same active name and relation) or by the
   `dependentId` the pharmacy's own earlier booking shows.
-- **Branch closures** (`clinicBranchContext`) are not filtered from the pharmacy slot lists; `reserveSlot` still refuses
-  a closed branch at booking (409).
+- ~~**Branch closures** (`clinicBranchContext`) are not filtered from the pharmacy slot lists; `reserveSlot` still refuses
+  a closed branch at booking (409).~~ Closed in §21 (r6): the pharmacy slot reads leave them out.
 - **Order bindings after an admin clear:** an order already made from a prescription that an admin later clears keeps
   its bound dispensing copy (it is the dispensed order's prescription record). Owner to decide whether an admin clear
   should also withdraw it.
@@ -1865,3 +1865,85 @@ Branch `m0/r5-assisted-stage-fixes` (from `fb4063c7`). Each fix has a check that
 | 4 | Admin top-up | 404 `PHARMACY_NOT_FOUND` for an unknown pharmacy (no stray wallet); content hash (`requestHash`: paise amount and note) on the ledger row — the same key with other content is 409 `IDEMPOTENCY_KEY_REUSED` (older rows without a hash are compared by amount and note); the admin is stored as `actor: { kind: 'admin', id }`; the `Idempotency-Key` header is required for an admin (400 `IDEMPOTENCY_KEY_REQUIRED`, at most 100 characters). No released client calls the admin route (checked: the released pharmacy app calls only its own Razorpay top-up; no admin panel or `jansetu-web` screen calls it) | `stage-merge` "review 4" |
 | 5 | Nits | Runbook: `.env` exported for mongosh, `read -rs ADMIN_TOKEN`, step 3 wording. The admin close answers "Booking closed; the pharmacy was refunded" for an assisted booking | `stage-merge` S5c check |
 
+## 21. Small fixes on the stage line (r6, 2026-11-22)
+
+Branch `m0/r6-small-fixes` from the stage line `338733f8` (origin/stage). Local commits only. Checks:
+`test/assisted/r6-small-fixes.integration.ts` (16 checks; the 11 for fixes fail on `338733f8`, the 5 marked "guard" pin
+behaviour that was already right).
+
+### 21.1 What changed
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The pharmacy doctor list could offer a chat-only slot as `nextSlot` (and in `slots`); `modes` could list `chat`. Assisted consultations take only `video`, `call`, `in-person` (the create's `consultationMode`) | `GET /pharmacy-assisted/doctors` and `GET /pharmacy-assisted/doctors/:doctorId/slots` offer only slots with at least one of those modes, and `modes` lists only those (a slot with no modes stored is all three). With `mode`, only slots offered in it. The filter is in the database query too, so chat-only slots never use up the 5000-slot read (a long run of them hid every later slot). In-clinic slots at a branch on holiday that day, or at a branch the doctor no longer consults at (inactive branch or clinic, membership or branch scope gone), are left out too (closes the §20.5 branch gap). `nextSlot` is therefore the next slot `reserveSlot` would admit (apart from a race for the seat) |
+| 2 | A clean `npm ci` gave 20 tsc errors, not 17: the lock pinned `@types/formidable` 3.4.6, which lacks `maxFilesExceeded`, `biggerThanTotalMaxFileSize` and the `'error'` emit used in `src1/modules/file/storage.ts` | Lock entry only: 3.5.1 (`package.json` keeps `^3.4.5`). Checked in a scratch copy: `npm ci`, then `tsc` = the 17 known errors; with 3.4.6 put back, 20 |
+| 3 | Pharmacy reschedule review (rules below). One gap: a move onto the slot the booking already holds was a no-op that still recorded a move and told the patient and doctor "Consultation moved" | 409 `SAME_SLOT` |
+| 4 | Typed-name edit: the booker view had no link id for `PUT /pharmacy-customers/:id/typed-name` | Booker view adds `holder: { pharmacyCustomerId, name }`; the edit's answer adds `shownName` |
+| 5 | Admin wallet support: a malformed `pharmacyId` on the admin wallet reads was a 500; the admin top-up answered the raw wallet | 400 `VALIDATION_ERROR`; the top-up answers the same wallet view as `GET /pharmacy-wallet` |
+
+### 21.2 API notes for the web
+
+**Doctor list and slot read** (as §19.3 / §20.2): `nextSlot`, `slots[]` and the slot read's `slots[]` are
+`{ slotId, date, startTime, endTime, startsAt, modes }` where `modes` ⊆ `['video', 'call', 'in-person']` and is never
+empty. Offer only the modes in `modes` for `consultationMode`.
+
+**Reschedule** `POST /api/v1/pharmacy-assisted/bookings/:id/reschedule` (pharmacy token; the pharmacy must be operational
+and verified; works with `ASSISTED_BOOKING_ENABLED_PHARMACY` off).
+- Body `{ slotId, requestKey ([A-Za-z0-9_-]{8,100}, a new one per move), expectedUpdatedAt? (the booking's
+  `updatedAt` as shown) }`. Pick the slot from `GET /pharmacy-assisted/doctors/:doctorId/slots?mode=<booking's
+  consultationMode>` (same doctor). The mode and the price never change.
+- Rules, all decided inside the move's transaction: only this pharmacy's own assisted bookings (else 404); status pending
+  or confirmed; before the CURRENT appointment starts (the same "any time before it starts" rule as the partner cancel);
+  same doctor; the doctor still verified and active (S5); the new slot active, free, not started, not on the doctor's
+  leave day or a closed branch, and offered in the booking's mode (a chat-only slot is refused); not the slot already
+  held. A booking moved after a no-show may still be moved by the pharmacy (no money moves); it still cannot be
+  cancelled for a refund (`NO_SHOW_NOT_REFUNDABLE`).
+- 200 `{ booking: <booker view>, replayed: false }`; the same `requestKey` and `slotId` again → 200 `replayed: true`
+  (nothing moves twice).
+- Errors: 400 `REQUEST_KEY_REQUIRED`, `VALIDATION_ERROR`, `BOOKING_ALREADY_STARTED`; 404 `BOOKING_NOT_FOUND`; 409
+  `SAME_SLOT` (new), `SLOT_NOT_THIS_DOCTOR`, `SLOT_NOT_AVAILABLE` (full, inactive, leave day, closed branch, mode not
+  offered), `SLOT_STARTED`, `DOCTOR_NOT_AVAILABLE`, `BOOKING_NOT_RESCHEDULABLE` (cancelled, completed, no-show),
+  `BOOKING_CHANGED` (reload and retry), `IDEMPOTENCY_KEY_REUSED` (the key was used for another slot).
+- The patient and the doctor are told; the join link stays the same (§6.6).
+
+**Typed name** `PUT /api/v1/pharmacy-customers/:id/typed-name` (pharmacy token, operational; `ASSISTED_BOOKING_ENABLED_PHARMACY`
+on, else 503 `ASSISTED_BOOKING_DISABLED`).
+- `:id` = `booking.holder.pharmacyCustomerId` from `GET /api/v1/pharmacy-bookings[/:id]` (also in the reschedule, cancel
+  and by-key answers, which carry the booker view). The customer's user id (`booking.userId`) is accepted too. When
+  `holder.pharmacyCustomerId` is null the pharmacy has no link to that holder: hide the edit.
+- Body `{ typedName }` (trimmed, 1–200 characters; inner spaces collapsed). → 200 `{ _id, userId, typedName, shownName }`.
+  `shownName` is what this pharmacy's screens now show for the holder: the real account name when the customer linked
+  the pharmacy by ordering (`customer_order`), otherwise the typed name. Show it after saving; on a `customer_order`
+  link the typed name is stored but does not show.
+- It renames only this pharmacy's link; the account's own name never changes; another pharmacy's link is 404
+  `CUSTOMER_NOT_LINKED`. 400 `VALIDATION_ERROR`. Audited (`customer.typed_name`).
+- Booker view `holder: { pharmacyCustomerId: string | null, name: string | null }`: the ACCOUNT HOLDER (the phone's
+  owner) under the same names rule. For a family-member booking `patientName` is the family member and `holder.name` the
+  holder; the edit changes the holder's name, never the family member's. Never another pharmacy's link.
+
+**Admin: find a pharmacy** `GET /api/v1/pharmacies?name=&phone=&city=&isVerified=&isActive=&search=&page=&limit=&sortBy=&sortOrder=`
+(admin token). Admins see every pharmacy (unverified and inactive included) with the full record (`_id, name,
+nickname, ownerName, phone, email, address, city, state, pincode, isVerified, isActive, walletEnabled, createdAt,
+updatedAt, …`). `name` and `city` are case-insensitive "contains"; `phone` is the exact 10-digit number (admins only);
+`search` is a word search over name, city and address. Give both `page` and `limit` (≤ 100) to get `pagination: { page,
+limit, total, totalPages }`; without them every match is returned. Default order: newest first.
+
+**Admin: a pharmacy's wallet** `GET /api/v1/pharmacy-wallet?pharmacyId=<id>` (admin token) → the wallet view `{ _id,
+pharmacyId, balance (₹), balancePaise, isActive, withdrawableMinor, frozen, receivableMinor, createdAt, updatedAt, … }`,
+or `data: null` when that pharmacy has no wallet yet (an admin read never creates one; also null for an unknown id).
+400 `PHARMACY_ID_REQUIRED` without `pharmacyId`, 400 `VALIDATION_ERROR` for a malformed one.
+
+**Admin: its transactions** `GET /api/v1/pharmacy-wallet/transactions?pharmacyId=<id>&page=1&limit=20` (admin token) →
+rows, newest first: `{ _id, pharmacyId, transactionType: 'credit' | 'debit' | 'refund', movementType (the stored kind:
+credit, booking_debit, refund_credit, chargeback, …), amount (₹), amountPaise, signedAmountPaise, balanceBefore,
+balanceAfter, status, description, notes, referenceType, referenceId, operationKey, actor?, createdAt, … }`, and `pagination: {
+page, limit, total, totalPages }`. An admin top-up row has `referenceType: 'topup'`, `referenceId` = its
+Idempotency-Key and `actor: { kind: 'admin', id }`. Same 400s as the wallet read. A pharmacy token reads only its own
+(its `pharmacyId` query is ignored).
+
+**Admin: top-up** `POST /api/v1/pharmacy-wallet/topup` (admin token), header `Idempotency-Key` (required, ≤ 100
+characters; make a new one per submit, keep it for a resend of the same form), body `{ pharmacyId, amount (₹, ≥ 1),
+notes? (≤ 500) }` → 200 `{ message: 'Wallet topped up', data: <wallet view as above> }`. A resend with the same key and
+content credits nothing more and answers the wallet. Errors: 400 `IDEMPOTENCY_KEY_REQUIRED`, `VALIDATION_ERROR`; 404
+`PHARMACY_NOT_FOUND`; 409 `IDEMPOTENCY_KEY_REUSED` (same key, other amount or note). The credit is never withdrawable (no
+top-up lot). Admin chargebacks, freeze and lots: §19.3.

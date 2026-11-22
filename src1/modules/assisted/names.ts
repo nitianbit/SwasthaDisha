@@ -40,8 +40,17 @@ export const NAME_SHOWN_CONSENTS = ['customer_order'];
  * otherwise the account name masked. Never the email or another account field. Two batched reads.
  */
 export async function pharmacyFacingHolderNames(userIds: unknown[], pharmacyId: string): Promise<Map<string, string | null>> {
+  const holders = await pharmacyFacingHolders(userIds, pharmacyId);
+  return new Map([...holders].map(([k, h]) => [k, h.name]));
+}
+
+/**
+ * The same names rule, with the id of THIS pharmacy's own link to each holder (`linkId`, null when it has none): the
+ * `:id` of `PUT /pharmacy-customers/:id/typed-name`. Never another pharmacy's link.
+ */
+export async function pharmacyFacingHolders(userIds: unknown[], pharmacyId: string): Promise<Map<string, { name: string | null; linkId: string | null }>> {
   const wanted = [...new Set(userIds.map((u) => String(u ?? '')).filter((u) => Types.ObjectId.isValid(u) && u.length === 24))];
-  const out = new Map<string, string | null>();
+  const out = new Map<string, { name: string | null; linkId: string | null }>();
   if (!wanted.length) return out;
   const [users, links] = await Promise.all([
     UserModel.find({ _id: { $in: wanted } }).select({ name: 1, createdSource: 1, linkedPharmacyId: 1, otpVerified: 1 }).lean() as unknown as Promise<Row[]>,
@@ -57,9 +66,10 @@ export async function pharmacyFacingHolderNames(userIds: unknown[], pharmacyId: 
     const accountName = String(u.name ?? '').trim() || null;
     // Review of 800dfc0 (item 2, assumed): only a customer's own order (`customer_order`) shows the real account name;
     // the pharmacy's `patient_agreed` tick shows the typed or masked name (so does book-then-cancel).
-    if (link && NAME_SHOWN_CONSENTS.includes(String(link.consent)) && accountName) { out.set(key(u._id), accountName); continue; }
+    const linkId = link ? String(link._id) : null;
+    if (link && NAME_SHOWN_CONSENTS.includes(String(link.consent)) && accountName) { out.set(key(u._id), { name: accountName, linkId }); continue; }
     const opened = u.createdSource === 'pharmacy_app' && key(u.linkedPharmacyId) === key(pharmacyId) && u.otpVerified !== true;
-    out.set(key(u._id), typed ?? (opened ? accountName : maskName(u.name)));
+    out.set(key(u._id), { name: typed ?? (opened ? accountName : maskName(u.name)), linkId });
   }
   return out;
 }
@@ -69,8 +79,14 @@ export async function pharmacyFacingHolderNames(userIds: unknown[], pharmacyId: 
  * family member of that booking's account), otherwise the holder's pharmacy-facing name (above).
  */
 export async function bookerPatientNames(rows: Row[], pharmacyId: string): Promise<Map<string, string | null>> {
-  const [holders, deps] = await Promise.all([
-    pharmacyFacingHolderNames(ids(rows, 'userId'), pharmacyId),
+  return (await bookerNames(rows, pharmacyId)).patients;
+}
+
+/** bookerPatientNames, plus each row's account holder as this pharmacy sees it (name rule above, its own link id). */
+export async function bookerNames(rows: Row[], pharmacyId: string)
+  : Promise<{ patients: Map<string, string | null>; holders: Map<string, { name: string | null; linkId: string | null }> }> {
+  const [holderRows, deps] = await Promise.all([
+    pharmacyFacingHolders(ids(rows, 'userId'), pharmacyId),
     DependentModel.find({ _id: { $in: ids(rows, 'dependentId') } }).select({ name: 1, userId: 1 }).lean() as unknown as Promise<Row[]>,
   ]);
   const depBy = new Map(deps.map((d) => [key(d._id), d]));
@@ -81,11 +97,11 @@ export async function bookerPatientNames(rows: Row[], pharmacyId: string): Promi
       const dep = depBy.get(key(r.dependentId));
       name = dep && key(dep.userId) === key(r.userId) ? (String(dep.name ?? '').trim() || null) : null;
     } else {
-      name = holders.get(key(r.userId)) ?? null;
+      name = holderRows.get(key(r.userId))?.name ?? null;
     }
     out.set(key(r._id), name);
   }
-  return out;
+  return { patients: out, holders: holderRows };
 }
 
 /**
