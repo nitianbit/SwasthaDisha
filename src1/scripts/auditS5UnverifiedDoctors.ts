@@ -7,7 +7,10 @@
 //   - specialists: each doctor with isVerified !== true or isActive !== true that has at least one slot, booking or
 //     prescription (as the booking's doctor or as prescribedBySpecialistId);
 //   - bookings: every booking whose specialistId (or prescription.prescribedBySpecialistId) is such a doctor, with
-//     whether it carries a prescription (and its marker) or a report;
+//     whether it carries a prescription (and its marker) or a report, its appointment date / time, price and payment
+//     status, and `timing`: 'upcoming_cancel_before_start' (pending/confirmed, not started: the patient or an admin
+//     cancels it now), 'past_start_stuck' (pending/confirmed and already started: nobody can cancel it on the main
+//     line), 'closed' (cancelled / completed / no-show) or 'unknown_time' (date or time cannot be read);
 //   - linkedPharmacyOrders: pharmacy orders whose linkedConsultationId is one of those bookings;
 //   - nameChangesAfterVerification: not available - specialist edits keep no history (no verifiedAt, no name log).
 // It only reads (find / aggregate without $out or $merge); it writes nothing and creates no collection or index.
@@ -24,6 +27,9 @@ import SpecialistModel from '@/modules/specialists/model';
 import SlotModel from '@/modules/slots/model';
 import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
+
+export type S5Timing = 'upcoming_cancel_before_start' | 'past_start_stuck' | 'closed' | 'unknown_time';
 
 export interface S5UnverifiedDoctorAudit {
   generatedAt: string;
@@ -34,6 +40,7 @@ export interface S5UnverifiedDoctorAudit {
   bookings: {
     bookingId: string; specialistId: string | null; prescribedBySpecialistId: string | null; userId: string | null;
     bookingType: string | null; status: string | null; hasPrescription: boolean; prescriptionMarker: boolean; hasReport: boolean;
+    bookingDate: string | null; bookingTime: string | null; price: number | null; paymentStatus: string | null; timing: S5Timing;
     createdAt: string | null;
   }[];
   linkedPharmacyOrders: { orderId: string; bookingId: string; pharmacyId: string | null }[];
@@ -43,7 +50,17 @@ export interface S5UnverifiedDoctorAudit {
 const low = (v: unknown) => (v == null || v === '' ? null : String(v).toLowerCase());
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : null);
 
-export async function auditS5UnverifiedDoctors(): Promise<S5UnverifiedDoctorAudit> {
+const OPEN = new Set(['pending', 'confirmed']);
+/** Whether an open booking can still be cancelled (before its start, India time) or is stuck past its start. */
+export function timingOf(b: { status?: unknown; bookingDate?: unknown; bookingTime?: unknown }, now: Date): S5Timing {
+  if (!OPEN.has(String(b.status))) return 'closed';
+  let at: Date | null = null;
+  try { at = parseAppointment({ bookingDate: String(b.bookingDate ?? ''), bookingTime: String(b.bookingTime ?? '') })?.at ?? null; } catch { at = null; }
+  if (!at || Number.isNaN(at.getTime())) return 'unknown_time';
+  return at.getTime() > now.getTime() ? 'upcoming_cancel_before_start' : 'past_start_stuck';
+}
+
+export async function auditS5UnverifiedDoctors(now = new Date()): Promise<S5UnverifiedDoctorAudit> {
   const ineligible = new Map<string, { isActive: boolean; isVerified: boolean }>();
   for await (const sp of SpecialistModel.find({ $or: [{ isActive: { $ne: true } }, { isVerified: { $ne: true } }] })
     .select({ isActive: 1, isVerified: 1 }).sort({ _id: 1 }).lean().cursor()) {
@@ -63,7 +80,8 @@ export async function auditS5UnverifiedDoctors(): Promise<S5UnverifiedDoctorAudi
 
   const bookings: S5UnverifiedDoctorAudit['bookings'] = [];
   for await (const b of BookingModel.find({ $or: [{ specialistId: { $type: 'string', $ne: '' } }, { 'prescription.prescribedBySpecialistId': { $exists: true } }] })
-    .select({ specialistId: 1, userId: 1, bookingType: 1, status: 1, 'prescription.prescribedBySpecialistId': 1, 'prescription.prescribedAt': 1,
+    .select({ specialistId: 1, userId: 1, bookingType: 1, status: 1, bookingDate: 1, bookingTime: 1, price: 1, paymentStatus: 1,
+      'prescription.prescribedBySpecialistId': 1, 'prescription.prescribedAt': 1,
       'prescription.fileUrls': 1, 'lifecycle.prescriptionUploaded': 1, 'report.message': 1, 'report.fileUrls': 1, createdAt: 1 })
     .sort({ _id: 1 }).lean().cursor()) {
     const doctor = low(b.specialistId);
@@ -78,6 +96,8 @@ export async function auditS5UnverifiedDoctors(): Promise<S5UnverifiedDoctorAudi
       bookingId: String(b._id), specialistId: doctor, prescribedBySpecialistId: prescriber, userId: b.userId ? String(b.userId) : null,
       bookingType: b.bookingType ?? null, status: b.status ?? null, hasPrescription,
       prescriptionMarker: !!b.lifecycle?.prescriptionUploaded?.at, hasReport: !!b.report && Object.keys(b.report).length > 0,
+      bookingDate: b.bookingDate ?? null, bookingTime: b.bookingTime ?? null,
+      price: typeof b.price === 'number' ? b.price : null, paymentStatus: b.paymentStatus ?? null, timing: timingOf(b, now),
       createdAt: iso(b.createdAt),
     });
   }
@@ -106,7 +126,9 @@ async function main() {
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     process.stderr.write(`unverified or inactive doctors with slots, bookings or prescriptions: ${report.specialists.length}; ` +
       `bookings with such a doctor: ${report.bookings.length} (with a prescription: ${report.bookings.filter((b) => b.hasPrescription).length}); ` +
-      `pharmacy orders linked to them: ${report.linkedPharmacyOrders.length}; name history: not available\n`);
+      `pharmacy orders linked to them: ${report.linkedPharmacyOrders.length}; ` +
+      `upcoming (cancel before start): ${report.bookings.filter((b) => b.timing === 'upcoming_cancel_before_start').length}; ` +
+      `past start (stuck): ${report.bookings.filter((b) => b.timing === 'past_start_stuck').length}; name history: not available\n`);
   } finally {
     await mongoose.disconnect();
   }
