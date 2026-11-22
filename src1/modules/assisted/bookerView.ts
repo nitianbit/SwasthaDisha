@@ -80,9 +80,10 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
     v.source = sourceOf(b);
     v.patientName = names.get(String(b._id).toLowerCase()) ?? null;
     // r6: the account holder as this pharmacy sees it (same names rule) and THIS pharmacy's own link to them: the `:id`
-    // of PUT /pharmacy-customers/:id/typed-name (null when it has no link). Never another pharmacy's link.
+    // of PUT /pharmacy-customers/:id/typed-name (null when it has no link), and the name typed on that link (r8 B6, null
+    // when none). Never another pharmacy's link.
     const holder = holders.get(String(b.userId ?? '').toLowerCase());
-    v.holder = { pharmacyCustomerId: holder?.linkId ?? null, name: holder?.name ?? null };
+    v.holder = { pharmacyCustomerId: holder?.linkId ?? null, name: holder?.name ?? null, typedName: holder?.typedName ?? null };
     if (b.noShow?.at) v.noShow = { at: b.noShow.at };
     const lifecycle: Row = {};
     for (const e of LIFECYCLE_EVENTS) if (b.lifecycle?.[e]?.at) lifecycle[e] = { at: b.lifecycle[e].at };

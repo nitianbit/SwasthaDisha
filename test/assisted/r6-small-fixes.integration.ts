@@ -305,7 +305,7 @@ async function main() {
       const id = r.json.data.booking._id;
       const view = await expect('P', 'GET', `/pharmacy-bookings/${id}`, 200);
       const link = await PharmacyCustomerModel.findOne({ pharmacyId: P, userId: r.json.data.booking.userId }).lean() as any;
-      assert.deepEqual(view.json.data.holder, { pharmacyCustomerId: String(link._id), name: 'Bikash Rai' });
+      assert.deepEqual(view.json.data.holder, { pharmacyCustomerId: String(link._id), name: 'Bikash Rai', typedName: 'Bikash Rai' });
       const accountBefore = (await UserModel.findById(r.json.data.booking.userId).lean() as any).name;
       const put = await expect('P', 'PUT', `/pharmacy-customers/${view.json.data.holder.pharmacyCustomerId}/typed-name`, 200, { typedName: 'Bikash  Kumar Rai' });
       assert.deepEqual({ ...put.json.data, _id: String(put.json.data._id), userId: String(put.json.data.userId) },
