@@ -1717,6 +1717,9 @@ export class BookingService {
         throw new AppError({ status: 400, code: 'BOOKING_CANCELLED', message: 'Cannot retry payment for a cancelled booking' });
       }
     }
+    // S5 review: no new or resumed order for a doctor who is not verified and active. Earlier attempts were checked just
+    // above, so a capture already made is recorded (and returned to the wallet), never lost.
+    if (booking.specialistId) await assertNotIneligibleDoctor(booking.specialistId);
     // Paying again on the same terms reuses the open order: an order captures at most once, so a late capture of a
     // replaced order can no longer charge a second time. A new order only when the terms change (coupon / wallet).
     // Only when the open order is for exactly what is due now (price minus wallet funding); otherwise a new order.
