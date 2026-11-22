@@ -8,9 +8,15 @@
 //     prescription (as the booking's doctor or as prescribedBySpecialistId);
 //   - bookings: every booking whose specialistId (or prescription.prescribedBySpecialistId) is such a doctor, with
 //     whether it carries a prescription (and its marker) or a report, its appointment date / time, price and payment
-//     status, and `timing`: 'upcoming_cancel_before_start' (pending/confirmed, not started: the patient or an admin
-//     cancels it now), 'past_start_stuck' (pending/confirmed and already started: nobody can cancel it on the main
-//     line), 'closed' (cancelled / completed / no-show) or 'unknown_time' (date or time cannot be read);
+//     status, and `timing` (open = pending/confirmed; paid = paymentStatus paid or wallet/gateway money applied):
+//       'upcoming_cancel_before_start'  open, not started: the patient or an admin cancels it now (full refund);
+//       'past_start_stuck'              open, paid, already started: nobody can cancel it on the main line (the cancel
+//                                       answers BOOKING_ALREADY_STARTED); stage: admin close;
+//       'unpaid_will_expire'            open, unpaid, already started: not stuck - the payment-timeout sweep expires it;
+//       'paid_unknown_time_stuck'       open, paid, date/time cannot be read: stuck too (a cancel answers 400
+//                                       INVALID_BOOKING_DATETIME, admin included);
+//       'unknown_time'                  open, unpaid, date/time cannot be read (no money is held);
+//       'closed'                        cancelled, completed or no-show;
 //   - linkedPharmacyOrders: pharmacy orders whose linkedConsultationId is one of those bookings;
 //   - nameChangesAfterVerification: not available - specialist edits keep no history (no verifiedAt, no name log).
 // It only reads (find / aggregate without $out or $merge); it writes nothing and creates no collection or index.
@@ -29,7 +35,8 @@ import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 
-export type S5Timing = 'upcoming_cancel_before_start' | 'past_start_stuck' | 'closed' | 'unknown_time';
+export type S5Timing = 'upcoming_cancel_before_start' | 'past_start_stuck' | 'unpaid_will_expire' | 'paid_unknown_time_stuck'
+  | 'unknown_time' | 'closed';
 
 export interface S5UnverifiedDoctorAudit {
   generatedAt: string;
@@ -51,13 +58,20 @@ const low = (v: unknown) => (v == null || v === '' ? null : String(v).toLowerCas
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : null);
 
 const OPEN = new Set(['pending', 'confirmed']);
-/** Whether an open booking can still be cancelled (before its start, India time) or is stuck past its start. */
-export function timingOf(b: { status?: unknown; bookingDate?: unknown; bookingTime?: unknown }, now: Date): S5Timing {
+type TimingInput = { status?: unknown; bookingDate?: unknown; bookingTime?: unknown; paymentStatus?: unknown;
+  walletFunding?: { total?: number; captures?: { state?: string }[] } };
+/** Money is held: paid, or wallet / gateway money applied to it (an unpaid booking holds none and simply expires). */
+const holdsMoney = (b: TimingInput) => b.paymentStatus === 'paid' || Number(b.walletFunding?.total || 0) > 0 ||
+  (b.walletFunding?.captures ?? []).some((c) => c.state === 'applied');
+/** Whether an open booking can still be cancelled (before its start, India time), will expire, or is stuck. */
+export function timingOf(b: TimingInput, now: Date): S5Timing {
   if (!OPEN.has(String(b.status))) return 'closed';
+  const paid = holdsMoney(b);
   let at: Date | null = null;
   try { at = parseAppointment({ bookingDate: String(b.bookingDate ?? ''), bookingTime: String(b.bookingTime ?? '') })?.at ?? null; } catch { at = null; }
-  if (!at || Number.isNaN(at.getTime())) return 'unknown_time';
-  return at.getTime() > now.getTime() ? 'upcoming_cancel_before_start' : 'past_start_stuck';
+  if (!at || Number.isNaN(at.getTime())) return paid ? 'paid_unknown_time_stuck' : 'unknown_time';
+  if (at.getTime() > now.getTime()) return 'upcoming_cancel_before_start';
+  return paid ? 'past_start_stuck' : 'unpaid_will_expire';
 }
 
 export async function auditS5UnverifiedDoctors(now = new Date()): Promise<S5UnverifiedDoctorAudit> {
@@ -81,6 +95,7 @@ export async function auditS5UnverifiedDoctors(now = new Date()): Promise<S5Unve
   const bookings: S5UnverifiedDoctorAudit['bookings'] = [];
   for await (const b of BookingModel.find({ $or: [{ specialistId: { $type: 'string', $ne: '' } }, { 'prescription.prescribedBySpecialistId': { $exists: true } }] })
     .select({ specialistId: 1, userId: 1, bookingType: 1, status: 1, bookingDate: 1, bookingTime: 1, price: 1, paymentStatus: 1,
+      'walletFunding.total': 1, 'walletFunding.captures.state': 1,
       'prescription.prescribedBySpecialistId': 1, 'prescription.prescribedAt': 1,
       'prescription.fileUrls': 1, 'lifecycle.prescriptionUploaded': 1, 'report.message': 1, 'report.fileUrls': 1, createdAt: 1 })
     .sort({ _id: 1 }).lean().cursor()) {
@@ -97,7 +112,7 @@ export async function auditS5UnverifiedDoctors(now = new Date()): Promise<S5Unve
       bookingType: b.bookingType ?? null, status: b.status ?? null, hasPrescription,
       prescriptionMarker: !!b.lifecycle?.prescriptionUploaded?.at, hasReport: !!b.report && Object.keys(b.report).length > 0,
       bookingDate: b.bookingDate ?? null, bookingTime: b.bookingTime ?? null,
-      price: typeof b.price === 'number' ? b.price : null, paymentStatus: b.paymentStatus ?? null, timing: timingOf(b, now),
+      price: typeof b.price === 'number' ? b.price : null, paymentStatus: b.paymentStatus ?? null, timing: timingOf(b as TimingInput, now),
       createdAt: iso(b.createdAt),
     });
   }
@@ -128,7 +143,8 @@ async function main() {
       `bookings with such a doctor: ${report.bookings.length} (with a prescription: ${report.bookings.filter((b) => b.hasPrescription).length}); ` +
       `pharmacy orders linked to them: ${report.linkedPharmacyOrders.length}; ` +
       `upcoming (cancel before start): ${report.bookings.filter((b) => b.timing === 'upcoming_cancel_before_start').length}; ` +
-      `past start (stuck): ${report.bookings.filter((b) => b.timing === 'past_start_stuck').length}; name history: not available\n`);
+      `stuck (paid, past start or unreadable time): ${report.bookings.filter((b) => b.timing === 'past_start_stuck' || b.timing === 'paid_unknown_time_stuck').length}; ` +
+      `unpaid, will expire: ${report.bookings.filter((b) => b.timing === 'unpaid_will_expire').length}; name history: not available\n`);
   } finally {
     await mongoose.disconnect();
   }

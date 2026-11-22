@@ -10,6 +10,8 @@
  * instant consultation read carries no patient age or gender.
  * S5e: an ineligible doctor's instant accept replay (meeting link) and extend are refused; the close answers from its
  * committed audit row; admins read a booking's closes (reason included); the clinic-paid notice.
+ * S5f: an ineligible doctor's cancel commands (portal status, generic cancel) answer the reduced view; a duplicate key
+ * from another index is passed on, never answered "already cancelled".
  *
  * Run (throwaway DB only; the script drops its collections):
  *   JWT_SECRET_KEY=local-integration-only SESSION_ORIGINS_CUSTOMER=https://app.jansetu.test SESSION_ORIGINS_WORKSPACE=https://staff.jansetu.test \
@@ -334,6 +336,48 @@ async function main() {
       assert.equal(r.status, 200, JSON.stringify(r.json).slice(0, 200)); assert.equal(r.json.data.refunded, 0);
       const n = customerNotices.find((x) => x.userId === userId)!;
       assert.equal(n.message, 'Your consultation was cancelled by Jansetu. Contact the clinic about anything you paid there.');
+    });
+
+    await check('S5f (N1): an ineligible doctor\'s cancel commands answer no patient details (already-cancelled booking, both routes)', async () => {
+      const dr = await doctor('Dr Cancel Read'); const ok = await doctor('Dr Cancel Ok');
+      const priv = { contactNo: '9123456789', alternateContactNo: '9123456780', primaryConcern: 'Chest pain at night', notes: 'private note',
+        documents: [{ type: 'report', url: '/api/static/general/s5f.pdf', fileName: 'scan.pdf' }],
+        virtualMeeting: { provider: 'google_meet', status: 'active', joinUrl: 'https://meet.google.com/s5f-secret' } };
+      const b = await paidConsultation(dr); const v = await paidConsultation(ok);
+      await BookingModel.updateMany({ _id: { $in: [b.id, v.id] } }, { $set: priv });
+      await call('POST', `/bookings/${b.id}/cancel`, userTok(b.userId), { cancellationReason: 'Patient cancelled' });
+      await call('POST', `/bookings/${v.id}/cancel`, userTok(v.userId), { cancellationReason: 'Patient cancelled' });
+      await setDoctor(dr, { isVerified: false });
+      const secrets = ['9123456789', '9123456780', 'Chest pain', 'private note', 's5f.pdf', 's5f-secret'];
+      const leak = (j: unknown) => secrets.filter((x) => JSON.stringify(j).includes(x));
+      const viaPortal = await call('PATCH', `/specialists/me/appointments/${b.id}/status`, docTok(dr), { status: 'cancelled' });
+      assert.equal(viaPortal.status, 200, JSON.stringify(viaPortal.json).slice(0, 200));
+      assert.deepEqual(leak(viaPortal.json), []); assert.equal(viaPortal.json.data.status, 'cancelled');
+      const viaBookings = await call('POST', `/bookings/${b.id}/cancel`, docTok(dr), { cancellationReason: 'again' });
+      assert.equal(viaBookings.status, 200, JSON.stringify(viaBookings.json).slice(0, 200));
+      assert.deepEqual(leak(viaBookings.json), []); assert.equal(viaBookings.json.data.status, 'cancelled');
+      // Control: a verified doctor's answer is unchanged.
+      const full = await call('PATCH', `/specialists/me/appointments/${v.id}/status`, docTok(ok), { status: 'cancelled' });
+      assert.equal(full.status, 200); assert.equal(full.json.data.contactNo, '9123456789');
+    });
+
+    await check('S5f (L2a): a duplicate key from another index is not answered "already cancelled"; the booking is unchanged', async () => {
+      const dr = await doctor('Dr Dup Key');
+      const b = await paidConsultation(dr);
+      const real = bookings.cancelByDoctor;
+      (bookings as any).cancelByDoctor = async () => {
+        throw Object.assign(new Error('E11000 duplicate key error collection: wallettransactions index: operationKey_1'), { code: 11000,
+          keyPattern: { operationKey: 1 } });
+      };
+      try {
+        const r = await close(b.id, { reason: 'Dup', requestKey: rk('dup') });
+        assert.notEqual(r.json.code, 'ALREADY_CANCELLED', JSON.stringify(r.json).slice(0, 200));
+        assert.notEqual(r.status, 200);
+      } finally { (bookings as any).cancelByDoctor = real; }
+      const after = await BookingModel.findById(b.id).lean() as any;
+      assert.equal(after.status, 'confirmed'); assert.equal(await balance(b.userId), 0);
+      // Retried once the cause is gone: the close goes through.
+      assert.equal((await close(b.id, { reason: 'Dup', requestKey: rk('dup2') })).status, 200);
     });
 
     await check('S5d: an ineligible doctor reads its instant consultation without the patient\'s age or gender; a verified one sees them', async () => {

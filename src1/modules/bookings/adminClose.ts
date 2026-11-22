@@ -78,6 +78,7 @@ export async function adminCloseBooking(bookingId: string, adminId: string,
   if (b.bookingKind === 'instant') throw err(409, 'USE_INSTANT_ADMIN_CANCEL', 'Cancel an instant consultation with its admin cancel');
   if (b.status === 'cancelled') throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
 
+  let duplicate: unknown;
   try {
     // S5d: the admin's reason is internal (audit row only); the patient sees a fixed notice and the cause is 'admin'.
     await Container.get(BookingService).cancelByDoctor(id, { _id: adminId, userType: 'admin' }, ADMIN_CLOSE_PUBLIC_REASON, {
@@ -89,13 +90,20 @@ export async function adminCloseBooking(bookingId: string, adminId: string,
       },
     });
   } catch (e) {
-    // A concurrent resend with the same key committed first: answered below from its stored row.
+    // A concurrent resend with the same key committed first: answered below from its stored row. Any other error fails.
     if ((e as { code?: number })?.code !== 11000) throw e;
+    duplicate = e;
   }
-  // S5e: the answer comes from the committed audit row (never from flags an aborted, retried attempt may have set). No
-  // row: this close did not happen - the booking was cancelled by someone else in the meantime.
+  // S5e: the answer comes from the committed audit row (never from flags an aborted, retried attempt may have set).
   const done = await storedClose(adminId, input.requestKey, hash);
-  if (!done || done.row.bookingId !== id) throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
+  if (!done) {
+    // S5f: no row - this close did not happen. "Already cancelled" only when the booking really is; a duplicate key from
+    // another index (e.g. a wallet operation key) is the real failure and is passed on (the booking stays as it was).
+    const now = await BookingModel.findById(id).select({ status: 1 }).lean() as { status?: string } | null;
+    if (now?.status === 'cancelled') throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
+    if (duplicate) throw duplicate;
+    throw err(500, 'ADMIN_CLOSE_NOT_RECORDED', 'The booking was not closed; try again');
+  }
   logger.warn('S5c: admin closed a booking', { bookingId: id, adminId, refunded: done.row.refunded });
   return { ...done.booking, replayed: false, refunded: done.row.refunded, close: closeView(done.row) };
 }

@@ -159,11 +159,13 @@ export function restrictDoctorView(data: unknown): unknown {
 }
 
 /**
- * Read routes a doctor uses for its bookings and patients: for a doctor that is not verified and active the answer's
- * `data` is reduced by restrictDoctorView. Every other caller, and eligible doctors, get the answer unchanged.
+ * Routes that answer a doctor with its bookings and patients - reads and commands alike (S5f: a cancel of an already
+ * cancelled booking answered the full booking, a free repeatable read): for a doctor that is not verified and active the
+ * answer's `data` is reduced by restrictDoctorView, whatever the method. Every other caller, and eligible doctors, get
+ * the answer unchanged.
  */
 export const restrictIneligibleDoctorReads = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-  if (req.user?.userType !== 'specialist' || req.method !== 'GET' || await doctorIsEligible(doctorIdOf(req))) { next(); return; }
+  if (req.user?.userType !== 'specialist' || await doctorIsEligible(doctorIdOf(req))) { next(); return; }
   const json = res.json.bind(res);
   res.json = ((body: unknown) => json(body && typeof body === 'object' && 'data' in (body as object)
     ? { ...(body as object), data: restrictDoctorView((body as { data: unknown }).data) }

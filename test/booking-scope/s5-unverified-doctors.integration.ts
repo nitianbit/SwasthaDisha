@@ -389,6 +389,20 @@ async function main() {
       await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'cancelled' } });
       assert.equal((await auditS5UnverifiedDoctors()).bookings.find((b) => b.bookingId === bIna)!.timing, 'closed');
       await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'confirmed' } });
+      // L5a: past its start an UNPAID open booking is not stuck (the payment sweep expires it); a PAID one with an
+      // unreadable time is stuck (cancel answers INVALID_BOOKING_DATETIME).
+      const year2100 = new Date('2100-01-01T00:00:00.000Z');
+      await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'pending', paymentStatus: 'pending' } });
+      assert.equal((await auditS5UnverifiedDoctors(year2100)).bookings.find((b) => b.bookingId === bIna)!.timing, 'unpaid_will_expire');
+      await BookingModel.updateOne({ _id: bIna }, { $set: { status: 'confirmed', paymentStatus: 'paid', bookingTime: 'later today' } });
+      assert.equal((await auditS5UnverifiedDoctors()).bookings.find((b) => b.bookingId === bIna)!.timing, 'paid_unknown_time_stuck');
+      await BookingModel.updateOne({ _id: bIna }, { $set: { bookingTime: '10:00 AM' } });
+      const { timingOf } = await import('../../src1/scripts/auditS5UnverifiedDoctors');
+      const open = { status: 'pending', bookingDate: '20200101', bookingTime: '10:00 AM' };
+      assert.equal(timingOf({ ...open, paymentStatus: 'pending' }, new Date()), 'unpaid_will_expire');
+      assert.equal(timingOf({ ...open, paymentStatus: 'pending', walletFunding: { total: 100 } }, new Date()), 'past_start_stuck', 'wallet-funded = money held');
+      assert.equal(timingOf({ ...open, paymentStatus: 'pending', walletFunding: { captures: [{ state: 'applied' }] } }, new Date()), 'past_start_stuck');
+      assert.equal(timingOf({ ...open, bookingTime: '??', paymentStatus: 'pending' }, new Date()), 'unknown_time');
       const before2 = await hash();
       const text = JSON.stringify(report);
       for (const pii of ['Dr ', 'demoName', 'Patient', '980000', '960000', 'Morphine', 'Planted', 'Chest pain', '.pdf']) {
