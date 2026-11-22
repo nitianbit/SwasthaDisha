@@ -1,7 +1,8 @@
 # Assisted booking: partners book for walk-in patients (design, 2026-11-22)
 
 Status: **phase 0 built** (branch `m0/r2-assisted-phase0`, build record §18) and **phase 1a built** (branch
-`m0/r3-assisted-phase1a`, build record §19); local commits, not pushed. Phase 1b and later: design only.
+`m0/r3-assisted-phase1a`, build record §19); local commits, not pushed. Both merged onto the stage line as
+`m0/r4-assisted-stage` with the stage enable runbook (§20). Phase 1b and later: design only.
 
 - **Revision 2** folded in the owner's 22 Nov answers (§2.2).
 - **Revision 3** applies all 20 findings of the independent review of 4b44435 and the coordinator's overnight decisions
@@ -1702,3 +1703,141 @@ Checks 19–20 of `test/assisted/phase1a-review.integration.ts` (and one changed
 | 1 (LOW–MEDIUM) | A never-verified top-up could not be blocked by its Razorpay payment id (stored only once verified) | The payment chargeback also accepts the Razorpay order id (always stored). A `pay_…` id the database does not hold is resolved before the transaction: with gateway keys configured, the payment's order id is fetched from Razorpay (read only) and its record used. Otherwise, or when the gateway does not know the id, 404 `TOPUP_NOT_FOUND_BY_PAYMENT_ID` "Not found by payment id; try the order id or the record id". `PAYMENT_AMBIGUOUS` is unchanged |
 | 2 (LOW) | The names migration filter was too wide and too narrow | Only links the customer made (`createdByRole: 'user'` and `createdById` = the link's `userId`) with consent missing, `null` or `not_recorded` become `customer_order`. Idempotent; counted in `customerOrderConsentsFilled` |
 
+
+## 20. Assisted booking on the stage line, and the stage enable runbook (2026-11-22)
+
+Branch `m0/r4-assisted-stage`: the stage line `m0/q16-integration` `3c8c67bc` (origin/stage) with `m0/r3-assisted-phase1a`
+`58e9c14` merged in. Local commits only; nothing pushed or deployed. Production (`main`) is untouched.
+
+### 20.1 What the merge had to reconcile
+
+Since `286eb0a` (the base of phases 0 and 1a) the stage line gained S4 (server-owned prescriptions and reports), S5 and
+S5b–f (unverified or inactive doctors cannot act or be booked; admin clear and admin close) and S6 (payment `module` is
+informational; fulfilment by the stored record's context only). Both sides' rules hold after the merge:
+
+| Area | Stage rule | Assisted rule | Merged result |
+|---|---|---|---|
+| `file/access.ts` `canReadBooking` | S5: the booking's doctor reads its files only while verified and active | Phase 0: the booking pharmacy no longer reads the full PDF, documents or report | Patient, eligible doctor and HR only |
+| `file/access.ts` full PDF | S5: readable only while the booking's prescription still names it (admin clear, newer prescription) | — | Unchanged S5 rule |
+| `file/access.ts` dispensing copy | S5: ineligible doctors read no booking file; admin clear withdraws the prescription | Phase 0: copy for patient, doctor, operational booker in the window | Doctor needs eligibility; patient and doctor need the booking to still hold a doctor-saved prescription (an admin clear withdraws every copy from all but admins; a newer prescription keeps older copies for patient and doctor); pharmacy rules unchanged |
+| `rxAccess.hasPrescription` | S4 `hasDoctorPrescription`: marker AND prescriber = the booking's doctor | Phase 0: marker and content | Both: marker, content, prescriber = the booking's doctor (booker view, copy, file access, order from prescription) |
+| Assisted create / booker reschedule | S5b: `reserveSlot` re-reads the doctor inside the transaction (400 `SPECIALIST_NOT_*`) | 409 `DOCTOR_NOT_AVAILABLE` before the transaction | The in-transaction refusal answers 409 `DOCTOR_NOT_AVAILABLE` too (`asDoctorUnavailable`); nothing is committed |
+| Doctor lists for the pharmacy | S5 `isEligibleDoctor` | Active and verified | `/pharmacy-assisted/doctors` and the new slot read (§20.2) list eligible doctors only |
+| Admin close (S5c) / doctor cancel | Full refund through `cancelByDoctor` → `cancelBookingSettlement` | Assisted rows refund the payer's wallet in the cancel transaction | An admin close of an assisted booking refunds the pharmacy wallet (never the patient's); the patient gets the assisted notice; the close audit's `refunded` is in rupees as for every close |
+| Payment routing | S6: `shouldFulfillExternalBooking` = `record.context === 'external_booking'`; `processVerifiedPayment(paymentRecord)` | Lots, fee, credit claim, chargeback block, verify/reconcile gate | Auto-merged: S6's context-only routing with the assisted changes on top; the operational-pharmacy gate on `/payments/verify` and `/reconcile` applies to `booking` records only (top-ups settle) |
+| S6 back-credit script | Knew "this run credited" from `txRepo.save` | Top-up credits now go through the ledger | `PaymentService.onWalletRechargeCredited` reports the ledger row each attempt wrote; the script compares it with the committed row |
+| Tests | S5 fixtures need verified doctors | Phase 0 fixtures needed verified pharmacies | `s2-booking-read-scope` keeps both; phase 0's stub doctor is verified; its finding-2 check now writes the pre-S4 client prescription directly (S4 drops it at create); `s6-pharmacy-wallet-verify` uses real active, verified pharmacies (the verify gate on booking payments) |
+
+### 20.2 Added for the pharmacy screens
+
+**`GET /api/v1/pharmacy-assisted/doctors/:doctorId/slots?from=YYYY-MM-DD&days=1..14&mode=video|call|in-person`**
+(pharmacy token, operational; `ASSISTED_BOOKING_ENABLED_PHARMACY`). One doctor's bookable slots for the booking and
+reschedule screens: `{ doctor: { doctorId, name, specialization, languages, city, experienceYears, feeMinor }, from,
+to, slots: [{ slotId, date, startTime, endTime, startsAt, modes }] }`, earliest first. `from` defaults to today (never
+earlier), `days` to 7. Only active, available, not full, not started slots in the mode, and none on the doctor's leave
+day. 404 `DOCTOR_NOT_FOUND` for an unknown, unverified or inactive doctor (one answer); 400 for a malformed id or query;
+503 `ASSISTED_BOOKING_DISABLED`. The doctor list (`GET /pharmacy-assisted/doctors`) now leaves leave-day slots out too.
+Checks: `test/assisted/stage-merge.integration.ts`.
+
+### 20.3 API for the web screens (pharmacy and admin)
+
+Pharmacy token for every pharmacy row; answers `{ success, data }`; money in paise unless marked ₹.
+
+| Screen step | Method and path | Body / query | Answer `data` |
+|---|---|---|---|
+| Find patient | `POST /api/v1/pharmacy-assisted/patients/lookup` | `{ phone }` | `{ exists, holderNameMasked }` |
+| Doctors | `GET /api/v1/pharmacy-assisted/doctors` | `?speciality&mode&language&date&limit` | `[{ doctorId, name, specialization, languages, city, experienceYears, feeMinor, nearby, nextSlot, slots? }]` |
+| Doctor's slots | `GET /api/v1/pharmacy-assisted/doctors/:doctorId/slots` | `?from&days&mode` | §20.2 |
+| Book (wallet) | `POST /api/v1/pharmacy-assisted/consultations` | §19.3 (`requestKey, phone, patient, holderName?, consent, preferredLanguage, slotId, consultationMode, join?, couponCode?, acceptedPriceMinor, primaryConcern?, notes?, paymentMethod: 'wallet'`) | 201 `{ booking, funding, split, newAccount, replayed }` (200 on replay) |
+| Lost answer | `GET /api/v1/pharmacy-assisted/bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state: 'used', booking } \| { state: 'abandoned' } \| { state: 'unknown' }` |
+| Booked list | `GET /api/v1/pharmacy-bookings` | `?status&from&to&cursor&limit` | `[booker view]`, `pagination: { total, nextCursor }` |
+| One booking | `GET /api/v1/pharmacy-bookings/:id` | — | booker view (`prescription.fileUrls` = dispensing copy; `copyPending`) |
+| Cancel | `POST /api/v1/pharmacy-assisted/bookings/:id/cancel` | `{ reason?, expectedUpdatedAt? }` | `{ booking, refundedMinor, alreadyCancelled }` |
+| Reschedule | `POST /api/v1/pharmacy-assisted/bookings/:id/reschedule` | `{ slotId, requestKey, expectedUpdatedAt? }` | `{ booking, replayed }` |
+| Order from prescription | `POST /api/v1/pharmacy-orders` | `{ prescriptionFromBookingId, requestKey, orderType, items[], paymentMode, deliveryMode, … }` (§18.3) | 201 `{ order, paymentRequired, payment? }` |
+| Wallet | `GET /api/v1/pharmacy-wallet` | — | wallet + `withdrawableMinor, frozen, receivableMinor` (`balance` ₹, `balancePaise`) |
+| Wallet history | `GET /api/v1/pharmacy-wallet/transactions` | `?page&limit` | rows (`transactionType` credit/debit, `movementType`, `signedAmountPaise`, …), `pagination` |
+| Top up (Razorpay) | `POST /api/v1/pharmacy-wallet/topup` | `{ amount (₹), notes? }` | `{ paymentRequired, paymentTransactionId, razorpayOrderId, razorpayKeyId, amount, currency }`; then Razorpay Checkout, then `POST /api/v1/payments/verify { paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature, module: 'pharmacy-wallet' }` |
+| Top-up not shown | `POST /api/v1/pharmacy-wallet/topups/:paymentTransactionId/check` | — | `{ state: 'credited' \| 'unpaid', wallet }` |
+| Typed name | `PUT /api/v1/pharmacy-customers/:id/typed-name` | `{ typedName }` | `{ _id, userId, typedName }` |
+| Admin: top up a pharmacy | `POST /api/v1/pharmacy-wallet/topup` (admin token, header `Idempotency-Key`) | `{ pharmacyId, amount (₹), notes? }` | the wallet |
+| Admin: a pharmacy's wallet | `GET /api/v1/pharmacy-wallet?pharmacyId=` and `/transactions?pharmacyId=` | — | as above |
+| Admin: move a booking | `POST /api/v1/admin/assisted-bookings/:id/move` | `{ toPhone, asFamily?, holderName?, reason, requestKey, expectedUpdatedAt? }` | `{ booking, replayed }` |
+| Admin: "not mine" queue | `GET /api/v1/admin/assisted/review-items`, `POST …/:id/dismiss` | `?state&limit`; `{ reason? }` | items |
+| Admin: checks | `GET /api/v1/admin/assisted/reconciliation`, `/stuck-money`, `/alerts`, `/meet-guest-check/:id`; `GET /api/v1/admin/wallet-recharges/uncredited` | — | reports |
+| Admin: freeze, chargebacks | `PUT /api/v1/admin/pharmacies/:id/wallet/freeze`; `GET /api/v1/admin/pharmacies/:id/wallet/lots`; `POST /api/v1/admin/wallet-lots/:lotId/chargeback`; `POST /api/v1/admin/wallet-payments/:paymentId/chargeback` | §19.3 | §19.3 |
+
+### 20.4 Stage enable runbook (server `/opt/swasthadisha/backend`, pm2 `swasthadisha-api`)
+
+Run in this order. Steps 1–2 are the usual stage update; do the S4/S5/S6 and Q16 deploy notes first if this stage
+database has not had them (overnight report: pharmacy email checks before sync-indexes, `cdn.sheetjs.com` reachable
+before `npm ci`).
+
+1. **Code.** `cd /opt/swasthadisha/backend && git fetch origin && git checkout stage && git pull --ff-only origin stage`,
+   then `curl -sI https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz | head -1` (expect 200) and `npm ci`.
+2. **Switches stay off for now.** In `.env`, make sure `ASSISTED_BOOKING_ENABLED_PHARMACY`, `ASSISTED_ADMIN_TOOLS_ENABLED`
+   and `ASSISTED_RECONCILIATION_ENABLED` are absent or not `true`. Restart on the new code:
+   `TS_NODE_PROJECT=tsconfig.runtime.json pm2 restart swasthadisha-api --update-env`, then `pm2 logs swasthadisha-api --lines 50`
+   (no start-up error; the "Settlement cutover" line is there).
+3. **Migration, dry run:** `npm run migrate:assisted-pharmacy-wallets; echo "exit=$?"`. Read the JSON: `signedFilled`,
+   `openings` (one per wallet whose balance differs from the sum of its rows), `typedNamesFilled`,
+   `customerOrderConsentsFilled`, coupons. Exit 2 means `signAnomalies` or `openedWalletMismatches` are listed: read
+   them before going on (they are never changed by the script; stage demo data may have some).
+4. **Migration, write:** `npm run migrate:assisted-pharmacy-wallets -- --commit; echo "exit=$?"`. Run the dry run again:
+   it must report nothing left to do (a rerun is a no-op).
+5. **Indexes:** `npm run sync-indexes 2>&1 | tee /tmp/sync-indexes.log; grep FAILED /tmp/sync-indexes.log` (expect no
+   FAILED line). New: `wallet_topup_lots`, `coupon_redemptions`, `assisted_counters`, `assisted_alerts`,
+   `assisted_review_items`, `assisted_reconciliation_reports`, `assisted_audit_events`, and indexes on `bookings`,
+   `pharmacy_wallet_transactions`, `pharmacy_wallets`, `pharmacy_orders`.
+6. **Switches on.** Add to `.env` (the time is now, India time):
+   ```
+   WALLET_RECHARGE_SWEEP_FROM=2026-11-22T12:00:00+05:30
+   ASSISTED_ADMIN_TOOLS_ENABLED=true
+   ASSISTED_RECONCILIATION_ENABLED=true
+   ASSISTED_BOOKING_ENABLED_PHARMACY=true
+   ```
+   Limits keep their defaults (§19.4) unless set. Then
+   `TS_NODE_PROJECT=tsconfig.runtime.json pm2 restart swasthadisha-api --update-env`. (`.env` is read at start; a variable
+   that pm2 itself holds in its saved environment wins over `.env`, so check `pm2 env <id> | grep ASSISTED` if a switch
+   seems ignored.)
+7. **Fund a demo pharmacy (admin top-up, non-withdrawable).** Find the pharmacy:
+   `mongosh "$MONGODB_URL" --quiet --eval 'db.pharmacies.find({isActive:true,isVerified:true},{name:1,phone:1}).limit(20).forEach(p=>printjson(p))'`.
+   Sign in to the staff site as an admin, copy the `Authorization: Bearer …` value of any API request from the
+   browser's network tab, then:
+   ```
+   curl -sS -X POST https://swasthadisha.etryx.in/api/v1/pharmacy-wallet/topup \
+     -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' -H 'Idempotency-Key: stage-demo-topup-001' \
+     -d '{"pharmacyId":"<pharmacy _id>","amount":5000,"notes":"stage testing"}'
+   ```
+   `amount` is in rupees (₹5,000 here). Use a new `Idempotency-Key` for each further top-up; resending the same key
+   credits nothing more. Check: `curl -sS "https://swasthadisha.etryx.in/api/v1/pharmacy-wallet?pharmacyId=<id>" -H "Authorization: Bearer $ADMIN_TOKEN"`.
+   The pharmacy must be active and verified to book; the doctors it books must be verified and active.
+8. **What to check first.**
+   - As the pharmacy: `GET /api/v1/pharmacy-assisted/doctors` answers 200 (503 = the switch is not read) and lists only
+     verified, active doctors; `GET /api/v1/pharmacy-wallet` shows the top-up.
+   - Book one video consultation on the pharmacy's own device; the wallet drops by the fee; the booking shows in
+     `GET /api/v1/pharmacy-bookings` with `assisted.shortRef`; the doctor sees it with "Identity attested by the partner,
+     not verified". Cancel it from the pharmacy: `refundedMinor` = the fee and the wallet is back.
+   - Unverify a test doctor in admin and try to book them: 409 `DOCTOR_NOT_AVAILABLE`; they leave the doctor list.
+   - A small Razorpay test top-up from the pharmacy (stage keys): after verify, the wallet rises; if the screen lost the
+     answer, `POST /pharmacy-wallet/topups/:id/check` credits it once.
+   - Admin: `GET /api/v1/admin/assisted/reconciliation` shows no mismatches and `notMigrated` empty; `GET
+     /api/v1/admin/assisted/stuck-money` is empty.
+   - The manual Meet check of §19.2 item 11 (pharmacy device joins as a guest the doctor admits); record it here.
+9. **Roll back** (any time): set `ASSISTED_BOOKING_ENABLED_PHARMACY=false` and restart. Existing assisted bookings can still
+   be cancelled, rescheduled and refunded; keep `ASSISTED_ADMIN_TOOLS_ENABLED=true` during a rollback (§19.4).
+
+### 20.5 Open gaps (not built here)
+
+- **No admin top-up screen** in the web apps: step 7 uses the API. The web agent may add one for `POST
+  /pharmacy-wallet/topup` (admin form: pharmacy, ₹ amount, notes, a fresh `Idempotency-Key` per submit).
+- **Family members of a number** are not listed to the pharmacy (by design, §6.2: the answer never reveals them). A repeat
+  booking for the same family member reuses it by `{ relation, name }` (same active name and relation) or by the
+  `dependentId` the pharmacy's own earlier booking shows.
+- **Branch closures** (`clinicBranchContext`) are not filtered from the pharmacy slot lists; `reserveSlot` still refuses
+  a closed branch at booking (409).
+- **Order bindings after an admin clear:** an order already made from a prescription that an admin later clears keeps
+  its bound dispensing copy (it is the dispensed order's prescription record). Owner to decide whether an admin clear
+  should also withdraw it.
+- Phase 1b and later (Razorpay per booking, lab/doctor bookers, referral cuts, withdrawals, SMS) are not built (§19.2
+  item 13).

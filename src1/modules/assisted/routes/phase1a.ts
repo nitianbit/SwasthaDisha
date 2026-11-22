@@ -15,6 +15,8 @@ export const pharmacyAssistedRouter = Router();
 pharmacyAssistedRouter.use(requireOperationalPharmacy);
 pharmacyAssistedRouter.post('/patients/lookup', validate(v.lookupSchema, 'body'), catchAsync(c.lookup));
 pharmacyAssistedRouter.get('/doctors', validate(v.doctorQuerySchema, 'query'), catchAsync(c.doctors));
+pharmacyAssistedRouter.get('/doctors/:doctorId/slots', validate(v.doctorSlotsParamSchema, 'params'), validate(v.doctorSlotsQuerySchema, 'query'),
+  catchAsync(c.doctorSlots));
 pharmacyAssistedRouter.post('/consultations', validate(v.consultationSchema, 'body'), catchAsync(c.createConsultation));
 pharmacyAssistedRouter.get('/bookings/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(c.byKey));
 pharmacyAssistedRouter.post('/bookings/by-key/:key/abandon', validate(v.keyParamSchema, 'params'), catchAsync(c.abandonKey));

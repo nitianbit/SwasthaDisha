@@ -11,6 +11,8 @@ import type { IBooking } from '@/modules/bookings/types';
 import { cancelBookingSettlement, isReplayedBooking, rescheduleWithHolds } from '@/modules/bookings/holds';
 import SlotModel from '@/modules/slots/model';
 import SpecialistModel from '@/modules/specialists/model';
+import { isEligibleDoctor } from '@/modules/specialists/eligibility';
+import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import UserModel from '@/modules/user/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { WalletRepository } from '@/modules/wallet/repository';
@@ -50,9 +52,47 @@ export interface DoctorQuery { speciality?: string; mode?: 'video' | 'call' | 'i
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const ymd = (iso: string) => iso.replace(/-/g, '');
 
+type SlotRow = Record<string, any>;
+type OpenSlot = { s: SlotRow; start: Date };
+/** The slot shape both doctor reads answer. */
+const slotView = (x: OpenSlot) => ({ slotId: String(x.s._id), date: x.s.date, startTime: x.s.startTime, endTime: x.s.endTime,
+  startsAt: x.start, modes: x.s.serviceModes?.length ? x.s.serviceModes : ['video', 'call', 'in-person'] });
+const feeMinorOf = (d: Record<string, any>) => (d.isConsultationFree === true ? 0 : Math.round(Number(d.consultationFee || 0) * 100));
+const DOCTOR_FIELDS = { name: 1, specialization: 1, languages: 1, city: 1, pincode: 1, consultationFee: 1, isConsultationFree: 1, experienceYears: 1 };
+
 /**
- * GET /pharmacy-assisted/doctors — any active, verified doctor (decision 9), nearby first: the pharmacy's pincode, then
- * its city; then the requested language, the fee and the next free slot. With `date`, that day's bookable slots.
+ * The bookable slots of these doctors from `fromYmd` (never before today) up to `toYmd` (inclusive, when given): active,
+ * available, not full, bookable at `now`, in the mode, and not on the doctor's leave day (reserveSlot refuses those).
+ * Earliest first, grouped by doctor id (lower case).
+ */
+async function openSlotsByDoctor(doctorIds: string[], fromYmd: string, toYmd: string | null, mode: DoctorQuery['mode'], now: Date)
+  : Promise<Map<string, OpenSlot[]>> {
+  const today = istTodayYyyymmdd(now);
+  const from = fromYmd < today ? today : fromYmd;
+  const byDoctor = new Map<string, OpenSlot[]>();
+  if (!doctorIds.length || (toYmd && toYmd < from)) return byDoctor;
+  const [slots, templates] = await Promise.all([
+    SlotModel.find({ specialistId: { $in: doctorIds }, date: { $gte: from, ...(toYmd ? { $lte: toYmd } : {}) },
+      isActive: true, isAvailable: true, $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } })
+      .sort({ date: 1 }).limit(5000).lean().exec() as unknown as Promise<SlotRow[]>,
+    DoctorScheduleTemplateModel.find({ doctorId: { $in: doctorIds }, 'leaveDates.0': { $exists: true } }).select({ doctorId: 1, leaveDates: 1 }).lean(),
+  ]);
+  const leave = new Set(templates.flatMap((t) => (t.leaveDates ?? []).map((d) => `${lower(t.doctorId)}|${d}`)));
+  const modeOk = (x: SlotRow) => !mode || !(x.serviceModes?.length) || x.serviceModes.includes(mode);
+  const open = slots.filter((x) => modeOk(x) && !leave.has(`${lower(x.specialistId)}|${x.date}`) && (bookableUntilOf(x)?.getTime() ?? 0) > now.getTime())
+    .map((x) => ({ s: x, start: slotIntervalOf(x)!.start })).sort((a, b) => a.start.getTime() - b.start.getTime());
+  for (const x of open) {
+    const k = lower(x.s.specialistId);
+    if (!byDoctor.has(k)) byDoctor.set(k, []);
+    byDoctor.get(k)!.push(x);
+  }
+  return byDoctor;
+}
+
+/**
+ * GET /pharmacy-assisted/doctors — any active, verified doctor (decision 9; S5 `isEligibleDoctor`), nearby first: the
+ * pharmacy's pincode, then its city; then the requested language, the fee and the next free slot. With `date`, that
+ * day's bookable slots.
  */
 export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Date = new Date()) {
   assertPharmacyAssistedOn();
@@ -60,36 +100,20 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
   const filter: Record<string, unknown> = { isActive: true, isVerified: true };
   if (q.speciality) filter.specialization = { $regex: `^${escapeRx(q.speciality.trim())}$`, $options: 'i' };
   if (q.language) filter.languages = { $regex: `^${escapeRx(q.language.trim())}$`, $options: 'i' };
-  const doctors = await SpecialistModel.find(filter).select({ name: 1, specialization: 1, languages: 1, city: 1, pincode: 1, consultationFee: 1,
-    isConsultationFree: 1, experienceYears: 1 }).limit(300).lean() as Record<string, any>[];
+  const doctors = await SpecialistModel.find(filter).select(DOCTOR_FIELDS).limit(300).lean() as Record<string, any>[];
   if (!doctors.length) return [];
-  const today = istTodayYyyymmdd(now);
-  const from = q.date ? ymd(q.date) : today;
-  const slots = await SlotModel.find({ specialistId: { $in: doctors.map((d) => String(d._id)) }, date: { $gte: from < today ? today : from },
-    isActive: true, isAvailable: true, $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } })
-    .sort({ date: 1 }).limit(5000).lean() as Record<string, any>[];
-  const modeOk = (s: Record<string, any>) => !q.mode || !(s.serviceModes?.length) || s.serviceModes.includes(q.mode);
-  const open = slots.filter((s) => modeOk(s) && (bookableUntilOf(s)?.getTime() ?? 0) > now.getTime())
-    .map((s) => ({ s, start: slotIntervalOf(s)!.start })).sort((a, b) => a.start.getTime() - b.start.getTime());
-  const byDoctor = new Map<string, { s: Record<string, any>; start: Date }[]>();
-  for (const x of open) {
-    const k = lower(x.s.specialistId);
-    if (!byDoctor.has(k)) byDoctor.set(k, []);
-    byDoctor.get(k)!.push(x);
-  }
+  const byDoctor = await openSlotsByDoctor(doctors.map((d) => String(d._id)), q.date ? ymd(q.date) : istTodayYyyymmdd(now), null, q.mode, now);
   const same = (a?: string, b?: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
   const rows = doctors.map((d) => {
     const mine = byDoctor.get(lower(d._id)) ?? [];
     const nearby = same(d.pincode, pharmacy?.pincode) ? 'pincode' : same(d.city, pharmacy?.city) ? 'city' : null;
     const speaks = !!q.language && (d.languages ?? []).some((l: string) => same(l, q.language));
-    const feeMinor = d.isConsultationFree === true ? 0 : Math.round(Number(d.consultationFee || 0) * 100);
-    const view = (x: { s: Record<string, any>; start: Date }) => ({ slotId: String(x.s._id), date: x.s.date, startTime: x.s.startTime, endTime: x.s.endTime,
-      startsAt: x.start, modes: x.s.serviceModes?.length ? x.s.serviceModes : ['video', 'call', 'in-person'] });
+    const feeMinor = feeMinorOf(d);
     return {
       doctorId: String(d._id), name: d.name, specialization: d.specialization, languages: d.languages ?? [], city: d.city ?? null,
       experienceYears: d.experienceYears ?? null, feeMinor, nearby,
-      nextSlot: mine[0] ? view(mine[0]) : null,
-      ...(q.date ? { slots: mine.filter((x) => x.s.date === ymd(q.date!)).map(view) } : {}),
+      nextSlot: mine[0] ? slotView(mine[0]) : null,
+      ...(q.date ? { slots: mine.filter((x) => x.s.date === ymd(q.date!)).map(slotView) } : {}),
       _rank: [nearby === 'pincode' ? 0 : nearby === 'city' ? 1 : 2, speaks ? 0 : 1, feeMinor, mine[0]?.start.getTime() ?? Number.MAX_SAFE_INTEGER],
     };
   });
@@ -99,6 +123,35 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
   });
   const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 100);
   return rows.slice(0, limit).map(({ _rank: _r, ...row }) => row);
+}
+
+export interface DoctorSlotsQuery { from?: string; days?: number; mode?: DoctorQuery['mode'] }
+const addDaysYmd = (d: string, n: number) => {
+  const t = new Date(Date.UTC(Number(d.slice(0, 4)), Number(d.slice(4, 6)) - 1, Number(d.slice(6, 8)) + n));
+  return `${t.getUTCFullYear()}${String(t.getUTCMonth() + 1).padStart(2, '0')}${String(t.getUTCDate()).padStart(2, '0')}`;
+};
+
+/**
+ * Stage build: GET /pharmacy-assisted/doctors/:doctorId/slots?from&days&mode — one doctor's bookable slots over
+ * `days` days (default 7, at most 14) from `from` (default today), for the booking and reschedule screens. Only an
+ * active, verified doctor (S5); any other id, missing or not eligible, is the same 404 DOCTOR_NOT_FOUND.
+ */
+export async function listDoctorSlots(_actor: PharmacyActor, doctorId: string, q: DoctorSlotsQuery, now: Date = new Date()) {
+  assertPharmacyAssistedOn();
+  const notFound = () => err(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
+  if (typeof doctorId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(doctorId)) throw notFound();
+  const d = await SpecialistModel.findById(doctorId).select({ ...DOCTOR_FIELDS, isActive: 1, isVerified: 1 }).lean() as Record<string, any> | null;
+  if (!isEligibleDoctor(d)) throw notFound();
+  const today = istTodayYyyymmdd(now);
+  const from = q.from && ymd(q.from) > today ? ymd(q.from) : today;
+  const days = Math.min(Math.max(Number(q.days) || 7, 1), 14);
+  const byDoctor = await openSlotsByDoctor([String(d!._id)], from, addDaysYmd(from, days - 1), q.mode, now);
+  return {
+    doctor: { doctorId: String(d!._id), name: d!.name, specialization: d!.specialization, languages: d!.languages ?? [], city: d!.city ?? null,
+      experienceYears: d!.experienceYears ?? null, feeMinor: feeMinorOf(d!) },
+    from, to: addDaysYmd(from, days - 1),
+    slots: (byDoctor.get(lower(d!._id)) ?? []).map(slotView),
+  };
 }
 
 async function ownAssisted(actor: PharmacyActor, bookingId: unknown): Promise<IBooking> {

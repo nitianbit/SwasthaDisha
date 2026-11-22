@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { createPharmacyConsultation, type PharmacyActor } from '@/modules/assisted/consultations';
-import { abandonByKey, cancelByBooker, findByKey, listDoctors, lookupPatient, rescheduleByBooker } from '@/modules/assisted/pharmacyCommands';
+import { abandonByKey, cancelByBooker, findByKey, listDoctors, listDoctorSlots, lookupPatient, rescheduleByBooker } from '@/modules/assisted/pharmacyCommands';
 import { dismissReviewItem, listReviewItems, moveAssistedBooking, reportNotMine } from '@/modules/assisted/review';
 import { runReconciliation, stuckMoney, uncreditedTopups } from '@/modules/assisted/reconciliation';
 import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules/assisted/model';
@@ -28,6 +28,8 @@ const send = (res: Response, data: unknown, status = 200) => {
 // ── Pharmacy ──
 export const lookup = async (req: AuthRequest, res: Response) => send(res, await lookupPatient(actorOf(req), req.body?.phone));
 export const doctors = async (req: AuthRequest, res: Response) => send(res, await listDoctors(actorOf(req), req.query as never));
+export const doctorSlots = async (req: AuthRequest, res: Response) =>
+  send(res, await listDoctorSlots(actorOf(req), req.params.doctorId, req.query as never));
 export const createConsultation = async (req: AuthRequest, res: Response) => {
   const out = await createPharmacyConsultation(actorOf(req), req.body);
   send(res, out, out.replayed ? 200 : 201);

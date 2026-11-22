@@ -32,6 +32,14 @@ export const doctorQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100),
 });
 
+/** Stage build: one doctor's bookable slots (GET /pharmacy-assisted/doctors/:doctorId/slots). */
+export const doctorSlotsParamSchema = Joi.object({ doctorId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required() });
+export const doctorSlotsQuerySchema = Joi.object({
+  from: calendarDay,
+  days: Joi.number().integer().min(1).max(14),
+  mode: Joi.string().valid('video', 'call', 'in-person'),
+});
+
 export const consultationSchema = Joi.object({
   requestKey: key.required(),
   phone: mobile.required(),
