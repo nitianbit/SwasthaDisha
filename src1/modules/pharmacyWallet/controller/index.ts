@@ -88,6 +88,18 @@ export class PharmacyWalletController {
     res.status(200).json({ success: true, message: 'Wallet topped up', data: result ? walletView(result) : result });
   };
 
+  /** r7: GET /pharmacy-wallet/topups/admin/by-key/:key?pharmacyId= (admin): `credited` with the row and wallet, or `not_found`. */
+  adminTopupByKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const pharmacyId = this.resolvePharmacyId(req);
+    const key = String(req.params.key ?? '').trim();
+    if (!key || key.length > 100) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'key must be the Idempotency-Key of the top-up (1 to 100 characters)' });
+    }
+    const result = await this.service.adminTopupByKey(pharmacyId, key);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: result });
+  };
+
   /** POST /pharmacy-wallet/topups/:paymentTransactionId/check (assisted booking phase 1a, §17.6). */
   checkTopup = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const result = await this.service.checkTopup(req.user?.pharmacyId || '', req.params.paymentTransactionId);

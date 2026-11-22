@@ -632,7 +632,11 @@ export async function rescheduleWithHolds(p: {
     const current = await heldSlot(booking, s);
     const target = canon(p.nextSlotId);
     if (!target) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
-    if (p.noShow && target === current) throw conflict('SAME_SLOT', 'Pick a later slot');
+    // r7: an assisted booker's move onto the slot the booking holds (as this transaction reads it: also when a
+    // concurrent move just put it there) changes nothing and is refused, after the status and start checks above.
+    if ((p.noShow || p.assistedBooker) && target === current) {
+      throw conflict('SAME_SLOT', p.noShow ? 'Pick a later slot' : 'The booking is already on this slot; pick another one');
+    }
     // Q15: every move (ordinary, desk, no-show) stays with the booking's doctor, decided on the stored booking and the
     // target slot as this transaction reads them. (The slot-time match in reserveSlot also refused another doctor's
     // slot, but only as SLOT_NOT_AVAILABLE.) Mode and in-clinic admission follow in reserveSlot, as for every booking.

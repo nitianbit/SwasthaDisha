@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
-import { requireAdminOrOperationalPharmacy, requirePharmacy } from '@/modules/middleware/auth';
+import { requireAdmin, requireAdminOrOperationalPharmacy, requirePharmacy } from '@/modules/middleware/auth';
 import { PharmacyWalletController } from '@/modules/pharmacyWallet/controller';
 import { topupSchema } from '@/modules/pharmacyWallet/validation';
 
@@ -27,5 +27,8 @@ pharmacyWalletRouter.post(
 // Review of db252c1 (item b): any pharmacy, operational or not — a captured top-up is its own money and is credited; the
 // wallet funds nothing while the pharmacy is not operational.
 pharmacyWalletRouter.post('/topups/:paymentTransactionId/check', requirePharmacy, catchAsync(controller.checkTopup));
+
+// r7: an admin's lost top-up answer — was the top-up with this Idempotency-Key credited to this pharmacy?
+pharmacyWalletRouter.get('/topups/admin/by-key/:key', requireAdmin, catchAsync(controller.adminTopupByKey));
 
 export default pharmacyWalletRouter;

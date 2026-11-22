@@ -13,7 +13,7 @@ import SlotModel from '@/modules/slots/model';
 import SpecialistModel from '@/modules/specialists/model';
 import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
-import { branchHolidays, clinicBranchContext } from '@/modules/doctors/services/schedule';
+import { clinicBranchAdmission } from '@/modules/doctors/services/schedule';
 import UserModel from '@/modules/user/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { WalletRepository } from '@/modules/wallet/repository';
@@ -69,49 +69,99 @@ const slotView = (x: OpenSlot) => ({ slotId: String(x.s._id), date: x.s.date, st
 const feeMinorOf = (d: Record<string, any>) => (d.isConsultationFree === true ? 0 : Math.round(Number(d.consultationFee || 0) * 100));
 const DOCTOR_FIELDS = { name: 1, specialization: 1, languages: 1, city: 1, pincode: 1, consultationFee: 1, isConsultationFree: 1, experienceYears: 1 };
 
+/** r7: the rows one shared slot read takes; a doctor it leaves unresolved is read on its own (walkFirstOpen). */
+const SLOT_READ_CAP = 5000;
+/** r7: one doctor's one day is read whole (a bound far above any real day, so the earliest time is never cut off). */
+const DAY_READ_CAP = 20000;
+/** r7: at most this many days holding candidate slots are read, one by one, for one doctor's next bookable slot. */
+const WALK_DAYS = 60;
+
+/** The stored slots an assisted booking might take (the rest of the rules are checked on each row: admitOpen). */
+const candidateFilter = (mode: DoctorQuery['mode']) => ({
+  isActive: true, isAvailable: true, $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] },
+  // r6: slots the pharmacy could not book (chat only, or not in the asked mode) never take a read's row budget.
+  $or: [{ 'serviceModes.0': { $exists: false } }, { serviceModes: { $in: mode ? [mode] : [...ASSISTED_MODES] } }],
+});
+
+/** What decides a slot beyond its own fields: the doctors' leave days and (r7, batched) their clinic branches. */
+interface Admission { leave: Map<string, string[]>; clinic: (doctorId: string, branchId: string, date: string) => boolean }
+async function admissionOf(doctorIds: string[]): Promise<Admission> {
+  const [templates, clinic] = await Promise.all([
+    DoctorScheduleTemplateModel.find({ doctorId: { $in: doctorIds }, 'leaveDates.0': { $exists: true } }).select({ doctorId: 1, leaveDates: 1 }).lean(),
+    clinicBranchAdmission(doctorIds),
+  ]);
+  const leave = new Map<string, string[]>();
+  for (const t of templates) leave.set(lower(t.doctorId), [...(leave.get(lower(t.doctorId)) ?? []), ...(t.leaveDates ?? []).map(String)]);
+  return { leave, clinic };
+}
+
 /**
- * The bookable slots of these doctors from `fromYmd` (never before today) up to `toYmd` (inclusive, when given): active,
- * available, not full, bookable at `now`, offered in at least one assisted mode (r6: never a chat-only slot) and in the
- * asked mode, not on the doctor's leave day, and (in clinic) at an open branch where the doctor still consults
- * (reserveSlot refuses all of those). Earliest first, grouped by doctor id (lower case).
+ * The rows a pharmacy can book now, earliest first: offered in at least one assisted mode (r6: never a chat-only slot)
+ * and in the asked mode, bookable at `now`, not on the doctor's leave day, and (in clinic) at an open branch where the
+ * doctor still consults (reserveSlot refuses all of those; r6 closed the §20.5 branch gap).
  */
-async function openSlotsByDoctor(doctorIds: string[], fromYmd: string, toYmd: string | null, mode: DoctorQuery['mode'], now: Date)
-  : Promise<Map<string, OpenSlot[]>> {
+function admitOpen(rows: SlotRow[], adm: Admission, mode: DoctorQuery['mode'], now: Date): OpenSlot[] {
+  const modeOk = (x: SlotRow) => { const modes = assistedModesOf(x); return modes.length > 0 && (!mode || modes.includes(mode)); };
+  return rows.filter((x) => modeOk(x) && !(adm.leave.get(lower(x.specialistId)) ?? []).includes(String(x.date))
+    && (bookableUntilOf(x)?.getTime() ?? 0) > now.getTime() && !!slotIntervalOf(x)
+    && (!x.branchId || adm.clinic(String(x.specialistId), String(x.branchId), String(x.date))))
+    .map((x) => ({ s: x, start: slotIntervalOf(x)!.start })).sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
+/**
+ * The bookable slots of these doctors from `fromYmd` (never before today) up to `toYmd` (inclusive, when given), earliest
+ * first, grouped by doctor id (lower case), in one read of at most SLOT_READ_CAP rows (date order). `cutoff` is null
+ * when the read took every row; otherwise only the days before `cutoff` are complete (r7).
+ */
+async function openSlotsByDoctor(doctorIds: string[], fromYmd: string, toYmd: string | null, mode: DoctorQuery['mode'], now: Date, adm: Admission)
+  : Promise<{ byDoctor: Map<string, OpenSlot[]>; cutoff: string | null }> {
   const today = istTodayYyyymmdd(now);
   const from = fromYmd < today ? today : fromYmd;
   const byDoctor = new Map<string, OpenSlot[]>();
-  if (!doctorIds.length || (toYmd && toYmd < from)) return byDoctor;
-  const [slots, templates] = await Promise.all([
-    SlotModel.find({ specialistId: { $in: doctorIds }, date: { $gte: from, ...(toYmd ? { $lte: toYmd } : {}) },
-      isActive: true, isAvailable: true, $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] },
-      // r6: slots the pharmacy could not book (chat only, or not in the asked mode) never take the 5000-row budget.
-      $or: [{ 'serviceModes.0': { $exists: false } }, { serviceModes: { $in: mode ? [mode] : [...ASSISTED_MODES] } }] })
-      .sort({ date: 1 }).limit(5000).lean().exec() as unknown as Promise<SlotRow[]>,
-    DoctorScheduleTemplateModel.find({ doctorId: { $in: doctorIds }, 'leaveDates.0': { $exists: true } }).select({ doctorId: 1, leaveDates: 1 }).lean(),
-  ]);
-  const leave = new Set(templates.flatMap((t) => (t.leaveDates ?? []).map((d) => `${lower(t.doctorId)}|${d}`)));
-  const modeOk = (x: SlotRow) => { const modes = assistedModesOf(x); return modes.length > 0 && (!mode || modes.includes(mode)); };
-  const candidates = slots.filter((x) => modeOk(x) && !leave.has(`${lower(x.specialistId)}|${x.date}`)
-    && (bookableUntilOf(x)?.getTime() ?? 0) > now.getTime() && !!slotIntervalOf(x));
-  // r6: an in-clinic slot is bookable only while its branch is open that day and the doctor still consults there
-  // (reserveSlot refuses both), so neither is offered (closes the §20.5 branch gap). One check per doctor and branch.
-  const branchIds = [...new Set(candidates.map((x) => x.branchId).filter(Boolean).map(String))];
-  const holidays = await branchHolidays(branchIds);
-  const pairs = [...new Set(candidates.filter((x) => x.branchId).map((x) => `${lower(x.specialistId)}|${String(x.branchId)}`))];
-  const consults = new Map(await Promise.all(pairs.map(async (k) => {
-    const [doctorId, branchId] = k.split('|') as [string, string];
-    return [k, !!(await clinicBranchContext(doctorId, branchId))] as const;
-  })));
-  const branchOk = (x: SlotRow) => !x.branchId || (!holidays.get(String(x.branchId))?.has(String(x.date))
-    && consults.get(`${lower(x.specialistId)}|${String(x.branchId)}`) === true);
-  const open = candidates.filter(branchOk)
-    .map((x) => ({ s: x, start: slotIntervalOf(x)!.start })).sort((a, b) => a.start.getTime() - b.start.getTime());
-  for (const x of open) {
+  if (!doctorIds.length || (toYmd && toYmd < from)) return { byDoctor, cutoff: null };
+  const read = await SlotModel.find({ specialistId: { $in: doctorIds }, date: { $gte: from, ...(toYmd ? { $lte: toYmd } : {}) }, ...candidateFilter(mode) })
+    .sort({ date: 1 }).limit(SLOT_READ_CAP + 1).lean().exec() as unknown as SlotRow[];
+  const cutoff = read.length > SLOT_READ_CAP ? String(read[SLOT_READ_CAP - 1]!.date) : null;
+  const rows = cutoff ? read.filter((x) => String(x.date) < cutoff) : read;
+  for (const x of admitOpen(rows, adm, mode, now)) {
     const k = lower(x.s.specialistId);
     if (!byDoctor.has(k)) byDoctor.set(k, []);
     byDoctor.get(k)!.push(x);
   }
-  return byDoctor;
+  return { byDoctor, cutoff };
+}
+
+/**
+ * r7: one doctor's earliest bookable slot on or after `fromYmd`, read day by day (the first day holding a candidate,
+ * then that whole day), skipping leave days, for at most WALK_DAYS such days. Each step uses the slots index
+ * (specialistId, date).
+ */
+async function walkFirstOpen(doctorId: string, fromYmd: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<OpenSlot | null> {
+  const leave = adm.leave.get(lower(doctorId)) ?? [];
+  let after: string | null = null;
+  for (let i = 0; i < WALK_DAYS; i++) {
+    const date = { ...(after ? { $gt: after } : { $gte: fromYmd }), ...(leave.length ? { $nin: leave } : {}) };
+    const first = await SlotModel.findOne({ specialistId: doctorId, date, ...candidateFilter(mode) }).sort({ date: 1 }).select({ date: 1 }).lean() as
+      { date?: string } | null;
+    if (!first?.date) return null;
+    const day = await SlotModel.find({ specialistId: doctorId, date: first.date, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
+    const open = admitOpen(day, adm, mode, now);
+    if (open.length) return open[0]!;
+    after = String(first.date);
+  }
+  return null;
+}
+
+/** One day's bookable slots of these doctors; a day too large for one read is read doctor by doctor (r7). */
+async function daySlotsByDoctor(doctorIds: string[], day: string, mode: DoctorQuery['mode'], now: Date, adm: Admission): Promise<Map<string, OpenSlot[]>> {
+  const shared = await openSlotsByDoctor(doctorIds, day, day, mode, now, adm);
+  if (!shared.cutoff) return shared.byDoctor;
+  const out = new Map<string, OpenSlot[]>();
+  await Promise.all(doctorIds.map(async (id) => {
+    const rows = await SlotModel.find({ specialistId: id, date: day, ...candidateFilter(mode) }).limit(DAY_READ_CAP).lean() as unknown as SlotRow[];
+    out.set(lower(id), admitOpen(rows, adm, mode, now));
+  }));
+  return out;
 }
 
 /**
@@ -127,7 +177,21 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
   if (q.language) filter.languages = { $regex: `^${escapeRx(q.language.trim())}$`, $options: 'i' };
   const doctors = await SpecialistModel.find(filter).select(DOCTOR_FIELDS).limit(300).lean() as Record<string, any>[];
   if (!doctors.length) return [];
-  const byDoctor = await openSlotsByDoctor(doctors.map((d) => String(d._id)), q.date ? ymd(q.date) : istTodayYyyymmdd(now), null, q.mode, now);
+  const ids = doctors.map((d) => String(d._id));
+  const today = istTodayYyyymmdd(now);
+  const day = q.date ? ymd(q.date) : null;
+  const adm = await admissionOf(ids);
+  const { byDoctor, cutoff } = await openSlotsByDoctor(ids, day && day > today ? day : today, null, q.mode, now, adm);
+  // r7: nextSlot is each doctor's true earliest bookable slot. The shared read is complete before `cutoff`; a doctor
+  // with nothing bookable there is read on its own from `cutoff` (only when the shared read was capped).
+  if (cutoff) {
+    await Promise.all(ids.filter((id) => !byDoctor.get(lower(id))?.length).map(async (id) => {
+      const first = await walkFirstOpen(id, cutoff, q.mode, now, adm);
+      if (first) byDoctor.set(lower(id), [first]);
+    }));
+  }
+  const daySlots = !day || day < today ? new Map<string, OpenSlot[]>()
+    : !cutoff || day < cutoff ? byDoctor : await daySlotsByDoctor(ids, day, q.mode, now, adm);
   const same = (a?: string, b?: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
   const rows = doctors.map((d) => {
     const mine = byDoctor.get(lower(d._id)) ?? [];
@@ -138,7 +202,7 @@ export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Dat
       doctorId: String(d._id), name: d.name, specialization: d.specialization, languages: d.languages ?? [], city: d.city ?? null,
       experienceYears: d.experienceYears ?? null, feeMinor, nearby,
       nextSlot: mine[0] ? slotView(mine[0]) : null,
-      ...(q.date ? { slots: mine.filter((x) => x.s.date === ymd(q.date!)).map(slotView) } : {}),
+      ...(q.date ? { slots: (daySlots.get(lower(d._id)) ?? []).filter((x) => x.s.date === day).map(slotView) } : {}),
       _rank: [nearby === 'pincode' ? 0 : nearby === 'city' ? 1 : 2, speaks ? 0 : 1, feeMinor, mine[0]?.start.getTime() ?? Number.MAX_SAFE_INTEGER],
     };
   });
@@ -170,7 +234,7 @@ export async function listDoctorSlots(_actor: PharmacyActor, doctorId: string, q
   const today = istTodayYyyymmdd(now);
   const from = q.from && ymd(q.from) > today ? ymd(q.from) : today;
   const days = Math.min(Math.max(Number(q.days) || 7, 1), 14);
-  const byDoctor = await openSlotsByDoctor([String(d!._id)], from, addDaysYmd(from, days - 1), q.mode, now);
+  const { byDoctor } = await openSlotsByDoctor([String(d!._id)], from, addDaysYmd(from, days - 1), q.mode, now, await admissionOf([String(d!._id)]));
   return {
     doctor: { doctorId: String(d!._id), name: d!.name, specialization: d!.specialization, languages: d!.languages ?? [], city: d!.city ?? null,
       experienceYears: d!.experienceYears ?? null, feeMinor: feeMinorOf(d!) },
@@ -255,9 +319,8 @@ export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string
   const prior = replay(b);
   if (prior) return { booking: await bookerView(prior as never, lower(actor.pharmacyId)), replayed: true };
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
-  // r6: a "move" onto the slot the booking already holds changes nothing; it is refused rather than told to the patient
-  // and the doctor as a move.
-  if (lower(input.slotId) === lower(b.holds?.heldSlotId ?? b.slotId)) throw err(409, 'SAME_SLOT', 'The booking is already on this slot; pick another one');
+  // r6/r7: a move onto the slot the booking already holds is refused (409 SAME_SLOT) inside the move's transaction
+  // (rescheduleWithHolds), after its status and start checks.
   const slot = await SlotModel.findById(input.slotId).select({ date: 1 }).lean() as { date?: string } | null;
   if (!slot?.date) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   let updated: IBooking;

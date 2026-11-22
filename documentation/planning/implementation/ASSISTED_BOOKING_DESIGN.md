@@ -1901,7 +1901,7 @@ and verified; works with `ASSISTED_BOOKING_ENABLED_PHARMACY` off).
 - 200 `{ booking: <booker view>, replayed: false }`; the same `requestKey` and `slotId` again → 200 `replayed: true`
   (nothing moves twice).
 - Errors: 400 `REQUEST_KEY_REQUIRED`, `VALIDATION_ERROR`, `BOOKING_ALREADY_STARTED`; 404 `BOOKING_NOT_FOUND`; 409
-  `SAME_SLOT` (new), `SLOT_NOT_THIS_DOCTOR`, `SLOT_NOT_AVAILABLE` (full, inactive, leave day, closed branch, mode not
+  `SAME_SLOT` (new; §21.3: decided inside the move, after the status and start checks), `SLOT_NOT_THIS_DOCTOR`, `SLOT_NOT_AVAILABLE` (full, inactive, leave day, closed branch, mode not
   offered), `SLOT_STARTED`, `DOCTOR_NOT_AVAILABLE`, `BOOKING_NOT_RESCHEDULABLE` (cancelled, completed, no-show),
   `BOOKING_CHANGED` (reload and retry), `IDEMPOTENCY_KEY_REUSED` (the key was used for another slot).
 - The patient and the doctor are told; the join link stays the same (§6.6).
@@ -1947,3 +1947,31 @@ notes? (≤ 500) }` → 200 `{ message: 'Wallet topped up', data: <wallet view a
 content credits nothing more and answers the wallet. Errors: 400 `IDEMPOTENCY_KEY_REQUIRED`, `VALIDATION_ERROR`; 404
 `PHARMACY_NOT_FOUND`; 409 `IDEMPOTENCY_KEY_REUSED` (same key, other amount or note). The credit is never withdrawable (no
 top-up lot). Admin chargebacks, freeze and lots: §19.3.
+
+### 21.3 Follow-ups (r7, 2026-11-22)
+
+Branch `m0/r7-followups` from `694bfaa9` (r6, pushed as origin/stage). Local commits only. Checks:
+`test/assisted/r7-followups.integration.ts` (8 checks; the 7 for fixes fail on `694bfaa9`, 1 guard).
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (money, web review M1) | An admin whose top-up answer was lost could not tell whether that Idempotency-Key credited the pharmacy | `GET /api/v1/pharmacy-wallet/topups/admin/by-key/:key?pharmacyId=` (below). Two exact reads, each pinned (`hint`) to its unique ledger index: `{ pharmacyId, referenceType: 'topup', referenceId: key }` (every admin top-up; rows from before the ledger have only this), then `{ pharmacyId, operationKey: 'admin_topup:<key>' }`. No paging, no wallet created |
+| 2 | Two concurrent moves onto one slot with different keys: both passed the r6 pre-check (made before the transaction), the second found the booking already there and answered 200 with a second "moved" notice | `rescheduleWithHolds` refuses a same-slot move for an assisted booker inside the transaction (`(p.noShow \|\| p.assistedBooker) && target === current`), on the booking as that attempt reads it; the pre-check is gone |
+| 3 | The doctor list checked clinic branches with three reads per doctor and branch, plus a holiday read | `clinicBranchAdmission` (doctors/services/schedule.ts): the doctors' active memberships, then their clinics and those clinics' branches together, once per request; the same rule as `clinicBranchContext` + `branchClosedOn`, ids compared in lower case |
+| 4 | `nextSlot` came from one read of at most 5000 slots in date order: a doctor whose first slot lay past it showed none | The shared read keeps the cap but knows when it was cut: days before the cut-off day are complete; a doctor with nothing bookable there is read on its own from the cut-off day, day by day (the first day holding a candidate slot, then that whole day; leave days skipped in the query; at most 60 such days). `?date=` slots are read doctor by doctor when that day alone exceeds the shared read. A doctor's one day is read whole (bound 20 000 rows). Usual case: one shared read, as before |
+| 5 | Nits | A branch id stored in upper case is matched for holidays and membership; a cancelled or started booking answers `BOOKING_NOT_RESCHEDULABLE` / `BOOKING_ALREADY_STARTED` even onto its own slot (`SAME_SLOT` comes after those checks); a malformed `pharmacyId` on the admin top-up was already 400 `VALIDATION_ERROR` (body schema; now pinned by a guard check) |
+
+**Admin: was this top-up credited?** `GET /api/v1/pharmacy-wallet/topups/admin/by-key/:key?pharmacyId=<id>` (admin
+token only; others 403). `:key` = the `Idempotency-Key` the admin form sent (URL-encoded; trimmed as the top-up trims
+it; 1–100 characters). Answers (`Cache-Control: private, no-store`):
+- 200 `{ state: 'credited', transaction, wallet }`: `transaction` is the ledger row as in `GET /pharmacy-wallet/transactions`
+  (`transactionType: 'credit'`, `movementType`, `amount` ₹, `amountPaise`, `notes`, `referenceType: 'topup'`,
+  `referenceId` = the key, `operationKey`, `actor: { kind: 'admin', id }`, `createdAt`, …); `wallet` is the wallet view of
+  `GET /pharmacy-wallet` (or null if none).
+- 200 `{ state: 'not_found' }`: no top-up with this key for this pharmacy (also for another pharmacy's key, or an unknown
+  pharmacy). Resending the same form with the SAME key is then safe: it credits at most once.
+- 400 `PHARMACY_ID_REQUIRED` (no `pharmacyId`), `VALIDATION_ERROR` (malformed `pharmacyId`, key empty or over 100).
+
+Web flow after a lost top-up answer: call by-key with the form's key; `credited` → show the transaction and wallet (do not
+resend); `not_found` → resend the same body with the same key. Never reuse a key with another amount or note (409
+`IDEMPOTENCY_KEY_REUSED`).

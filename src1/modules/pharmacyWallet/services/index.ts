@@ -17,6 +17,7 @@ import { AppError } from '@/modules/common/types';
 import { PaymentService } from '@/modules/payment/services';
 import PaymentRecordModel from '@/modules/payment/model';
 import PharmacyModel from '@/modules/pharmacies/model';
+import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 
 /**
@@ -42,6 +43,17 @@ export function walletView(w: IPharmacyWallet): Record<string, unknown> {
   return { ...w, withdrawableMinor: Number(w.withdrawableMinor ?? 0), frozen: w.frozen === true,
     receivableMinor: Number(w.receivableMinor ?? 0) };
 }
+
+/**
+ * r7: the two exact reads of an admin top-up by its key, each pinned to its unique ledger index (the planner would
+ * otherwise walk the pharmacy's rows by `pharmacyId`): the reference (every admin top-up; older rows have only this),
+ * then the operation key (ledger rows).
+ */
+export const adminTopupByKeyLookups = (pharmacyId: string, key: string) => [
+  { filter: { pharmacyId: new Types.ObjectId(pharmacyId), referenceType: 'topup', referenceId: key },
+    hint: { pharmacyId: 1, referenceType: 1, referenceId: 1 } },
+  { filter: { pharmacyId: new Types.ObjectId(pharmacyId), operationKey: `admin_topup:${key}` }, hint: { pharmacyId: 1, operationKey: 1 } },
+];
 
 @Service()
 export class PharmacyWalletService {
@@ -109,6 +121,25 @@ export class PharmacyWalletService {
       userId: String(record.payerUserId || record.userId), requesterUserType: 'pharmacy', requesterPharmacyId: pharmacyId });
     const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
     return { state: out.state === 'paid' ? 'credited' : 'unpaid', wallet: wallet ? walletView(wallet) : null };
+  }
+
+  /**
+   * r7: GET /pharmacy-wallet/topups/admin/by-key/:key?pharmacyId= — did an admin top-up with this Idempotency-Key credit
+   * this pharmacy? Exact reads on the unique ledger indexes (adminTopupByKeyLookups): the row `{ pharmacyId, referenceType: 'topup',
+   * referenceId: key }` (every admin top-up; older rows have only this) or `{ pharmacyId, operationKey:
+   * 'admin_topup:<key>' }` (ledger rows). The key is trimmed as the top-up trims it. Never creates a wallet.
+   */
+  async adminTopupByKey(pharmacyId: string, rawKey: string): Promise<{ state: 'credited'; transaction: ReturnType<typeof transactionView>; wallet: Record<string, unknown> | null }
+    | { state: 'not_found' }> {
+    const key = String(rawKey ?? '').trim();
+    let row: IPharmacyWalletTransaction | null = null;
+    for (const q of adminTopupByKeyLookups(pharmacyId, key)) {
+      row = await PharmacyWalletTransactionModel.findOne(q.filter).hint(q.hint).lean() as IPharmacyWalletTransaction | null;
+      if (row) break;
+    }
+    if (!row) return { state: 'not_found' };
+    const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
+    return { state: 'credited', transaction: transactionView(row), wallet: wallet ? walletView(wallet) : null };
   }
 
   async getOrCreateWallet(pharmacyId: string): Promise<IPharmacyWallet> {

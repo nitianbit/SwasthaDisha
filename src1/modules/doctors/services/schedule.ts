@@ -48,6 +48,44 @@ export async function clinicBranchContext(doctorId: string, branchId: string, s?
 }
 
 /**
+ * r7: clinicBranchContext for many doctors at once, for slot lists (three reads in all, not three per doctor and
+ * branch): the active members of these doctors, then their clinics and those clinics' branches together. The answer
+ * says whether `doctorId` may take an in-clinic booking at `branchId` on `date` (YYYYMMDD): the same rule as
+ * clinicBranchContext (active branch offering in-clinic visits, active verified clinic, active member whose scope holds
+ * the branch) and the branch not on holiday that day (branchClosedOn). Ids are compared in lower case.
+ */
+export async function clinicBranchAdmission(doctorIds: string[]): Promise<(doctorId: string, branchId: string, date: string) => boolean> {
+  const low = (v: unknown) => String(v ?? '').toLowerCase();
+  const wanted = [...new Set(doctorIds.flatMap((d) => [String(d), low(d)]))];
+  if (!wanted.length) return () => false;
+  const members = await MemberModel.find({ doctorId: { $in: wanted }, isActive: true })
+    .select({ partnerId: 1, doctorId: 1, role: 1, branchIds: 1, doctorBranchIds: 1 }).lean() as unknown as
+    { partnerId: string; doctorId: string; role?: string; branchIds?: string[]; doctorBranchIds?: string[] }[];
+  const partnerIds = [...new Set(members.map((m) => String(m.partnerId)))];
+  if (!partnerIds.length) return () => false;
+  const oids = partnerIds.filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+  const [partners, branches] = await Promise.all([
+    PartnerOrgModel.find({ _id: { $in: oids } }).select({ kind: 1, isActive: 1, verification: 1 }).lean() as unknown as
+      Promise<{ _id: unknown; kind?: string; isActive?: boolean; verification?: { state?: string } }[]>,
+    BranchModel.find({ partnerId: { $in: partnerIds } }).select({ partnerId: 1, isActive: 1, services: 1, holidays: 1 }).lean() as unknown as
+      Promise<{ _id: unknown; partnerId: string; isActive?: boolean; services?: { inClinic?: boolean }; holidays?: string[] }[]>,
+  ]);
+  const clinicOk = new Set(partners.filter((p) => p.kind === 'clinic' && p.isActive !== false && p.verification?.state === 'verified')
+    .map((p) => String(p._id)));
+  const branchBy = new Map(branches.map((b) => [low(b._id), b]));
+  const memberBy = new Map(members.map((m) => [`${String(m.partnerId)}|${low(m.doctorId)}`, m]));
+  return (doctorId, branchId, date) => {
+    const b = branchBy.get(low(branchId));
+    if (!b || b.isActive === false || !b.services?.inClinic || !clinicOk.has(String(b.partnerId))) return false;
+    const m = memberBy.get(`${String(b.partnerId)}|${low(doctorId)}`);
+    if (!m) return false;
+    const scope = doctorScopeOf(m);
+    if (scope.length > 0 && !scope.map(low).includes(low(b._id))) return false;
+    return !(b.holidays ?? []).some((h) => String(h).replace(/-/g, '') === String(date));
+  };
+}
+
+/**
  * Q16a (M4): whether a clinic branch is on holiday on `date` (YYYYMMDD). Branch holidays are stored as YYYY-MM-DD;
  * both spellings are matched. Admission refuses such a slot, expansion closes it, and slot lists hide it.
  */
