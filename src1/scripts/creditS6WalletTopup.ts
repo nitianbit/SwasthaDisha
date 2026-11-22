@@ -1,8 +1,14 @@
 // S6 back-credit: credits ONE pharmacy wallet top-up that Razorpay captured but the pre-S6 verify never applied.
 //
-//   npm run credit:s6-wallet-topup -- --record=<paymentTransactionId>            dry run: prints what it would do
-//   npm run credit:s6-wallet-topup -- --record=<paymentTransactionId> --commit   applies it
-//   ... --already-compensated-checked=<paymentTransactionId>                     see "refusals" below
+//   npm run -s credit:s6-wallet-topup -- --record=<paymentTransactionId>            dry run: prints what it would do
+//   npm run -s credit:s6-wallet-topup -- --record=<paymentTransactionId> --commit   applies it
+//   ... --already-compensated-checked=<paymentTransactionId>                        see "refusals" below
+//   ... --disputes-checked-in-dashboard=<paymentTransactionId>                      only when the disputes lookup is unavailable
+//   (or: npx tsx src1/scripts/creditS6WalletTopup.ts --record=<id> [--commit] ...)
+// Use `npm run -s` (silent): without it npm prints its own banner lines on stdout before the JSON.
+// Exit codes: 0 done (or nothing to do / dry run); 2 refused or manual review (nothing written); 3 --commit ran but the
+// record was not credited (e.g. the capture was gone by then); 1 error. On an error stdout is still one JSON document,
+// { ok: false, error: { code, message } }.
 //
 // Env: MONGODB_URL (production), RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (the live keys; the gateway is always
 // checked), plus whatever src1/config/config.ts needs to load (the backend .env). Runs with tsx: the payment service is
@@ -29,7 +35,10 @@
 // --already-compensated-checked=<the same record id>:
 //   - the pharmacy received an admin manual top-up (referenceType 'topup') on or after the record's createdAt;
 //   - a refund on another payment of the same Razorpay order;
-//   - the disputes lookup was not available.
+// The disputes lookup being unavailable (error, timeout, malformed answer, page cap) is never covered by that flag: it
+// is refused unless the operator checked the payment's disputes in the Razorpay dashboard and passes
+// --disputes-checked-in-dashboard=<the same record id>. Disputes are read by paging GET /disputes (see the audit header);
+// this relies on Razorpay returning every dispute across the pages.
 //
 // A clean dry run is NOT proof that the top-up was never compensated: it cannot see a dispute or chargeback the disputes
 // list does not show, a bank transfer or other payment made outside Razorpay, or a hand-written wallet entry that is not
@@ -45,8 +54,8 @@ import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
 import {
-  AdminTopupsSince, DisputeView, GatewayView, OBJECT_ID, adminTopupsSince, disputesReaderFor, gatewayView, logsToStderr, orderPaymentsReaderFor,
-  razorpayClientFromEnv, rechargeCreditOf, recordAmountPaise, recordFinalPaise,
+  AdminTopupsSince, DisputeView, GatewayReadOptions, GatewayView, OBJECT_ID, adminTopupsSince, disputesReaderFor, errorText, gatewayView, logsToStderr,
+  orderPaymentsReaderFor, razorpayClientFromEnv, rechargeCreditOf, recordAmountPaise, recordFinalPaise, reportError,
 } from '@/scripts/auditS6UncreditedWalletTopups';
 
 /** The Razorpay calls made: GET orders/{id}/payments (also by reconcile) and GET disputes. */
@@ -60,22 +69,36 @@ export interface CreditOutcome {
   recordId: string; decision: CreditDecision; reasons: string[]; committed: boolean;
   pharmacyId?: string; payerUserId?: string; amount?: number; status?: string; isProcessed?: boolean;
   existingCreditTransactionId?: string | null; adminTopupsSince?: AdminTopupsSince; gateway?: GatewayView;
-  disputes?: DisputeView[] | { unavailable: string }; compensationCheckOverride?: boolean;
+  disputes?: DisputeView[] | { unavailable: string }; compensationCheckOverride?: boolean; disputesCheckedInDashboard?: boolean;
   result?: {
     outcome: 'credited' | 'already credited (replay)' | 'not credited'; state: string; status?: string; isProcessed?: boolean;
     creditTransactionId: string | null; walletBalanceChange: number;
   };
 }
-/** Exit code for an outcome: 2 when refused or left for manual review. */
-export const exitCodeOf = (o: CreditOutcome) => (o.decision === 'refused' || o.decision === 'processed_without_credit' ? 2 : 0);
+/** Exit code for an outcome: 2 refused / manual review; 3 a commit that did not credit; else 0. */
+export const exitCodeOf = (o: CreditOutcome) =>
+  (o.decision === 'refused' || o.decision === 'processed_without_credit' ? 2 : o.committed && o.result?.outcome === 'not credited' ? 3 : 0);
 
-/** PaymentService with only what the wallet-recharge reconcile path uses; any other dependency is absent and would throw. */
-export function walletRechargePaymentService(client: RazorpayOrdersClient): PaymentService {
-  return Object.assign(Object.create(PaymentService.prototype), {
+/**
+ * PaymentService with only what the wallet-recharge reconcile path uses; any other dependency is absent and would throw.
+ * `written` collects the ids of the wallet_recharge credits this instance saved, so the caller knows whether THIS run
+ * wrote the record's credit (a parallel verify / reconcile / run that credited first is a replay).
+ */
+export function walletRechargePaymentService(client: RazorpayOrdersClient): { service: PaymentService; written: string[] } {
+  const written: string[] = [];
+  const txRepo = new PharmacyWalletTransactionRepository();
+  const save = txRepo.save;
+  txRepo.save = (async (data: Parameters<typeof save>[0], options?: Parameters<typeof save>[1]) => {
+    const saved = await save(data, options);
+    if ((data as { referenceType?: string })?.referenceType === 'wallet_recharge') written.push(String((saved as { _id?: unknown })?._id));
+    return saved;
+  }) as typeof save;
+  const service = Object.assign(Object.create(PaymentService.prototype), {
     paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(), walletTransactionRepository: new WalletTransactionRepository(),
-    pharmacyWalletRepository: new PharmacyWalletRepository(), pharmacyWalletTransactionRepository: new PharmacyWalletTransactionRepository(),
+    pharmacyWalletRepository: new PharmacyWalletRepository(), pharmacyWalletTransactionRepository: txRepo,
     razorpayClient: client,
   }) as PaymentService;
+  return { service, written };
 }
 
 const rupees = (paise: number) => Math.round(paise) / 100;
@@ -85,7 +108,8 @@ const balancePaise = async (pharmacyId: string) => {
 };
 
 export async function creditS6WalletTopup(opts: {
-  recordId: string; commit: boolean; alreadyCompensatedChecked?: string; client?: RazorpayOrdersClient;
+  recordId: string; commit: boolean; alreadyCompensatedChecked?: string; disputesCheckedInDashboard?: string; client?: RazorpayOrdersClient;
+  gatewayOptions?: GatewayReadOptions;
 }): Promise<CreditOutcome> {
   const recordId = String(opts.recordId || '').toLowerCase();
   const out: CreditOutcome = { recordId, decision: 'refused', reasons: [], committed: false };
@@ -93,6 +117,9 @@ export async function creditS6WalletTopup(opts: {
   if (!/^[0-9a-f]{24}$/.test(recordId)) return refuse('--record must be a payment record id (24 hex characters)');
   if (opts.alreadyCompensatedChecked !== undefined && opts.alreadyCompensatedChecked.toLowerCase() !== recordId) {
     return refuse('--already-compensated-checked names another record; it must be this exact record id');
+  }
+  if (opts.disputesCheckedInDashboard !== undefined && opts.disputesCheckedInDashboard.toLowerCase() !== recordId) {
+    return refuse('--disputes-checked-in-dashboard names another record; it must be this exact record id');
   }
 
   const r = await PaymentRecordModel.findById(recordId).lean();
@@ -119,9 +146,9 @@ export async function creditS6WalletTopup(opts: {
     out.decision = 'finalize_only';
     out.reasons.push('already credited; only marks the record processed (no money moves)');
   } else {
-    if (r.status === 'paid' && r.isProcessed) {
+    if (r.isProcessed) {
       out.decision = 'processed_without_credit';
-      out.reasons.push('the record is paid and processed but has no wallet credit: reconcile would credit nothing; manual review');
+      out.reasons.push(`the record is ${r.status} and marked processed but has no wallet credit: reconcile would credit nothing; manual review`);
       return out;
     }
     if (basePaise !== finalPaise) {
@@ -129,7 +156,7 @@ export async function creditS6WalletTopup(opts: {
     }
     if (!opts.client) return refuse('RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are required (the gateway is always checked)');
     if (!r.razorpayOrderId) return refuse('the record has no Razorpay order');
-    const view = await gatewayView(orderPaymentsReaderFor(opts.client), r.razorpayOrderId, finalPaise);
+    const view = await gatewayView(orderPaymentsReaderFor(opts.client, opts.gatewayOptions), r.razorpayOrderId, finalPaise);
     out.gateway = view;
     if (!view.capturedPaymentId) {
       if (r.status === 'paid') return refuse('the record is paid but Razorpay shows no captured payment (refunded?): manual review');
@@ -145,18 +172,26 @@ export async function creditS6WalletTopup(opts: {
       return refuse('the record names a different payment than the gateway capture: manual review');
     }
     const risks: string[] = [];
-    const readDisputes = disputesReaderFor(opts.client);
+    const readDisputes = disputesReaderFor(opts.client, opts.gatewayOptions);
     if (!readDisputes) {
       out.disputes = { unavailable: 'no disputes lookup in the gateway client' };
     } else {
       try { out.disputes = (await readDisputes()).get(view.capturedPaymentId) ?? []; } catch (error) {
-        out.disputes = { unavailable: 'disputes lookup failed: ' + String((error as Error)?.message ?? error).slice(0, 80) };
+        out.disputes = { unavailable: 'disputes lookup failed: ' + errorText(error) };
       }
     }
     if (Array.isArray(out.disputes) && out.disputes.length) {
       return refuse(`Razorpay lists ${out.disputes.length} dispute(s) on the captured payment: not credited (manual review, no override)`);
     }
-    if (!Array.isArray(out.disputes)) risks.push(`the disputes lookup was not available (${out.disputes!.unavailable})`);
+    if (!Array.isArray(out.disputes)) {
+      // Never covered by --already-compensated-checked (that flag may have been given for an unrelated admin top-up).
+      if (opts.disputesCheckedInDashboard?.toLowerCase() !== recordId) {
+        return refuse(`the disputes lookup was not available (${out.disputes!.unavailable}). Check this payment's disputes in the Razorpay ` +
+          `dashboard; if there are none, re-run with --disputes-checked-in-dashboard=${recordId}`);
+      }
+      out.disputesCheckedInDashboard = true;
+      out.reasons.push(`operator checked disputes in the Razorpay dashboard (lookup unavailable: ${out.disputes!.unavailable})`);
+    }
     const admin = await adminTopupsSince(pharmacyId, r.createdAt as Date | undefined);
     out.adminTopupsSince = admin;
     if (admin.count > 0) risks.push(`${admin.count} admin top-up credit(s) totalling Rs ${admin.amount} since the record was created`);
@@ -177,14 +212,17 @@ export async function creditS6WalletTopup(opts: {
   if (!opts.commit) { out.reasons.push('dry run: nothing written; add --commit to apply'); return out; }
 
   const before = await balancePaise(pharmacyId);
-  const service = walletRechargePaymentService(opts.client ?? { orders: { fetchPayments: async () => { throw new Error('gateway not configured'); } } });
+  const { service, written: savedByThisRun } = walletRechargePaymentService(
+    opts.client ?? { orders: { fetchPayments: async () => { throw new Error('gateway not configured'); } } });
   const result = await service.reconcilePaymentAndProcess({ paymentTransactionId: recordId, userId: payerUserId });
   const after = await PaymentRecordModel.findById(recordId).select({ status: 1, isProcessed: 1 }).lean();
   const written = await rechargeCreditOf(pharmacyId, recordId);
-  const fresh = !credit && !!written;
+  // Credited by THIS run only when the committed credit is the one this run saved; otherwise someone else (a parallel
+  // verify, reconcile or run) credited first and this run was a replay.
+  const mine = !!written && savedByThisRun.includes(String(written._id));
   out.committed = true;
   out.result = {
-    outcome: fresh ? 'credited' : written ? 'already credited (replay)' : 'not credited',
+    outcome: mine ? 'credited' : written ? 'already credited (replay)' : 'not credited',
     state: result.state, status: after?.status, isProcessed: after?.isProcessed, creditTransactionId: written ? String(written._id) : null,
     walletBalanceChange: rupees((await balancePaise(pharmacyId)) - before),
   };
@@ -205,9 +243,11 @@ async function main() {
   const recordId = arg('record') ?? '';
   const commit = process.argv.includes('--commit');
   const alreadyCompensatedChecked = arg('already-compensated-checked');
+  const disputesCheckedInDashboard = arg('disputes-checked-in-dashboard');
   await mongoose.connect(CONFIG.MONGODB_URL, { autoCreate: false, autoIndex: false });
   try {
-    const outcome = await creditS6WalletTopup({ recordId, commit, alreadyCompensatedChecked, client: razorpayClientFromEnv() as unknown as RazorpayOrdersClient });
+    const outcome = await creditS6WalletTopup({ recordId, commit, alreadyCompensatedChecked, disputesCheckedInDashboard,
+      client: razorpayClientFromEnv() as unknown as RazorpayOrdersClient });
     process.stdout.write(JSON.stringify(outcome, null, 2) + '\n');
     process.exitCode = exitCodeOf(outcome);
   } finally {
@@ -216,5 +256,5 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((error) => { console.error((error as { code?: string })?.code, (error as Error)?.message ?? error); process.exit(1); });
+  main().catch(async (error) => { reportError(error); await mongoose.disconnect().catch(() => undefined); });
 }
