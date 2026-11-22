@@ -4,7 +4,7 @@ import Joi from 'joi';
 import { Types } from 'mongoose';
 import { Container } from 'typedi';
 import BookingModel from '@/modules/bookings/model';
-import { BookingAdminCloseModel } from '@/modules/bookings/model/adminClose';
+import { BookingAdminCloseModel, type IBookingAdminClose } from '@/modules/bookings/model/adminClose';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { BookingService } from '@/modules/bookings/services';
 import { AppError } from '@/modules/common/types';
@@ -44,15 +44,22 @@ const err = (status: number, code: string, message: string) => new AppError({ st
 export const ADMIN_CLOSE_PUBLIC_REASON = 'Cancelled by Jansetu';
 const hashOf = (bookingId: string, reason: string) => createHash('sha256').update(`${bookingId.toLowerCase()}|${reason.trim()}`).digest('hex');
 
-async function replayOrRefuse(adminId: string, requestKey: string, hash: string): Promise<IBooking | null> {
-  const row = await BookingAdminCloseModel.findOne({ adminId, requestKey }).lean();
+type CloseRow = IBookingAdminClose & { _id?: unknown };
+/** S5e: what an admin is shown of a close (the admin's reason included; never shown to the patient or the doctor). */
+const closeView = (r: CloseRow) => ({ auditId: String(r._id), bookingId: r.bookingId, adminId: r.adminId, requestKey: r.requestKey, reason: r.reason,
+  statusBefore: r.statusBefore, paymentStatusBefore: r.paymentStatusBefore, refunded: r.refunded, closedAt: r.closedAt });
+
+/** The stored close of this (admin, key): its booking as it is now, or 409 when the key was used for another close. */
+async function storedClose(adminId: string, requestKey: string, hash: string): Promise<{ booking: IBooking; row: CloseRow } | null> {
+  const row = await BookingAdminCloseModel.findOne({ adminId, requestKey }).lean() as CloseRow | null;
   if (!row) return null;
   if (row.requestHash !== hash) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was used for another close; send a new request key');
-  return (await BookingModel.findById(row.bookingId).lean()) as IBooking | null;
+  const booking = (await BookingModel.findById(row.bookingId).lean()) as IBooking | null;
+  return booking ? { booking, row } : null;
 }
 
 export async function adminCloseBooking(bookingId: string, adminId: string,
-  input: { reason: string; requestKey: string; expectedUpdatedAt?: Date | string }): Promise<IBooking & { replayed: boolean; refunded?: number }> {
+  input: { reason: string; requestKey: string; expectedUpdatedAt?: Date | string }): Promise<IBooking & { replayed: boolean; refunded: number; close: ReturnType<typeof closeView> }> {
   if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
   // S5d: once-only rests on the unique (admin, requestKey) index (built by sync-indexes); without it, 503 - never two
   // refunds for one key.
@@ -60,8 +67,8 @@ export async function adminCloseBooking(bookingId: string, adminId: string,
   const id = String(bookingId).toLowerCase();
   const reason = input.reason.trim();
   const hash = hashOf(id, reason);
-  const prior = await replayOrRefuse(adminId, input.requestKey, hash);
-  if (prior) return { ...prior, replayed: true };
+  const prior = await storedClose(adminId, input.requestKey, hash);
+  if (prior) return { ...prior.booking, replayed: true, refunded: prior.row.refunded, close: closeView(prior.row) };
 
   const b = await BookingModel.findById(id).select({ bookingType: 1, bookingKind: 1, status: 1, paymentStatus: 1 }).lean() as IBooking | null;
   if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
@@ -71,35 +78,38 @@ export async function adminCloseBooking(bookingId: string, adminId: string,
   if (b.bookingKind === 'instant') throw err(409, 'USE_INSTANT_ADMIN_CANCEL', 'Cancel an instant consultation with its admin cancel');
   if (b.status === 'cancelled') throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
 
-  let audited = false;
-  let refunded = 0;
   try {
     // S5d: the admin's reason is internal (audit row only); the patient sees a fixed notice and the cause is 'admin'.
-    const booking = await Container.get(BookingService).cancelByDoctor(id, { _id: adminId, userType: 'admin' }, ADMIN_CLOSE_PUBLIC_REASON, {
+    await Container.get(BookingService).cancelByDoctor(id, { _id: adminId, userType: 'admin' }, ADMIN_CLOSE_PUBLIC_REASON, {
       expectedUpdatedAt: input.expectedUpdatedAt, asAdmin: true,
       inTx: async (after, s, amount) => {
-        refunded = Number(amount ?? 0);
         await BookingAdminCloseModel.create([{ adminId, requestKey: input.requestKey, requestHash: hash, bookingId: id,
           specialistId: after.specialistId ? String(after.specialistId).toLowerCase() : null, reason,
-          statusBefore: String(b.status), paymentStatusBefore: String(b.paymentStatus), refunded, closedAt: new Date() }], { session: s });
-        audited = true;
+          statusBefore: String(b.status), paymentStatusBefore: String(b.paymentStatus), refunded: Number(amount ?? 0), closedAt: new Date() }], { session: s });
       },
     });
-    if (!audited) throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
-    logger.warn('S5c: admin closed a booking', { bookingId: id, adminId, refunded });
-    return { ...booking, replayed: false, refunded };
   } catch (e) {
-    // A concurrent resend with the same key committed first: answer with its result.
-    if ((e as { code?: number })?.code === 11000 || (e as { code?: string })?.code === 'ALREADY_CANCELLED') {
-      const again = await replayOrRefuse(adminId, input.requestKey, hash);
-      if (again) return { ...again, replayed: true };
-    }
-    throw e;
+    // A concurrent resend with the same key committed first: answered below from its stored row.
+    if ((e as { code?: number })?.code !== 11000) throw e;
   }
+  // S5e: the answer comes from the committed audit row (never from flags an aborted, retried attempt may have set). No
+  // row: this close did not happen - the booking was cancelled by someone else in the meantime.
+  const done = await storedClose(adminId, input.requestKey, hash);
+  if (!done || done.row.bookingId !== id) throw err(409, 'ALREADY_CANCELLED', 'This booking is already cancelled');
+  logger.warn('S5c: admin closed a booking', { bookingId: id, adminId, refunded: done.row.refunded });
+  return { ...done.booking, replayed: false, refunded: done.row.refunded, close: closeView(done.row) };
 }
 
 export const adminCloseHandler = async (req: AuthRequest, res: Response) => {
   if (req.user?.userType !== 'admin') throw err(403, 'FORBIDDEN', 'Admin access is required');
   const data = await adminCloseBooking(req.params.bookingId, String(req.user._id), req.body);
   res.status(200).json({ success: true, message: data.replayed ? 'Booking already closed by this request' : 'Booking closed; the patient was refunded', data });
+};
+
+/** S5e: GET /specialists/admin/bookings/:bookingId/close - the admin closes of a booking, reasons included (admin only). */
+export const adminCloseAuditHandler = async (req: AuthRequest, res: Response) => {
+  if (req.user?.userType !== 'admin') throw err(403, 'FORBIDDEN', 'Admin access is required');
+  if (!Types.ObjectId.isValid(req.params.bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  const rows = await BookingAdminCloseModel.find({ bookingId: String(req.params.bookingId).toLowerCase() }).sort({ closedAt: 1 }).lean() as CloseRow[];
+  res.status(200).json({ success: true, data: rows.map(closeView) });
 };

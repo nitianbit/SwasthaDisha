@@ -15,7 +15,7 @@ import { SpecialistController } from '@/modules/specialists/controller';
 import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialists/eligibility';
 import { requireEligibleDoctorUnlessCancel, restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
 import { takeVerificationFence, fenceAndRecordVerification } from '@/modules/specialists/verification';
-import { adminCloseSchema, adminCloseHandler } from '@/modules/bookings/adminClose';
+import { adminCloseSchema, adminCloseHandler, adminCloseAuditHandler } from '@/modules/bookings/adminClose';
 import {
   createSpecialistSchema,
   updateSpecialistSchema,
@@ -118,6 +118,8 @@ specialistRouter.post('/admin/bookings/:bookingId/cancel-no-show', requireAdmin,
 // one whose doctor is no longer verified or active; reason and request key required, audited in the same transaction.
 specialistRouter.post('/admin/bookings/:bookingId/close', requireAdmin, validate(bookingIdParamSchema, 'params'),
   validate(adminCloseSchema, 'body'), catchAsync(adminCloseHandler));
+// S5e: the closes of a booking with the admin's (internal) reasons - admins only; never in the patient's or doctor's reads.
+specialistRouter.get('/admin/bookings/:bookingId/close', requireAdmin, validate(bookingIdParamSchema, 'params'), catchAsync(adminCloseAuditHandler));
 specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
 // S5b: accepting (and creating a clinic below) is for verified, active doctors only; declining and leaving stay open.
 specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(requireEligibleDoctor),
@@ -145,11 +147,13 @@ specialistRouter.get('/me/presence', requireSpecialist, catchAsync(instantDoctor
 specialistRouter.put('/me/presence', requireSpecialist, validate(presenceSchema, 'body'), catchAsync(instantDoctor.putPresence));
 specialistRouter.post('/me/presence/heartbeat', requireSpecialist, catchAsync(instantDoctor.postHeartbeat));
 specialistRouter.get('/me/instant/offers', requireSpecialist, catchAsync(instantDoctor.getOffers));
-specialistRouter.post('/me/instant/:requestId/accept', requireSpecialist, validate(requestIdParamSchema, 'params'), catchAsync(instantDoctor.acceptOffer));
+// S5e: accepting (its replay answers the booking, meeting link included) and extending need a verified, active doctor.
+specialistRouter.post('/me/instant/:requestId/accept', requireSpecialist, validate(requestIdParamSchema, 'params'), catchAsync(requireEligibleDoctor),
+  catchAsync(instantDoctor.acceptOffer));
 specialistRouter.get('/me/instant/bookings/:bookingId', requireSpecialist, validate(bookingIdParamSchema, 'params'),
   catchAsync(restrictIneligibleDoctorReads), catchAsync(instantDoctor.getInstantBooking)); // S5d: no patient details for an ineligible doctor
 specialistRouter.post('/me/instant/bookings/:bookingId/extend', requireSpecialist, validate(bookingIdParamSchema, 'params'), validate(extendSchema, 'body'),
-  catchAsync(instantDoctor.extendConsult));
+  catchAsync(requireEligibleDoctor), catchAsync(instantDoctor.extendConsult));
 
 specialistRouter.post(
   '/me/slots',

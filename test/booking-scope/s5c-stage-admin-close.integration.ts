@@ -8,6 +8,8 @@
  * S5d: the once-only index is built by sync-indexes (503 INDEXES_OUTDATED without it; one key for two bookings closes
  * one); the admin's reason stays internal (the patient sees a neutral notice; cause 'admin'); an ineligible doctor's
  * instant consultation read carries no patient age or gender.
+ * S5e: an ineligible doctor's instant accept replay (meeting link) and extend are refused; the close answers from its
+ * committed audit row; admins read a booking's closes (reason included); the clinic-paid notice.
  *
  * Run (throwaway DB only; the script drops its collections):
  *   JWT_SECRET_KEY=local-integration-only SESSION_ORIGINS_CUSTOMER=https://app.jansetu.test SESSION_ORIGINS_WORKSPACE=https://staff.jansetu.test \
@@ -242,6 +244,96 @@ async function main() {
       assert.equal(notice(free.userId).message, 'Your consultation was cancelled by Jansetu.');
       assert.equal(JSON.stringify(customerNotices).includes('fake doctor'), false);
       assert.equal((await BookingAdminCloseModel.findOne({ bookingId: paid.id }).lean())!.reason, 'Internal: fake doctor account 123');
+    });
+
+    /** An accepted instant consultation of `dr` (request accepted by it, booking with a meeting link). */
+    const acceptedInstant = async (dr: string) => {
+      const reqId = new Types.ObjectId(); const bid = new Types.ObjectId();
+      await mongoose.connection.db!.collection('instant_requests').insertOne({ _id: reqId, userId: new Types.ObjectId().toHexString(),
+        patient: { kind: 'self', name: 'Meera', age: 33, gender: 'Female' }, status: 'accepted', acceptedBy: dr, bookingId: String(bid),
+        offeredTo: [dr], acceptedFeeMinor: 50000, specialization: 'General Physician', mode: 'video' });
+      await BookingModel.collection.insertOne({ _id: bid, bookingType: 'consultation', bookingKind: 'instant', specialistId: dr, instantRequestId: String(reqId),
+        userId: new Types.ObjectId().toHexString(), status: 'confirmed', paymentStatus: 'paid', bookingDate: '20991231', bookingTime: '10:00',
+        consultationMode: 'video', contactNo: '9123456789', primaryConcern: 'Fever and cough',
+        virtualMeeting: { provider: 'google_meet', status: 'active', joinUrl: 'https://meet.google.com/s5e-secret' }, price: 500, updatedAt: new Date() } as never);
+      return { requestId: String(reqId), bookingId: String(bid) };
+    };
+
+    await check('S5e (M1): an ineligible doctor\'s accept replay is refused (403) and carries no meeting link or patient details', async () => {
+      const unvA = await doctor('Dr Accept Unv'); const verA = await doctor('Dr Accept Ok');
+      const u = await acceptedInstant(unvA); const v = await acceptedInstant(verA);
+      await setDoctor(unvA, { isVerified: false });
+      const r = await call('POST', `/specialists/me/instant/${u.requestId}/accept`, docTok(unvA));
+      assert.deepEqual([r.status, r.json.code], [403, 'SPECIALIST_NOT_VERIFIED'], JSON.stringify(r.json).slice(0, 200));
+      for (const secret of ['s5e-secret', '9123456789', 'Fever and cough', 'Meera']) assert.equal(JSON.stringify(r.json).includes(secret), false, secret);
+      // Control: a verified doctor's lost answer is still recovered with its booking.
+      const ok = await call('POST', `/specialists/me/instant/${v.requestId}/accept`, docTok(verA));
+      assert.equal(ok.status, 200, JSON.stringify(ok.json).slice(0, 200)); assert.equal(ok.json.data.replayed, true);
+      assert.equal(ok.json.data.booking.virtualMeeting.joinUrl, 'https://meet.google.com/s5e-secret');
+    });
+
+    await check('S5e (L1): an ineligible doctor cannot extend an instant consultation (403); the hold is unchanged', async () => {
+      const unvE = await doctor('Dr Extend Unv');
+      const u = await acceptedInstant(unvE);
+      await setDoctor(unvE, { isActive: false });
+      const r = await call('POST', `/specialists/me/instant/bookings/${u.bookingId}/extend`, docTok(unvE), { minutes: 10, requestKey: rk('ext') });
+      assert.deepEqual([r.status, r.json.code], [403, 'SPECIALIST_NOT_VERIFIED'], JSON.stringify(r.json).slice(0, 200));
+      assert.equal(((await BookingModel.findById(u.bookingId).lean()) as any).instantExtensions, undefined);
+    });
+
+    await check('S5e (L2): the close answers from the committed audit row, never from flags of an aborted attempt', async () => {
+      const dr = await doctor('Dr Retry');
+      const b = await paidConsultation(dr);
+      // An attempt that wrote its audit row and then aborted (a retried transaction), while the patient cancelled.
+      const real = bookings.cancelByDoctor;
+      (bookings as any).cancelByDoctor = async (id: string, _r: unknown, _reason: string, opts: any) => {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        await opts.inTx(await BookingModel.findById(id).lean(), session, 400);
+        await session.abortTransaction(); await session.endSession();
+        await BookingModel.updateOne({ _id: id }, { $set: { status: 'cancelled' } });
+        return BookingModel.findById(id).lean();
+      };
+      try {
+        const r = await close(b.id, { reason: 'Retry', requestKey: rk('retry') });
+        assert.deepEqual([r.status, r.json.code], [409, 'ALREADY_CANCELLED'], JSON.stringify(r.json).slice(0, 200));
+      } finally { (bookings as any).cancelByDoctor = real; }
+      assert.equal(await BookingAdminCloseModel.countDocuments({ bookingId: b.id }), 0);
+    });
+
+    await check('S5e (L3): admins (only) read a booking\'s closes with the internal reason; the close answer carries it too', async () => {
+      const dr = await doctor('Dr Audit Read');
+      const b = await paidConsultation(dr);
+      const r = await close(b.id, { reason: 'Internal: duplicate account', requestKey: rk('aud') });
+      assert.equal(r.status, 200); assert.equal(r.json.data.close.reason, 'Internal: duplicate account'); assert.equal(r.json.data.close.refunded, 400);
+      const list = await call('GET', `/specialists/admin/bookings/${b.id}/close`, adminTok);
+      assert.equal(list.status, 200); assert.equal(list.json.data.length, 1);
+      assert.equal(list.json.data[0].reason, 'Internal: duplicate account'); assert.equal(list.json.data[0].adminId, ADMIN);
+      for (const t of [docTok(dr), userTok(b.userId)]) assert.equal((await call('GET', `/specialists/admin/bookings/${b.id}/close`, t)).status, 403);
+      // The patient's and the doctor's booking reads never show it.
+      const mine = await call('GET', `/bookings/${b.id}`, userTok(b.userId));
+      assert.equal(mine.status, 200); assert.equal(JSON.stringify(mine.json).includes('duplicate account'), false);
+      const docRead = await call('GET', `/specialists/me/appointments/${b.id}`, docTok(dr));
+      assert.equal(JSON.stringify(docRead.json).includes('duplicate account'), false);
+    });
+
+    await check('S5e (L4): closing a clinic-paid desk appointment tells the patient to contact the clinic, with no refund claim', async () => {
+      const { partner: cp, owner } = await partnerSvc.createPartner({ kind: 'clinic', name: 'Desk Notice Clinic', contactPhone: nextPhone(), invoiceSeriesPrefix: 'DN',
+        firstOwner: { phone: nextPhone(), name: 'Owner' } } as any);
+      await partnerSvc.verifyPartner(String(cp._id), 'admin');
+      const own = actorFor(owner);
+      const A = String((await partnerSvc.createBranch(own, clinicBranch('Baner')))._id);
+      const deskM = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Desk', role: 'staff', branchIds: [A], permissions: ['bookings.view', 'bookings.manage'] } as any);
+      const dr = await doctor('Dr Desk Notice');
+      await clinic.linkDoctor(adminActor(ADMIN, String(cp._id)), { doctorId: dr, branchIds: [], requestKey: rk('link') });
+      const made = await clinic.createDeskAppointment(actorFor(deskM), { slotId: await slotAt(dr, futureStart(), A), customer: { phone: nextPhone() }, requestKey: rk('desk') });
+      const id = String(made.booking.bookingId);
+      const userId = String((await BookingModel.findById(id).lean())!.userId);
+      customerNotices.length = 0;
+      const r = await close(id, { reason: 'Internal: clinic doctor removed', requestKey: rk() });
+      assert.equal(r.status, 200, JSON.stringify(r.json).slice(0, 200)); assert.equal(r.json.data.refunded, 0);
+      const n = customerNotices.find((x) => x.userId === userId)!;
+      assert.equal(n.message, 'Your consultation was cancelled by Jansetu. Contact the clinic about anything you paid there.');
     });
 
     await check('S5d: an ineligible doctor reads its instant consultation without the patient\'s age or gender; a verified one sees them', async () => {
