@@ -22,7 +22,8 @@
 // They are never in `rows` or `failedWithCapture`. Listed with or without the gateway.
 // `closedAsCompensated` (r9): top-ups an admin closed as already compensated by hand (`compensatedAt`): support already
 // paid that money to the pharmacy - NEVER credit them (the credit script refuses them, with no override). Never in
-// `rows` or `failedWithCapture`; listed with or without the gateway.
+// `rows` or `failedWithCapture`; listed with or without the gateway. A closed top-up later lost in a card dispute (its
+// hand payment taken back from the wallet) has both marks and is listed in BOTH sections.
 // `anomalies`: wallet_recharge records with only one of payerPharmacyId / the pharmacy flow - listed for review, no
 // credit advice (the service would not credit them to a pharmacy).
 // `anomalies` also lists pharmacy-flow records whose payerPharmacyId is not an ObjectId (never credited by this tooling).
@@ -232,7 +233,12 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     const id = String(r._id);
     const pharmacyId = String(r.payerPharmacyId);
     // Blocked after a lost card dispute: the bank took the money back; whatever its status, never a credit candidate.
+    // r9b: a top-up closed as compensated and then lost in a dispute is listed in BOTH sections (both facts hold).
     if (r.chargebackAt) {
+      if (r.compensatedAt) {
+        compensated.push({ paymentTransactionId: id, pharmacyId, razorpayOrderId: str(r.razorpayOrderId), amount: rupees(recordAmountPaise(r)), status: r.status,
+          compensatedAt: iso(r.compensatedAt), createdAt: iso(r.createdAt), review: 'closed as compensated: never credit' });
+      }
       blocked.push({ paymentTransactionId: id, pharmacyId, razorpayOrderId: str(r.razorpayOrderId), amount: rupees(recordAmountPaise(r)), status: r.status,
         chargebackAt: iso(r.chargebackAt), createdAt: iso(r.createdAt), review: 'blocked after a lost dispute: never credit' });
       continue;

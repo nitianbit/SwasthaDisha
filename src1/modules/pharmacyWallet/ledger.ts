@@ -241,7 +241,7 @@ const isPharmacyTopup = (r: Record<string, any> | null) => !!r && r.context === 
  * Not a pharmacy top-up → 404 TOPUP_NOT_FOUND.
  */
 export type PaymentChargeback =
-  | (PostedMovement & { blockedUncredited: false; lotId: string; paymentRecordId: string; withoutLot: boolean })
+  | (PostedMovement & { blockedUncredited: false; lotId: string; paymentRecordId: string; withoutLot: boolean; compensated?: boolean })
   | { blockedUncredited: true; replayed: boolean; paymentRecordId: string; pharmacyId: string };
 
 /** The gateway's answer for a payment id the database does not hold (read only). */
@@ -298,10 +298,29 @@ export async function recordPaymentChargebackIn(paymentRecordIdIn: string, s: Cl
   if (existing) {
     if (existing.walletRef.kind !== 'pharmacy' || existing.walletRef.id !== pharmacyId) throw notFound();
     const r = await recordChargebackIn(String(existing._id), s);
-    return { ...r, blockedUncredited: false, lotId: String(existing._id), paymentRecordId, withoutLot: existing.openedAtChargeback === true };
+    return { ...r, blockedUncredited: false, lotId: String(existing._id), paymentRecordId, withoutLot: existing.openedAtChargeback === true,
+      ...(record.compensatedAt ? { compensated: true } : {}) };
   }
   const credit = await PharmacyWalletTransactionModel.findOne({ pharmacyId, referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' })
     .session(s).lean() as IPharmacyWalletTransaction | null;
+  // r9b: a top-up closed as compensated was paid to the pharmacy by hand; a lost dispute takes that amount back exactly as
+  // for a credited top-up (a closed lot recorded now; balance to 0 at most, the rest owed, the wallet frozen; once per
+  // payment through the lot's unique paymentRecordId). The record is marked `chargebackAt` too (the S6 audit lists both).
+  if (!credit && record.compensatedAt) {
+    const compensatedMinor = Number.isSafeInteger(record.compensation?.amountPaise) ? Number(record.compensation.amountPaise)
+      : Number.isSafeInteger(record.baseAmountPaise) ? Number(record.baseAmountPaise) : Math.round(Number(record.baseAmount ?? 0) * 100);
+    if (!(compensatedMinor > 0)) throw notFound();
+    // (A record an r9 chargeback already marked without taking anything keeps its mark and is charged back now.)
+    if (!record.chargebackAt) {
+      const marked = await PaymentRecordModel.updateOne({ _id: record._id, compensatedAt: { $exists: true }, chargebackAt: { $exists: false } },
+        { $set: { chargebackAt: new Date() } }, { session: s });
+      if (marked.modifiedCount !== 1) throw Object.assign(err(409, 'WALLET_CHANGED', 'The top-up changed; please retry'), { retryable: true });
+    }
+    const [lot] = await WalletTopupLotModel.create([{ walletRef: { kind: 'pharmacy', id: pharmacyId }, paymentRecordId, amountMinor: compensatedMinor,
+      feeState: 'unknown', disputeState: 'none', closed: true, remainingMinor: 0, openedAtChargeback: true }], { session: s });
+    const r = await recordChargebackIn(String(lot!._id), s);
+    return { ...r, blockedUncredited: false, lotId: String(lot!._id), paymentRecordId, withoutLot: true, compensated: true };
+  }
   if (!credit) {
     if (record.chargebackAt) return { blockedUncredited: true, replayed: true, paymentRecordId, pharmacyId };
     const blocked = await PaymentRecordModel.updateOne({ _id: record._id, status: record.status, chargebackAt: { $exists: false }, walletCreditedAt: { $exists: false } },
@@ -321,12 +340,13 @@ export async function recordPaymentChargebackIn(paymentRecordIdIn: string, s: Cl
 
 /**
  * r9 (owner decision): support already paid the pharmacy by hand for a card top-up that never arrived, so the top-up is
- * CLOSED AS COMPENSATED in the caller's transaction: `compensatedAt` + `compensation` and status `failed` (a refunded
- * record keeps its status), guarded on the status read and on no credit claim. Verify, reconcile, the top-up check, the
+ * CLOSED AS COMPENSATED in the caller's transaction: `compensatedAt` + `compensation` (with the amount paid by hand) and
+ * status `failed`, guarded on the status read and on no credit claim. Verify, reconcile, the top-up check, the
  * sweep and the S6 credit script then never credit it. The credit claims the same document in its own transaction
  * (`walletCreditedAt`, guarded on no `compensatedAt`), so a close and a credit never both commit: either it was credited
  * (the close answers 409 TOPUP_ALREADY_CREDITED: nothing to close) or it is closed and never credited.
- * - not a pharmacy top-up → 404 TOPUP_NOT_FOUND; blocked after a lost dispute → 409 TOPUP_BLOCKED;
+ * - not a pharmacy top-up → 404 TOPUP_NOT_FOUND; blocked after a lost dispute → 409 TOPUP_BLOCKED; refunded by the
+ *   gateway (the money already went back) → 409 TOPUP_REFUNDED (r9b);
  * - already closed → the stored closure (`replayed: true`); the same (admin, key) with other content → 409
  *   IDEMPOTENCY_KEY_REUSED. `requestKey` here is the stored `<adminId>:<key>`.
  */
@@ -351,17 +371,22 @@ export async function closeTopupCompensatedIn(paymentRecordIdIn: string, c: { by
     return answer(record, true);
   }
   if (record.chargebackAt) throw err(409, 'TOPUP_BLOCKED', 'This top-up was already blocked after a lost card dispute; it is never credited');
-  const credit = await PharmacyWalletTransactionModel.exists({ pharmacyId, referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' })
-    .session(s);
+  if (record.status === 'refunded') throw err(409, 'TOPUP_REFUNDED', 'The gateway already returned this top-up to the payer; there is nothing to close');
+  // r9b: the credit row however its pharmacy id was stored: an ObjectId (any spelling casts to it), or a raw string in the
+  // record's own spelling or lower-cased. Read through the driver so the strings are not cast (the compound index applies).
+  const rawPharmacyId = String(record.payerPharmacyId);
+  const credit = await PharmacyWalletTransactionModel.collection.findOne({
+    pharmacyId: { $in: [...(Types.ObjectId.isValid(pharmacyId) ? [new Types.ObjectId(pharmacyId)] : []), ...new Set([rawPharmacyId, pharmacyId])] },
+    referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' }, { session: s, projection: { _id: 1 } });
   if (credit || record.walletCreditedAt) {
     throw err(409, 'TOPUP_ALREADY_CREDITED', 'This top-up was already credited to the wallet; there is nothing to close');
   }
   const at = new Date();
-  const status = record.status !== 'refunded' ? 'failed' : record.status;
+  const status = 'failed';
   const closed = await PaymentRecordModel.updateOne({ _id: record._id, status: record.status, compensatedAt: { $exists: false },
     chargebackAt: { $exists: false }, walletCreditedAt: { $exists: false } },
   { $set: { compensatedAt: at, status, compensation: { by: c.by, reason: c.reason, requestKey: c.requestKey, requestHash: c.requestHash,
-    previousStatus: record.status } } }, { session: s });
+    previousStatus: record.status, amountPaise } } }, { session: s });
   if (closed.modifiedCount !== 1) throw Object.assign(err(409, 'WALLET_CHANGED', 'The top-up changed; please retry'), { retryable: true });
   return answer({ compensatedAt: at, status }, false);
 }

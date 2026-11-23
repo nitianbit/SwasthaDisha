@@ -145,7 +145,8 @@ export const paymentChargeback = async (req: AuthRequest, res: Response) => {
         action: 'wallet.chargeback', detail: { paymentRecordId: r.paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 } }, s);
     } else {
       await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
-        action: 'wallet.chargeback', detail: { lotId: r.lotId, paymentRecordId: r.paymentRecordId, withoutLot: r.withoutLot, reason,
+        action: 'wallet.chargeback', detail: { lotId: r.lotId, paymentRecordId: r.paymentRecordId, withoutLot: r.withoutLot,
+          ...(r.compensated ? { compensated: true } : {}), reason,
           debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
     }
     return r;
@@ -160,7 +161,7 @@ export const paymentChargeback = async (req: AuthRequest, res: Response) => {
       message: 'Nothing was credited for this top-up, so nothing was taken from the wallet. The top-up is now blocked and will never be credited.' });
   }
   send(res, { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
-    withoutLot: out.withoutLot });
+    withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) });
 };
 
 /** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). */

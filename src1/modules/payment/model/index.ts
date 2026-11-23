@@ -122,7 +122,9 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     compensatedAt: { type: Date },
     compensation: {
       type: new Schema({ by: { type: String, required: true }, reason: { type: String, required: true }, requestKey: { type: String, required: true },
-        requestHash: { type: String, required: true }, previousStatus: { type: String, required: true } }, { _id: false }),
+        requestHash: { type: String, required: true }, previousStatus: { type: String, required: true },
+        // r9b: the amount support paid by hand (a later lost dispute takes it back).
+        amountPaise: { type: Number } }, { _id: false }),
       default: undefined,
     },
   },
