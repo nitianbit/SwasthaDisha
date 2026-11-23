@@ -217,10 +217,15 @@ export async function cardRefundQueue(q: { state?: string; limit?: number } = {}
 
 /** r10c (admin only): refund rows with the paying pharmacy (id and name), whose agreement a move to the wallet needs. */
 async function adminRefundViews(rows: IAssistedCardRefund[]) {
-  const ids = [...new Set(rows.map((r) => r.payerId).filter((id) => Types.ObjectId.isValid(id)))];
-  const pharmacies = ids.length ? await PharmacyModel.find({ _id: { $in: ids } }).select({ name: 1 }).lean() as { _id: unknown; name?: string }[] : [];
-  const nameOf = new Map(pharmacies.map((p) => [String(p._id).toLowerCase(), p.name ?? null]));
+  const nameOf = await pharmacyNames(rows.map((r) => r.payerId));
   return rows.map((r) => ({ ...cardRefundView(r), pharmacyId: r.payerId, pharmacyName: nameOf.get(lower(r.payerId)) ?? null }));
+}
+
+/** Admin lists: pharmacy names by (lower-case) id. */
+async function pharmacyNames(rawIds: string[]): Promise<Map<string, string | null>> {
+  const ids = [...new Set(rawIds.filter((id) => Types.ObjectId.isValid(id)).map(lower))];
+  const pharmacies = ids.length ? await PharmacyModel.find({ _id: { $in: ids } }).select({ name: 1 }).lean() as { _id: unknown; name?: string }[] : [];
+  return new Map(pharmacies.map((p) => [String(p._id).toLowerCase(), p.name ?? null]));
 }
 
 /**
@@ -327,8 +332,9 @@ export async function cardRefundsStuckPending(now: Date = new Date(), limit = 20
 export async function cardChargebacks(limit = 200) {
   const rows = await PaymentRecordModel.find({ context: 'assisted_booking', chargebackAt: { $exists: true } })
     .select({ contextId: 1, payerPharmacyId: 1, finalAmount: 1, finalAmountPaise: 1, chargebackAt: 1, status: 1 }).sort({ chargebackAt: -1 }).limit(limit).lean() as unknown as IPaymentRecord[];
-  return rows.map((r) => ({ paymentRecordId: String(r._id), bookingId: r.contextId, pharmacyId: r.payerPharmacyId ?? null, amountMinor: recordPaiseOf(r),
-    status: r.status, chargebackAt: r.chargebackAt }));
+  const names = await pharmacyNames(rows.map((r) => String(r.payerPharmacyId ?? '')));
+  return rows.map((r) => ({ paymentRecordId: String(r._id), bookingId: r.contextId, pharmacyId: r.payerPharmacyId ?? null,
+    pharmacyName: names.get(lower(r.payerPharmacyId)) ?? null, amountMinor: recordPaiseOf(r), status: r.status, chargebackAt: r.chargebackAt }));
 }
 
 /** An assisted card payment named by its record id, Razorpay order id or Razorpay payment id (database only). */

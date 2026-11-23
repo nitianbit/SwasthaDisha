@@ -2126,7 +2126,9 @@ marked ₹.
   `captured`, `refunded`, `not_paid`, `forfeited`); `payBy` (ISO) only while a card booking waits for its payment, else
   null; `paymentTransactionId` (card only) is the record to resume: replay the create (or by-key) for the order, or
   `POST /payments/reconcile { paymentTransactionId }`. Use `method` to offer the card / wallet refund choice on cancel.
-  Patients and doctors never get this field.
+  Patients and doctors never get this field. (r10d) While the card booking waits for its payment, `payment` also carries
+  `razorpayOrderId` and `razorpayKeyId` (null when no order is open yet: replay the create), so Checkout can be reopened
+  from any device.
 - Errors (besides §19.3): 400 `PAYMENT_METHOD_UNAVAILABLE` (card switch off), `NOTHING_TO_PAY`; 502
   `RAZORPAY_ORDER_CREATION_FAILED` (the booking is held: send the same request again to get the order); 503
   `RAZORPAY_NOT_CONFIGURED`. Every refusal comes before any account, seat or order, with one answer for every number.
@@ -2224,3 +2226,16 @@ new index (the two new refund-row fields are unindexed).
 |---|---|
 | 9 | Booker view `payment: { method, state, payBy, paymentTransactionId? }` for the booking's own pharmacy only (§23.3), so "pay now" and the refund choice work on any device. Patient and doctor views never carry it; they also no longer carry `postPaymentCompletedFor` (the partner's card payment record id, found by this check) |
 | 10 | Admin card-refund rows (`/admin/assisted/card-refunds`, stuck money's `refundRowsPending` and `cardRefundsPendingOverDays`) add `pharmacyId` and `pharmacyName`; the pharmacy's own `refund` answer is unchanged |
+
+**r10d (branch `m0/r10d-phase1b` from `6b223644`):** checks 11–15 of `test/assisted/r10b-phase1b-fixes.integration.ts`
+(all five fail on `6b223644`).
+
+| # | Finding | Fix |
+|---|---|---|
+| 11 (LOW-MEDIUM, privacy) | The clinic workspace listed card bookings never paid (an online in-clinic visit at its branch), and could start a bill for one | `GET /partner-workspace/clinic/appointments` leaves them out (`$nor: [UNPAID_CARD_QUERY]`); a bill naming one answers 404 `APPOINTMENT_NOT_FOUND`. The other clinic and desk reads act on desk bookings only (`clinicDesk.partnerId`), which are never assisted |
+| 12 (LOW) | Verify, reconcile and the sweep at once each ran the follow-up, so the doctor got several Meet invites | One caller claims the follow-up: `assisted.followUpLeaseUntil` set only while free (5-minute lease; a crashed claim is taken over when it ends), released when done. A caller that finds it claimed leaves the record unprocessed for the claimer (or the sweep) to finish |
+| 13 | "Pay now" from any device | Booker view `payment.razorpayOrderId` / `razorpayKeyId` while waiting (§23.3); the booking's own pharmacy only |
+| 14 | An admin move of an unpaid card booking told the holders about a booking they never saw | Only the booker is told |
+| 15 | Stuck money's `cardChargebacks` rows had no pharmacy name | `pharmacyName` added (admin only) |
+
+C4 (owner, 23 Nov): a card chargeback on a booking payment stays flag-only; recovery is the admin's decision.

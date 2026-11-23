@@ -1,3 +1,4 @@
+import { unpaidCardBooking } from '@/modules/assisted/views';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { InvoiceModel, InvoiceEventModel } from '@/modules/partners/model/invoice';
 import PartnerModel from '@/modules/partners/model';
@@ -110,7 +111,8 @@ async function admitAppointment(actor: PartnerActor, data: Pick<CreateInvoiceInp
   const notFound = () => new AppError({ status: 404, code: 'APPOINTMENT_NOT_FOUND', message: 'Appointment not found' });
   if (!/^[0-9a-f]{24}$/.test(id)) throw notFound();
   const b = await BookingModel.findById(id).session(session ?? null).lean() as IBooking | null;
-  if (!b || b.bookingType !== 'consultation') throw notFound();
+  // r10d: a card-paid assisted booking never confirmed is not the clinic's to bill.
+  if (!b || b.bookingType !== 'consultation' || unpaidCardBooking(b as never)) throw notFound();
   // Desk rows belong to their desk clinic only; online rows to the clinic of the visit (as the appointment list reads them).
   const at = b.clinicDesk ?? b.clinicVisit;
   if (!at || lowerId(at.partnerId) !== lowerId(actor.partnerId)) throw notFound();

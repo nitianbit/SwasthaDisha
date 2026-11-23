@@ -1,3 +1,4 @@
+import { UNPAID_CARD_QUERY } from '@/modules/assisted/views';
 import { createHash } from 'crypto';
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { ClientSession, Types } from 'mongoose';
@@ -698,6 +699,8 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
   // Ownership is the booking's own frozen association (desk rows: their clinicDesk only), never a slot's current branch.
   const rows = await BookingModel.find({
     bookingType: 'consultation', bookingDate: { $gte: from, $lte: to }, ...(q.status ? { status: q.status } : {}), ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}),
+    // r10d: a card-paid assisted booking never confirmed is the booker's alone (not the clinic's either).
+    $nor: [UNPAID_CARD_QUERY],
     $or: [
       { 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.branchId': { $in: branchIds } },
       { clinicDesk: { $exists: false }, 'clinicVisit.partnerId': actor.partnerId, 'clinicVisit.branchId': { $in: branchIds } },

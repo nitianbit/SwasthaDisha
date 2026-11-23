@@ -12,6 +12,9 @@
  *  7. a bad signature leaves an assisted card order payable (other contexts still close: guard);
  *  8. a disputed assisted payment answers PAYMENT_DISPUTED (not top-up wording) and shows in stuck money.
  * r10c (fail on b287b340): 9. the booker view's `payment`; 10. the admin refund rows name the paying pharmacy.
+ * r10d (fail on 6b223644): 11. the clinic workspace neither lists nor bills a card booking never paid; 12. racing
+ *     confirmers make ONE Meet event; 13. the booker view carries the open order (pay now anywhere); 14. an admin move of
+ *     an unpaid card booking tells only the booker; 15. stuck-money chargebacks name the pharmacy.
  *
  * Run (throwaway DB only; the script clears its database):
  *   MONGODB_URL='mongodb://127.0.0.1:27917/assisted_r10b_fixes_check?directConnection=true' JWT_SECRET_KEY=local-integration-only \
@@ -51,6 +54,14 @@ import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { errorHandler } from '@/modules/middleware';
 import { SpecialistPortalService } from '@/modules/specialistPortal/services';
+import { listClinicAppointments } from '@/modules/partners/services/clinic';
+import { InvoiceService } from '@/modules/partners/services/invoice';
+import { InvoiceRepository, InvoiceEventRepository, InvoiceCounterRepository } from '@/modules/partners/repository/invoice';
+import { PartnerRepository } from '@/modules/partners/repository';
+import { BranchRepository } from '@/modules/partners/repository/branch';
+import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
+import PartnerOrgModel from '@/modules/partners/model';
+import BranchModel from '@/modules/partners/model/branch';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/assisted_r10b_fixes_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -520,6 +531,79 @@ async function main() {
       assert.deepEqual([item.pharmacyId, item.pharmacyName], [P, 'Rten Medicals']);
       const stuck = (await expect('ADMIN', 'GET', '/admin/assisted/stuck-money', 200)).json.data.refundRowsPending.find((x: any) => x.bookingId === b.id);
       assert.equal(stuck.pharmacyName, 'Rten Medicals');
+    });
+    // ───────────────────────── r10d ─────────────────────────
+    await check('11 (r10d): the clinic workspace neither lists nor bills a card booking never paid; once paid it does', async () => {
+      const CL = oid(); const BR = oid();
+      await PartnerOrgModel.collection.insertOne({ _id: new Types.ObjectId(CL), kind: 'clinic', name: 'City Clinic', isActive: true } as never);
+      await BranchModel.collection.insertOne({ _id: new Types.ObjectId(BR), partnerId: CL, name: 'Main', isActive: true,
+        address: { line1: 'x', city: 'Shillong', state: 'Meghalaya', stateCode: '17', pincode: '793001' } } as never);
+      const actor = { memberId: 'admin:' + ADMIN, partnerId: CL, role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' } as never;
+      const b = await book();
+      // An online in-clinic visit at this clinic (as reserveSlot records it for a branch slot).
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(b.id) }, { $set: { clinicVisit: { partnerId: CL, branchId: BR } } });
+      const day = (await bookingOf(b.id)).bookingDate as string;
+      const iso = `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`;
+      const listed = async () => (await listClinicAppointments(actor, { from: iso, to: iso })).some((r: any) => String(r._id ?? r.bookingId) === b.id);
+      assert.equal(await listed(), false, 'not listed while unpaid');
+      const invoices = new InvoiceService(new InvoiceRepository(), new InvoiceEventRepository(), new InvoiceCounterRepository(), new PartnerRepository(),
+        new BranchRepository(), new CatalogueItemRepository(), {} as never);
+      const bill = () => invoices.createInvoice(actor, { branchId: BR, customer: { name: 'Rina Das', phone: '9600001001' }, items: [], appointmentId: b.id,
+        idempotencyKey: 'r10d-bill-' + oid().slice(-8) } as never);
+      await assert.rejects(bill(), (e: any) => e?.code === 'APPOINTMENT_NOT_FOUND');
+      await expect('P', 'POST', '/payments/verify', 200, capture(b.data));
+      assert.equal(await listed(), true, 'listed once paid');
+      await assert.rejects(bill(), (e: any) => e?.code !== 'APPOINTMENT_NOT_FOUND' || assert.fail('still hidden from billing'));
+    });
+
+    await check('12 (r10d): verify ×2, reconcile and the sweep racing (slow Meet) create ONE Meet event', async () => {
+      let meets = 0;
+      support.setAssistedEffects({ meet: async (b: any) => { meets += 1; await new Promise((r) => setTimeout(r, 300)); return b; }, cancelMeet: async (b: any) => b,
+        reminders: async () => undefined, clearReminders: async () => undefined } as never);
+      try {
+        for (let i = 0; i < 3; i++) {
+          meets = 0;
+          const b = await book();
+          const v = capture(b.data);
+          await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(v.paymentTransactionId) }, { $set: { createdAt: new Date(Date.now() - 20 * MIN) } });
+          await Promise.allSettled([call('P', 'POST', '/payments/verify', v), call('P', 'POST', '/payments/verify', v),
+            call('P', 'POST', '/payments/reconcile', { paymentTransactionId: v.paymentTransactionId }), sweep()]);
+          assert.equal(meets, 1, `run ${i}: ${meets} Meet events`);
+          const after = await bookingOf(b.id);
+          assert.equal(after.postPaymentCompletedFor, v.paymentTransactionId);
+          assert.equal(after.assisted.followUpLeaseUntil, undefined, 'lease released');
+          assert.equal((await PaymentRecordModel.findById(v.paymentTransactionId).lean() as any).isProcessed, true);
+        }
+      } finally {
+        support.setAssistedEffects({ meet: async (b: any) => b, cancelMeet: async (b: any) => b, reminders: async () => undefined, clearReminders: async () => undefined } as never);
+      }
+    });
+
+    await check('13 (r10d): while a card booking waits, its booker view carries the open order (razorpayOrderId, razorpayKeyId)', async () => {
+      const b = await book();
+      const p = (await expect('P', 'GET', `/pharmacy-bookings/${b.id}`, 200)).json.data.payment;
+      assert.deepEqual([p.razorpayOrderId, p.razorpayKeyId, p.paymentTransactionId], [b.data.payment.razorpayOrderId, 'rzp_test_key', b.data.payment.paymentTransactionId]);
+      const listed = (await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200)).json.data.find((r: any) => String(r._id) === b.id);
+      assert.equal(listed.payment.razorpayOrderId, b.data.payment.razorpayOrderId);
+      await expect('P', 'POST', '/payments/verify', 200, capture(b.data));
+      const paid = (await expect('P', 'GET', `/pharmacy-bookings/${b.id}`, 200)).json.data.payment;
+      assert.equal('razorpayOrderId' in paid, false, 'no order once paid');
+      for (const who of ['X', 'D']) assert.ok(!JSON.stringify((await expect(who, 'GET', `/bookings/${b.id}`, 200)).json.data).includes(b.data.payment.razorpayOrderId));
+    });
+
+    await check('14 (r10d): an admin move of an unpaid card booking tells only the booker (the holders never saw it)', async () => {
+      const b = await book();
+      notices.length = 0;
+      await expect('ADMIN', 'POST', `/admin/assisted-bookings/${b.id}/move`, 200, { toPhone: '9600001077', reason: 'wrong number', requestKey: 'r10d-move-' + oid().slice(-8) });
+      assert.deepEqual(notices.map((n) => n.audience), ['booker']);
+    });
+
+    await check('15 (r10d): stuck-money chargebacks name the paying pharmacy', async () => {
+      const b = await paidBooking();
+      await expect('ADMIN', 'POST', `/admin/assisted-payments/${b.data.payment.paymentTransactionId}/chargeback`, 200, { reason: 'dispute' });
+      const row = (await expect('ADMIN', 'GET', '/admin/assisted/stuck-money', 200)).json.data.cardChargebacks
+        .find((x: any) => x.paymentRecordId === b.data.payment.paymentTransactionId);
+      assert.deepEqual([row.pharmacyId, row.pharmacyName], [P, 'Rten Medicals']);
     });
   } finally {
     server.close();

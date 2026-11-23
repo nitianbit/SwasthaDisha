@@ -225,11 +225,14 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
   await bestEffort('reminders', async () => { await fx.clearReminders(String(moved._id)); if (moved.status === 'confirmed') await fx.reminders(moved); }, undefined);
   const id = String(moved._id);
   const ref = moved.assisted!.shortRef;
+  // r10d: a card booking never paid was never the holders' (they cannot see it): only the booker is told of its move.
+  const holdersSee = !unpaidCardBooking(moved as never);
   await sendAssistedNotices([
-    { audience: 'customer', userId: fromUserId, type: 'general', title: 'A booking was moved off your account',
+    ...(!holdersSee ? [] : [
+    { audience: 'customer' as const, userId: fromUserId, type: 'general' as const, title: 'A booking was moved off your account',
       message: `Booking Ref ${ref} was moved to the right account after a review.`, bookingId: id, key: `assisted:${id}:moved_off:${fromUserId}` },
-    { audience: 'customer', userId: target._id, type: 'general', title: 'A booking was added to your account',
-      message: `Booking Ref ${ref} made by ${moved.assisted!.bookedBy.name} is now on your account.`, bookingId: id, key: `assisted:${id}:moved_to:${target._id}` },
+    { audience: 'customer' as const, userId: target._id, type: 'general' as const, title: 'A booking was added to your account',
+      message: `Booking Ref ${ref} made by ${moved.assisted!.bookedBy.name} is now on your account.`, bookingId: id, key: `assisted:${id}:moved_to:${target._id}` }]),
     { audience: 'booker', userId: moved.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
       message: `Booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId: id, key: `assisted:${id}:moved:booker:${input.requestKey}` },
   ]);

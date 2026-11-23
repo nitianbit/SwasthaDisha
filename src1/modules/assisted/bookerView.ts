@@ -76,6 +76,18 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
   const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
   const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
+  // r10d: the open Razorpay order of each card booking of THIS pharmacy still waiting for its payment (read only), so
+  // "pay now" works from any device.
+  const waitingOwn = list.filter((b) => b.assisted?.funding?.method === 'razorpay' && b.assisted.funding.state === 'pending' && b.status === 'pending'
+    && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase());
+  const orders = new Map<string, { razorpayOrderId: string; razorpayKeyId: string } | null>();
+  if (waitingOwn.length) {
+    const { openCardOrder } = await import('@/modules/assisted/cardPayments');
+    for (const b of waitingOwn) {
+      const o = await openCardOrder(b as never, { create: false }).catch(() => null);
+      orders.set(String(b._id), o ? { razorpayOrderId: o.razorpayOrderId, razorpayKeyId: o.razorpayKeyId } : null);
+    }
+  }
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -107,7 +119,9 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
         const waiting = card && f.state === 'pending' && b.status === 'pending' && b.createdAt;
         v.payment = { method: card ? 'razorpay' : 'wallet', state: f.state,
           payBy: waiting ? new Date(new Date(b.createdAt).getTime() + PAYMENT_WINDOW_MS).toISOString() : null,
-          ...(card ? { paymentTransactionId: f.paymentRecordId ?? null } : {}) };
+          ...(card ? { paymentTransactionId: f.paymentRecordId ?? null } : {}),
+          // r10d: while it waits, the open order to reopen Checkout (null when none is open yet: replay the create).
+          ...(waiting ? { razorpayOrderId: orders.get(String(b._id))?.razorpayOrderId ?? null, razorpayKeyId: orders.get(String(b._id))?.razorpayKeyId ?? null } : {}) };
       }
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.

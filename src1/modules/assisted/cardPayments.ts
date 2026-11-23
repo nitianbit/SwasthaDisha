@@ -87,6 +87,8 @@ export async function openCardOrder(b: IBooking, opts: { create: boolean } = { c
 
 /** applied: this call confirmed it; appliedBefore: confirmed by this record earlier, its follow-up not yet finished. */
 type Outcome = 'applied' | 'appliedBefore' | 'already' | 'returned';
+/** r10d: how long one caller holds the follow-up (Meet, reminders, notices) before another may take it over. */
+const FOLLOW_UP_LEASE_MS = 5 * 60_000;
 
 /** The `assisted_booking` payment context handler (registered at start-up and by tests). */
 export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }> {
@@ -135,7 +137,18 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
   const booking = await BookingModel.findById(id).lean() as IBooking;
   const confirmed = booking?.status === 'confirmed' && lower(booking.paymentTransactionId) === rid;
   let entity: IBooking = booking;
+  // r10d: ONE caller runs the follow-up: it claims it (a lease on the booking, set only while free) so racing verify,
+  // reconcile and sweep calls never create two Meet events; a crashed claim is taken over once its lease ends. A caller
+  // that finds it claimed leaves the record unprocessed for the claimer (or, after a crash, the sweep) to finish.
+  let claimedFollowUp = false;
   if (confirmed && (booking as IBooking & { postPaymentCompletedFor?: string }).postPaymentCompletedFor !== rid) {
+    const t = Date.now();
+    claimedFollowUp = (await BookingModel.collection.updateOne(
+      { _id: new Types.ObjectId(id), postPaymentCompletedFor: { $ne: rid },
+        $or: [{ 'assisted.followUpLeaseUntil': { $exists: false } }, { 'assisted.followUpLeaseUntil': { $lte: new Date(t) } }] },
+      { $set: { 'assisted.followUpLeaseUntil': new Date(t + FOLLOW_UP_LEASE_MS) } })).modifiedCount === 1;
+  }
+  if (claimedFollowUp) {
     // After the confirmation only: Meet (neutral), reminders, the notices. r10b: resumed by any later verify, reconcile or
     // recovery sweep until done, because the record is marked processed only after this.
     const fx = assistedEffects();
@@ -143,10 +156,11 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
     await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
     const { bookedNotices } = await import('@/modules/assisted/consultations');
     await sendAssistedNotices(await bookedNotices(withMeet) as AssistedNotice[]);
-    await BookingModel.updateOne({ _id: id }, { $set: { postPaymentCompletedFor: rid } });
+    await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { postPaymentCompletedFor: rid }, $unset: { 'assisted.followUpLeaseUntil': '' } });
     entity = (await BookingModel.findById(id).lean() as IBooking) ?? withMeet;
   }
-  if (outcome === 'applied' || outcome === 'appliedBefore') {
+  const followUpDone = !confirmed || (entity as IBooking & { postPaymentCompletedFor?: string })?.postPaymentCompletedFor === rid;
+  if ((outcome === 'applied' || outcome === 'appliedBefore') && followUpDone) {
     await PaymentRecordModel.updateOne({ _id: rid, status: 'paid', isProcessed: { $ne: true } }, { $set: { isProcessed: true } });
   }
   const paymentRecord = await PaymentRecordModel.findById(rid).lean() as unknown as IPaymentRecord;
