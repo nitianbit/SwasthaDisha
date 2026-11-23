@@ -9,6 +9,7 @@ import type { PartnerPermission } from '@/modules/partners/types';
 import { admitCustomerToken } from '@/modules/user/credentialGeneration';
 import { admitSessionToken } from '@/modules/auth/sessions';
 import { admitVersionedToken } from '@/modules/auth/tokenVersion';
+import { doctorIsEligible } from '@/modules/specialists/eligibility';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -523,11 +524,26 @@ export const requirePartnerPermission = (...perms: PartnerPermission[]) => partn
 /** At least one of the listed permissions (owners hold all). */
 export const requireAnyPartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('any', perms);
 
+/**
+ * r9 (owner decision): a partner member linked to a doctor (`doctorId`: the owner of a doctor's own practice, or a
+ * clinic's doctor) works in the clinic workspace only while that doctor is eligible (verified and active, S5
+ * `isEligibleDoctor`). Refused at sign-in and on every request of an existing session (403
+ * CLINIC_OWNER_DOCTOR_NOT_VERIFIED); re-verifying the doctor restores access. Members without a `doctorId` are unaffected.
+ */
+export async function assertMemberDoctorEligible(member: { doctorId?: unknown } | null | undefined): Promise<void> {
+  const doctorId = typeof member?.doctorId === 'string' ? member.doctorId.trim() : '';
+  if (!doctorId) return;
+  if (!(await doctorIsEligible(doctorId.toLowerCase()))) {
+    throw new AppError({ status: 403, code: 'CLINIC_OWNER_DOCTOR_NOT_VERIFIED',
+      message: 'Your doctor account is not verified or not active, so this clinic workspace is closed to you; contact Jansetu support' });
+  }
+}
+
 async function admitPartnerToken(claims: { userType?: string; memberId?: string; _id?: string } | undefined): Promise<void> {
   if (!claims || claims.userType !== 'partner') return;
   const memberId = claims.memberId || claims._id;
   if (!memberId) throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
-  const member = await MemberModel.findById(memberId).select('partnerId isActive').lean();
+  const member = await MemberModel.findById(memberId).select('partnerId isActive doctorId').lean();
   if (!member || (member as any).isActive === false) {
     throw new AppError({ status: 401, code: 'PARTNER_MEMBER_REVOKED', message: 'Partner membership has been revoked' });
   }
@@ -535,6 +551,7 @@ async function admitPartnerToken(claims: { userType?: string; memberId?: string;
   if (!partner || (partner as any).isActive === false) {
     throw new AppError({ status: 401, code: 'PARTNER_SUSPENDED', message: 'Partner organisation is inactive' });
   }
+  await assertMemberDoctorEligible(member as { doctorId?: unknown });
 }
 
 export const denyRoles = (...blocked: string[]) => {

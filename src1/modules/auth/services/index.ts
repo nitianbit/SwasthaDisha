@@ -35,6 +35,7 @@ import PartnerModel from '@/modules/partners/model';
 import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
 import { createHmac } from 'crypto';
 import { isVersionedRole, versionForNewToken } from '@/modules/auth/tokenVersion';
+import { assertMemberDoctorEligible } from '@/modules/middleware/auth';
 
 /**
  * Q7: selection tickets are signed with their own key (derived from the secret, never the access-token key) and their
@@ -481,6 +482,8 @@ export class AuthService {
 
     if (data.userType === 'partner') {
       const member = userRecord as unknown as IMember;
+      // r9: a member linked to a doctor signs in only while that doctor is verified and active.
+      await assertMemberDoctorEligible(member);
       tokenPayload = {
         _id: id,
         memberId: id,
@@ -611,6 +614,7 @@ export class AuthService {
     }
     const member = (await this.partnerMembersOf(identity))
       .find((m) => String((m as any).partnerId) === String(data.partnerId)) as unknown as IMember;
+    await assertMemberDoctorEligible(member); // r9
     const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone,
       ...(member.email ? { email: member.email } : {}), userType: 'partner' };
     const authVersion = await versionForNewToken('partner', String(member._id));
