@@ -1,7 +1,8 @@
 /**
  * Assisted booking phase 1a (§6.7, §17.6, ASSUMED D8): how a partner-paid booking looks on the generic booking routes to
  * everyone except the booker (who gets the booker view) and admins (who see it whole, minus request keys):
- * - no money of the partner: `price`, `originalPrice`, `paymentTransactionId`, `walletFunding`, `createTerms`, and of the
+ * - no money of the partner: `price`, `originalPrice`, `paymentTransactionId`, `walletFunding`, `createTerms`,
+ *   `noShowCancel.forfeitedAmount` (r9), and of the
  *   `assisted` block no `funding`, `split`, `referral`, `requestKey`, `requestHash`, consent actor or move history;
  *   instead `paidBy` (the partner's name). `paymentStatus` stays (it is not an amount; the released app reads it to
  *   decide whether to offer payment, which it must not);
@@ -20,9 +21,13 @@ function one(row: Row): Row {
     ? Object.fromEntries(Object.entries(rest.lifecycle as Row).map(([k, v]) => [k, v && typeof v === 'object'
       ? { ...(v.at !== undefined ? { at: v.at } : {}), ...(typeof v.reason === 'string' ? { reason: v.reason } : {}) } : v]))
     : rest.lifecycle;
+  // r9 (A10): a kept (forfeited) partner payment records its amount on the cancel; that is the partner's money too.
+  const noShowCancel = rest.noShowCancel && typeof rest.noShowCancel === 'object'
+    ? Object.fromEntries(Object.entries(rest.noShowCancel as Row).filter(([k]) => k !== 'forfeitedAmount')) : rest.noShowCancel;
   return {
     ...rest,
     ...(lifecycle !== undefined ? { lifecycle } : {}),
+    ...(noShowCancel !== undefined ? { noShowCancel } : {}),
     source: row.source ?? 'pharmacy_assisted',
     paidBy: a.bookedBy?.name ?? null,
     assisted: {
