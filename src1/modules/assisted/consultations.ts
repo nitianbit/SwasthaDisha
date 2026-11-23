@@ -25,7 +25,7 @@ import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { claimRequestKey } from '@/modules/requestKeys';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
-import { assertBookerMayBook, assertPendingCardRoomIn, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
+import { countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
 import { assistedFlags } from '@/modules/assisted/flags';
@@ -36,7 +36,7 @@ import { AssistedCardRefundModel } from '@/modules/assisted/model';
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
  * and pays from its Jansetu wallet. Order (§6.2): validate → limits → resolve the account (outside the transaction,
  * idempotent, as the clinic desk) → ONE transaction: request key claim, family member, pharmacy-customer link with the
- * typed name and consent, seat and doctor interval, coupon redemption, per-phone count, wallet debit (lots consumed),
+ * typed name and consent, seat and doctor interval, coupon redemption, wallet debit (lots consumed),
  * the booking with its `assisted` block and split, audit. No payment record is written (P3). Exactly once per (booker,
  * actor, request key) with a content hash.
  */
@@ -244,8 +244,8 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   if (await RequestKeyModel.exists({ scope: assistedKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
-  // P7: a booker at today's cancellation limit books nothing more today.
-  await assertBookerMayBook(orgKey(actor.pharmacyId));
+  // r10g (owner, 23 Nov): no booking limits besides the hourly lookup limit (P7's daily stop, per-phone, new-account and
+  // pending-card limits are removed); the cancellation and same-pair alerts remain alerts only.
 
   // The service: an active, verified doctor's bookable slot in the chosen mode.
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
@@ -342,7 +342,6 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
         : { created: { at, by: pharmacyId }, paid: { at, by: 'pharmacy_wallet', amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
       await claimRequestKey(assistedKeyScope(actor), input.requestKey, s);
-      await assertBookerMayBook(orgKey(actor.pharmacyId), s);
       await openOrPrepareAccountIn(actor, { phone, newUserId, existingId: existing ? String(existing._id) : null, holderTyped,
         preferredLanguage: input.preferredLanguage }, s);
       if (newDependent) await DependentModel.create([newDependent], { session: s });
@@ -350,14 +349,8 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
         throw err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
       }
       await linkCustomerIn(actor, customer._id, holderTyped, s);
-      await countBookingForPhoneIn(phone, s);
       await countPairBookingIn('pharmacy', pharmacyId, lower(slot.specialistId), s);
       if (coupon) await redeemCouponIn(coupon, { bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
-      // r10b: unpaid card bookings cannot hold slots without end: a cap per booker (counted with this one).
-      if (card) {
-        await assertPendingCardRoomIn('pharmacy', pharmacyId, () => BookingModel.countDocuments({ 'assisted.bookedBy.kind': 'pharmacy',
-          'assisted.bookedBy.id': pharmacyId, 'assisted.funding.method': 'razorpay', 'assisted.funding.state': 'pending', status: 'pending' }).session(s).exec(), s);
-      }
       if (payMinor > 0 && !card) {
         await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);
@@ -391,11 +384,11 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
 }
 
 /**
- * In the booking transaction: a new number's account is inserted here (typed name, language, never signed in), counted
- * against the organisation's new-account limit; an existing account only gets an empty `preferredLanguage` filled. A
+ * In the booking transaction: a new number's account is inserted here (typed name, language, never signed in; r10g: no
+ * new-account limit any more); an existing account only gets an empty `preferredLanguage` filled. A
  * number whose account appeared meanwhile aborts with ACCOUNT_OPENED_MEANWHILE (the caller books again on it).
  */
-async function openOrPrepareAccountIn(actor: PharmacyActor, a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
+async function openOrPrepareAccountIn(_actor: PharmacyActor, a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
   preferredLanguage: string }, s: ClientSession): Promise<void> {
   if (a.existingId) {
     await UserModel.updateOne({ _id: a.existingId, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
@@ -403,7 +396,6 @@ async function openOrPrepareAccountIn(actor: PharmacyActor, a: { phone: string; 
     return;
   }
   if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
-  await countNewAccountIn(orgKey(actor.pharmacyId), s);
   await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: 'assisted_booking', otpVerified: false,
     ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
 }

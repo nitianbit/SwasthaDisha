@@ -39,14 +39,12 @@ export const assistedFlags = {
 /** ASSUMED D10 defaults; each can be changed with its environment variable. */
 export const assistedLimits = {
   lookupsPerHour: () => int('ASSISTED_LIMIT_LOOKUPS_PER_HOUR', 120),
-  newAccountsPerDay: () => int('ASSISTED_LIMIT_NEW_ACCOUNTS_PER_DAY', 30),
-  bookingsPerPhonePerDay: () => int('ASSISTED_LIMIT_BOOKINGS_PER_PHONE_PER_DAY', 5),
+  // r10g (owner, 23 Nov): the new-account (30), per-phone (5) and pending-card (10) limits are removed; the booker
+  // cancellation count only raises an alert now (it no longer stops new bookings).
   bookerCancellationsPerDay: () => int('ASSISTED_LIMIT_BOOKER_CANCELLATIONS_PER_DAY', 20),
   cancelRateAlertPct: () => int('ASSISTED_ALERT_CANCEL_RATE_PCT', 30),
   cancelRateAlertMin: () => int('ASSISTED_ALERT_CANCEL_RATE_MIN', 10),
   samePairAlertPerDay: () => int('ASSISTED_ALERT_SAME_PAIR_PER_DAY', 10),
-  /** r10b: card bookings of one booker waiting for payment at once. */
-  pendingCardBookings: () => int('ASSISTED_LIMIT_PENDING_CARD_BOOKINGS', 10),
 };
 
 export const disabled = (what = 'Assisted booking') =>

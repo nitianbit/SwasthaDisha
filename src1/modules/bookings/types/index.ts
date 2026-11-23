@@ -184,6 +184,8 @@ export interface IBooking {
   notes?: string;
   cancellationReason?: string;
   cancelledAt?: string; // YYYYMMDD format
+  /** r10g: the Meet retry of a paid call/video booking left without a link (meet/retry.ts). */
+  meetRetry?: { attempts?: number; nextAt?: Date; leaseUntil?: Date; alertedAt?: Date; doneAt?: Date };
   virtualMeeting?: IVirtualMeeting;
   
   createdAt?: Date;
