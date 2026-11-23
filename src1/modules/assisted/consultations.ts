@@ -28,6 +28,9 @@ import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
 import { assertBookerMayBook, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
+import { assistedFlags } from '@/modules/assisted/flags';
+import { assertCardGatewayReady, openCardOrder, type CardPaymentView } from '@/modules/assisted/cardPayments';
+import { AssistedCardRefundModel } from '@/modules/assisted/model';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -109,9 +112,14 @@ export function assistedRequestHash(input: AssistedConsultInput): string {
   });
 }
 
-/** The answer of a create (and of a replay): the booker's own payment screen sees its funding. */
-export function assistedReceipt(b: IBooking, replayed: boolean, newAccount: boolean) {
+/**
+ * The answer of a create (and of a replay): the booker's own payment screen sees its funding. Phase 1b: a card booking
+ * adds `payment` — the open Razorpay order while the booking waits for it, else null — and its funding's
+ * `paymentTransactionId`.
+ */
+export function assistedReceipt(b: IBooking, replayed: boolean, newAccount: boolean, payment?: CardPaymentView | null) {
   const a = b.assisted!;
+  const card = a.funding.method === 'razorpay';
   return {
     booking: {
       _id: String(b._id), status: b.status, paymentStatus: b.paymentStatus, bookingDate: b.bookingDate, bookingTime: b.bookingTime,
@@ -121,11 +129,19 @@ export function assistedReceipt(b: IBooking, replayed: boolean, newAccount: bool
       assisted: { shortRef: a.shortRef, preferredLanguage: a.preferredLanguage, join: a.join ? { on: a.join.on } : undefined,
         bookedBy: { name: a.bookedBy.name } },
     },
-    funding: { method: a.funding.method, amountMinor: a.funding.amountMinor, state: a.funding.state, walletEntryId: a.funding.walletEntryId ?? null },
+    funding: { method: a.funding.method, amountMinor: a.funding.amountMinor, state: a.funding.state, walletEntryId: a.funding.walletEntryId ?? null,
+      ...(card ? { paymentTransactionId: a.funding.paymentRecordId ?? null } : {}) },
     split: { listMinor: a.split.listMinor, discountMinor: a.split.discountMinor, couponCode: a.split.couponCode ?? null },
+    ...(card ? { payment: payment ?? null } : {}),
     newAccount,
     replayed,
   };
+}
+
+/** Phase 1b: a receipt of a card booking carries its open order (made again here after a failed order call). */
+async function receiptOf(b: IBooking, replayed: boolean, newAccount: boolean) {
+  if (b.assisted?.funding?.method !== 'razorpay') return assistedReceipt(b, replayed, newAccount);
+  return assistedReceipt(b, replayed, newAccount, await openCardOrder(b));
 }
 
 /** Writers rely on these unique indexes (fail closed: 503 INDEXES_OUTDATED until sync-indexes has run). */
@@ -139,7 +155,7 @@ export async function assertAssistedIndexes(withCoupon: boolean): Promise<void> 
 
 function validate(input: AssistedConsultInput): void {
   if (!input.consent || input.consent.agreed !== true) throw err(400, 'CONSENT_REQUIRED', 'Tick "patient agreed" before booking for the patient');
-  if (input.paymentMethod !== 'wallet') {
+  if (input.paymentMethod !== 'wallet' && input.paymentMethod !== 'razorpay') {
     throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Assisted bookings are paid from the Jansetu wallet for now');
   }
   if (!ASSISTED_KEY.test(String(input.requestKey ?? ''))) throw err(400, 'REQUEST_KEY_REQUIRED', 'requestKey is required');
@@ -205,7 +221,16 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   // receipt first and is not counted, so a retried request never meets a 429 instead of its receipt. That answer depends
   // only on this booker's own key and content, never on whether the number has an account.
   const replay = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IBooking | null;
-  if (replay && replay.assisted?.requestHash === hash) return assistedReceipt(replay, true, !!replay.assisted?.identity?.newAccount);
+  if (replay && replay.assisted?.requestHash === hash) return receiptOf(replay, true, !!replay.assisted?.identity?.newAccount);
+  // Phase 1b: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on and the gateway has keys (decided before anything
+  // is counted or held, the same answer for every number).
+  const card = input.paymentMethod === 'razorpay';
+  if (card && !assistedFlags.card()) throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Card and UPI payment of assisted bookings is not switched on; pay from the wallet');
+  if (card) {
+    assertCardGatewayReady();
+    // A card booking's refunds rely on the one-row-per-payment unique index (fail closed until sync-indexes has run).
+    await assertUniqueIndex(AssistedCardRefundModel, { paymentRecordId: 1 });
+  }
   // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit and is audited
   // (a key reused for other content too: it is counted, then refused below).
   if (attempt === 0) {
@@ -215,7 +240,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       requestKey: input.requestKey, detail: { exists: !!seen, ...(seen ? { userId: String(seen._id) } : {}) } }, null);
   }
   const prior = await replayOf(storedKey, hash);
-  if (prior) return assistedReceipt(prior, true, !!prior.assisted?.identity?.newAccount);
+  if (prior) return receiptOf(prior, true, !!prior.assisted?.identity?.newAccount);
   if (await RequestKeyModel.exists({ scope: assistedKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
@@ -273,11 +298,15 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   if (input.acceptedPriceMinor !== payMinor) {
     throw err(409, 'PRICE_CHANGED', 'The price changed; check it with the patient and book again', { details: { priceMinor: payMinor, listMinor, discountMinor } });
   }
+  // Phase 1b: a card payment needs an amount (Razorpay refuses 0); a free consultation is booked with the wallet method.
+  if (card && payMinor <= 0) throw err(400, 'NOTHING_TO_PAY', 'Nothing to pay for this consultation; book it with paymentMethod "wallet"');
   // provider_coupon_v2 (§8.3, P5): coupon first, then the cut (0 in 1a). Provider-funded: the base is what was paid.
   const baseMinor = coupon?.fundedBy === 'platform' ? listMinor : payMinor;
   const now = clock();
   const shortRef = newShortRef();
   const entryId = new Types.ObjectId();
+  // Phase 1b: the card booking's one payment record id, stored on the funding before the order exists.
+  const paymentRecordId = card ? new Types.ObjectId().toHexString() : undefined;
   const pharmacyId = lower(actor.pharmacyId);
   const assisted: AssistedBlock = {
     bookedBy: { kind: 'pharmacy', id: pharmacyId, actorKind: 'pharmacy', actorId: lower(actor.actorId), name: pharmacy?.name ?? 'Pharmacy' },
@@ -286,8 +315,10 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
     preferredLanguage: input.preferredLanguage,
     identity: { attested: true, newAccount: customer.created },
     ...(input.join ? { join: { on: input.join.on, ...(input.join.phone ? { phone: canonicalMobile(input.join.phone)! } : {}), linkVersion: 1 } } : {}),
-    funding: { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
-      ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
+    funding: card
+      ? { method: 'razorpay', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
+      : { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
+        ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
     split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor, cutMinor: 0,
       providerMinor: baseMinor, rule: 'provider_coupon_v2' },
     referral: null,
@@ -302,11 +333,13 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       bookingType: 'consultation', userId: customer._id, ...(dependentId ? { dependentId } : {}), pharmacyId,
       specialistId: String(slot.specialistId), doctorName: sp.name, slotId: String(slot._id), bookingDate: slot.date, bookingTime: slot.startTime,
       consultationMode: input.consultationMode, serviceMode: input.consultationMode, price: payMinor / 100, originalPrice: listMinor / 100,
-      status: 'confirmed', paymentStatus: 'paid', contactNo: phone,
+      // Phase 1b: a card booking holds its seat as pending payment (expired by the existing sweep after 30 minutes).
+      status: card ? 'pending' : 'confirmed', paymentStatus: card ? 'pending' : 'paid', contactNo: phone,
       ...(input.primaryConcern?.trim() ? { primaryConcern: input.primaryConcern.trim() } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
       source: 'pharmacy_assisted', earningRule: 'provider_coupon_v2', assisted,
-      lifecycle: { created: { at, by: pharmacyId }, paid: { at, by: 'pharmacy_wallet', amount: payMinor / 100 }, confirmed: { at } },
+      lifecycle: card ? { created: { at, by: pharmacyId } }
+        : { created: { at, by: pharmacyId }, paid: { at, by: 'pharmacy_wallet', amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
       await claimRequestKey(assistedKeyScope(actor), input.requestKey, s);
       await assertBookerMayBook(orgKey(actor.pharmacyId), s);
@@ -320,27 +353,29 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       await countBookingForPhoneIn(phone, s);
       await countPairBookingIn('pharmacy', pharmacyId, lower(slot.specialistId), s);
       if (coupon) await redeemCouponIn(coupon, { bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
-      if (payMinor > 0) {
+      if (payMinor > 0 && !card) {
         await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);
       }
       await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.created',
         bookingId: String(b._id), requestKey: input.requestKey,
-        detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, accountCreated: customer.created,
+        detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: customer.created,
           ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
     });
   } catch (e) {
     // A racing identical request may have committed first: answer with its receipt.
     const raced = await replayOf(storedKey, hash);
-    if (raced) return assistedReceipt(raced, true, !!raced.assisted?.identity?.newAccount);
+    if (raced) return receiptOf(raced, true, !!raced.assisted?.identity?.newAccount);
     // Another booking or desk opened this number's account meanwhile: book again once, on that account.
     if ((e as { code?: string }).code === 'ACCOUNT_OPENED_MEANWHILE' && attempt === 0) return createPharmacyConsultation(actor, input, clock, 1);
     throw asDoctorUnavailable(e);
   }
   if (isReplayedBooking(booking)) {
     if (booking.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
-    return assistedReceipt(booking, true, !!booking.assisted?.identity?.newAccount);
+    return receiptOf(booking, true, !!booking.assisted?.identity?.newAccount);
   }
+  // Phase 1b: a card booking opens its Razorpay order now; Meet, reminders and the notices follow its confirmation.
+  if (card) return assistedReceipt(booking, false, customer.created, await openCardOrder(booking));
   // After the commit, best effort: Meet (neutral text), reminders, notices to the patient, the doctor and the booker.
   const fx = assistedEffects();
   const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
@@ -400,7 +435,7 @@ async function redeemCouponIn(c: { code: string; discountMinor: number; totalUsa
 const shownDate = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : String(d ?? ''));
 
 /** §6.5: "booked by <partner>", identity attested by the partner. The booker hears nothing about the family. */
-async function bookedNotices(b: IBooking): Promise<AssistedNotice[]> {
+export async function bookedNotices(b: IBooking): Promise<AssistedNotice[]> {
   const a = b.assisted!;
   const dep = b.dependentId && Types.ObjectId.isValid(String(b.dependentId))
     ? await DependentModel.findById(b.dependentId).select({ name: 1 }).lean() as { name?: string } | null : null;

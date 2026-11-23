@@ -556,6 +556,8 @@ export class PaymentService {
             ? 'lb'
           : data.context === 'instant_request'
             ? 'ic'
+          : data.context === 'assisted_booking'
+            ? 'ab'
           : 'bk';
     const contextId = String(data.contextId || '');
     const userId = String(data.userId || '');
@@ -657,6 +659,7 @@ export class PaymentService {
     }
 
     const paymentRecord = await this.paymentRepository.save({
+      ...(data.recordId ? { _id: data.recordId } : {}),
       userId: data.userId,
       payerUserId: this.getPaymentPayerUserId(data),
       payerPharmacyId: data.payerPharmacyId,
@@ -775,9 +778,13 @@ export class PaymentService {
       !belongsToRequester &&
       data.requesterUserType === 'pharmacy' &&
       data.requesterPharmacyId &&
-      (paymentRecord.context === 'booking' || paymentRecord.context === 'pharmacy_order')
+      (paymentRecord.context === 'booking' || paymentRecord.context === 'pharmacy_order' || paymentRecord.context === 'assisted_booking')
     ) {
-      if (paymentRecord.context === 'booking') {
+      if (paymentRecord.context === 'assisted_booking') {
+        // Phase 1b (§6.1): an assisted card payment is verified by its paying organisation (the pharmacy), whoever of it acts.
+        pharmacyCanVerify = !!paymentRecord.payerPharmacyId
+          && String(paymentRecord.payerPharmacyId).toLowerCase() === String(data.requesterPharmacyId).toLowerCase();
+      } else if (paymentRecord.context === 'booking') {
         const booking = await this.bookingRepository.findById(paymentRecord.contextId);
         pharmacyCanVerify =
           !!booking &&
@@ -1953,7 +1960,8 @@ export class PaymentService {
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
       $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] },
         { $or: [
-          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] } },
+          // Phase 1b: assisted card payments (a capture is applied once, or refunded to its source when the booking closed).
+          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking'] } },
           ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
         ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();

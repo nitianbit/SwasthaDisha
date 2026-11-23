@@ -15,6 +15,8 @@ import { inTransaction } from '@/modules/partners/services';
 import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules/assisted/model';
 import { assistedFlags, assistedLimits } from '@/modules/assisted/flags';
 import { raiseAlertIn } from '@/modules/assisted/limits';
+import { cardRefundQueue } from '@/modules/assisted/cardRefunds';
+import { AssistedCardRefundModel } from '@/modules/assisted/model';
 
 /**
  * Assisted booking phase 1a (design §8.2, §8.8, P10): the daily reconciliation and the stuck-money report. Mismatches are
@@ -146,15 +148,18 @@ export async function stuckMoney(now: Date = new Date()) {
     .select({ walletRef: 1, paymentRecordId: 1, amountMinor: 1, createdAt: 1 }).limit(LIST_MAX).lean();
   return {
     pendingPaymentPastDeadline: pendingPastDeadline.map((b) => ({ bookingId: String(b._id), createdAt: b.createdAt })),
-    refundRowsPending: [] as Row[],
-    lateCaptures: [] as Row[],
+    // Phase 1b: card refunds pending over 24 h, failed or held for review (the operator queue), and late captures.
+    refundRowsPending: await cardRefundQueue({}, now) as Row[],
+    lateCaptures: (await AssistedCardRefundModel.find({ cause: 'late_capture' }).sort({ createdAt: -1 }).limit(LIST_MAX).lean())
+      .map((r) => ({ refundId: String(r._id), bookingId: r.bookingId, paymentRecordId: r.paymentRecordId, amountMinor: r.amountMinor, state: r.state,
+        createdAt: r.createdAt })) as Row[],
     withdrawalsRequestedOver7Days: [] as Row[],
     frozenWalletsWithReceivable: frozenWithReceivable.map((w) => ({ pharmacyId: String(w.pharmacyId), receivableMinor: w.receivableMinor })),
     topupsCapturedNotCredited: await uncreditedTopups(now),
     paidBookingsStuckAfterSlot: stuckAfterSlot,
     lotsWithUnknownFeeOver2Days: unknownFeeLots.map((l) => ({ lotId: String(l._id), walletRef: l.walletRef, paymentRecordId: l.paymentRecordId,
       amountMinor: l.amountMinor, createdAt: l.createdAt })),
-    notBuiltYet: ['razorpay_refund_rows (1b)', 'late_captures (1b)', 'withdrawals (phase 4)'],
+    notBuiltYet: ['withdrawals (phase 4)'],
   };
 }
 
@@ -193,7 +198,7 @@ export async function runReconciliation(now: Date = new Date(), opts: { full?: b
       walletsOwing: await walletsOwing(),
       mismatches,
       withdrawals: 'not built (phase 4)',
-      razorpayAssisted: 'not built (phase 1b)',
+      razorpayAssisted: 'phase 1b: card refunds and late captures are listed in stuck.refundRowsPending and stuck.lateCaptures',
       highCancelRates,
     },
     stuck,

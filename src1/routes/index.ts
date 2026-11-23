@@ -13,6 +13,7 @@ import partnerDirectoryRouter from '@/modules/partnerDirectory/routes';
 import partnerWorkspaceRouter, { customerBillsRouter, customerLabRouter, customerLabBookingRouter, settlementAdminRouter } from '@/modules/partners/routes';
 import { registerLabBookingPayments } from '@/modules/partners/services/labBookings';
 import { registerInstantPayments } from '@/modules/doctors/services/instant';
+import { registerAssistedPayments } from '@/modules/assisted/cardPayments';
 import { instantRouter } from '@/modules/doctors/routes';
 import slotRouter from '@/modules/slots/routes';
 import corporateRouter from '@/modules/corporates/routes';
@@ -59,6 +60,8 @@ export const configureRoutes = (app: Express): void => {
   // Q3: payment verification for partner-lab bookings is dispatched through the payment context registry.
   registerLabBookingPayments();
   registerInstantPayments();
+  // Phase 1b: assisted card payments (a pharmacy pays a booking by card/UPI) are applied through the same registry.
+  registerAssistedPayments();
   // Simple static file serving - /api/static/*path
   // This allows direct access to files: base_url/api/static/bookings/12345/document.pdf
   const fileController = new FileController();

@@ -3,9 +3,11 @@ import { Container } from 'typedi';
 import logger from '@/services/logger';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { runDailyReconciliation } from '@/modules/assisted/reconciliation';
+import { runCardRefundsDue } from '@/modules/assisted/cardRefunds';
 
 let started = false;
 let running = false;
+let refunding = false;
 
 /**
  * Assisted booking phase 1a (§8.8): the daily reconciliation at 02:30 India time while ASSISTED_RECONCILIATION_ENABLED is
@@ -27,4 +29,16 @@ export function runAssistedSchedulers(): void {
       logger.error('Assisted reconciliation failed', { error: error instanceof Error ? error.message : String(error) });
     } finally { running = false; }
   }, { timezone: 'Asia/Kolkata' });
+  // Phase 1b: card refunds of assisted bookings (cancellations, late captures) every 5 minutes, whatever the switches
+  // say (money owed back is always sent). Fenced per row: several instances only repeat lookups.
+  cron.schedule('*/5 * * * *', async () => {
+    if (refunding) return;
+    refunding = true;
+    try {
+      const out = await runCardRefundsDue();
+      if (out.advanced) logger.info('Assisted card refunds', out);
+    } catch (error) {
+      logger.error('Assisted card refunds failed', { error: error instanceof Error ? error.message : String(error) });
+    } finally { refunding = false; }
+  });
 }

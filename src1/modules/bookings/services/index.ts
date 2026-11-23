@@ -1891,6 +1891,8 @@ export class BookingService {
       const id = String(row._id);
       try {
         const check = await this.paymentService.reconcileBookingPayments(id);
+        // Phase 1b: an assisted card booking's attempt (context `assisted_booking`) is checked with the gateway too.
+        check.unknown += (await this.paymentService.reconcileContextPayments('assisted_booking', id)).unknown;
         if (check.unknown > 0) {
           // Back-off from the number of inconclusive checks: 5, 10, 20, 40 … minutes, at most 6 hours.
           const checks = Number(row.expiryChecks || 0) + 1;

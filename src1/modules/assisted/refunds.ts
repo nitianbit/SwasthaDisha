@@ -6,6 +6,9 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import type { AssistedRefundRow } from '@/modules/assisted/types';
+import PaymentRecordModel from '@/modules/payment/model';
+import type { IPaymentRecord } from '@/modules/payment/types';
+import { queueCardRefundIn } from '@/modules/assisted/cardRefunds';
 
 /**
  * Assisted booking phase 1a (design §8.4, §8.7): the money step of a cancellation of a partner-paid booking, inside the
@@ -17,6 +20,10 @@ import type { AssistedRefundRow } from '@/modules/assisted/types';
  * - The coupon redemption is reversed once (counted → reversed, usage −1).
  * - The join link of the booking dies (`linkVersion` + 1).
  * - An admin cancel of a moved no-show WITHOUT refund keeps the money (funding `forfeited`, coupon stays used).
+ * - Phase 1b, card funding (`method: 'razorpay'`): a captured payment goes back by the card refund row of that payment
+ *   record (assisted/cardRefunds.ts, exactly once per record): to the card by default, or to the wallet when the booker
+ *   chose it at its own cancel (`refundTo: 'wallet'`). A card booking cancelled before its capture was applied refunds
+ *   nothing here (`not_paid`); a capture landing later is a late capture, returned by the payment handler.
  */
 export const assistedBookerFilter = (kind: 'pharmacy' | 'lab' | 'doctor', id: string) =>
   ({ 'assisted.bookedBy.kind': kind, 'assisted.bookedBy.id': { $eq: String(id).toLowerCase() } });
@@ -33,7 +40,8 @@ export async function reverseRedemptionIn(bookingKind: 'booking', bookingId: str
   return true;
 }
 
-export async function settleAssistedFundingIn(booking: IBooking, p: { cause: string; keepMoney: boolean }, s: ClientSession): Promise<number> {
+export async function settleAssistedFundingIn(booking: IBooking, p: { cause: string; keepMoney: boolean; refundTo?: 'card' | 'wallet' },
+  s: ClientSession): Promise<number> {
   const a = booking.assisted!;
   const id = String(booking._id).toLowerCase();
   const set: Record<string, unknown> = {};
@@ -45,6 +53,17 @@ export async function settleAssistedFundingIn(booking: IBooking, p: { cause: str
   if (p.keepMoney) {
     set['assisted.funding.state'] = 'forfeited';
     set['noShowCancel.forfeitedAmount'] = Number(a.funding.amountMinor) / 100;
+  } else if (a.funding.method === 'razorpay') {
+    await reverseRedemptionIn('booking', id, s);
+    const record = a.funding.state === 'captured' && a.funding.paymentRecordId && Types.ObjectId.isValid(a.funding.paymentRecordId)
+      ? await PaymentRecordModel.findById(a.funding.paymentRecordId).session(s).lean() as unknown as IPaymentRecord | null : null;
+    if (record) {
+      const q = await queueCardRefundIn({ bookingId: id, payerId: a.funding.payerId, record, cause: p.cause, to: p.refundTo === 'wallet' ? 'wallet' : 'card' }, s);
+      if (q.created) { push = q.row; refundedMinor = q.row.amountMinor; }
+      set['assisted.funding.state'] = 'refunded';
+    } else {
+      set['assisted.funding.state'] = 'not_paid';
+    }
   } else {
     await reverseRedemptionIn('booking', id, s);
     const already = (a.funding.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);

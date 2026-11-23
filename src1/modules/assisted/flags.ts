@@ -21,6 +21,12 @@ export const assistedFlags = {
   pharmacy: () => on('ASSISTED_BOOKING_ENABLED_PHARMACY'),
   adminTools: () => on('ASSISTED_ADMIN_TOOLS_ENABLED'),
   reconciliation: () => on('ASSISTED_RECONCILIATION_ENABLED'),
+  /**
+   * Phase 1b: new assisted bookings paid by card/UPI (Razorpay). Off: `paymentMethod: 'razorpay'` answers 400
+   * PAYMENT_METHOD_UNAVAILABLE as in 1a. Verify, reconcile, the sweeps, late captures and card refunds of bookings already
+   * made keep working whatever it says (money in flight is never stranded).
+   */
+  card: () => on('ASSISTED_CARD_PAYMENT_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {

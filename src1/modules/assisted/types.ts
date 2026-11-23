@@ -7,25 +7,37 @@ export type BookerKind = 'pharmacy' | 'lab' | 'doctor';
 
 export interface AssistedRefundRow {
   refundId: string;
-  /** booker | patient | doctor | admin (who cancelled), as the cancellation cause. */
+  /** booker | patient | doctor | admin (who cancelled), as the cancellation cause; phase 1b adds `late_capture`. */
   cause: string;
   amountMinor: number;
-  method: 'wallet';
+  /** Phase 1b: `razorpay` = back to the card/UPI of the payment (state follows the card refund row, `assisted_card_refunds`). */
+  method: 'wallet' | 'razorpay';
+  /** Wallet funding: the debit entry; card funding: the payment record refunded. */
   sourceRef: string;
-  state: 'processed';
+  /** Wallet rows post at once (`processed`); card rows start `pending` (the card refund row holds the truth). */
+  state: 'processed' | 'pending' | 'failed' | 'manual_review';
   walletEntryId?: string;
   attemptId: string;
   at: Date;
 }
 
 export interface AssistedFunding {
-  method: 'wallet';
+  /** Phase 1b: `razorpay` = the booker paid this booking by card/UPI (one Razorpay order, `paymentRecordId`). */
+  method: 'wallet' | 'razorpay';
   payerKind: BookerKind;
   payerId: string;
   amountMinor: number;
-  /** captured: paid from the wallet; refunded: returned in full; forfeited: kept (admin cancel of a moved no-show). */
-  state: 'captured' | 'refunded' | 'forfeited';
+  /**
+   * captured: paid (wallet debit, or the card capture applied); refunded: returned in full; forfeited: kept (admin cancel
+   * of a moved no-show). Phase 1b card bookings start `pending` (slot held, order open) and end `not_paid` when cancelled
+   * or expired before any capture was applied.
+   */
+  state: 'captured' | 'refunded' | 'forfeited' | 'pending' | 'not_paid';
   walletEntryId?: string;
+  /** Phase 1b: the one payment record (context `assisted_booking`) of a card booking, chosen before the insert. */
+  paymentRecordId?: string;
+  /** Phase 1b: the Razorpay payment applied to a card booking. */
+  razorpayPaymentId?: string;
   refunds: AssistedRefundRow[];
 }
 

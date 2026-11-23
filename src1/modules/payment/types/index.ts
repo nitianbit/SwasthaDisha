@@ -1,4 +1,5 @@
-export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking' | 'instant_request';
+/** Phase 1b: `assisted_booking` = a booker (pharmacy) pays an assisted consultation by card/UPI (contextId = the booking). */
+export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking' | 'instant_request' | 'assisted_booking';
 export type PaymentRecordStatus = 'created' | 'paid' | 'failed' | 'refunded';
 
 export interface IPaymentRecord {
@@ -56,6 +57,8 @@ export interface CreatePaymentOrderRequest {
   currency?: string;
   couponCode?: string;
   notes?: Record<string, unknown>;
+  /** Phase 1b: the record's id chosen by the caller (an assisted card booking stores it before the order exists). */
+  recordId?: string;
 }
 
 export interface VerifyPaymentRequest {

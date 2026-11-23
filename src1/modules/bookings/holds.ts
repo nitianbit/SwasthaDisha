@@ -387,6 +387,8 @@ export async function cancelBookingSettlement(p: {
   movedNoShow?: { refund: boolean };
   /** Assisted booking phase 1a: the booker's own command (its assisted bookings only; never the generic routes). */
   assistedBooker?: 'pharmacy';
+  /** Phase 1b: the booker's choice for a card-paid booking's refund (default: back to the card). */
+  assistedRefundTo?: 'card' | 'wallet';
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -468,7 +470,8 @@ export async function cancelBookingSettlement(p: {
       // Assisted booking phase 1a (§8.4, §8.7): partner money goes back to the partner by its method (wallet), in this
       // transaction, whatever the wallet's state; the coupon redemption is reversed; the join link dies. Never the
       // customer's wallet ledger.
-      refunded = await settleAssistedFundingIn(booking, { cause: p.cause ?? assistedCauseOf(p.requester.userType), keepMoney }, s);
+      refunded = await settleAssistedFundingIn(booking, { cause: p.cause ?? assistedCauseOf(p.requester.userType), keepMoney,
+        ...(p.assistedRefundTo ? { refundTo: p.assistedRefundTo } : {}) }, s);
     } else if (!keepMoney) {
       await undoCouponUsageIn(records.map(r => String(r._id)), s);
       refunded = await settleMoney(booking, id, records, p.wallets, s);
@@ -520,13 +523,17 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
     if (!booking || booking.status !== 'pending' || booking.paymentStatus !== 'pending') return { expired: false, reason: 'not_pending' };
     if (!paymentDeadlinePassed(booking, p.now)) return { expired: false, reason: 'not_due' };
 
-    // Serialize with capture exactly like a cancellation, then decide on what is now committed.
-    await PaymentRecordModel.collection.updateMany({ context: 'booking', contextId: id, status: { $nin: ['paid', 'refunded'] } },
+    // Serialize with capture exactly like a cancellation, then decide on what is now committed. Phase 1b: an assisted card
+    // booking's payment record has the context `assisted_booking`; a capture recorded but not yet applied leaves the
+    // booking to the payment handler (it confirms it, or returns the capture), exactly as for customers.
+    const context = booking.assisted ? 'assisted_booking' : 'booking';
+    await PaymentRecordModel.collection.updateMany({ context, contextId: id, status: { $nin: ['paid', 'refunded'] } },
       { $set: { updatedAt: new Date() } }, { session: s });
-    const records = await PaymentRecordModel.find({ context: 'booking', contextId: id }).session(s).lean() as unknown as PaymentRow[];
+    const records = await PaymentRecordModel.find({ context, contextId: id }).session(s).lean() as unknown as PaymentRow[];
     if (records.some(r => r.status === 'paid') || (booking.walletFunding?.captures ?? []).some(c => c.state === 'applied')) {
       return { expired: false, reason: 'paid' };
     }
+    if (booking.assisted && booking.assisted.funding?.state !== 'pending') return { expired: false, reason: 'not_pending' };
 
     const slot = await heldSlot(booking, s);
     const parent = await heldFollowUpParent(booking, s);
@@ -536,8 +543,15 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
         $unset: { expiryNextAt: 1, expiryChecks: 1 } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
     await releaseInterval('scheduled', id, s);
-    await undoCouponUsageIn(records.map(r => String(r._id)), s);
-    const refunded = await settleMoney(booking, id, records, p.wallets, s);
+    let refunded = 0;
+    if (booking.assisted?.funding) {
+      // Phase 1b: an unpaid assisted card booking — the coupon redemption is reversed, the funding ends `not_paid`, the
+      // join link dies; nothing was taken, so nothing is refunded (a capture landing later is a late capture).
+      await settleAssistedFundingIn(booking, { cause: 'payment_timeout', keepMoney: false }, s);
+    } else {
+      await undoCouponUsageIn(records.map(r => String(r._id)), s);
+      refunded = await settleMoney(booking, id, records, p.wallets, s);
+    }
     if (slot) await releaseSlot(slot, s);
     if (parent) {
       await BookingModel.updateOne({ _id: parent, 'followUp.benefitUsed': true }, { $set: { 'followUp.benefitUsed': false } }, { session: s });

@@ -65,7 +65,9 @@ export const consultationSchema = Joi.object({
   paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
 });
 
-export const bookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedUpdatedAt: Joi.date().iso() });
+export const bookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedUpdatedAt: Joi.date().iso(),
+  /** Phase 1b: where a card-paid booking's money goes back (default `card`); ignored for wallet-paid bookings. */
+  refundTo: Joi.string().valid('card', 'wallet') });
 export const bookerRescheduleSchema = Joi.object({ slotId: objectId.required(), requestKey: key.required(), expectedUpdatedAt: Joi.date().iso() });
 export const keyParamSchema = Joi.object({ key: key.required() });
 export const idParamSchema = Joi.object({ id: objectId.required() });
@@ -90,3 +92,8 @@ export const paymentIdParamSchema = Joi.object({ paymentId: Joi.alternatives().t
 export const chargebackSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required() });
 /** r9: POST /admin/wallet-payments/:paymentId/close-compensated. */
 export const closeCompensatedSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required(), requestKey: key.required() });
+
+/** Phase 1b: the card refund operator queue, moving a failed card refund to the wallet (with the partner's agreement). */
+export const cardRefundQuerySchema = Joi.object({ state: Joi.string().valid('pending', 'processed', 'failed', 'manual_review'),
+  limit: Joi.number().integer().min(1).max(200) });
+export const cardRefundToWalletSchema = Joi.object({ agreement: Joi.string().trim().min(1).max(500).required() });

@@ -26,6 +26,9 @@ import { countBookerCancellationIn, hitLookup } from '@/modules/assisted/limits'
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { ASSISTED_KEY, asDoctorUnavailable, assistedKeyScope, storedAssistedKey, type PharmacyActor } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { AssistedCardRefundModel } from '@/modules/assisted/model';
+import { cardRefundView, kickCardRefunds } from '@/modules/assisted/cardRefunds';
+import { openCardOrder } from '@/modules/assisted/cardPayments';
 
 /**
  * Assisted booking phase 1a, pharmacy commands besides the create (§6.2, §7.1, §8.7, P7, P9, §17.6): the masked lookup,
@@ -306,14 +309,23 @@ const shownDate = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/${
 /** After a cancellation of an assisted booking (any path): reminders, Meet, and who is told (§6.5, §8.7). */
 export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' | 'doctor' | 'admin', refunded = true): Promise<IBooking> {
   if (!b.assisted) return b;
+  // Phase 1b: a card refund queued by this cancellation is sent now (best effort; the worker retries it).
+  if (b.assisted.funding?.method === 'razorpay') await kickCardRefunds(String(b._id));
   const fx = assistedEffects();
   await bestEffort('reminders', () => fx.clearReminders(String(b._id)), undefined);
   const out = await bestEffort('meet', () => fx.cancelMeet(b, b.cancellationReason || 'Cancelled'), b);
   const id = String(b._id);
   const when = `${shownDate(b.bookingDate)} at ${b.bookingTime}`;
   const a = b.assisted;
+  // Phase 1b: what happened to the partner's money — wallet, card/UPI, or nothing (a card booking cancelled unpaid).
+  const row = [...(a.funding?.refunds ?? [])].reverse().find((r) => r.cause !== 'late_capture');
+  if (!row && a.funding?.method === 'razorpay') refunded = false;
+  const bookerMoney = row?.method === 'razorpay' ? ' The amount is being refunded to the card or UPI it was paid with.' : ' The amount is back in your Jansetu wallet.';
+  // Phase 1b: the patient and the doctor hear of a card booking only once it is paid; one cancelled before that is told
+  // to nobody but the booker (when someone else cancelled it).
+  const unannounced = a.funding?.method === 'razorpay' && !b.lifecycle?.confirmed;
   const notices: AssistedNotice[] = [];
-  if (by !== 'patient') {
+  if (by !== 'patient' && !unannounced) {
     notices.push({ audience: 'customer', userId: String(b.userId), type: 'booking_cancelled', title: 'Consultation cancelled',
       message: `The consultation on ${when} (Ref ${a.shortRef}) was cancelled.${refunded ? ` ${a.bookedBy.name} has been refunded.` : ''}`, bookingId: id,
       key: `assisted:${id}:cancelled:customer` });
@@ -321,10 +333,10 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
   if (by !== 'booker') {
     // "Cancelled by patient" badge (§6.5): the partner is told; no health details.
     notices.push({ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: by === 'patient' ? 'Cancelled by the patient' : 'Booking cancelled',
-      message: `Booking Ref ${a.shortRef} on ${when} was cancelled${by === 'patient' ? ' by the patient' : ''}.${refunded ? ' The amount is back in your Jansetu wallet.' : ''}`,
+      message: `Booking Ref ${a.shortRef} on ${when} was cancelled${by === 'patient' ? ' by the patient' : ''}.${refunded ? bookerMoney : ''}`,
       bookingId: id, key: `assisted:${id}:cancelled:booker`, data: { cause: by } });
   }
-  if (by !== 'doctor' && b.specialistId) {
+  if (by !== 'doctor' && b.specialistId && !unannounced) {
     notices.push({ audience: 'doctor', userId: String(b.specialistId), type: 'specialist_appointment_cancelled', title: 'Consultation cancelled',
       message: `A consultation on ${when} was cancelled.`, bookingId: id, key: `assisted:${id}:cancelled:doctor` });
   }
@@ -333,12 +345,13 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
 }
 
 /** POST /pharmacy-assisted/bookings/:id/cancel — any time before the start (§8.7); full refund to the wallet; P7 count. */
-export async function cancelByBooker(actor: PharmacyActor, bookingId: string, input: { reason?: string; expectedUpdatedAt?: string | Date },
-  clock: () => Date = () => new Date()) {
+export async function cancelByBooker(actor: PharmacyActor, bookingId: string,
+  input: { reason?: string; expectedUpdatedAt?: string | Date; refundTo?: 'card' | 'wallet' }, clock: () => Date = () => new Date()) {
   await ownAssisted(actor, bookingId);
   const reason = String(input.reason ?? '').trim() || 'Cancelled by the booking partner';
   const r = await cancelBookingSettlement({
     bookingId, requester: { _id: lower(actor.pharmacyId), userType: 'pharmacy' }, assistedBooker: 'pharmacy', reason, cause: 'booker', cancelledAt: istTodayYyyymmdd(clock()),
+    ...(input.refundTo ? { assistedRefundTo: input.refundTo } : {}),
     wallets: new WalletRepository(), expectedUpdatedAt: input.expectedUpdatedAt ?? null,
     enforceWindow: (b) => {
       const start = parseAppointment({ bookingDate: String(b.bookingDate ?? ''), bookingTime: String(b.bookingTime ?? '') })?.at;
@@ -352,7 +365,14 @@ export async function cancelByBooker(actor: PharmacyActor, bookingId: string, in
     },
   });
   const booking = r.alreadyCancelled ? r.booking : await afterAssistedCancel(r.booking, 'booker');
-  return { booking: await bookerView(booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled };
+  return { booking: await bookerView(booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled,
+    ...(booking.assisted?.funding?.method === 'razorpay' ? { refund: await cardRefundOf(String(booking._id)) } : {}) };
+}
+
+/** Phase 1b: the cancellation refund of a card booking (card or wallet, its state), for the booker's own answers; null if none. */
+async function cardRefundOf(bookingId: string) {
+  const row = await AssistedCardRefundModel.findOne({ bookingId: lower(bookingId), cause: { $ne: 'late_capture' } }).sort({ createdAt: -1 }).lean();
+  return row ? cardRefundView(row as never) : null;
 }
 
 /** POST /pharmacy-assisted/bookings/:id/reschedule — P9: same doctor and price, before the start, once per request key. */
@@ -416,7 +436,11 @@ export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string
 export async function findByKey(actor: PharmacyActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
   const b = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key) } }).lean() as IBooking | null;
-  if (b) return { state: 'used' as const, booking: await bookerView(b as never, lower(actor.pharmacyId)) };
+  // Phase 1b: a card booking adds its open Razorpay order (read only: null while none is open) to resume the payment.
+  if (b) {
+    return { state: 'used' as const, booking: await bookerView(b as never, lower(actor.pharmacyId)),
+      ...(b.assisted?.funding?.method === 'razorpay' ? { payment: await openCardOrder(b, { create: false }) } : {}) };
+  }
   const row = await RequestKeyModel.findOne({ scope: assistedKeyScope(actor), key }).lean();
   return { state: row?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
 }

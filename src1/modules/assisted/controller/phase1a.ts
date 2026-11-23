@@ -20,6 +20,7 @@ import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import PharmacyModel from '@/modules/pharmacies/model';
+import { cardRefundQueue, cardRefundToWallet, recordCardChargeback } from '@/modules/assisted/cardRefunds';
 
 /** Assisted booking phase 1a controllers (§17.6). Answers are `{ success, data }`; nothing here is cached. */
 const actorOf = (req: AuthRequest): PharmacyActor => ({ pharmacyId: String(req.user?.pharmacyId || req.user?._id || ''), actorId: String(req.user?._id || '') });
@@ -230,4 +231,18 @@ export const closeCompensatedByKey = async (req: AuthRequest, res: Response) => 
   const r = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
   if (!r) return send(res, { state: 'not_found' });
   send(res, { state: 'closed', ...closedView(closureOf(r)) });
+};
+
+// ── Phase 1b: card payments of assisted bookings (admin) ──
+/** GET /admin/assisted/card-refunds?state&limit — the operator queue (failed, held for review, stuck pending). */
+export const cardRefunds = async (req: AuthRequest, res: Response) => send(res, await cardRefundQueue(req.query as never));
+/** POST /admin/assisted/card-refunds/:id/to-wallet { agreement } — a failed card refund credited to the partner's wallet. */
+export const cardRefundWallet = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  send(res, await cardRefundToWallet(String(req.user?._id), req.params.id, String(req.body.agreement).trim()));
+};
+/** POST /admin/assisted-payments/:paymentId/chargeback { reason } — a lost card dispute on a booking payment: recorded and flagged. */
+export const cardChargeback = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  send(res, await recordCardChargeback(String(req.user?._id), req.params.paymentId, String(req.body.reason).trim()));
 };

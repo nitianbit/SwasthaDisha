@@ -42,4 +42,10 @@ adminAssistedRouter.post('/wallet-payments/:paymentId/chargeback', validate(v.pa
 adminAssistedRouter.get('/wallet-payments/close-compensated/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(c.closeCompensatedByKey));
 adminAssistedRouter.post('/wallet-payments/:paymentId/close-compensated', validate(v.paymentIdParamSchema, 'params'), validate(v.closeCompensatedSchema, 'body'),
   catchAsync(c.closeCompensated));
+// Phase 1b: assisted card payments — the refund operator queue, a failed refund to the wallet, a lost card dispute.
+adminAssistedRouter.get('/assisted/card-refunds', validate(v.cardRefundQuerySchema, 'query'), catchAsync(c.cardRefunds));
+adminAssistedRouter.post('/assisted/card-refunds/:id/to-wallet', validate(v.idParamSchema, 'params'), validate(v.cardRefundToWalletSchema, 'body'),
+  catchAsync(c.cardRefundWallet));
+adminAssistedRouter.post('/assisted-payments/:paymentId/chargeback', validate(v.paymentIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
+  catchAsync(c.cardChargeback));
 adminAssistedRouter.put('/pharmacies/:id/wallet/freeze', validate(v.idParamSchema, 'params'), validate(v.freezeSchema, 'body'), catchAsync(c.freeze));

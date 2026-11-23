@@ -2,7 +2,8 @@
 
 Status: **phase 0 built** (branch `m0/r2-assisted-phase0`, build record §18) and **phase 1a built** (branch
 `m0/r3-assisted-phase1a`, build record §19); local commits, not pushed. Both merged onto the stage line as
-`m0/r4-assisted-stage` with the stage enable runbook (§20). Phase 1b and later: design only.
+`m0/r4-assisted-stage` with the stage enable runbook (§20). **Phase 1b built** (card/UPI per booking, branch
+`m0/r10-phase1b`, build record and web API §23; local commits, not pushed). Phase 2 and later: design only.
 
 - **Revision 2** folded in the owner's 22 Nov answers (§2.2).
 - **Revision 3** applies all 20 findings of the independent review of 4b44435 and the coordinator's overnight decisions
@@ -2061,3 +2062,121 @@ Branch `m0/r9b-followups` from `0ca329aa` (origin/stage). Local commits only. Ch
 | 5 | Error code | `CLINIC_OWNER_DOCTOR_NOT_VERIFIED` renamed `CLINIC_DOCTOR_NOT_VERIFIED` (§22.1, §22.2). The scope (every member with a `doctorId`) is unchanged and open for the owner |
 | 6 | Doc | §22.1: the close audit's detail also holds the admin's free-text reason |
 
+## 23. Phase 1b built: a pharmacy pays a booking by card/UPI (r10, 2026-11-23)
+
+Branch `m0/r10-phase1b` from the stage line `9be7d0a7` (origin/stage). Local commits only; nothing pushed or deployed.
+Checks: `test/assisted/r10-phase1b.integration.ts` (19 checks over HTTP with the real routers; all 19 fail on
+`9be7d0a7`). Where this section and an earlier one differ, this one wins.
+
+### 23.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| Card booking create | `assisted/consultations.ts` | `paymentMethod: 'razorpay'` on `POST /pharmacy-assisted/consultations`: the same checks, key, hash, coupon, limits and transaction as the wallet create, but the booking is inserted `pending` / `pending` with its seat and the doctor's interval held (exactly like a customer's online booking), funding `{ method: 'razorpay', state: 'pending', paymentRecordId }` and no wallet debit. After the commit ONE Razorpay order is made on ONE payment record whose id was chosen before the insert |
+| Payment record | `payment/types`, `payment/model`, `payment/services` (`createOrder` takes an optional `recordId`; receipt code `ab`) | New context `assisted_booking`: `contextId` = the booking, `userId` = `payerUserId` = the booker actor, `payerPharmacyId` = the pharmacy, no `couponCode` (coupons count only through `coupon_redemptions`, §6.4) |
+| Confirmation | `assisted/cardPayments.ts` `applyAssistedCapture`, registered with `registerPaymentContextHandler('assisted_booking')` (`routes/index.ts`) | Verify, reconcile, the recovery sweep and the expiry sweep all reach it through the existing context routing (S6: the stored record's context only). ONE transaction claims the record (`isProcessed`) and moves the booking pending → confirmed / paid / funding `captured` (CAS on all three), audited `booking.paid`. Meet, reminders and the "booked" notices follow the confirmation, resumed until done (`postPaymentCompletedFor`) |
+| Late captures | same | A capture that cannot be applied (booking expired or cancelled, doctor no longer verified and active (S5), another record, another amount) queues its card refund row in the same transaction (`cause: 'late_capture'`), audited `booking.late_capture`; the booking is never revived |
+| Card refunds | `assisted/cardRefunds.ts`, model `assisted_card_refunds` (`assisted/model`) | One row per payment record (unique `paymentRecordId`): the cancellation refund and a late capture share it, so a capture is returned at most once whatever path finds it. Card rows are sent by a worker on the `prescriptionRefund.ts` pattern (fenced attempt + lease, the gateway is asked for a refund carrying the row's key before anything is (re)submitted, every submission counted first, only Razorpay `processed` completes it); sent at once after the commit and every 5 minutes (`assisted/schedulers.ts`, whatever the switches say). Always the full captured amount (Jansetu bears the fee) |
+| Cancel and refund | `assisted/refunds.ts` `settleAssistedFundingIn`, `bookings/holds.ts` | Every cancel path of a card-paid booking (booker, patient, doctor, admin, admin close) queues the refund in the cancel transaction: to the card, or to the pharmacy wallet when the booker chose it (`refundTo: 'wallet'`). A card booking cancelled before its capture was applied refunds nothing (funding `not_paid`) |
+| Expiry | `bookings/holds.ts` `expireUnpaidBooking`, `BookingService.expireUnpaidBookings` | The existing 30-minute sweep: it reconciles the `assisted_booking` attempt with the gateway first, then expires (seat and interval released, coupon redemption reversed, funding `not_paid`, cause `payment_timeout`). A capture recorded but not yet applied leaves the booking to the handler |
+| Verification by organisation | `payment/services` `getPaymentRecordForVerification`, `payment/routes`, `payment/controller` | The paying pharmacy (`payerPharmacyId`) verifies and reconciles; the operational-pharmacy gate of booking payments covers `assisted_booking` (403 when not operational); the answer's `entity` is the booker view |
+| Operator queue, admin | `assisted/cardRefunds.ts`, `assisted/controller/phase1a.ts`, `assisted/routes/phase1a.ts` | `GET /admin/assisted/card-refunds`; `POST /admin/assisted/card-refunds/:id/to-wallet` (with the partner's recorded agreement); `POST /admin/assisted-payments/:paymentId/chargeback`. The stuck-money report lists the queue (`refundRowsPending`) and `lateCaptures` |
+| Switch | `assisted/flags.ts` | `ASSISTED_CARD_PAYMENT_ENABLED` (§23.4) |
+
+### 23.2 Decisions made while building (ASSUMED, for the owner)
+
+| # | Decision |
+|---|---|
+| C1 | **A switch of its own**, `ASSISTED_CARD_PAYMENT_ENABLED`, off by default, so 1b deploys dark where `ASSISTED_BOOKING_ENABLED_PHARMACY` is already on (stage). It gates only NEW card bookings; verify, reconcile, sweeps, late captures and refunds always run |
+| C2 | **Refund route** ("back the way the partner paid; partner's choice"): every refund of a card-paid booking goes back to the CARD by default — booker, patient, doctor and admin cancellations and every late capture. The wallet only when the booker chooses it on its own cancel (`refundTo: 'wallet'`); the patient, doctor or admin cannot choose for the partner |
+| C3 | Card money returned to the wallet (the partner's choice, or the admin fallback C5) opens no top-up lot, so it is **not withdrawable** (conservative, as admin credits) |
+| C4 | **Card chargeback on a booking payment** (no wallet lot exists): bare minimum — RECORDED and FLAGGED only: `chargebackAt` on the payment record (once), an alert `booking_card_chargeback`, an audit `booking.card_chargeback`. No wallet debit, no receivable, no freeze, the booking is not changed. A card refund of that payment not yet sent is held (`manual_review`) and no later refund of it is ever made (card or wallet). Recovering the money from the partner is an admin decision — **no new money flow was built** |
+| C5 | **A card refund that fails** (Razorpay refuses it, or reports it failed) goes to the operator queue; it is never credited to the wallet automatically. An admin may move it to the partner's wallet only with the partner's recorded agreement (`agreement` text, audited), once (the same wallet key as C2) |
+| C6 | A consultation with nothing to pay (free, or a 100 % coupon) cannot be card-paid: 400 `NOTHING_TO_PAY` (book it with `wallet`, which debits nothing) |
+| C7 | **Notices**: the patient and the doctor hear of a card booking only once it is paid (the "booked" notice, Meet and reminders at confirmation). A card booking cancelled or expired before payment tells nobody but the booker (when someone else cancelled it). The booker gets no notice of an expiry or a late capture; it sees them in its list and in the payment answers |
+| C8 | A new number's account is opened at the pending insert (as for the wallet); if the payment never comes the account stays empty and internal (the clinic-desk rule, §6.2). Pending card bookings count against the per-phone and same-pair limits |
+| C9 | S5: a capture for a doctor no longer verified and active is returned to the card; the booking stays pending and expires (as for customers) |
+| C10 | **No pay-again**: one Razorpay order per booking. A lost answer is resumed with the same order (create replay or by-key); after the 30 minutes the booker books again. Switching a pending card booking to the wallet (§6.4 "pay-again … switching to the wallet") is not built |
+| C11 | A returned capture's payment record becomes `refunded` when its refund row is created (as the customer paths mark a returned capture), even while the card refund is still pending at Razorpay; the refund row holds the gateway state |
+| C12 | Razorpay's fee is recorded on the record (`gatewayFeeMinor`); refunds are always the full captured amount |
+
+### 23.3 API for the web
+
+Pharmacy token (operational and verified) on every pharmacy row; answers `{ success, data }`; money in paise unless
+marked ₹.
+
+**Book with card/UPI.** `POST /api/v1/pharmacy-assisted/consultations` — the wallet body of §19.3 with
+`paymentMethod: 'razorpay'`. 201:
+```
+{ booking: { _id, status: 'pending', paymentStatus: 'pending', …as §19.3 },
+  funding: { method: 'razorpay', amountMinor, state: 'pending', walletEntryId: null, paymentTransactionId },
+  split: { listMinor, discountMinor, couponCode },
+  payment: { paymentRequired: true, paymentTransactionId, razorpayOrderId, razorpayKeyId, amount (₹), amountMinor, currency, payBy } | null,
+  newAccount, replayed }
+```
+- Open Razorpay Checkout with `key = razorpayKeyId`, `order_id = razorpayOrderId`, `amount = amountMinor`, `currency`.
+  `payBy` (ISO) is when the booking expires and its seat is released if no payment arrived.
+- The seat is held while the booking is `pending`. The patient and the doctor are not told until it is paid.
+- Same `requestKey` and body again → 200 `replayed: true` with the SAME order (`payment` null once paid, cancelled or
+  expired). The method is not part of the request hash: the same key with `paymentMethod: 'wallet'` answers the card booking.
+- `GET /api/v1/pharmacy-assisted/bookings/by-key/:key` adds `payment` (the open order, or null; read only) for a card booking.
+- Errors (besides §19.3): 400 `PAYMENT_METHOD_UNAVAILABLE` (card switch off), `NOTHING_TO_PAY`; 502
+  `RAZORPAY_ORDER_CREATION_FAILED` (the booking is held: send the same request again to get the order); 503
+  `RAZORPAY_NOT_CONFIGURED`. Every refusal comes before any account, seat or order, with one answer for every number.
+
+**After Checkout.** `POST /api/v1/payments/verify { paymentTransactionId, razorpayOrderId, razorpayPaymentId,
+razorpaySignature }` (no `module` needed) → 200 `{ context: 'assisted_booking', paymentRecord, entity }`, `entity` = the
+booker view of the booking:
+- `paymentRecord.status: 'paid'` and `entity.status: 'confirmed'`: booked; message "Payment verified successfully".
+- `paymentRecord.status: 'refunded'`: the booking could not take the payment (it expired, was cancelled, or the doctor is
+  no longer available); the amount goes back to the card or UPI (message says so). Book again if needed.
+- Errors: 400 `PAYMENT_SIGNATURE_INVALID`, `PAYMENT_ORDER_MISMATCH`, `PAYMENT_AMOUNT_MISMATCH`, `PAYMENT_NOT_COMPLETED`,
+  `PAYMENT_FAILED`, `PAYMENT_REFUNDED` (a repeat after a returned capture); 403 `PHARMACY_INACTIVE` /
+  `PHARMACY_NOT_VERIFIED`; 404 `PAYMENT_RECORD_NOT_FOUND` (another pharmacy's or the patient's call); 409
+  `PAYMENT_CHANGED` (retry); 502 `RAZORPAY_PAYMENT_FETCH_FAILED`.
+- Lost answer or closed Checkout: `POST /api/v1/payments/reconcile { paymentTransactionId }` → `{ state: 'paid', context,
+  paymentRecord, entity }` (as verify) or `{ state: 'unpaid', gatewayStatuses }`. The server also checks every 5 minutes
+  and before expiring the booking, so a capture is never lost.
+
+**Cancel.** `POST /api/v1/pharmacy-assisted/bookings/:id/cancel { reason?, expectedUpdatedAt?, refundTo?: 'card' | 'wallet' }`
+→ `{ booking, refundedMinor, alreadyCancelled, refund }`; `refund` (card bookings only) = `{ refundId, bookingId,
+paymentRecordId, amountMinor, cause, method: 'card' | 'wallet', state: 'pending' | 'processed' | 'failed' |
+'manual_review', lastError, attempts, razorpayRefundId, processedAt, createdAt, updatedAt }` or null (cancelled before
+payment: `refundedMinor: 0`). `refundTo` defaults to `card`; `wallet` credits the wallet at once (not withdrawable) and
+is ignored for wallet-paid bookings. 400 `VALIDATION_ERROR` for another `refundTo`; other errors as §19.3. Show
+"refund to card: in progress" while `pending`; Razorpay usually completes in 5–7 working days.
+
+**Patient app.** A card booking shows "Paid by <partner>" (`paidBy`) and never the amount, like a wallet booking. A
+patient cancel refunds the PARTNER's card; the partner is told ("being refunded to the card or UPI it was paid with").
+
+**Admin.**
+- `GET /api/v1/admin/assisted/card-refunds?state&limit` → refund rows (as above) that need a person: `failed`,
+  `manual_review`, and `pending` ones over 20 attempts or older than 24 h (`state` filters exactly).
+- `POST /api/v1/admin/assisted/card-refunds/:id/to-wallet { agreement }` (admin tools switch) → `{ refund, replayed }`;
+  409 `REFUND_NOT_FAILED` (only `failed` / `manual_review`), `CHARGEBACK_RECORDED`; 404 `REFUND_NOT_FOUND`.
+- `POST /api/v1/admin/assisted-payments/:paymentId/chargeback { reason }` (admin tools switch; `paymentId` = record id,
+  `order_…` or `pay_…` as stored) → `{ recorded: true, replayed, paymentRecordId, bookingId, bookingStatus, amountMinor,
+  refund, message }`; 404 `PAYMENT_NOT_FOUND`; 409 `PAYMENT_AMBIGUOUS`. A top-up still goes to
+  `/admin/wallet-payments/:paymentId/chargeback` (which answers 404 `TOPUP_NOT_FOUND` for a booking payment).
+- `GET /api/v1/admin/assisted/stuck-money`: `refundRowsPending` (the queue above) and `lateCaptures` are now filled.
+
+### 23.4 Switches, deploy and rollback
+
+- `ASSISTED_CARD_PAYMENT_ENABLED` (off unless exactly `true`): new card bookings. Needs `ASSISTED_BOOKING_ENABLED_PHARMACY`
+  and the Razorpay keys.
+- `npm run sync-indexes` adds the collection `assisted_card_refunds` (`paymentRecordId` unique, `bookingId`, `{state,
+  updatedAt}`). Run it before turning the switch on: a card create answers 503 `INDEXES_OUTDATED` until the unique index exists.
+- No migration. Order: deploy with the switch off → `sync-indexes` → set `ASSISTED_CARD_PAYMENT_ENABLED=true` → restart.
+- Manual check on stage (test keys): book by card, pay in Checkout, see it confirmed; cancel it, see the refund at
+  Razorpay; book by card and let it expire, then pay the same order from the Razorpay test dashboard: the capture is
+  refunded once.
+- **Rollback:** switch off (new card bookings stop; verify, sweeps and refunds go on). Never roll the CODE back while a
+  card booking is pending or a card refund row is `pending`: older code does not know the `assisted_booking` context, so
+  a capture would stay unapplied and a cancel would refund nothing.
+
+### 23.5 Not built in 1b
+
+Pay-again and switching a pending card booking to the wallet (C10); recovering a lost card dispute from the partner
+(C4); notices to the booker on expiry or late capture (C7); the daily reconciliation's per-booking checks for card
+bookings (one capture per paid booking, Razorpay totals) — they cover wallet bookings only; lab and doctor bookers,
+instant consults (later phases).

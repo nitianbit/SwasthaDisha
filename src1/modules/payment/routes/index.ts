@@ -19,7 +19,8 @@ const operationalPharmacyForBookings = catchAsync(async (req: AuthRequest, _res,
     const id = String(req.body?.paymentTransactionId ?? '');
     const record = /^[0-9a-fA-F]{24}$/.test(id)
       ? await PaymentRecordModel.findById(id).select({ context: 1 }).lean() as { context?: string } | null : null;
-    if (!record || record.context === 'booking') await assertOperationalPharmacy(req);
+    // Phase 1b: an assisted card payment of a booking is a booking payment too (its answer carries the booker view).
+    if (!record || record.context === 'booking' || record.context === 'assisted_booking') await assertOperationalPharmacy(req);
   }
   next();
 });
