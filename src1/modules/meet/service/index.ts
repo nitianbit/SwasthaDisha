@@ -87,6 +87,7 @@ export async function refreshOAuthAccessToken({
   clientId,
   clientSecret,
   refreshToken,
+  signal,
 }: OAuthRefreshParams): Promise<string> {
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('clientId, clientSecret and refreshToken are required');
@@ -101,6 +102,7 @@ export async function refreshOAuthAccessToken({
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
+    ...(signal ? { signal } : {}),
   });
 
   const text = await response.text();
@@ -211,6 +213,7 @@ export async function createMeetEvent({
   accessToken,
   calendarId = 'primary',
   eventPayload,
+  signal,
 }: CreateMeetEventParams): Promise<{
   event: Record<string, any>;
   joinUrl?: string;
@@ -237,6 +240,7 @@ export async function createMeetEvent({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(eventPayload),
+    ...(signal ? { signal } : {}),
   });
 
   const text = await response.text();
@@ -353,7 +357,7 @@ function hasOAuthMeetConfig(): boolean {
   );
 }
 
-async function getMeetOAuthAccessToken(): Promise<string> {
+async function getMeetOAuthAccessToken(signal?: AbortSignal): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   if (cachedMeetOAuthAccessToken && cachedMeetOAuthAccessToken.expiresAt > now + 60) {
     return cachedMeetOAuthAccessToken.token;
@@ -375,6 +379,7 @@ async function getMeetOAuthAccessToken(): Promise<string> {
     clientId: CONFIG.GOOGLE_OAUTH_CLIENT_ID,
     clientSecret: CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
     refreshToken: CONFIG.GOOGLE_OAUTH_REFRESH_TOKEN,
+    ...(signal ? { signal } : {}),
   });
 
   cachedMeetOAuthAccessToken = {
@@ -465,8 +470,10 @@ export async function syncBookingMeet(params: {
   userRepository: UserRepository;
   specialistRepository: SpecialistRepository;
   slotRepository: SlotRepository;
+  /** r10f: bounds every Google call of this sync (token, create, update); the assisted follow-up passes one. */
+  signal?: AbortSignal;
 }): Promise<IBooking> {
-  const { booking, bookingRepository, userRepository, specialistRepository, slotRepository } = params;
+  const { booking, bookingRepository, userRepository, specialistRepository, slotRepository, signal } = params;
 
   if (!isInternalMeetApplicable(booking)) return booking;
   if (!hasOAuthMeetConfig()) {
@@ -539,7 +546,7 @@ export async function syncBookingMeet(params: {
       ...(assisted ? { guestsCanSeeOtherGuests: false, guestsCanInviteOthers: false } : {}),
     };
 
-    const accessToken = await getMeetOAuthAccessToken();
+    const accessToken = await getMeetOAuthAccessToken(signal);
     let event: Record<string, any>;
     let joinUrl: string | undefined;
 
@@ -559,6 +566,7 @@ export async function syncBookingMeet(params: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(updatePayload),
+          ...(signal ? { signal } : {}),
         }
       );
       const text = await response.text();
@@ -576,6 +584,7 @@ export async function syncBookingMeet(params: {
         accessToken,
         calendarId: CONFIG.GOOGLE_CALENDAR_ID!,
         eventPayload,
+        ...(signal ? { signal } : {}),
       });
       event = created.event;
       joinUrl = created.joinUrl;

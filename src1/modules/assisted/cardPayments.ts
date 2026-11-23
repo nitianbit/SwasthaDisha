@@ -89,6 +89,22 @@ export async function openCardOrder(b: IBooking, opts: { create: boolean } = { c
 type Outcome = 'applied' | 'appliedBefore' | 'already' | 'returned';
 /** r10d: how long one caller holds the follow-up (Meet, reminders, notices) before another may take it over. */
 const FOLLOW_UP_LEASE_MS = 5 * 60_000;
+/**
+ * r10f: the Meet step of the follow-up is bounded well inside the lease (default 60 s, ASSISTED_MEET_TIMEOUT_MS, never
+ * more than half the lease): its Google calls are aborted then and the follow-up goes on without a Meet link, so a slow
+ * call can never outlive the lease and let a second worker create another Meet event.
+ */
+const meetTimeoutMs = () => {
+  const v = Number(process.env.ASSISTED_MEET_TIMEOUT_MS);
+  return Math.min(Number.isSafeInteger(v) && v > 0 ? v : 60_000, FOLLOW_UP_LEASE_MS / 2);
+};
+async function boundedMeet(fx: ReturnType<typeof assistedEffects>, booking: IBooking): Promise<IBooking> {
+  const signal = AbortSignal.timeout(meetTimeoutMs());
+  const gaveUp = new Promise<never>((_, reject) => {
+    signal.addEventListener('abort', () => reject(Object.assign(new Error('Meet call timed out'), { code: 'MEET_TIMEOUT' })), { once: true });
+  });
+  return Promise.race([fx.meet(booking, { signal }), gaveUp]);
+}
 
 /** The `assisted_booking` payment context handler (registered at start-up and by tests). */
 export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }> {
@@ -152,7 +168,7 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
     // After the confirmation only: Meet (neutral), reminders, the notices. r10b: resumed by any later verify, reconcile or
     // recovery sweep until done, because the record is marked processed only after this.
     const fx = assistedEffects();
-    const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
+    const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => boundedMeet(fx, booking), booking);
     await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
     const { bookedNotices } = await import('@/modules/assisted/consultations');
     await sendAssistedNotices(await bookedNotices(withMeet) as AssistedNotice[]);

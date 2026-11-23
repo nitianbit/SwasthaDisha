@@ -2185,6 +2185,11 @@ patient cancel refunds the PARTNER's card; the partner is told ("being refunded 
 - **Rollback:** switch off (new card bookings stop; verify, sweeps and refunds go on). Never roll the CODE back while a
   card booking is pending or a card refund row is `pending`: older code does not know the `assisted_booking` context, so
   a capture would stay unapplied and a cancel would refund nothing.
+- **Rollback below r10e (r10f note):** once any card refund row with `cause: 'extra_capture'` exists
+  (`db.assisted_card_refunds.countDocuments({ cause: 'extra_capture' })` > 0), never roll the code back below r10e
+  (`d1ed6d24`). Earlier code does not know those rows: it treats a record's extra-capture row as the record's own return
+  (so the real cancellation refund of that booking would never be queued) and its unique index cannot hold both rows —
+  money would be lost.
 
 ### 23.5 Not built in 1b (see §23.6 for what r10b added)
 
@@ -2253,5 +2258,20 @@ on `a7ae19bb`).
 
 **Deploy:** `npm run sync-indexes` changes `assisted_card_refunds`: drops the unique `paymentRecordId_1`, recreates it
 non-unique, and adds the unique partial `captureKey_1`. Until it has run, a card create answers 503 `INDEXES_OUTDATED`
-(the check moved to `captureKey`); verify, sweeps and refunds keep working. Rows from before r10e have no `captureKey`
+(the check moved to `captureKey`). *Corrected (r10f):* refunds do NOT all keep working meanwhile — between the pull and
+`npm run sync-indexes` the old unique `paymentRecordId_1` is still there, so a cancel of a card booking that already has
+an extra-capture row (or an extra-capture refund of a booking already refunded) fails with `DUPLICATE_RESOURCE`. Run
+`npm run sync-indexes` straight after the pull, before the restart. Rows from before r10e have no `captureKey`
 (each is its record's own return, found by `paymentRecordId` as before). No migration.
+
+### 23.7 Last card-payment fixes before production (r10f, 2026-11-23)
+
+Branch `m0/r10f-card-last` from `d1ed6d24` (origin/stage). Local commits only. Checks:
+`test/assisted/r10f-card-last.integration.ts` (2 checks; both fail on `d1ed6d24`).
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 (LOW) | A slow Meet/Google call in the card follow-up could outlive the follow-up lease (5 min), letting a second worker create another Meet event | The Meet step is bounded at `ASSISTED_MEET_TIMEOUT_MS` (default 60 s, never more than half the lease): an `AbortSignal` passed through `syncBookingMeet` to its Google calls (token refresh, event create / update) aborts them, and the follow-up goes on without a Meet link (best effort, as before). `meet/service` and `meet/types` take the optional `signal`; other callers are unchanged | 1 |
+| 2 (LOW) | A card dispute could only be recorded against the booking's own payment, not an extra capture | `POST /admin/assisted-payments/:paymentId/chargeback` also takes an extra capture's Razorpay payment id: flag only (C4, owner: no debit, no freeze): `chargebackAt` on that capture's refund row (once), its unsent refund held (`manual_review`, never sent or credited to the wallet), alert `booking_card_chargeback`, audit. The answer adds `extraCapture: true` and `razorpayPaymentId`; stuck money's `cardChargebacks` lists such rows with `extraCapture: true`. An unknown id is 404 `PAYMENT_NOT_FOUND` as before | 2 |
+| 3 | Rollback | §23.4: never below r10e once an `extra_capture` row exists | — |
+| 4 | Deploy wording | §23.6 r10e deploy note corrected (`DUPLICATE_RESOURCE` until sync-indexes) | — |

@@ -16,6 +16,8 @@ export type OAuthRefreshParams = {
   clientId: string;
   clientSecret: string;
   refreshToken: string;
+  /** r10f: optional bound on the call (the assisted follow-up passes one). */
+  signal?: AbortSignal;
 };
 
 export type ServiceAccountJwtParams = {
@@ -66,6 +68,8 @@ export type CreateMeetEventParams = {
   accessToken: string;
   calendarId?: string;
   eventPayload: MeetEventPayload;
+  /** r10f: optional bound on the call (the assisted follow-up passes one). */
+  signal?: AbortSignal;
 };
 
 export type PaidBookingEmailContentParams = {

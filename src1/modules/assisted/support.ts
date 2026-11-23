@@ -47,19 +47,20 @@ export async function sendAssistedNotices(notices: AssistedNotice[]): Promise<vo
 
 export interface AssistedEffects {
   /** Creates or moves the Meet event (neutral text for assisted rows); returns the booking as stored after it. */
-  meet: (b: IBooking) => Promise<IBooking>;
+  /** r10f: `signal` bounds the Google calls (the card follow-up passes one shorter than its lease). */
+  meet: (b: IBooking, opts?: { signal?: AbortSignal }) => Promise<IBooking>;
   cancelMeet: (b: IBooking, reason: string) => Promise<IBooking>;
   reminders: (b: IBooking) => Promise<void>;
   clearReminders: (bookingId: string) => Promise<void>;
 }
 
 export const defaultAssistedEffects: AssistedEffects = {
-  meet: async (b) => {
+  meet: async (b, opts) => {
     const [{ syncBookingMeet }, { BookingRepository }, { UserRepository }, { SpecialistRepository }, { SlotRepository }] = await Promise.all([
       import('@/modules/meet/service'), import('@/modules/bookings/repository'), import('@/modules/user/repository'),
       import('@/modules/specialists/repository'), import('@/modules/slots/repository')]);
     return syncBookingMeet({ booking: b, bookingRepository: new BookingRepository(), userRepository: new UserRepository(),
-      specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository() });
+      specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository(), ...(opts?.signal ? { signal: opts.signal } : {}) });
   },
   cancelMeet: async (b, reason) => {
     const [{ cancelBookingMeet }, { BookingRepository }] = await Promise.all([import('@/modules/meet/service'), import('@/modules/bookings/repository')]);

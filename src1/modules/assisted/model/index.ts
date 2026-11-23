@@ -140,6 +140,8 @@ export interface IAssistedCardRefund {
    * Unique: one row per captured payment. Rows from before r10e have none (their payment record holds one row only).
    */
   captureKey?: string;
+  /** r10f: a card dispute recorded on THIS extra capture (flag only, C4); the record's own disputes stay on the record. */
+  chargebackAt?: Date;
   amountMinor: number;
   /** booker | patient | doctor | admin | late_capture | extra_capture (r10e: another capture on the same order) */
   cause: string;
@@ -172,6 +174,7 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   paymentRecordId: { type: String, required: true },
   razorpayPaymentId: { type: String },
   captureKey: { type: String },
+  chargebackAt: { type: Date },
   amountMinor: { type: Number, required: true, min: 1 },
   cause: { type: String, required: true },
   payerKind: { type: String, required: true, enum: ['pharmacy'] },
