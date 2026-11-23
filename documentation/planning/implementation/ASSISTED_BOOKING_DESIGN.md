@@ -2885,7 +2885,7 @@ Every route checks that the actor's partner is `kind: 'lab'` (a `labOf(actor)` l
 §5.3 already chose this; the code confirms it.
 - The pharmacy store keeps legacy rupee fields, a legacy `transactionType` enum, a mixed sign history and an
   ObjectId-typed `pharmacyId` (`pharmacyWallet/model/index.ts:25-85`).
-- It holds live balances on stage, and its ledger has eight months of review fixes (r9b item 4 spelling fix). Changing
+- It holds live balances on stage, and its ledger carries the 1a–r9b review fixes (for example the r9b item 4 id-spelling fix). Changing
   its key or collection for labs would put live money at risk for no gain.
 
 So:
