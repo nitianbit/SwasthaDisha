@@ -24,7 +24,8 @@ export const UNPAID_CARD_QUERY = { 'assisted.funding.method': 'razorpay', 'lifec
 
 function one(row: Row): Row {
   if (!row || typeof row !== 'object' || !row.assisted || typeof row.assisted !== 'object') return row;
-  const { price: _p, originalPrice: _o, paymentTransactionId: _t, walletFunding: _w, createTerms: _c, assisted, ...rest } = row;
+  // r10c: `postPaymentCompletedFor` is the partner's card payment record id (follow-up marker): not the patient's either.
+  const { price: _p, originalPrice: _o, paymentTransactionId: _t, walletFunding: _w, createTerms: _c, postPaymentCompletedFor: _f, assisted, ...rest } = row;
   const a = assisted as Row;
   // Review 5: lifecycle events keep their time (and a cancellation reason), never the amount paid or who paid it.
   const lifecycle = rest.lifecycle && typeof rest.lifecycle === 'object'

@@ -19,6 +19,8 @@ const TOP_LEVEL = ['_id', 'bookingType', 'bookingKind', 'userId', 'dependentId',
 const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName'] as const;
 const LIFECYCLE_EVENTS = ['created', 'confirmed', 'completed', 'cancelled'] as const;
 const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
+/** The booking payment window (bookings/holds.ts BOOKING_PAYMENT_WINDOW_MS; not imported, to keep this view free of the writers). */
+const PAYMENT_WINDOW_MS = 30 * 60_000;
 
 /** §5.1: rows written before `source` existed derive it (clinic desk, otherwise self). */
 const sourceOf = (b: Row) => (typeof b.source === 'string' ? b.source : b.clinicDesk ? 'clinic_desk' : 'self');
@@ -97,6 +99,16 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
       // Phase 1a (§17.5): the "reported as not mine" badge (state only).
       if (b.assisted.identity?.disputed?.state) a.disputed = { state: b.assisted.identity.disputed.state };
       v.assisted = a;
+      // r10c: how this booking is paid, for its OWN booker only (pay now / refund choice on any device). Never in the
+      // patient's or the doctor's views (they strip `assisted.funding`); never another pharmacy's.
+      const f = b.assisted.funding;
+      if (f && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase()) {
+        const card = f.method === 'razorpay';
+        const waiting = card && f.state === 'pending' && b.status === 'pending' && b.createdAt;
+        v.payment = { method: card ? 'razorpay' : 'wallet', state: f.state,
+          payBy: waiting ? new Date(new Date(b.createdAt).getTime() + PAYMENT_WINDOW_MS).toISOString() : null,
+          ...(card ? { paymentTransactionId: f.paymentRecordId ?? null } : {}) };
+      }
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.
     const interval = appointmentIntervalOf(b, slotOf(b));

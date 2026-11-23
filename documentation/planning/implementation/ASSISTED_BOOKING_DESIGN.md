@@ -2120,6 +2120,13 @@ marked ₹.
 - Same `requestKey` and body again → 200 `replayed: true` with the SAME order (`payment` null once paid, cancelled or
   expired). The method is not part of the request hash: the same key with `paymentMethod: 'wallet'` answers the card booking.
 - `GET /api/v1/pharmacy-assisted/bookings/by-key/:key` adds `payment` (the open order, or null; read only) for a card booking.
+- (r10c) Every booker view of an assisted booking (`GET /api/v1/pharmacy-bookings[/:id]`, the pharmacy's generic
+  `/bookings` reads, by-key, cancel and reschedule answers) carries `payment: { method: 'wallet' | 'razorpay', state,
+  payBy, paymentTransactionId? }` — only for the booking's own pharmacy. `state` is the funding state (`pending`,
+  `captured`, `refunded`, `not_paid`, `forfeited`); `payBy` (ISO) only while a card booking waits for its payment, else
+  null; `paymentTransactionId` (card only) is the record to resume: replay the create (or by-key) for the order, or
+  `POST /payments/reconcile { paymentTransactionId }`. Use `method` to offer the card / wallet refund choice on cancel.
+  Patients and doctors never get this field.
 - Errors (besides §19.3): 400 `PAYMENT_METHOD_UNAVAILABLE` (card switch off), `NOTHING_TO_PAY`; 502
   `RAZORPAY_ORDER_CREATION_FAILED` (the booking is held: send the same request again to get the order); 503
   `RAZORPAY_NOT_CONFIGURED`. Every refusal comes before any account, seat or order, with one answer for every number.
@@ -2150,7 +2157,8 @@ is ignored for wallet-paid bookings. 400 `VALIDATION_ERROR` for another `refundT
 patient cancel refunds the PARTNER's card; the partner is told ("being refunded to the card or UPI it was paid with").
 
 **Admin.**
-- `GET /api/v1/admin/assisted/card-refunds?state&limit` → refund rows (as above) that need a person: `failed`,
+- `GET /api/v1/admin/assisted/card-refunds?state&limit` → refund rows (as above, plus (r10c) `pharmacyId` and
+  `pharmacyName`: the paying pharmacy, whose agreement a move to the wallet needs; admin only) that need a person: `failed`,
   `manual_review`, and `pending` ones over 20 attempts or older than 24 h (`state` filters exactly).
 - `POST /api/v1/admin/assisted/card-refunds/:id/to-wallet { agreement }` (admin tools switch) → `{ refund, replayed }`;
   409 `REFUND_NOT_FAILED` (only `failed` / `manual_review`), `CHARGEBACK_RECORDED`; 404 `REFUND_NOT_FOUND`.
@@ -2208,3 +2216,11 @@ adds `cardRefundsPendingOverDays` and `cardChargebacks`. A refund row's `attempt
 
 **Switches added:** `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (10), `ASSISTED_CARD_REFUND_STUCK_DAYS` (7). No migration, no
 new index (the two new refund-row fields are unindexed).
+
+**r10c (read-only additions for the web, same branch):** checks 9–10 of `test/assisted/r10b-phase1b-fixes.integration.ts`
+(both fail on `b287b340`).
+
+| # | Change |
+|---|---|
+| 9 | Booker view `payment: { method, state, payBy, paymentTransactionId? }` for the booking's own pharmacy only (§23.3), so "pay now" and the refund choice work on any device. Patient and doctor views never carry it; they also no longer carry `postPaymentCompletedFor` (the partner's card payment record id, found by this check) |
+| 10 | Admin card-refund rows (`/admin/assisted/card-refunds`, stuck money's `refundRowsPending` and `cardRefundsPendingOverDays`) add `pharmacyId` and `pharmacyName`; the pharmacy's own `refund` answer is unchanged |

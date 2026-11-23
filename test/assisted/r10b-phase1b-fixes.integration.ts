@@ -11,6 +11,7 @@
  *  6. a card dispute cannot be recorded on a payment never captured;
  *  7. a bad signature leaves an assisted card order payable (other contexts still close: guard);
  *  8. a disputed assisted payment answers PAYMENT_DISPUTED (not top-up wording) and shows in stuck money.
+ * r10c (fail on b287b340): 9. the booker view's `payment`; 10. the admin refund rows name the paying pharmacy.
  *
  * Run (throwaway DB only; the script clears its database):
  *   MONGODB_URL='mongodb://127.0.0.1:27917/assisted_r10b_fixes_check?directConnection=true' JWT_SECRET_KEY=local-integration-only \
@@ -477,6 +478,48 @@ async function main() {
       assert.ok(!/top-up/i.test(r.json.message), r.json.message);
       const stuck = await expect('ADMIN', 'GET', '/admin/assisted/stuck-money', 200);
       assert.ok(stuck.json.data.cardChargebacks.some((x: any) => x.paymentRecordId === v.paymentTransactionId));
+    });
+    // ───────────────────────── r10c: read-only additions for the web ─────────────────────────
+    await check('9 (r10c): the booker view carries `payment` (method, state, payBy, paymentTransactionId) for its own booker only; patients and doctors never', async () => {
+      const b = await book();
+      const rid = b.data.payment.paymentTransactionId;
+      const own = await expect('P', 'GET', `/pharmacy-bookings/${b.id}`, 200);
+      assert.equal(own.json.data.payment.method, 'razorpay');
+      assert.equal(own.json.data.payment.state, 'pending');
+      assert.equal(own.json.data.payment.paymentTransactionId, rid);
+      assert.ok(Math.abs(Date.parse(own.json.data.payment.payBy) - (Date.parse(own.json.data.createdAt) + 30 * MIN)) < 1000);
+      const listed = (await expect('P', 'GET', '/pharmacy-bookings?limit=50', 200)).json.data.find((r: any) => String(r._id) === b.id);
+      assert.equal(listed.payment.paymentTransactionId, rid);
+      assert.equal((await expect('P', 'GET', `/bookings/${b.id}`, 200)).json.data.payment.paymentTransactionId, rid, 'the generic read gives the same');
+      // Another pharmacy's view of it (if it ever got one) carries nothing about the payment.
+      const { bookerView } = await import('@/modules/assisted/bookerView');
+      assert.equal((await bookerView(await bookingOf(b.id), P2)).payment, undefined);
+      await expect('P', 'POST', '/payments/verify', 200, capture(b.data));
+      const paid = (await expect('P', 'GET', `/pharmacy-bookings/${b.id}`, 200)).json.data.payment;
+      assert.deepEqual(paid, { method: 'razorpay', state: 'captured', payBy: null, paymentTransactionId: rid });
+      for (const who of ['X', 'D']) {
+        const r = await expect(who, 'GET', `/bookings/${b.id}`, 200);
+        assert.equal(r.json.data.payment, undefined, `${who} sees no payment`);
+        assert.ok(!JSON.stringify(r.json.data).includes(rid), `${who} sees no payment id`);
+      }
+      // A wallet booking: method wallet, no card fields.
+      await call('ADMIN', 'POST', '/pharmacy-wallet/topup', { pharmacyId: P, amount: 1000 }, { 'idempotency-key': 'r10c-topup-' + oid().slice(-8) });
+      const w = await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { paymentMethod: 'wallet' }));
+      assert.deepEqual((await expect('P', 'GET', `/pharmacy-bookings/${w.json.data.booking._id}`, 200)).json.data.payment,
+        { method: 'wallet', state: 'captured', payBy: null });
+    });
+
+    await check('10 (r10c): admin card-refund rows name the paying pharmacy (id and name); the pharmacy\'s own answer does not', async () => {
+      const b = await paidBooking();
+      gateway.refundMode = 'reject';
+      let own: any;
+      try { own = (await expect('P', 'POST', `/pharmacy-assisted/bookings/${b.id}/cancel`, 200, {})).json.data.refund; }
+      finally { gateway.refundMode = 'processed'; }
+      assert.equal(own.pharmacyName, undefined);
+      const item = (await expect('ADMIN', 'GET', '/admin/assisted/card-refunds', 200)).json.data.find((x: any) => x.bookingId === b.id);
+      assert.deepEqual([item.pharmacyId, item.pharmacyName], [P, 'Rten Medicals']);
+      const stuck = (await expect('ADMIN', 'GET', '/admin/assisted/stuck-money', 200)).json.data.refundRowsPending.find((x: any) => x.bookingId === b.id);
+      assert.equal(stuck.pharmacyName, 'Rten Medicals');
     });
   } finally {
     server.close();

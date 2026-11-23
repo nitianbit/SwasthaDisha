@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import BookingModel from '@/modules/bookings/model';
+import PharmacyModel from '@/modules/pharmacies/model';
 import PaymentRecordModel from '@/modules/payment/model';
 import type { IPaymentRecord } from '@/modules/payment/types';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
@@ -211,7 +212,15 @@ export async function cardRefundQueue(q: { state?: string; limit?: number } = {}
   const filter = q.state ? { state: { $eq: q.state } } : { $or: [{ state: { $in: ['failed', 'manual_review'] } },
     { state: 'pending', $or: [{ attempts: { $gte: CARD_REFUND_MAX_ATTEMPTS } }, { createdAt: { $lt: new Date(now.getTime() - 86_400_000) } }] }] };
   const rows = await AssistedCardRefundModel.find(filter).sort({ updatedAt: 1 }).limit(limit).lean() as IAssistedCardRefund[];
-  return rows.map(cardRefundView);
+  return adminRefundViews(rows);
+}
+
+/** r10c (admin only): refund rows with the paying pharmacy (id and name), whose agreement a move to the wallet needs. */
+async function adminRefundViews(rows: IAssistedCardRefund[]) {
+  const ids = [...new Set(rows.map((r) => r.payerId).filter((id) => Types.ObjectId.isValid(id)))];
+  const pharmacies = ids.length ? await PharmacyModel.find({ _id: { $in: ids } }).select({ name: 1 }).lean() as { _id: unknown; name?: string }[] : [];
+  const nameOf = new Map(pharmacies.map((p) => [String(p._id).toLowerCase(), p.name ?? null]));
+  return rows.map((r) => ({ ...cardRefundView(r), pharmacyId: r.payerId, pharmacyName: nameOf.get(lower(r.payerId)) ?? null }));
 }
 
 /**
@@ -311,7 +320,7 @@ export async function cardRefundsStuckPending(now: Date = new Date(), limit = 20
   const n = Number.isSafeInteger(days) && days > 0 ? days : 7;
   const rows = await AssistedCardRefundModel.find({ method: 'razorpay', state: 'pending', createdAt: { $lt: new Date(now.getTime() - n * 86_400_000) } })
     .sort({ createdAt: 1 }).limit(limit).lean() as IAssistedCardRefund[];
-  return rows.map(cardRefundView);
+  return adminRefundViews(rows);
 }
 
 /** r10b (stuck money): assisted card payments with a card dispute recorded (C4: flagged only, waiting for an admin). */
