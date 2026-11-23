@@ -1847,9 +1847,9 @@ before `npm ci`).
   `dependentId` the pharmacy's own earlier booking shows.
 - ~~**Branch closures** (`clinicBranchContext`) are not filtered from the pharmacy slot lists; `reserveSlot` still refuses
   a closed branch at booking (409).~~ Closed in §21 (r6): the pharmacy slot reads leave them out.
-- **Order bindings after an admin clear:** an order already made from a prescription that an admin later clears keeps
+- ~~**Order bindings after an admin clear:** an order already made from a prescription that an admin later clears keeps
   its bound dispensing copy (it is the dispensed order's prescription record). Owner to decide whether an admin clear
-  should also withdraw it.
+  should also withdraw it.~~ Decided and built in §22 (r9): the clear withdraws it; the order stays.
 - Phase 1b and later (Razorpay per booking, lab/doctor bookers, referral cuts, withdrawals, SMS) are not built (§19.2
   item 13).
 
@@ -1991,3 +1991,59 @@ Branch `m0/r8-before-production` from `e90952cc` (r7, origin/stage). Local commi
 | B4 | `GET /pharmacy-assisted/doctors/:id/slots` silently dropped the cut-off day and later past 5000 candidate slots | Past the shared read's cut-off the rest of the window (at most 14 days) is read day by day; a single day above 20 000 rows answers `truncated: true` (absent otherwise) |
 | B5 | The admin top-up `Idempotency-Key` allowed any characters | Admin `POST /pharmacy-wallet/topup` header and the by-key `:key` must match `^[A-Za-z0-9_-]{8,100}$` (after trimming), else 400 `VALIDATION_ERROR`. The web's keys (32 hex) match. The pharmacy's own Razorpay top-up is unchanged |
 | B6 | The web read the typed name by paging `/pharmacy-customers` | The booker view's `holder` is `{ pharmacyCustomerId, name, typedName }`: `typedName` is the name THIS pharmacy typed on its own link (as stored), or null; never another pharmacy's |
+
+## 22. Owner decisions built (r9, 2026-11-23)
+
+Branch `m0/r9-owner-decisions` from the stage line `92d47079` (origin/stage). Local commits only. Checks:
+`test/assisted/r9-owner-decisions.integration.ts` (10 checks; 9 fail on `92d47079`, check 5a pins a rule that already
+held). Where this section and an earlier one differ, this one wins.
+
+### 22.1 What was built
+
+| # | Decision | Built |
+|---|---|---|
+| 1 | Admin "close as already compensated" for a pharmacy card top-up that never arrived and that support already paid by hand | `POST /api/v1/admin/wallet-payments/:paymentId/close-compensated { reason, requestKey }` (admin tools switch). `paymentId` is resolved exactly as the payment chargeback resolves it (record id, Razorpay order id, or Razorpay payment id with the gateway lookup). One transaction sets `PaymentRecord.compensatedAt`, `compensation { by, reason, requestKey: '<adminId>:<key>', requestHash, previousStatus }` and `status: failed` (a refunded record keeps its status), guarded on the status read, no `compensatedAt`, no `chargebackAt` and no credit claim, and writes the audit `wallet.closed_compensated` (`assisted_audit_events`, ids and paise only). A distinct field, not the chargeback block, so the S6 audit can tell the two apart; every credit path refuses it: verify (`handleExistingRecordStatus`, and the mark-paid write is guarded on no `compensatedAt`), reconcile and the top-up check (409 `TOPUP_BLOCKED`, message "closed: support already paid"), the credit claim (`walletCreditedAt`, guarded on no `compensatedAt`), the sweep (only `created` / unprocessed `paid` records), and `creditS6WalletTopup.ts` (refused first, no override). The S6 audit lists such records in `closedAsCompensated` (`review: 'closed as compensated: never credit'`, any status, never in `rows` or `failedWithCapture`, counted in the summary and the stderr line). The close and the credit write the same document, so the race gives credited (the close answers 409 `TOPUP_ALREADY_CREDITED`) or closed (never credited). Once per (admin, request key) with a content hash (the resolved record id and the reason); a top-up already closed answers its closure (`replayed: true`) whatever the key; the unique partial index `payment_records {compensation.requestKey}` is checked first (503 `INDEXES_OUTDATED`) |
+| 2 | Clinic-workspace sign-in refused for a member whose doctor account is ineligible | `assertMemberDoctorEligible` (`middleware/auth.ts`): a partner member with a `doctorId` (the owner of a doctor's own practice, and equally a clinic's doctor member) is refused while that doctor is not `isEligibleDoctor` (verified and active): 403 `CLINIC_OWNER_DOCTOR_NOT_VERIFIED`. Checked at the OTP sign-in (`verifyOTP`), at the workspace choice (`selectPartner`) and on every request of an existing session (`admitPartnerToken`, run by `authenticate` / `authenticateOptional`). Members without a `doctorId` are unaffected; re-verifying (or re-activating) the doctor restores access at once, with the same session |
+| 3 | An admin prescription clear also takes back the copy bound to an existing medicine order | `decideFileAccess`: a prescription PDF or dispensing copy withdrawn by an admin clear is refused (uniform 404) to every non-admin before any other rule, the binding of a medicine order made from it included. The order stays (and keeps its fields); a replay of the order key answers the same order and does not make the copy readable again |
+| 4 | After a clear and a new prescription, all older copies stay hidden except for admins | `withdrawnByAdminClear`: for every clear (with or without recorded `paths`), every dispensing copy made up to the clear (`rx-dispense-<ms>`, ms ≤ the clear) is withdrawn, besides the recorded paths. The new prescription's copy and PDF (made after the clear) stay readable to the patient, the doctor and (the copy) the pharmacy |
+| 5a | Already decided: the pharmacy sees the real name only on a `customer_order` link | Checked, holds (`assisted/names.ts`, `NAME_SHOWN_CONSENTS`); a `patient_agreed` link shows the typed name. Not changed |
+| 5b | Already decided (A10): the patient's view of a partner-paid booking shows "Paid by <partner>" and never the amount | One leak fixed: a kept (forfeited) partner payment records `noShowCancel.forfeitedAmount` on the booking (the partner's amount), and the customer and doctor views showed it. `assistedPublicView` drops it (the cancel's time and `refund: false` stay). `paidBy` (the partner's name) was already there; payment-details is 404 for an assisted booking |
+
+### 22.2 API for the web
+
+**Close a top-up as already compensated** (admin token; admin tools switch on, else 503):
+`POST /api/v1/admin/wallet-payments/:paymentId/close-compensated` with `{ reason: string (1–500), requestKey:
+^[A-Za-z0-9_-]{8,100}$ }`. `:paymentId` = the payment record id, the Razorpay order id (`order_…`) or the Razorpay payment
+id (`pay_…`). Answers (`Cache-Control: private, no-store`):
+- 200 `{ closed: true, credited: false, replayed, paymentRecordId, pharmacyId, amountPaise, compensatedAt, status, message }`
+  (`replayed: true` when this key already closed it, or when it was already closed under another key; nothing is
+  written then).
+- 409 `TOPUP_ALREADY_CREDITED`: it was credited to the wallet; there is nothing to close (use a wallet adjustment if
+  support paid twice). 409 `TOPUP_BLOCKED`: already blocked after a lost card dispute. 409 `IDEMPOTENCY_KEY_REUSED`: this
+  admin's key was used for another top-up or another reason. 409 `PAYMENT_AMBIGUOUS`: several records carry that Razorpay
+  id (use the record id).
+- 404 `TOPUP_NOT_FOUND` (not a pharmacy card top-up), `TOPUP_NOT_FOUND_BY_PAYMENT_ID` (a `pay_…` id nobody holds); 400
+  `VALIDATION_ERROR`; 403 for a non-admin; 503 `INDEXES_OUTDATED` (sync-indexes not run).
+
+**Was it closed?** `GET /api/v1/admin/wallet-payments/close-compensated/by-key/:key` → 200 `{ state: 'closed', …the same
+fields }` or `{ state: 'not_found' }` (this admin's keys only); 503 `INDEXES_OUTDATED`. After a lost answer: by-key, then
+resend the same body with the same key only on `not_found`.
+
+**For the pharmacy app:** verify, reconcile and `POST /pharmacy-wallet/topups/:id/check` of a closed top-up answer 409
+`TOPUP_BLOCKED` with the message "This top-up was closed: Jansetu support already paid this amount to you, so it is not
+credited to the wallet".
+
+**Clinic workspace sign-in:** `POST /api/v1/auth/partner/verify`, `POST /api/v1/auth/partner/select` and every partner API call
+answer 403 `CLINIC_OWNER_DOCTOR_NOT_VERIFIED` ("Your doctor account is not verified or not active, so this clinic
+workspace is closed to you; contact Jansetu support") for a member linked to a doctor who is not verified and active.
+Show the message and do not retry; a person with another workspace can still choose it.
+
+### 22.3 Deploy notes
+
+- `npm run sync-indexes` adds `payment_records {compensation.requestKey: 1}` (unique, partial on string). Until then the
+  close route and its by-key read answer 503; nothing else depends on it.
+- No migration: no record has `compensatedAt` before the first close.
+- Item 2 takes effect at once for existing sessions: before deploying, list members with a `doctorId` whose doctor is
+  not verified and active (`db.partner_members.find({ doctorId: { $type: 'string' }, isActive: true })` joined to `specialists`),
+  so support can expect their calls.
+
