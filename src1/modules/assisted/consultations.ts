@@ -229,7 +229,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   if (card) {
     assertCardGatewayReady();
     // A card booking's refunds rely on the one-row-per-payment unique index (fail closed until sync-indexes has run).
-    await assertUniqueIndex(AssistedCardRefundModel, { paymentRecordId: 1 });
+    await assertUniqueIndex(AssistedCardRefundModel, { captureKey: 1 });
   }
   // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit and is audited
   // (a key reused for other content too: it is counted, then refused below).

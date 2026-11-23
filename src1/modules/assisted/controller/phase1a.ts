@@ -20,7 +20,7 @@ import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import PharmacyModel from '@/modules/pharmacies/model';
-import { cardRefundQueue, cardRefundToWallet, markCardRefundFailed, recheckCardRefund, recordCardChargeback } from '@/modules/assisted/cardRefunds';
+import { cardRefundById, cardRefundQueue, cardRefundToWallet, markCardRefundFailed, recheckCardRefund, recordCardChargeback } from '@/modules/assisted/cardRefunds';
 
 /** Assisted booking phase 1a controllers (§17.6). Answers are `{ success, data }`; nothing here is cached. */
 const actorOf = (req: AuthRequest): PharmacyActor => ({ pharmacyId: String(req.user?.pharmacyId || req.user?._id || ''), actorId: String(req.user?._id || '') });
@@ -253,3 +253,5 @@ export const cardRefundMarkFailed = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
   send(res, await markCardRefundFailed(String(req.user?._id), req.params.id, String(req.body.reason).trim()));
 };
+/** r10e: GET /admin/assisted/card-refunds/:id — one card refund row (the queue's shape, with the paying pharmacy). */
+export const cardRefundOne = async (req: AuthRequest, res: Response) => send(res, await cardRefundById(req.params.id));

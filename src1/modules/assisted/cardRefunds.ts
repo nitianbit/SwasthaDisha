@@ -17,7 +17,8 @@ import logger from '@/services/logger';
 /**
  * Assisted booking phase 1b (design §6.4, §8.4): returning a card/UPI capture of an assisted booking to its payer.
  *
- * - One row per payment record (`assisted_card_refunds`, unique `paymentRecordId`): the cancellation refund of a card-paid
+ * - One row per payment record's own capture (r10e: plus one per EXTRA capture on its order; unique per captured payment,
+ *   `captureKey`): the cancellation refund of a card-paid
  *   booking and a late capture both go through `queueCardRefundIn`, so a capture is returned at most once, whichever path
  *   (cancel, expiry, verify, reconcile, sweep) finds it first.
  * - `card` (the default, "back the way the partner paid"): a `pending` row sent by the worker below — fenced attempts
@@ -63,7 +64,8 @@ async function syncBookingRow(row: Pick<IAssistedCardRefund, '_id' | 'bookingId'
 export async function queueCardRefundIn(p: { bookingId: string; payerId: string; record: IPaymentRecord; cause: string; to: 'card' | 'wallet' },
   s: ClientSession): Promise<{ row: AssistedRefundRow; created: boolean; refund: IAssistedCardRefund }> {
   const rid = lower(p.record._id);
-  const prior = await AssistedCardRefundModel.findOne({ paymentRecordId: rid }).session(s).lean() as IAssistedCardRefund | null;
+  // The record's own capture is returned once (an extra capture on the same order has its own row, r10e).
+  const prior = await AssistedCardRefundModel.findOne({ paymentRecordId: rid, cause: { $ne: 'extra_capture' } }).session(s).lean() as IAssistedCardRefund | null;
   if (prior) return { row: bookingRowOf(prior), created: false, refund: prior };
   const amount = recordPaiseOf(p.record);
   if (!(amount > 0)) throw err(500, 'INVALID_AMOUNT', 'A card refund needs a positive amount');
@@ -80,11 +82,31 @@ export async function queueCardRefundIn(p: { bookingId: string; payerId: string;
     walletEntryId = String(posted.entry._id);
   } else if (!p.record.razorpayPaymentId) { state = 'manual_review'; lastError = 'PAYMENT_ID_MISSING'; }
   const doc = { _id, bookingId: lower(p.bookingId), paymentRecordId: rid, ...(p.record.razorpayPaymentId ? { razorpayPaymentId: p.record.razorpayPaymentId } : {}),
+    captureKey: p.record.razorpayPaymentId ? `pay:${p.record.razorpayPaymentId}` : `record:${rid}`,
     amountMinor: amount, cause: p.cause, payerKind: 'pharmacy' as const, payerId: lower(p.payerId), method: p.to === 'wallet' ? 'wallet' as const : 'razorpay' as const,
     state, attempts: 0, submissions: 0, ...(lastError ? { lastError } : {}), ...(walletEntryId ? { walletEntryId } : {}),
     ...(state === 'processed' ? { processedAt: new Date() } : {}) };
   await AssistedCardRefundModel.create([doc], { session: s });
   await PaymentRecordModel.updateOne({ _id: rid }, { $set: { status: 'refunded', isProcessed: true } }, { session: s });
+  const refund = await AssistedCardRefundModel.findById(_id).session(s).lean() as IAssistedCardRefund;
+  return { row: bookingRowOf(refund), created: true, refund };
+}
+
+/**
+ * r10e: in the caller's transaction, the return of ANOTHER capture on the same Razorpay order (a slow UPI payment and a
+ * second "pay now" can both capture): always to the card, exactly once per Razorpay payment id (unique `captureKey`).
+ * The payment record is not touched (it keeps the capture that counts).
+ */
+export async function queueExtraCaptureRefundIn(p: { bookingId: string; payerId: string; recordId: string; razorpayPaymentId: string; amountMinor: number },
+  s: ClientSession): Promise<{ row: AssistedRefundRow; created: boolean; refund: IAssistedCardRefund }> {
+  const captureKey = `pay:${p.razorpayPaymentId}`;
+  const prior = await AssistedCardRefundModel.findOne({ captureKey }).session(s).lean() as IAssistedCardRefund | null;
+  if (prior) return { row: bookingRowOf(prior), created: false, refund: prior };
+  if (!(Number.isSafeInteger(p.amountMinor) && p.amountMinor > 0)) throw err(500, 'INVALID_AMOUNT', 'A card refund needs a positive amount');
+  const _id = new Types.ObjectId();
+  await AssistedCardRefundModel.create([{ _id, bookingId: lower(p.bookingId), paymentRecordId: lower(p.recordId), razorpayPaymentId: p.razorpayPaymentId, captureKey,
+    amountMinor: p.amountMinor, cause: 'extra_capture', payerKind: 'pharmacy' as const, payerId: lower(p.payerId), method: 'razorpay' as const,
+    state: 'pending' as const, attempts: 0, submissions: 0 }], { session: s });
   const refund = await AssistedCardRefundModel.findById(_id).session(s).lean() as IAssistedCardRefund;
   return { row: bookingRowOf(refund), created: true, refund };
 }
@@ -142,7 +164,8 @@ async function runAttempt(row: IAssistedCardRefund, attemptId: string): Promise<
   if (!found) {
     // A card dispute recorded meanwhile: the bank already took this money back, so nothing is sent.
     const rec = await PaymentRecordModel.findById(row.paymentRecordId).select({ chargebackAt: 1 }).lean() as { chargebackAt?: Date } | null;
-    if (rec?.chargebackAt) return finish(row, attemptId, 'manual_review', { lastError: 'CHARGEBACK_RECORDED' });
+    // (A dispute on the record's capture never holds the return of ANOTHER capture on the order, r10e.)
+    if (rec?.chargebackAt && row.cause !== 'extra_capture') return finish(row, attemptId, 'manual_review', { lastError: 'CHARGEBACK_RECORDED' });
     // Every submission is counted BEFORE it is sent (fenced): only a single, clearly refused submission ends as failed.
     const marked = await AssistedCardRefundModel.findOneAndUpdate(fenceOf(row, attemptId), { $inc: { submissions: 1 } }, { new: true }).lean() as IAssistedCardRefund | null;
     if (!marked) return current(row._id);
@@ -215,6 +238,13 @@ export async function cardRefundQueue(q: { state?: string; limit?: number } = {}
   return adminRefundViews(rows);
 }
 
+/** r10e: GET /admin/assisted/card-refunds/:id — one row, the same shape as the queue (with the paying pharmacy). */
+export async function cardRefundById(refundId: string) {
+  const row = Types.ObjectId.isValid(refundId) ? await current(refundId) : null;
+  if (!row) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  return (await adminRefundViews([row]))[0];
+}
+
 /** r10c (admin only): refund rows with the paying pharmacy (id and name), whose agreement a move to the wallet needs. */
 async function adminRefundViews(rows: IAssistedCardRefund[]) {
   const nameOf = await pharmacyNames(rows.map((r) => r.payerId));
@@ -245,11 +275,12 @@ export async function cardRefundToWallet(adminId: string, refundId: string, agre
     if (row.resolution || (row.state === 'processed' && row.method === 'wallet')) return { refund: cardRefundView(row), replayed: true };
     if (!['failed', 'manual_review'].includes(row.state)) throw err(409, 'REFUND_NOT_FAILED', 'Only a failed card refund (or one held for review) can be moved to the wallet');
     const rec = await PaymentRecordModel.findById(row.paymentRecordId).select({ chargebackAt: 1 }).session(s).lean() as { chargebackAt?: Date } | null;
-    if (row.lastError === 'CHARGEBACK_RECORDED' || rec?.chargebackAt) {
+    if (row.lastError === 'CHARGEBACK_RECORDED' || (rec?.chargebackAt && row.cause !== 'extra_capture')) {
       throw err(409, 'CHARGEBACK_RECORDED', 'A card dispute was recorded on this payment; the bank already took the money back');
     }
     const posted = await postPharmacyMovementIn({ pharmacyId: row.payerId, kind: 'refund_credit', amountPaise: row.amountMinor,
-      operationKey: `assisted_card:${row.paymentRecordId}:refund`, referenceType: 'assisted_booking', referenceId: `${row.bookingId}:card_refund:${row.paymentRecordId}`,
+      operationKey: row.cause === 'extra_capture' ? `assisted_card:${row.paymentRecordId}:extra:${row.razorpayPaymentId}:refund` : `assisted_card:${row.paymentRecordId}:refund`,
+      referenceType: 'assisted_booking', referenceId: `${row.bookingId}:card_refund:${row.paymentRecordId}${row.cause === 'extra_capture' ? `:${row.razorpayPaymentId}` : ''}`,
       description: 'Card refund of an assisted booking credited to the wallet' }, s);
     const at = new Date();
     const moved = await AssistedCardRefundModel.updateOne({ _id: row._id, state: row.state }, { $set: { state: 'processed', method: 'wallet', processedAt: at,
@@ -367,7 +398,7 @@ export async function recordCardChargeback(adminId: string, paymentId: string, r
     const at = new Date();
     const set = await PaymentRecordModel.updateOne({ _id: rid, chargebackAt: { $exists: false } }, { $set: { chargebackAt: at } }, { session: s });
     const replayed = set.modifiedCount !== 1;
-    const row = await AssistedCardRefundModel.findOne({ paymentRecordId: rid }).session(s).lean() as IAssistedCardRefund | null;
+    const row = await AssistedCardRefundModel.findOne({ paymentRecordId: rid, cause: { $ne: 'extra_capture' } }).session(s).lean() as IAssistedCardRefund | null;
     let refund = row;
     if (!replayed && row && row.state === 'pending' && row.submissions === 0 && !row.attemptId) {
       const held = await AssistedCardRefundModel.updateOne({ _id: row._id, state: 'pending', submissions: 0 }, { $set: { state: 'manual_review', lastError: 'CHARGEBACK_RECORDED' } }, { session: s });

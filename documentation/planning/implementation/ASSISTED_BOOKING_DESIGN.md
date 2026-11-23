@@ -2162,6 +2162,8 @@ patient cancel refunds the PARTNER's card; the partner is told ("being refunded 
 - `GET /api/v1/admin/assisted/card-refunds?state&limit` → refund rows (as above, plus (r10c) `pharmacyId` and
   `pharmacyName`: the paying pharmacy, whose agreement a move to the wallet needs; admin only) that need a person: `failed`,
   `manual_review`, and `pending` ones over 20 attempts or older than 24 h (`state` filters exactly).
+- (r10e) `GET /api/v1/admin/assisted/card-refunds/:id` → one row in the same shape (with `pharmacyId`, `pharmacyName`);
+  404 `REFUND_NOT_FOUND`. Use it for "Check" instead of scanning the list. Row `cause` may be `extra_capture` (r10e).
 - `POST /api/v1/admin/assisted/card-refunds/:id/to-wallet { agreement }` (admin tools switch) → `{ refund, replayed }`;
   409 `REFUND_NOT_FAILED` (only `failed` / `manual_review`), `CHARGEBACK_RECORDED`; 404 `REFUND_NOT_FOUND`.
 - `POST /api/v1/admin/assisted-payments/:paymentId/chargeback { reason }` (admin tools switch; `paymentId` = record id,
@@ -2188,8 +2190,8 @@ patient cancel refunds the PARTNER's card; the partner is told ("being refunded 
 
 Pay-again and switching a pending card booking to the wallet (C10); recovering a lost card dispute from the partner
 (C4); notices to the booker on expiry or late capture (C7); the daily reconciliation's per-booking checks for card
-bookings (one capture per paid booking, Razorpay totals) — they cover wallet bookings only; lab and doctor bookers,
-instant consults (later phases).
+bookings (Razorpay totals) — they cover wallet bookings only; lab and doctor bookers, instant consults (later phases).
+"One capture per paid booking" is built in r10e (§23.6): extra captures on an order are refunded.
 
 ### 23.6 Review fixes (r10b, review of `9f2a1807`)
 
@@ -2239,3 +2241,17 @@ new index (the two new refund-row fields are unindexed).
 | 15 | Stuck money's `cardChargebacks` rows had no pharmacy name | `pharmacyName` added (admin only) |
 
 C4 (owner, 23 Nov): a card chargeback on a booking payment stays flag-only; recovery is the admin's decision.
+
+**r10e (same branch, on `a7ae19bb`):** checks 16–19 of `test/assisted/r10b-phase1b-fixes.integration.ts` (all four fail
+on `a7ae19bb`).
+
+| # | Finding | Fix |
+|---|---|---|
+| A (money) | Razorpay accepts more than one payment on an order that is only "attempted" (a slow UPI payment, then a second "pay now"), so one card booking could be captured twice; verify accepted the second as "already paid" and reconcile and the sweep looked only at the first capture | Only the payment record's own capture (`razorpayPaymentId`) counts. Every OTHER captured payment on the order is refunded to its card, once per Razorpay payment id (`cause: 'extra_capture'`, audited `booking.extra_capture`), whatever the booking's state (paid, cancelled, expired). Found by: verify of the other payment (409 `DUPLICATE_PAYMENT_REFUNDED` "This booking was already paid with another payment; this payment is being refunded…", also when two verifies race), reconcile (it now reads every payment on the order, also for a record already paid or returned), the recovery sweep (through reconcile), and a new other-capture sweep (assisted scheduler, every 5 minutes: paid or returned card records for 7 days, back-off 10 min doubling to 6 h; `PaymentRecord.extraCheckNextAt` / `extraChecks`). Payment services gained an optional context hook `settleOtherCaptures`; other contexts are unchanged |
+| A (index) | A refund row was unique per payment record, so a second capture on the same record had no row | Card refund rows get `captureKey` (`pay:<razorpayPaymentId>`, else `record:<id>`), **unique** (partial on string); `paymentRecordId` becomes an ordinary index (a record may have its own return and extra-capture returns). A record's own return is still found once by `paymentRecordId` + cause; the worker's and to-wallet's card-dispute hold applies to the record's own capture only; to-wallet of an extra capture uses its own wallet key |
+| B | The web's "Check" scanned the whole list | `GET /api/v1/admin/assisted/card-refunds/:id` (§23.3) |
+
+**Deploy:** `npm run sync-indexes` changes `assisted_card_refunds`: drops the unique `paymentRecordId_1`, recreates it
+non-unique, and adds the unique partial `captureKey_1`. Until it has run, a card create answers 503 `INDEXES_OUTDATED`
+(the check moved to `captureKey`); verify, sweeps and refunds keep working. Rows from before r10e have no `captureKey`
+(each is its record's own return, found by `paymentRecordId` as before). No migration.

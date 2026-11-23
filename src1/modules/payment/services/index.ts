@@ -132,6 +132,11 @@ export interface PaymentContextHandler {
   }): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }>;
   /** The entity shown for an already processed record. */
   entity(record: IPaymentRecord): Promise<unknown>;
+  /**
+   * r10e (optional): the record is paid (or returned) with `record.razorpayPaymentId`; these are OTHER captured payments
+   * Razorpay holds on the same order (an order only "attempted" takes more than one). Returns how many it queued back.
+   */
+  settleOtherCaptures?(record: IPaymentRecord, captured: { id: string; amount: number; currency: string }[]): Promise<number>;
 }
 const CONTEXT_HANDLERS = new Map<PaymentContext, PaymentContextHandler>();
 export function registerPaymentContextHandler(context: PaymentContext, handler: PaymentContextHandler): void {
@@ -1023,6 +1028,22 @@ export class PaymentService {
   async verifyAndMarkPaid(data: VerifyPaymentRequest): Promise<IPaymentRecord> {
     const paymentRecord = await this.getPaymentRecordForVerification(data);
 
+    // r10e: ANOTHER payment captured on an order whose record already holds one (a slow UPI payment and a second "pay
+    // now"): proven like any capture (signature, the gateway's own record of it), then returned once, never applied.
+    const otherCaptures = CONTEXT_HANDLERS.get(paymentRecord.context)?.settleOtherCaptures;
+    if (otherCaptures && ['paid', 'refunded'].includes(paymentRecord.status) && paymentRecord.razorpayPaymentId
+        && data.razorpayPaymentId !== paymentRecord.razorpayPaymentId) {
+      await this.validateSignature(data, paymentRecord);
+      const other = await this.fetchRazorpayPayment(data.razorpayPaymentId);
+      this.validateRazorpayPaymentForRecord(paymentRecord, data, other);
+      if (other.status !== 'captured') {
+        throw new AppError({ status: 400, code: 'PAYMENT_NOT_COMPLETED', message: `Razorpay payment is not completed. Current status: ${other.status}` });
+      }
+      await otherCaptures(paymentRecord, [{ id: other.id, amount: other.amount, currency: other.currency }]);
+      throw new AppError({ status: 409, code: 'DUPLICATE_PAYMENT_REFUNDED',
+        message: 'This booking was already paid with another payment; this payment is being refunded to the card or UPI it was made with' });
+    }
+
     if (paymentRecord.status === 'paid') {
       return paymentRecord;
     }
@@ -1037,6 +1058,12 @@ export class PaymentService {
     await this.handleGatewayTerminalStatus(paymentRecord, data, razorpayPayment);
 
     const paid = await this.markPaymentAsPaid(paymentRecord, data);
+    // r10e: a concurrent verify of ANOTHER payment on the same order won the record: this one is returned, not applied.
+    if (otherCaptures && paid.razorpayPaymentId && paid.razorpayPaymentId !== data.razorpayPaymentId) {
+      await otherCaptures(paid, [{ id: razorpayPayment.id, amount: razorpayPayment.amount, currency: razorpayPayment.currency }]);
+      throw new AppError({ status: 409, code: 'DUPLICATE_PAYMENT_REFUNDED',
+        message: 'This booking was already paid with another payment; this payment is being refunded to the card or UPI it was made with' });
+    }
     return this.rememberGatewayFee(paid, razorpayPayment.fee);
   }
 
@@ -1902,13 +1929,25 @@ export class PaymentService {
     const own = await this.paymentRepository.findById(data.paymentTransactionId);
     const request = { ...data, razorpayOrderId: own?.razorpayOrderId as string, razorpayPaymentId: '', razorpaySignature: '' } as VerifyPaymentRequest;
     let paymentRecord = await this.getPaymentRecordForVerification(request);
+    // r10e: every payment on the order is looked at (not only the first captured one): captures other than the record's
+    // are returned by the context (once per payment). A record already paid or returned is checked too.
+    const otherCaptures = CONTEXT_HANDLERS.get(paymentRecord.context)?.settleOtherCaptures;
+    let orderPayments: RazorpayPaymentDetails[] | null = null;
+    const capturedOn = (all: RazorpayPaymentDetails[], orderId: string) => all
+      .filter((p) => p.status === 'captured' && p.order_id === orderId && p.currency?.toUpperCase() === paymentRecord.currency?.toUpperCase())
+      .map((p) => ({ id: p.id, amount: p.amount, currency: p.currency }));
+    if (otherCaptures && ['paid', 'refunded'].includes(paymentRecord.status) && paymentRecord.razorpayPaymentId && paymentRecord.razorpayOrderId) {
+      orderPayments = await this.fetchOrderPayments(paymentRecord.razorpayOrderId);
+      await otherCaptures(paymentRecord, capturedOn(orderPayments, paymentRecord.razorpayOrderId));
+    }
     if (paymentRecord.status !== 'paid') {
       this.handleExistingRecordStatus(paymentRecord);
       const orderId = paymentRecord.razorpayOrderId;
       if (paymentRecord.paymentGateway !== 'razorpay' || !orderId) {
         throw new AppError({ status: 400, code: 'PAYMENT_NOT_RECONCILABLE', message: 'This payment has no gateway order to check' });
       }
-      const gatewayPayments = await this.fetchOrderPayments(orderId);
+      const gatewayPayments = orderPayments ?? await this.fetchOrderPayments(orderId);
+      orderPayments = gatewayPayments;
       const captured = gatewayPayments.find((p) => p.status === 'captured' && p.order_id === orderId);
       if (!captured) return { state: 'unpaid', gatewayStatuses: gatewayPayments.map((p) => p.status) };
       this.validateRazorpayPaymentForRecord(paymentRecord, { ...request, razorpayOrderId: orderId, razorpayPaymentId: captured.id }, captured);
@@ -1934,7 +1973,13 @@ export class PaymentService {
         paymentTransactionId: paymentRecord._id, razorpayOrderId: orderId, razorpayPaymentId: captured.id,
       });
     }
-    return { state: 'paid', ...(await this.processVerifiedPayment(paymentRecord)) };
+    const processed = await this.processVerifiedPayment(paymentRecord);
+    // r10e: a record that became paid just now: any other capture on its order is returned after its own was settled.
+    if (otherCaptures && orderPayments && own?.status === 'created') {
+      const fresh = await this.paymentRepository.findById(String(paymentRecord._id));
+      if (fresh?.razorpayPaymentId) await otherCaptures(fresh, capturedOn(orderPayments, String(fresh.razorpayOrderId)));
+    }
+    return { state: 'paid', ...processed };
   }
 
   /**

@@ -47,6 +47,7 @@ adminAssistedRouter.get('/assisted/card-refunds', validate(v.cardRefundQuerySche
 adminAssistedRouter.post('/assisted/card-refunds/:id/to-wallet', validate(v.idParamSchema, 'params'), validate(v.cardRefundToWalletSchema, 'body'),
   catchAsync(c.cardRefundWallet));
 // r10b: ask Razorpay now; mark failed only after Razorpay was read (then to-wallet may follow).
+adminAssistedRouter.get('/assisted/card-refunds/:id', validate(v.idParamSchema, 'params'), catchAsync(c.cardRefundOne));
 adminAssistedRouter.post('/assisted/card-refunds/:id/recheck', validate(v.idParamSchema, 'params'), catchAsync(c.cardRefundRecheck));
 adminAssistedRouter.post('/assisted/card-refunds/:id/mark-failed', validate(v.idParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
   catchAsync(c.cardRefundMarkFailed));

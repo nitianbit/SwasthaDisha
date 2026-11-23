@@ -15,6 +15,8 @@
  * r10d (fail on 6b223644): 11. the clinic workspace neither lists nor bills a card booking never paid; 12. racing
  *     confirmers make ONE Meet event; 13. the booker view carries the open order (pay now anywhere); 14. an admin move of
  *     an unpaid card booking tells only the booker; 15. stuck-money chargebacks name the pharmacy.
+ * r10e (fail on a7ae19bb): 16–18. a second capture on the same order is refunded to its card once (found by the sweep,
+ *     by verify, and after the booking was cancelled); replays add nothing; 19. admin reads one card refund by id.
  *
  * Run (throwaway DB only; the script clears its database):
  *   MONGODB_URL='mongodb://127.0.0.1:27917/assisted_r10b_fixes_check?directConnection=true' JWT_SECRET_KEY=local-integration-only \
@@ -604,6 +606,91 @@ async function main() {
       const row = (await expect('ADMIN', 'GET', '/admin/assisted/stuck-money', 200)).json.data.cardChargebacks
         .find((x: any) => x.paymentRecordId === b.data.payment.paymentTransactionId);
       assert.deepEqual([row.pharmacyId, row.pharmacyName], [P, 'Rten Medicals']);
+    });
+    // ───────────────────────── r10e: other captures on one order; one refund by id ─────────────────────────
+    /** A second captured payment on the booking's order (Razorpay accepts several on an "attempted" order). */
+    const secondCapture = (data: any) => {
+      const orderId = data.payment.razorpayOrderId as string;
+      const payId = 'pay_r10e_' + oid().slice(-12);
+      (gateway.payments[orderId] ??= []).push({ id: payId, order_id: orderId, amount: data.payment.amountMinor, currency: 'INR', status: 'captured', fee: 1180 });
+      const signature = crypto.createHmac('sha256', 'secret').update(`${orderId}|${payId}`).digest('hex');
+      return { paymentTransactionId: data.payment.paymentTransactionId, razorpayOrderId: orderId, razorpayPaymentId: payId, razorpaySignature: signature };
+    };
+    const refundsFor = (payId: string) => gateway.refunds.filter((r) => r.paymentId === payId);
+    const otherSweep = async (at: Date) => {
+      const m = await import('@/modules/assisted/cardPayments') as any;
+      return m.sweepAssistedOtherCaptures(at, 1000);
+    };
+
+    await check('16 (r10e): two captures on one order found by the sweep: one confirms the booking, the other is refunded to its card once; replays add nothing', async () => {
+      const b = await book();
+      const x = capture(b.data);
+      const y = secondCapture(b.data);
+      await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(x.paymentTransactionId) }, { $set: { createdAt: new Date(Date.now() - 20 * MIN) } });
+      const calls0 = gateway.refundCalls;
+      await sweep();
+      const after = await bookingOf(b.id);
+      assert.equal(after.status, 'confirmed');
+      const rec = await PaymentRecordModel.findById(x.paymentTransactionId).lean() as any;
+      assert.equal(rec.razorpayPaymentId, x.razorpayPaymentId, 'the first capture counts');
+      // Replays: verify of each, reconcile, both sweeps, the worker.
+      await expect('P', 'POST', '/payments/verify', 200, x);
+      await expect('P', 'POST', '/payments/verify', 409, y, 'DUPLICATE_PAYMENT_REFUNDED');
+      await expect('P', 'POST', '/payments/reconcile', 200, { paymentTransactionId: x.paymentTransactionId });
+      await sweep();
+      await otherSweep(new Date(Date.now() + DAY));
+      await cardRefunds.runCardRefundsDue(later(10 * MIN));
+      const rows = (await refundsOf(b.id));
+      assert.deepEqual(rows.map((r) => [r.cause, r.razorpayPaymentId, r.state, r.amountMinor]), [['extra_capture', y.razorpayPaymentId, 'processed', 50000]]);
+      assert.equal(refundsFor(y.razorpayPaymentId).length, 1, 'the extra capture refunded once');
+      assert.equal(refundsFor(x.razorpayPaymentId).length, 0, 'the counted capture never');
+      assert.equal(gateway.refundCalls - calls0, 1);
+      assert.equal((await bookingOf(b.id)).status, 'confirmed');
+      assert.equal(await AssistedAuditEventModel.countDocuments({ bookingId: b.id, action: 'booking.extra_capture' }), 1);
+      assert.equal(await AssistedAuditEventModel.countDocuments({ bookingId: b.id, action: 'booking.paid' }), 1);
+    });
+
+    await check('17 (r10e): a second payment verified after the booking was paid answers 409 DUPLICATE_PAYMENT_REFUNDED and is refunded once', async () => {
+      const b = await paidBooking();
+      const first = (await PaymentRecordModel.findById(b.data.payment.paymentTransactionId).lean() as any).razorpayPaymentId;
+      const y = secondCapture(b.data);
+      const calls0 = gateway.refundCalls;
+      await expect('P', 'POST', '/payments/verify', 409, y, 'DUPLICATE_PAYMENT_REFUNDED');
+      await expect('P', 'POST', '/payments/verify', 409, y, 'DUPLICATE_PAYMENT_REFUNDED');
+      await expect('P', 'POST', '/payments/verify', 400, { ...y, razorpaySignature: 'f'.repeat(64) }, 'PAYMENT_SIGNATURE_INVALID');
+      await cardRefunds.runCardRefundsDue(later(10 * MIN));
+      assert.equal(refundsFor(y.razorpayPaymentId).length, 1);
+      assert.equal(gateway.refundCalls - calls0, 1);
+      assert.equal((await PaymentRecordModel.findById(b.data.payment.paymentTransactionId).lean() as any).razorpayPaymentId, first);
+      assert.equal((await bookingOf(b.id)).status, 'confirmed');
+      // The pharmacy's own cancel refund (of the counted capture) is still its own row.
+      const r = await expect('P', 'POST', `/pharmacy-assisted/bookings/${b.id}/cancel`, 200, {});
+      assert.deepEqual([r.json.data.refund.cause, r.json.data.refund.state], ['booker', 'processed']);
+      assert.equal(refundsFor(first).length, 1);
+      assert.equal((await refundsOf(b.id)).length, 2);
+    });
+
+    await check('18 (r10e): an extra capture landing after the booking was cancelled is refunded once (the other-capture sweep)', async () => {
+      const b = await paidBooking();
+      await expect('P', 'POST', `/pharmacy-assisted/bookings/${b.id}/cancel`, 200, {});
+      const y = secondCapture(b.data);
+      const calls0 = gateway.refundCalls;
+      await otherSweep(new Date());
+      await otherSweep(new Date(Date.now() + DAY));
+      await cardRefunds.runCardRefundsDue(later(10 * MIN));
+      assert.equal(refundsFor(y.razorpayPaymentId).length, 1);
+      assert.equal(gateway.refundCalls - calls0, 1);
+      assert.deepEqual((await refundsOf(b.id)).map((r) => r.cause).sort(), ['booker', 'extra_capture']);
+    });
+
+    await check('19 (r10e): admin reads one card refund by id (the queue\'s shape, with the pharmacy)', async () => {
+      const b = await paidBooking();
+      const own = (await expect('P', 'POST', `/pharmacy-assisted/bookings/${b.id}/cancel`, 200, {})).json.data.refund;
+      const r = await expect('ADMIN', 'GET', `/admin/assisted/card-refunds/${own.refundId}`, 200);
+      assert.deepEqual([r.json.data.refundId, r.json.data.bookingId, r.json.data.state, r.json.data.pharmacyId, r.json.data.pharmacyName],
+        [own.refundId, b.id, 'processed', P, 'Rten Medicals']);
+      await expect('ADMIN', 'GET', `/admin/assisted/card-refunds/${oid()}`, 404, undefined, 'REFUND_NOT_FOUND');
+      await expect('P', 'GET', `/admin/assisted/card-refunds/${own.refundId}`, 403);
     });
   } finally {
     server.close();

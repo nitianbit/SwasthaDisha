@@ -38,6 +38,9 @@ export interface IPaymentRecord {
   compensation?: { by: string; reason: string; requestKey: string; requestHash: string; previousStatus: string; amountPaise?: number };
   notes?: Record<string, unknown>;
   paidAt?: Date;
+  /** r10e: assisted card records — when the order is next checked for another capture, and how often it was. */
+  extraCheckNextAt?: Date;
+  extraChecks?: number;
   /** Background recovery schedule (W3b). */
   recoveryNextAt?: Date;
   recoveryChecks?: number;

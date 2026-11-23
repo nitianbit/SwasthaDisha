@@ -14,7 +14,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
    *  moved a failed card refund to the partner's wallet with its recorded agreement. */
   'booking.paid', 'booking.late_capture', 'booking.card_chargeback', 'card_refund.to_wallet',
   /** r10b: an admin marked a card refund failed after checking Razorpay (no refund processed or pending there). */
-  'card_refund.marked_failed'] as const;
+  'card_refund.marked_failed',
+  /** r10e: a second capture on an order whose booking was already paid (or closed) by another payment: refunded. */
+  'booking.extra_capture'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {
@@ -133,8 +135,13 @@ export interface IAssistedCardRefund {
   bookingId: string;
   paymentRecordId: string;
   razorpayPaymentId?: string;
+  /**
+   * r10e: what is returned — `pay:<razorpayPaymentId>` (or `record:<paymentRecordId>` when the payment id is unknown).
+   * Unique: one row per captured payment. Rows from before r10e have none (their payment record holds one row only).
+   */
+  captureKey?: string;
   amountMinor: number;
-  /** booker | patient | doctor | admin | late_capture */
+  /** booker | patient | doctor | admin | late_capture | extra_capture (r10e: another capture on the same order) */
   cause: string;
   payerKind: 'pharmacy';
   payerId: string;
@@ -164,6 +171,7 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   bookingId: { type: String, required: true },
   paymentRecordId: { type: String, required: true },
   razorpayPaymentId: { type: String },
+  captureKey: { type: String },
   amountMinor: { type: Number, required: true, min: 1 },
   cause: { type: String, required: true },
   payerKind: { type: String, required: true, enum: ['pharmacy'] },
@@ -184,7 +192,10 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   resolution: { type: new Schema({ by: { type: String, required: true }, agreement: { type: String, required: true }, at: { type: Date, required: true },
     walletEntryId: { type: String, required: true } }, { _id: false }), default: undefined },
 }, { versionKey: false, strict: 'throw', timestamps: true });
-cardRefundSchema.index({ paymentRecordId: 1 }, { unique: true });
+// r10e: a payment record may now have two rows (its own capture, and an extra capture on the same order), so the unique
+// key is the captured payment (`captureKey`); one record's own return is still found once by `paymentRecordId` + cause.
+cardRefundSchema.index({ paymentRecordId: 1 });
+cardRefundSchema.index({ captureKey: 1 }, { unique: true, partialFilterExpression: { captureKey: { $type: 'string' } } });
 cardRefundSchema.index({ bookingId: 1 });
 cardRefundSchema.index({ state: 1, updatedAt: 1 });
 export const AssistedCardRefundModel: Model<IAssistedCardRefund> = model<IAssistedCardRefund>('AssistedCardRefund', cardRefundSchema, 'assisted_card_refunds');

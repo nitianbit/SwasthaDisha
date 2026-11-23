@@ -35,6 +35,9 @@ export function runAssistedSchedulers(): void {
     if (refunding) return;
     refunding = true;
     try {
+      // r10e: other captures on settled card orders are found first, then every due refund is pushed forward.
+      const { sweepAssistedOtherCaptures } = await import('@/modules/assisted/cardPayments');
+      await sweepAssistedOtherCaptures().catch((e) => logger.warn('Assisted other-capture sweep failed', { error: (e as Error)?.message }));
       const out = await runCardRefundsDue();
       if (out.advanced) logger.info('Assisted card refunds', out);
     } catch (error) {

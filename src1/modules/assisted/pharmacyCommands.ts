@@ -318,7 +318,7 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
   const when = `${shownDate(b.bookingDate)} at ${b.bookingTime}`;
   const a = b.assisted;
   // Phase 1b: what happened to the partner's money — wallet, card/UPI, or nothing (a card booking cancelled unpaid).
-  const row = [...(a.funding?.refunds ?? [])].reverse().find((r) => r.cause !== 'late_capture');
+  const row = [...(a.funding?.refunds ?? [])].reverse().find((r) => r.cause !== 'late_capture' && r.cause !== 'extra_capture');
   if (!row && a.funding?.method === 'razorpay') refunded = false;
   const bookerMoney = row?.method === 'razorpay' ? ' The amount is being refunded to the card or UPI it was paid with.' : ' The amount is back in your Jansetu wallet.';
   // Phase 1b: the patient and the doctor hear of a card booking only once it is paid; one cancelled before that is told
@@ -371,7 +371,7 @@ export async function cancelByBooker(actor: PharmacyActor, bookingId: string,
 
 /** Phase 1b: the cancellation refund of a card booking (card or wallet, its state), for the booker's own answers; null if none. */
 async function cardRefundOf(bookingId: string) {
-  const row = await AssistedCardRefundModel.findOne({ bookingId: lower(bookingId), cause: { $ne: 'late_capture' } }).sort({ createdAt: -1 }).lean();
+  const row = await AssistedCardRefundModel.findOne({ bookingId: lower(bookingId), cause: { $nin: ['late_capture', 'extra_capture'] } }).sort({ createdAt: -1 }).lean();
   return row ? cardRefundView(row as never) : null;
 }
 

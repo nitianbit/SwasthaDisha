@@ -278,11 +278,12 @@ async function main() {
       } finally { await SpecialistModel.updateOne({ _id: D2 }, { $unset: { isConsultationFree: 1 } }); }
       // The card refunds' unique index is checked first (fail closed until sync-indexes has run).
       const refundsCol = mongoose.connection.collection('assisted_card_refunds');
-      await refundsCol.dropIndex('paymentRecordId_1').catch(() => undefined);
+      // r10e: the unique key of a card refund row is the captured payment (`captureKey`).
+      await refundsCol.dropIndex('captureKey_1').catch(() => undefined);
       (await import('@/modules/common/utils/requiredIndex')).resetIndexChecks();
       try {
         await expect('P', 'POST', '/pharmacy-assisted/consultations', 503, consult(await futureSlot(), { phone: '9600001099' }), 'INDEXES_OUTDATED');
-      } finally { await refundsCol.createIndex({ paymentRecordId: 1 }, { unique: true }); }
+      } finally { await refundsCol.createIndex({ captureKey: 1 }, { unique: true, partialFilterExpression: { captureKey: { $type: 'string' } } }); }
       assert.equal(await UserModel.countDocuments({}), users0, 'no account opened');
       assert.equal(await BookingModel.countDocuments({}), 0, 'nothing held');
       assert.equal(gateway.orders.length, orders0, 'no order');

@@ -10,7 +10,7 @@ import { PaymentService, registerPaymentContextHandler } from '@/modules/payment
 import type { IPaymentRecord } from '@/modules/payment/types';
 import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { BOOKING_PAYMENT_WINDOW_MS } from '@/modules/bookings/holds';
-import { kickCardRefunds, queueCardRefundIn, recordPaiseOf } from '@/modules/assisted/cardRefunds';
+import { kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf } from '@/modules/assisted/cardRefunds';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
 /**
@@ -167,9 +167,60 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
   return { paymentRecord, entity };
 }
 
+/**
+ * r10e: OTHER captures on a card booking's order (Razorpay takes more than one payment on an order that is only
+ * "attempted": a slow UPI payment and a second "pay now"). Only the record's own capture (`razorpayPaymentId`) counts;
+ * every other captured payment is returned to its card, once per Razorpay payment id, whatever the booking's state
+ * (paid, cancelled, expired). Audited `booking.extra_capture`.
+ */
+export async function settleOtherAssistedCaptures(record: IPaymentRecord, captured: { id: string; amount: number; currency: string }[]): Promise<number> {
+  const own = record.razorpayPaymentId;
+  const others = captured.filter((p) => p && p.id && p.id !== own && String(p.currency).toUpperCase() === String(record.currency).toUpperCase());
+  if (!own || !others.length || record.context !== 'assisted_booking') return 0;
+  const id = lower(record.contextId);
+  const b = Types.ObjectId.isValid(id) ? await BookingModel.findById(id).select({ assisted: 1 }).lean() as IBooking | null : null;
+  const payerId = lower(b?.assisted?.funding?.payerId ?? record.payerPharmacyId);
+  if (!payerId) return 0;
+  let queued = 0;
+  for (const p of others) {
+    const created = await runLedgerTransaction(async (s) => {
+      const q = await queueExtraCaptureRefundIn({ bookingId: id, payerId, recordId: lower(record._id), razorpayPaymentId: p.id, amountMinor: p.amount }, s);
+      if (!q.created) return false;
+      await BookingModel.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': q.row } }, { session: s });
+      await auditIn({ actorKind: 'pharmacy', actorId: lower(b?.assisted?.bookedBy?.actorId ?? payerId), orgKind: 'pharmacy', orgId: payerId, bookingId: id,
+        action: 'booking.extra_capture', detail: { paymentRecordId: lower(record._id), razorpayPaymentId: p.id, amountMinor: p.amount } }, s);
+      return true;
+    });
+    if (created) queued += 1;
+  }
+  if (queued) await kickCardRefunds(id);
+  return queued;
+}
+
+/**
+ * r10e: a capture can land on an order after its record was settled (verify and the recovery sweep then never look again),
+ * so paid or returned card records are checked for other captures for 7 days, with back-off (10 min doubling, at most
+ * every 6 h). Run by the assisted scheduler every 5 minutes.
+ */
+export async function sweepAssistedOtherCaptures(now: Date = new Date(), limit = 50): Promise<{ checked: number }> {
+  const rows = await PaymentRecordModel.find({ context: 'assisted_booking', paymentGateway: 'razorpay', status: { $in: ['paid', 'refunded'] },
+    razorpayPaymentId: { $type: 'string' }, createdAt: { $gte: new Date(now.getTime() - 7 * 86_400_000) },
+    $or: [{ extraCheckNextAt: { $exists: false } }, { extraCheckNextAt: null }, { extraCheckNextAt: { $lte: now } }] })
+    .sort({ extraCheckNextAt: 1, createdAt: 1 }).limit(limit).select({ _id: 1, payerUserId: 1, userId: 1, extraChecks: 1 }).lean() as unknown as IPaymentRecord[];
+  for (const r of rows) {
+    // Reconcile looks at every payment on the order (r10e); a returned record answers its state afterwards (ignored).
+    await payments().reconcilePaymentAndProcess({ paymentTransactionId: String(r._id), userId: String(r.payerUserId || r.userId) }).catch(() => undefined);
+    const checks = Number(r.extraChecks || 0) + 1;
+    await PaymentRecordModel.updateOne({ _id: r._id }, { $set: { extraChecks: checks,
+      extraCheckNextAt: new Date(now.getTime() + Math.min(6 * 3_600_000, 10 * 60_000 * 2 ** Math.min(checks - 1, 10))) } });
+  }
+  return { checked: rows.length };
+}
+
 /** Registers the 'assisted_booking' payment context (called once at start-up, and by tests). */
 export function registerAssistedPayments(): void {
   registerPaymentContextHandler('assisted_booking', {
+    settleOtherCaptures: (record, captured) => settleOtherAssistedCaptures(record, captured),
     process: (record) => applyAssistedCapture(record),
     entity: async (record) => (Types.ObjectId.isValid(String(record.contextId)) ? BookingModel.findById(record.contextId).lean() : null) ?? {},
   });

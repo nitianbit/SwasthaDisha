@@ -108,6 +108,9 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     },
     // Background recovery (W3b): when this unsettled attempt is next checked with the gateway, and how often it was.
     recoveryNextAt: { type: Date },
+    // r10e: assisted card orders are checked for another capture for a while after payment (back-off).
+    extraCheckNextAt: { type: Date },
+    extraChecks: { type: Number, default: undefined },
     recoveryChecks: { type: Number, default: undefined },
     // D3: the one decision for a pharmacy order capture - applied to the order, or returned to the wallet. Claimed by a
     // compare-and-set from absent; the payment commit and the late-payment refund both go through it.
