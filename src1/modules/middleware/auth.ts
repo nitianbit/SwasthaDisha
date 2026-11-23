@@ -528,13 +528,13 @@ export const requireAnyPartnerPermission = (...perms: PartnerPermission[]) => pa
  * r9 (owner decision): a partner member linked to a doctor (`doctorId`: the owner of a doctor's own practice, or a
  * clinic's doctor) works in the clinic workspace only while that doctor is eligible (verified and active, S5
  * `isEligibleDoctor`). Refused at sign-in and on every request of an existing session (403
- * CLINIC_OWNER_DOCTOR_NOT_VERIFIED); re-verifying the doctor restores access. Members without a `doctorId` are unaffected.
+ * CLINIC_DOCTOR_NOT_VERIFIED); re-verifying the doctor restores access. Members without a `doctorId` are unaffected.
  */
 export async function assertMemberDoctorEligible(member: { doctorId?: unknown } | null | undefined): Promise<void> {
   const doctorId = typeof member?.doctorId === 'string' ? member.doctorId.trim() : '';
   if (!doctorId) return;
   if (!(await doctorIsEligible(doctorId.toLowerCase()))) {
-    throw new AppError({ status: 403, code: 'CLINIC_OWNER_DOCTOR_NOT_VERIFIED',
+    throw new AppError({ status: 403, code: 'CLINIC_DOCTOR_NOT_VERIFIED',
       message: 'Your doctor account is not verified or not active, so this clinic workspace is closed to you; contact Jansetu support' });
   }
 }

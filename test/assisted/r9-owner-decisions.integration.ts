@@ -6,7 +6,7 @@
  *    the S6 credit script) refuses the closed record; the S6 audit lists it; a credited top-up is 409; the race with a
  *    credit gives exactly one of two outcomes; the unique key index fails closed (503).
  * 2. A partner member linked to a doctor (`doctorId`) signs in and uses the clinic workspace only while that doctor is
- *    verified and active (403 CLINIC_OWNER_DOCTOR_NOT_VERIFIED); staff without a doctorId are unaffected.
+ *    verified and active (403 CLINIC_DOCTOR_NOT_VERIFIED); staff without a doctorId are unaffected.
  * 3. An admin prescription clear also withdraws the dispensing copy bound to a medicine order made from it (the order
  *    stays); a replay of the order key does not bring it back.
  * 4. After a clear and a new prescription, every copy made up to the clear stays hidden from all but admins.
@@ -423,8 +423,8 @@ async function main() {
       for (const s of [{ isVerified: false, isActive: true }, { isVerified: true, isActive: false }]) {
         await setDoctor(s);
         try {
-          await expect(session, 'GET', '/partner-workspace/me', 403, undefined, 'CLINIC_OWNER_DOCTOR_NOT_VERIFIED');
-          await assert.rejects(signIn(ownerPhone, SOLO), refusedWith('CLINIC_OWNER_DOCTOR_NOT_VERIFIED'));
+          await expect(session, 'GET', '/partner-workspace/me', 403, undefined, 'CLINIC_DOCTOR_NOT_VERIFIED');
+          await assert.rejects(signIn(ownerPhone, SOLO), refusedWith('CLINIC_DOCTOR_NOT_VERIFIED'));
           await expect(staff, 'GET', '/partner-workspace/me', 200);
           assert.ok((await signIn(staffPhone, SOLO)).accessToken, 'staff without a doctorId sign in');
         } finally { await setDoctor({ isVerified: true, isActive: true }); }
@@ -443,7 +443,7 @@ async function main() {
       try {
         const first = await signIn(ownerPhone);
         assert.ok(first.selection, 'two workspaces: a choice');
-        await assert.rejects(auth.selectPartner({ ticket: first.selection!.ticket, partnerId: SOLO }), refusedWith('CLINIC_OWNER_DOCTOR_NOT_VERIFIED'));
+        await assert.rejects(auth.selectPartner({ ticket: first.selection!.ticket, partnerId: SOLO }), refusedWith('CLINIC_DOCTOR_NOT_VERIFIED'));
         const second = await signIn(ownerPhone);
         const opened = await auth.selectPartner({ ticket: second.selection!.ticket, partnerId: LAB });
         assert.ok(opened.accessToken);

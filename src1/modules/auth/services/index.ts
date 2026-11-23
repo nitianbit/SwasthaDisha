@@ -606,7 +606,14 @@ export class AuthService {
     if (claims.purpose !== 'partner_select' || !identity || !claims.jti) {
       throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
     }
-    const claimed = await PartnerSelectionTicketModel.findOneAndDelete({ jti: claims.jti, ...identity, expiresAt: { $gt: new Date() } });
+    const ticket = { jti: claims.jti, ...identity, expiresAt: { $gt: new Date() } };
+    if (!(await PartnerSelectionTicketModel.exists(ticket))) {
+      throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
+    }
+    // r9b: a workspace closed by the doctor rule is refused BEFORE the ticket is used, so the person can still choose
+    // another workspace with the same ticket.
+    await assertMemberDoctorEligible((await this.partnerMembersOf(identity)).find((m) => String((m as any).partnerId) === String(data.partnerId)));
+    const claimed = await PartnerSelectionTicketModel.findOneAndDelete(ticket);
     if (!claimed) throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
     const choices = await this.partnerChoices(identity);
     if (!choices.some((c) => c.partnerId === String(data.partnerId))) {
@@ -614,7 +621,7 @@ export class AuthService {
     }
     const member = (await this.partnerMembersOf(identity))
       .find((m) => String((m as any).partnerId) === String(data.partnerId)) as unknown as IMember;
-    await assertMemberDoctorEligible(member); // r9
+    await assertMemberDoctorEligible(member); // r9 (again, on the member the token is for)
     const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone,
       ...(member.email ? { email: member.email } : {}), userType: 'partner' };
     const authVersion = await versionForNewToken('partner', String(member._id));
