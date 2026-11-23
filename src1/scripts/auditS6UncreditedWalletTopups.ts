@@ -20,6 +20,9 @@
 // `blockedAfterLostDispute`: top-ups an admin blocked after a lost card dispute (`chargebackAt`, assisted phase 1a):
 // Jansetu already lost that money to the bank - NEVER credit them (the credit script refuses them, with no override).
 // They are never in `rows` or `failedWithCapture`. Listed with or without the gateway.
+// `closedAsCompensated` (r9): top-ups an admin closed as already compensated by hand (`compensatedAt`): support already
+// paid that money to the pharmacy - NEVER credit them (the credit script refuses them, with no override). Never in
+// `rows` or `failedWithCapture`; listed with or without the gateway.
 // `anomalies`: wallet_recharge records with only one of payerPharmacyId / the pharmacy flow - listed for review, no
 // credit advice (the service would not credit them to a pharmacy).
 // `anomalies` also lists pharmacy-flow records whose payerPharmacyId is not an ObjectId (never credited by this tooling).
@@ -82,6 +85,10 @@ export interface S6BlockedRow {
   paymentTransactionId: string; pharmacyId: string; razorpayOrderId: string | null; amount: number; status: string; chargebackAt: string | null;
   createdAt: string | null; review: 'blocked after a lost dispute: never credit';
 }
+export interface S6CompensatedRow {
+  paymentTransactionId: string; pharmacyId: string; razorpayOrderId: string | null; amount: number; status: string; compensatedAt: string | null;
+  createdAt: string | null; review: 'closed as compensated: never credit';
+}
 export interface S6Anomaly {
   paymentTransactionId: string; status: string; isProcessed: boolean; hasPayerPharmacyId: boolean; payerPharmacyIdValid: boolean; hasPharmacyFlow: boolean;
   amount: number; createdAt: string | null;
@@ -89,9 +96,9 @@ export interface S6Anomaly {
 export interface S6LookupFailure { paymentTransactionId: string; status: string; section: 'rows' | 'failed'; reason: string }
 export interface S6TopupAudit {
   generatedAt: string; gatewayChecked: boolean; scanned: number; rows: S6TopupRow[]; failedWithCapture: S6FailedRow[] | 'not checked (no gateway)';
-  gatewayLookupFailed: S6LookupFailure[]; blockedAfterLostDispute: S6BlockedRow[]; anomalies: S6Anomaly[];
+  gatewayLookupFailed: S6LookupFailure[]; blockedAfterLostDispute: S6BlockedRow[]; closedAsCompensated: S6CompensatedRow[]; anomalies: S6Anomaly[];
   summary: Record<Finding, number> & { needsCompensationCheck: number; capturedNotCredited: number | null; capturedNotCreditedAmount: number | null;
-    failedWithCapture: number | null; gatewayLookupFailed: number; blockedAfterLostDispute: number; anomalies: number };
+    failedWithCapture: number | null; gatewayLookupFailed: number; blockedAfterLostDispute: number; closedAsCompensated: number; anomalies: number };
 }
 
 /** Readable text for a thrown error; Razorpay SDK errors are { statusCode, error: { code, description } } without .message. */
@@ -214,11 +221,12 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
   }
   const gatewayLookupFailed: S6LookupFailure[] = [];
   const blocked: S6BlockedRow[] = [];
+  const compensated: S6CompensatedRow[] = [];
   const failed: { id: string; pharmacyId: string; orderId: string | null; paise: number; finalPaise: number; status: string; createdAt: unknown }[] = [];
   let scanned = 0;
   for await (const r of PaymentRecordModel.find(PHARMACY_TOPUP_FILTER)
     .select({ payerPharmacyId: 1, payerUserId: 1, userId: 1, razorpayOrderId: 1, razorpayPaymentId: 1, baseAmount: 1, baseAmountPaise: 1,
-      finalAmount: 1, finalAmountPaise: 1, status: 1, isProcessed: 1, createdAt: 1, paidAt: 1, chargebackAt: 1 })
+      finalAmount: 1, finalAmountPaise: 1, status: 1, isProcessed: 1, createdAt: 1, paidAt: 1, chargebackAt: 1, compensatedAt: 1 })
     .sort({ _id: 1 }).lean().cursor()) {
     scanned++;
     const id = String(r._id);
@@ -227,6 +235,12 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     if (r.chargebackAt) {
       blocked.push({ paymentTransactionId: id, pharmacyId, razorpayOrderId: str(r.razorpayOrderId), amount: rupees(recordAmountPaise(r)), status: r.status,
         chargebackAt: iso(r.chargebackAt), createdAt: iso(r.createdAt), review: 'blocked after a lost dispute: never credit' });
+      continue;
+    }
+    // r9: closed as compensated - support already paid it by hand; whatever its status, never a credit candidate.
+    if (r.compensatedAt) {
+      compensated.push({ paymentTransactionId: id, pharmacyId, razorpayOrderId: str(r.razorpayOrderId), amount: rupees(recordAmountPaise(r)), status: r.status,
+        compensatedAt: iso(r.compensatedAt), createdAt: iso(r.createdAt), review: 'closed as compensated: never credit' });
       continue;
     }
     if (r.status === 'failed') {
@@ -305,11 +319,11 @@ export async function auditS6UncreditedWalletTopups(read?: OrderPaymentsReader, 
     capturedNotCreditedAmount = rupees(owed.reduce((a, r) => a + Math.round(((r.gateway as GatewayView).capturedAmount ?? 0) * 100), 0));
   }
   return { generatedAt: new Date().toISOString(), gatewayChecked: !!read, scanned, rows, failedWithCapture, gatewayLookupFailed,
-    blockedAfterLostDispute: blocked, anomalies,
+    blockedAfterLostDispute: blocked, closedAsCompensated: compensated, anomalies,
     summary: { unsettled: count('unsettled'), paid_not_credited: count('paid_not_credited'), credited_not_processed: count('credited_not_processed'),
       needsCompensationCheck: rows.filter((r) => r.needsCompensationCheck).length, capturedNotCredited, capturedNotCreditedAmount,
       failedWithCapture: Array.isArray(failedWithCapture) ? failedWithCapture.length : null, gatewayLookupFailed: gatewayLookupFailed.length,
-      blockedAfterLostDispute: blocked.length, anomalies: anomalies.length } };
+      blockedAfterLostDispute: blocked.length, closedAsCompensated: compensated.length, anomalies: anomalies.length } };
 }
 
 /** Keeps stdout for the JSON report: every console log line (service logs included) goes to stderr. */
@@ -347,6 +361,7 @@ async function main() {
     process.stderr.write(`pharmacy top-up records scanned: ${report.scanned}; unsettled: ${s.unsettled}; paid but not credited: ${s.paid_not_credited}; ` +
       `credited but not marked processed: ${s.credited_not_processed}; need a compensation check: ${s.needsCompensationCheck}; ` +
       `anomalies: ${s.anomalies}; blocked after a lost dispute (NEVER credit): ${s.blockedAfterLostDispute}; ` +
+      `closed as compensated (NEVER credit): ${s.closedAsCompensated}; ` +
       (report.gatewayChecked ? `captured at Razorpay and not credited: ${s.capturedNotCredited} (Rs ${s.capturedNotCreditedAmount}); ` +
         `failed records with a capture (manual review): ${s.failedWithCapture}; gateway lookups failed: ${s.gatewayLookupFailed}\n`
         : 'gateway not checked (no Razorpay keys in the environment, or --no-gateway)\n'));

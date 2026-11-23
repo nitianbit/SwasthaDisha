@@ -32,6 +32,9 @@ export interface IPaymentRecord {
   walletCreditedAt?: Date;
   /** Pharmacy top-ups: a card dispute lost before any credit; never credited afterwards. */
   chargebackAt?: Date;
+  /** Pharmacy top-ups (r9): closed by an admin as already compensated by hand; never credited afterwards. */
+  compensatedAt?: Date;
+  compensation?: { by: string; reason: string; requestKey: string; requestHash: string; previousStatus: string };
   notes?: Record<string, unknown>;
   paidAt?: Date;
   /** Background recovery schedule (W3b). */

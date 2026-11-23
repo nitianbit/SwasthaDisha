@@ -38,4 +38,8 @@ adminAssistedRouter.get('/pharmacies/:id/wallet/lots', validate(v.idParamSchema,
 adminAssistedRouter.post('/wallet-lots/:lotId/chargeback', validate(v.lotIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'), catchAsync(c.chargeback));
 adminAssistedRouter.post('/wallet-payments/:paymentId/chargeback', validate(v.paymentIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
   catchAsync(c.paymentChargeback));
+// r9: a top-up support already paid by hand is closed as compensated (never credited); and its by-key read.
+adminAssistedRouter.get('/wallet-payments/close-compensated/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(c.closeCompensatedByKey));
+adminAssistedRouter.post('/wallet-payments/:paymentId/close-compensated', validate(v.paymentIdParamSchema, 'params'), validate(v.closeCompensatedSchema, 'body'),
+  catchAsync(c.closeCompensated));
 adminAssistedRouter.put('/pharmacies/:id/wallet/freeze', validate(v.idParamSchema, 'params'), validate(v.freezeSchema, 'body'), catchAsync(c.freeze));

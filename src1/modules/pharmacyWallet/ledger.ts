@@ -319,6 +319,53 @@ export async function recordPaymentChargebackIn(paymentRecordIdIn: string, s: Cl
   return { ...r, blockedUncredited: false, lotId: String(lot!._id), paymentRecordId, withoutLot: true };
 }
 
+/**
+ * r9 (owner decision): support already paid the pharmacy by hand for a card top-up that never arrived, so the top-up is
+ * CLOSED AS COMPENSATED in the caller's transaction: `compensatedAt` + `compensation` and status `failed` (a refunded
+ * record keeps its status), guarded on the status read and on no credit claim. Verify, reconcile, the top-up check, the
+ * sweep and the S6 credit script then never credit it. The credit claims the same document in its own transaction
+ * (`walletCreditedAt`, guarded on no `compensatedAt`), so a close and a credit never both commit: either it was credited
+ * (the close answers 409 TOPUP_ALREADY_CREDITED: nothing to close) or it is closed and never credited.
+ * - not a pharmacy top-up → 404 TOPUP_NOT_FOUND; blocked after a lost dispute → 409 TOPUP_BLOCKED;
+ * - already closed → the stored closure (`replayed: true`); the same (admin, key) with other content → 409
+ *   IDEMPOTENCY_KEY_REUSED. `requestKey` here is the stored `<adminId>:<key>`.
+ */
+export interface CompensatedClose {
+  replayed: boolean; paymentRecordId: string; pharmacyId: string; amountPaise: number; compensatedAt: Date; status: string;
+}
+export async function closeTopupCompensatedIn(paymentRecordIdIn: string, c: { by: string; reason: string; requestKey: string; requestHash: string },
+  s: ClientSession): Promise<CompensatedClose> {
+  const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
+  if (!/^[0-9a-fA-F]{24}$/.test(String(paymentRecordIdIn ?? ''))) throw notFound();
+  const record = await PaymentRecordModel.findById(paymentRecordIdIn).session(s).lean() as Record<string, any> | null;
+  if (!record || !isPharmacyTopup(record)) throw notFound();
+  const paymentRecordId = String(record._id);
+  const pharmacyId = String(record.payerPharmacyId).toLowerCase();
+  const amountPaise = Number.isSafeInteger(record.baseAmountPaise) ? Number(record.baseAmountPaise) : Math.round(Number(record.baseAmount ?? 0) * 100);
+  const answer = (r: Record<string, any>, replayed: boolean): CompensatedClose => ({ replayed, paymentRecordId, pharmacyId, amountPaise,
+    compensatedAt: r.compensatedAt, status: r.status });
+  if (record.compensatedAt) {
+    if (record.compensation?.requestKey === c.requestKey && record.compensation?.requestHash !== c.requestHash) {
+      throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different close');
+    }
+    return answer(record, true);
+  }
+  if (record.chargebackAt) throw err(409, 'TOPUP_BLOCKED', 'This top-up was already blocked after a lost card dispute; it is never credited');
+  const credit = await PharmacyWalletTransactionModel.exists({ pharmacyId, referenceType: 'wallet_recharge', referenceId: paymentRecordId, status: 'completed' })
+    .session(s);
+  if (credit || record.walletCreditedAt) {
+    throw err(409, 'TOPUP_ALREADY_CREDITED', 'This top-up was already credited to the wallet; there is nothing to close');
+  }
+  const at = new Date();
+  const status = record.status !== 'refunded' ? 'failed' : record.status;
+  const closed = await PaymentRecordModel.updateOne({ _id: record._id, status: record.status, compensatedAt: { $exists: false },
+    chargebackAt: { $exists: false }, walletCreditedAt: { $exists: false } },
+  { $set: { compensatedAt: at, status, compensation: { by: c.by, reason: c.reason, requestKey: c.requestKey, requestHash: c.requestHash,
+    previousStatus: record.status } } }, { session: s });
+  if (closed.modifiedCount !== 1) throw Object.assign(err(409, 'WALLET_CHANGED', 'The top-up changed; please retry'), { retryable: true });
+  return answer({ compensatedAt: at, status }, false);
+}
+
 /** Recomputes `withdrawableMinor` from the lots (a lot's fee became known), in the caller's transaction. */
 export async function refreshWithdrawableIn(pharmacyId: string, s: ClientSession): Promise<void> {
   const wallet = await PharmacyWalletModel.findOne({ pharmacyId }).session(s).lean() as IPharmacyWallet | null;

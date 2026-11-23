@@ -109,6 +109,10 @@ const UNSETTLED_ATTEMPT = {
   $or: [{ status: 'created' }, { status: 'paid', isProcessed: { $ne: true } }],
 };
 
+/** r9: a pharmacy top-up an admin closed as already compensated by hand is never credited (same code as a blocked one). */
+const topupClosedCompensated = () => new AppError({ status: 409, code: 'TOPUP_BLOCKED',
+  message: 'This top-up was closed: Jansetu support already paid this amount to you, so it is not credited to the wallet' });
+
 /** D3: thrown inside the payment commit transaction when the capture was already decided (aborts the transaction). */
 class SettlementAlreadyDecided extends Error {}
 
@@ -806,6 +810,7 @@ export class PaymentService {
   }
 
   private handleExistingRecordStatus(paymentRecord: IPaymentRecord): void {
+    if (paymentRecord.compensatedAt) throw topupClosedCompensated();
     if (paymentRecord.chargebackAt) {
       throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
         message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
@@ -978,8 +983,8 @@ export class PaymentService {
     data: VerifyPaymentRequest
   ): Promise<IPaymentRecord> {
     const updated = await this.paymentRepository.update(
-      // A top-up blocked after a lost card dispute (`chargebackAt`) is never marked paid again.
-      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] }, chargebackAt: { $exists: false } },
+      // A top-up blocked after a lost card dispute (`chargebackAt`) or closed as compensated (r9) is never marked paid again.
+      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] }, chargebackAt: { $exists: false }, compensatedAt: { $exists: false } },
       {
         status: 'paid',
         razorpayPaymentId: data.razorpayPaymentId,
@@ -1596,10 +1601,13 @@ export class PaymentService {
         }
         // Review of db252c1 (item a): the credit claims the record in this transaction — a write, so a concurrent
         // chargeback that blocks the uncredited top-up and this credit can never both commit. Refused once blocked.
+        // r9: nor once closed as already compensated by hand (`compensatedAt`): the close writes this same document.
         const claimed = await PaymentRecordModel.updateOne(
-          { _id: paymentRecord._id, status: 'paid', chargebackAt: { $exists: false } },
+          { _id: paymentRecord._id, status: 'paid', chargebackAt: { $exists: false }, compensatedAt: { $exists: false } },
           { $set: { walletCreditedAt: new Date() } }, { session });
         if (claimed.modifiedCount !== 1) {
+          const now = await PaymentRecordModel.findById(paymentRecord._id).select({ compensatedAt: 1 }).session(session).lean();
+          if (now?.compensatedAt) throw topupClosedCompensated();
           throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
             message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
         }

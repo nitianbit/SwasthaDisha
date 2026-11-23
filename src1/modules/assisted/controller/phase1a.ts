@@ -10,7 +10,10 @@ import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { inTransaction } from '@/modules/partners/services';
-import { pharmacyWalletIn, recordChargebackIn, recordPaymentChargebackIn, resolveTopupRecordId } from '@/modules/pharmacyWallet/ledger';
+import { closeTopupCompensatedIn, pharmacyWalletIn, recordChargebackIn, recordPaymentChargebackIn, resolveTopupRecordId } from '@/modules/pharmacyWallet/ledger';
+import { PaymentRecordModel } from '@/modules/payment/model';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
@@ -158,4 +161,72 @@ export const paymentChargeback = async (req: AuthRequest, res: Response) => {
   }
   send(res, { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
     withoutLot: out.withoutLot });
+};
+
+/** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). */
+const closedView = (r: { replayed: boolean; paymentRecordId: string; pharmacyId: string; amountPaise: number; compensatedAt: Date; status: string }) => ({
+  closed: true, credited: false, replayed: r.replayed, paymentRecordId: r.paymentRecordId, pharmacyId: r.pharmacyId, amountPaise: r.amountPaise,
+  compensatedAt: r.compensatedAt, status: r.status,
+  message: 'This top-up is closed as already paid to the pharmacy by Jansetu support. It will never be credited to the wallet.',
+});
+const COMPENSATION_KEY_INDEX = { 'compensation.requestKey': 1 } as const;
+/** A stored closure, as answered to a replay. */
+const closureOf = (r: Record<string, any>) => ({ replayed: true, paymentRecordId: String(r._id), pharmacyId: String(r.payerPharmacyId).toLowerCase(),
+  amountPaise: Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100),
+  compensatedAt: r.compensatedAt as Date, status: String(r.status) });
+
+/**
+ * POST /admin/wallet-payments/:paymentId/close-compensated { reason, requestKey } — r9 (owner decision): support already
+ * paid the pharmacy by hand for a card top-up that never arrived. `paymentId` is the payment record id, the Razorpay order
+ * id or the Razorpay payment id (resolved as for the payment chargeback). In one transaction the record is closed
+ * (`compensatedAt`, never credited by any path) and audited `wallet.closed_compensated`. Once per (admin, request key)
+ * with a content hash (the resolved record and the reason); an already closed top-up answers its closure (replayed).
+ * A credited top-up: 409 TOPUP_ALREADY_CREDITED. The unique `compensation.requestKey` index is checked first (503).
+ */
+export const closeCompensated = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  const reason = String(req.body.reason).trim();
+  const actorId = String(req.user?._id).toLowerCase();
+  const requestKey = `${actorId}:${String(req.body.requestKey)}`;
+  await assertUniqueIndex(PaymentRecordModel, COMPENSATION_KEY_INDEX);
+  const { Container } = await import('typedi');
+  const { PaymentService } = await import('@/modules/payment/services');
+  const paymentRecordId = await resolveTopupRecordId(req.params.paymentId, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
+  const requestHash = requestHashOf({ paymentRecordId, reason });
+  /** The record this (admin, key) already closed: its closure when the content matches, else 409. */
+  const byKey = async () => {
+    const prior = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
+    if (!prior) return null;
+    if (prior.compensation?.requestHash !== requestHash) throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different close' });
+    return closureOf(prior);
+  };
+  const prior = await byKey();
+  if (prior) return send(res, closedView(prior));
+  const run = () => inTransaction(async (s) => {
+    const r = await closeTopupCompensatedIn(paymentRecordId, { by: actorId, reason, requestKey, requestHash }, s);
+    if (!r.replayed) {
+      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: r.pharmacyId, action: 'wallet.closed_compensated',
+        requestKey: String(req.body.requestKey), detail: { paymentRecordId: r.paymentRecordId, amountPaise: r.amountPaise, reason } }, s);
+    }
+    return r;
+  });
+  try {
+    send(res, closedView(await run()));
+  } catch (e) {
+    // The same key raced on another record (unique `compensation.requestKey`): answered by what that key did.
+    if (!isDuplicateKeyError(e)) throw e;
+    const raced = await byKey();
+    if (!raced) throw e;
+    send(res, closedView(raced));
+  }
+};
+
+/** GET /admin/wallet-payments/close-compensated/by-key/:key — did this admin's close with this key happen? (r9) */
+export const closeCompensatedByKey = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  await assertUniqueIndex(PaymentRecordModel, COMPENSATION_KEY_INDEX);
+  const requestKey = `${String(req.user?._id).toLowerCase()}:${String(req.params.key)}`;
+  const r = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
+  if (!r) return send(res, { state: 'not_found' });
+  send(res, { state: 'closed', ...closedView(closureOf(r)) });
 };

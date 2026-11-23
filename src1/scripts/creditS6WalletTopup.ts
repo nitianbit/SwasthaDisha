@@ -26,6 +26,7 @@
 //   - not a pharmacy top-up by the service's rule (wallet_recharge + payerPharmacyId + notes.flow
 //     'pharmacy_wallet_recharge'), or a payerPharmacyId that is not an ObjectId;
 //   - a top-up blocked after a lost card dispute (`chargebackAt`): never credited, whatever its status;
+//   - a top-up an admin closed as already compensated by hand (`compensatedAt`, r9): never credited, whatever its status;
 //   - a failed / refunded record, an inactive pharmacy wallet, or a record that is paid and processed but has no credit
 //     (decision 'processed_without_credit': manual review);
 //   - a base amount (what is credited) that differs from the final amount (what was charged), or a captured amount that
@@ -131,6 +132,10 @@ export async function creditS6WalletTopup(opts: {
   // Assisted phase 1a: blocked after a lost card dispute - the bank took the money back. Never credited; no override.
   if ((r as { chargebackAt?: unknown }).chargebackAt) {
     return refuse('blocked after a lost card dispute: never credit (Jansetu already lost this money; no override)');
+  }
+  // r9: closed as compensated - support already paid this top-up by hand. Never credited; no override.
+  if ((r as { compensatedAt?: unknown }).compensatedAt) {
+    return refuse('closed as compensated: never credit (Jansetu support already paid this top-up by hand; no override)');
   }
   if (r.status === 'failed' || r.status === 'refunded') return refuse(`record is ${r.status}: manual review (reconcile never revives it)`);
 

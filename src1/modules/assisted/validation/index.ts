@@ -88,3 +88,5 @@ export const lotIdParamSchema = Joi.object({ lotId: objectId.required() });
 export const paymentIdParamSchema = Joi.object({ paymentId: Joi.alternatives().try(objectId, Joi.string().pattern(/^pay_[A-Za-z0-9]{6,40}$/),
   Joi.string().pattern(/^order_[A-Za-z0-9_]{6,60}$/)).required() });
 export const chargebackSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required() });
+/** r9: POST /admin/wallet-payments/:paymentId/close-compensated. */
+export const closeCompensatedSchema = Joi.object({ reason: Joi.string().trim().min(1).max(500).required(), requestKey: key.required() });
