@@ -27,6 +27,12 @@ export const assistedFlags = {
    * made keep working whatever it says (money in flight is never stranded).
    */
   card: () => on('ASSISTED_CARD_PAYMENT_ENABLED'),
+  /**
+   * r11 (§24.4.6): pharmacy → lab test bookings (the lab list, catalogue and slot reads, and new bookings). Needs
+   * ASSISTED_BOOKING_ENABLED_PHARMACY too. Reads, cancellations, accept-reschedule, refunds, report access and by-key
+   * always work.
+   */
+  pharmacyLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_PHARMACY'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -58,4 +64,9 @@ export function assertPharmacyAssistedOn(): void {
 
 export function assertAdminToolsOn(): void {
   if (!assistedFlags.adminTools()) throw disabled('This assisted-booking tool');
+}
+
+/** r11: both switches must be on for the pharmacy lab-booking reads and new bookings. */
+export function assertPharmacyLabOn(): void {
+  if (!assistedFlags.pharmacy() || !assistedFlags.pharmacyLab()) throw disabled('Lab test booking for patients');
 }

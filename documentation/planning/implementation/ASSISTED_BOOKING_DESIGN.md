@@ -3169,3 +3169,92 @@ and `ALL_PERMISSIONS` (`partners/types/index.ts:43-69`); owners hold all.
    the visit is recorded. Jansetu moves no money, and the lab settles any cash itself (L12).
 4. **Should lab desk walk-ins count towards the "5 bookings per mobile number per day" limit?** Recommended: no. That
    limit guards partner-paid bookings; the desk is the lab's own counter (L14).
+
+### 24.11 Round 2a build record (r11, 2026-11-23)
+
+Branch `m0/r11-phase2a` from `f81c8f3b` (stage head, r10f) with `m0/r11-phase2-spec` merged. Local commits only. Built:
+§24.4 (pharmacy → lab test, pharmacy wallet) with the owner's answers of 23 Nov, which win over §24.4 where they differ:
+booker report access **90 days** from release (released only); the booker **may accept** the lab's new time; the patient may
+cancel from the app with the refund to the pharmacy; **no blocking limits except the hourly lookups**; cut 0; SMS as
+comments; card payment is 2b.
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Model | `partners/model/labBooking.ts` | `source` (enum, derived `self` when missing), `assisted` (Mixed, the §5.1 block without `join`), `cancellation.reason: 'partner'`, `cancellation.byKind: 'booker'`; indexes `{assisted.requestKey}` unique partial, `{assisted.shortRef}` unique partial, `{assisted.bookedBy.kind, assisted.bookedBy.id, createdAt:-1, _id:-1}` |
+| Types | `assisted/types.ts` | `AssistedSplit.lines` (D4); refund causes `partner_lab_reject`, `admin` |
+| Create, reads, cancel, accept | `assisted/labBookings.ts` (new), `assisted/patient.ts` (new) | §24.4.3 in order; booker lab view (allowlist); list / detail / by-key / abandon; booker cancel (1 h, or any time while a lab reschedule is unanswered); booker accept-reschedule |
+| Money on cancel | `assisted/labRefunds.ts` (new), `partners/services/labBookings.ts` `cancelIn` | assisted rows refund the paying pharmacy's wallet once (`assisted_lab:<id>:refund`, lots restored), reverse the redemption once, never touch the customer wallet; refunds always post. Admin no-show cancel without refund → `funding.state: 'forfeited'` |
+| Lab side | `partners/services/labBookings.ts` | `partnerView` shows `source`, `assisted.{shortRef, bookedBy.name, preferredLanguage}`, `identityNote`; no funding / split / keys / consent / moves. Reject, reschedule, report release and admin no-show cancel tell the booker (in-app, no content). Completion earns `split.providerMinor` (gross = base, commission = cut = 0) once |
+| Customer side | same, `assisted/labViews.ts` (new) | assisted rows hide `pricing`, `paymentTransactionId`, item prices and the `assisted` money/keys, add `paidBy` and the identity line; pay-again 409 `PARTNER_PAID_BOOKING`; patient cancel (2 h window, as before) refunds the pharmacy and tells it ("Cancelled by the patient"); an open "not mine" row leaves the list |
+| Report access | `file/access.ts` `canReadPartnerLabReport` | a pharmacy reads a RELEASED report of a lab booking it booked, while operational, until first release + 90 days; drafts never; other pharmacies the uniform 404 |
+| Not mine, move, queue | `assisted/review.ts` | `POST /lab-bookings/:id/not-mine`; the review queue lists lab rows (`booking.kind: 'lab_booking'`); dismiss names the right collection; the admin move finds the booking in either collection and moves `userId`, the patient snapshot, the redemption, the booker link and `disputed: moved` in one transaction, once per (admin, key) |
+| Reconciliation | `assisted/reconciliation.ts` | `labBookingChecks`: one debit, refund posted once, cancelled-not-refunded, refunded-not-cancelled, split and lines sum, earning once on completion, none on no-show/cancel; the booker cancel-rate alert counts lab rows |
+| Switch | `assisted/flags.ts` | `ASSISTED_LAB_BOOKING_ENABLED_PHARMACY` (+ `assertPharmacyLabOn`) |
+| Routes | `assisted/routes/phase1a.ts`, `assisted/controller/phase2a.ts` (new), `partners/routes/index.ts` | below |
+| Audit | `assisted/model` | new action `booking.reschedule_accepted`; lab rows audit `booking.attempted` / `created` / `cancelled` / `not_mine` / `moved` with `detail.kind: 'lab_booking'` (ids and codes only) |
+
+Check: `test/assisted/r11-phase2a.integration.ts` (26 checks).
+
+**ASSUMED (r11 build, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| B1 | The patient helpers (`openOrPrepareAccountIn`, `assertDependentOfPhone`, the link, `redeemCouponIn`) are **copied** to `assisted/patient.ts`, not moved; `consultations.ts` is untouched | r10g is removing the booking limits inside those functions; unify after it merges |
+| B2 | Owner 23 Nov limits: lab creates count only against the hourly lookup limit (as every create). No per-number count, no new-account count, no cancellation block (`assertBookerMayBook`), no cancellation count (it would block consultations). Alert-only: the pharmacy–lab pair alert (subject `lab:<partnerId>`) and the 7-day booker cancel-rate alert (lab rows included) | owner |
+| B3 | The 90 days run from the booking's FIRST release, for every file of it (L3) | spec; a file released later shares the window |
+| B4 | The patient's view also hides the item prices (`priceMinor`, `mrpMinor`, `gstRate`, `sac`) | the partner's price, as the 1a view hides a consultation's price |
+| B5 | Booker notices use the assisted notifier (`referenceType: 'booking'`) with `data.bookingKind: 'lab_booking'`; patient notices use the lab notifier (`partner_lab_booking`) | `support.ts` left alone for the r10g merge |
+| B6 | Stored key `assisted_lab:pharmacy:<pharmacy>:<actor>:<key>`, claim scope `assisted_lab_create:<pharmacy>:<actor>` | its own namespace beside consultations |
+| B7 | The stored patient name: self → the typed name; known family member → their name; new family member → the typed name. Admin move: the family member's name, else the admin's `holderName`, else the old self name | names rule |
+| B8 | 2a rows are wallet-only: the lab refund step refuses any other funding (409 `REFUND_METHOD_UNSUPPORTED`) until 2b adds card refunds | fail closed |
+| B9 | The booker's accept tells the patient ("New lab time accepted") | the patient should know the time changed |
+| B10 | The patient's cancel answer reports `refunded: 0` for an assisted row | nothing went to the patient |
+| B11 | `from` / `to` of the booker list filter the slot date; `nearby` is any active branch on the pharmacy's pincode, else city | as the consultation list and doctor list |
+| B12 | The admin lab list (`/partner-workspace/admin/lab-bookings`) keeps the lab view (no funding); reconciliation is the admin's money view | unchanged route |
+| B13 | Earnings of an assisted row post only while its funding is `captured` | a refunded or forfeited booking never completes anyway |
+
+**API for the web** (pharmacy token, `requireOperationalPharmacy`; `{ success, data }`, `Cache-Control: private, no-store`)
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET /api/v1/pharmacy-assisted/labs` | `?visitMode=lab\|home&limit≤100` | `[{ partnerId, name, nearby: 'pincode'\|'city'\|null, branches: [{ branchId, name, address, phone, homeCollection, inLab }] }]` |
+| `GET …/labs/:partnerId/catalogue` | `?visitMode` | `[{ itemId, kind, name, code, description, preparation, sampleType, includes, price, priceMinor, mrpMinor, visitModes, reportTatHours }]`; unknown/unverified lab 404 `LAB_NOT_FOUND` |
+| `GET …/labs/branches/:branchId/slots` | `?visitMode (required)&from=YYYY-MM-DD&days≤14` | `[{ slotId, date, startTime, endTime, seatsLeft }]` (≥ 60 min ahead); 404 `BRANCH_NOT_AVAILABLE` |
+| `POST …/lab-bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, partnerId, branchId, visitMode, slotId, itemIds[1..20], address? (home only: {line1,line2?,city,state?,pincode(6 digits),landmark?}), couponCode?, acceptedPriceMinor, notes?, paymentMethod:'wallet' }` | 201 (replay 200) `{ booking: <booker lab view>, funding: { method:'wallet', amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode }, newAccount, replayed }` |
+| `GET …/lab-bookings` | `?status&from&to (slot date)&cursor&limit≤50` | `[booker lab view]`, top-level `pagination: { total, nextCursor }` (newest first; cursor `<ms>_<id>`) |
+| `GET …/lab-bookings/:id` | — | booker lab view; any other booking 404 `LAB_BOOKING_NOT_FOUND` |
+| `GET …/lab-bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state:'used', booking } \| { state:'abandoned' } \| { state:'unknown' }` |
+| `POST …/lab-bookings/:id/cancel` | `{ reason?, expectedVersion? }` | `{ booking, refundedMinor, alreadyCancelled }` |
+| `POST …/lab-bookings/:id/accept-reschedule` | `{ version }` (the `reschedule.version` shown) | booker lab view |
+| `POST /api/v1/lab-bookings/:bookingId/not-mine` (customer) | `{ note? }` | `{ reported: true, reviewItemId }` (needs `ASSISTED_ADMIN_TOOLS_ENABLED`) |
+
+Booker lab view: `_id, source, partnerId, lab{name}, branchId, branch{name,address,phone}, visitMode, address?, slot{slotId,date,startTime,endTime,startsAt},
+items[{name,kind,code}], status, statusVersion, reschedule{pending,version,previousSlot,reason,at}|null, collector{name}|null,
+cancellation{reason,byKind,at}|null, lifecycle, patientName, holder{pharmacyCustomerId,name,typedName}, userId,
+assisted{shortRef,bookedBy{name},preferredLanguage,disputed?{state}}, payment{method,state,payBy:null}, report{releases[{file,releasedAt,signer{name,kind,registrationNumber}}]}, createdAt, updatedAt`.
+`report.releases` is empty until a release and again after the 90 days. Use `statusVersion` as `expectedVersion`.
+
+Errors (create): 400 `CONSENT_REQUIRED`, `PAYMENT_METHOD_UNAVAILABLE` (`razorpay`: 2b), `REQUEST_KEY_REQUIRED`, `INVALID_PHONE`,
+`VALIDATION_ERROR`, `ADDRESS_REQUIRED`, `CATALOGUE_ITEM_NOT_AVAILABLE`, `VISIT_MODE_NOT_SUPPORTED`, `INVALID_COUPON`,
+`COUPON_NOT_FOR_ASSISTED`; 404 `LAB_NOT_FOUND`, `BRANCH_NOT_AVAILABLE`, `DEPENDENT_NOT_FOUND`; 409 `PRICE_CHANGED`
+(`details: { priceMinor, listMinor, discountMinor }`), `SLOT_UNAVAILABLE`, `INSUFFICIENT_BALANCE`, `WALLET_FROZEN`,
+`WALLET_INACTIVE`, `WALLET_RECEIVABLE`, `COUPON_EXHAUSTED`, `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 429
+`ASSISTED_LIMIT_REACHED` (lookups only); 503 `ASSISTED_BOOKING_DISABLED`, `INDEXES_OUTDATED`, `CUSTOMER_LINKING_UNAVAILABLE`.
+Cancel: 404 `LAB_BOOKING_NOT_FOUND`; 409 `LAB_BOOKING_CHANGED`, `LAB_BOOKING_NOT_CANCELLABLE`, `CANCELLATION_WINDOW_CLOSED`,
+`NO_SHOW_NOT_REFUNDABLE`. Accept: 404 `LAB_BOOKING_NOT_FOUND`; 409 `NO_PENDING_RESCHEDULE`, `RESCHEDULE_CHANGED`.
+Patient app: lab booking reads carry `paidBy` and `assisted.{shortRef, bookedBy{kind,name}, identity{…, note}}`; `pricing` absent;
+"pay again" answers 409 `PARTNER_PAID_BOOKING`. Lab workspace: `source`, `assisted{shortRef, bookedBy{name}, preferredLanguage}`, `identityNote`.
+
+**Switches and deploy order**
+
+- `ASSISTED_LAB_BOOKING_ENABLED_PHARMACY` (new, off unless exactly `"true"`; needs `ASSISTED_BOOKING_ENABLED_PHARMACY`). Off: the lab
+  list, catalogue and slot reads and new lab bookings answer 503 `ASSISTED_BOOKING_DISABLED`. Reads, by-key, cancel,
+  accept-reschedule, refunds, report access always work. "Not mine" follows `ASSISTED_ADMIN_TOOLS_ENABLED` as for consultations.
+- Order: 1. deploy (switch off); 2. `npm run sync-indexes` (the three `partner_lab_bookings` indexes; until then a lab create
+  answers 503 `INDEXES_OUTDATED`); 3. `ASSISTED_LAB_BOOKING_ENABLED_PHARMACY=true`; 4. restart. No migration.
+- Rollback: the switch only. Never roll the code back below r11 while an assisted lab booking is open (older code would refund
+  the patient's wallet): `db.partner_lab_bookings.countDocuments({ source: 'pharmacy_assisted', status: { $nin: ['completed','cancelled','no_show'] } })` must be 0.
+- Merge with r10g: expected to touch `assisted/consultations.ts` and `assisted/limits.ts`, which r11 does not change; r11
+  adds one line to `assisted/flags.ts` (the switch) and one action to `assisted/model`.

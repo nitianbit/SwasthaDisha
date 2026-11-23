@@ -71,6 +71,8 @@ import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
 import * as labV from '@/modules/partners/validation/labBooking';
 import Joi from 'joi';
+import { notMineSchema } from '@/modules/assisted/validation';
+import { labNotMine } from '@/modules/assisted/controller/phase2a';
 
 /** Q9: page/limit for customer lists. */
 const customerPageQuerySchema = Joi.object({ page: Joi.number().integer().min(1).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
@@ -316,6 +318,9 @@ customerLabBookingRouter.post('/:bookingId/cancel', validate(labV.labBookingIdPa
   catchAsync(lab.cancelMyLabBooking));
 customerLabBookingRouter.post('/:bookingId/accept-reschedule', validate(labV.labBookingIdParamSchema, 'params'),
   validate(labV.acceptRescheduleSchema, 'body'), catchAsync(lab.acceptLabReschedule));
+// r11 (§24.4.4, §17.5): the account holder reports a lab test a partner booked for them as not theirs.
+customerLabBookingRouter.post('/:bookingId/not-mine', validate(labV.labBookingIdParamSchema, 'params'), validate(notMineSchema, 'body'),
+  catchAsync(labNotMine));
 
 /**
  * Q5 admin finance across every settlement account (partners and doctors): the payout queue, statements, verifying

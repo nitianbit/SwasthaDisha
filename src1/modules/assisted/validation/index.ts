@@ -97,3 +97,42 @@ export const closeCompensatedSchema = Joi.object({ reason: Joi.string().trim().m
 export const cardRefundQuerySchema = Joi.object({ state: Joi.string().valid('pending', 'processed', 'failed', 'manual_review'),
   limit: Joi.number().integer().min(1).max(200) });
 export const cardRefundToWalletSchema = Joi.object({ agreement: Joi.string().trim().min(1).max(500).required() });
+
+// ── r11 (§24.4.2): pharmacy → lab test bookings ──
+const visitMode = Joi.string().valid('lab', 'home');
+export const labListQuerySchema = Joi.object({ visitMode, limit: Joi.number().integer().min(1).max(100) });
+export const labPartnerParamSchema = Joi.object({ partnerId: objectId.required() });
+export const labCatalogueQuerySchema = Joi.object({ visitMode });
+export const labBranchParamSchema = Joi.object({ branchId: objectId.required() });
+export const labSlotsQuerySchema = Joi.object({ visitMode: visitMode.required(), from: calendarDay, days: Joi.number().integer().min(1).max(14) });
+export const labBookingSchema = Joi.object({
+  requestKey: key.required(),
+  phone: mobile.required(),
+  patient: consultationSchema.extract('patient'),
+  holderName: personName,
+  consent: consultationSchema.extract('consent'),
+  preferredLanguage: Joi.string().trim().pattern(/^[a-z]{2,3}$/).required(),
+  partnerId: objectId.required(),
+  branchId: objectId.required(),
+  visitMode: visitMode.required(),
+  slotId: objectId.required(),
+  itemIds: Joi.array().items(objectId).min(1).max(20).unique((a: string, b: string) => a.toLowerCase() === b.toLowerCase()).required(),
+  address: Joi.object({
+    line1: Joi.string().trim().min(1).max(200).required(), line2: Joi.string().trim().max(200).allow(''), city: Joi.string().trim().min(1).max(100).required(),
+    state: Joi.string().trim().max(100).allow(''), pincode: Joi.string().trim().pattern(/^\d{6}$/).required(), landmark: Joi.string().trim().max(200).allow(''),
+  }), // required for home, refused for lab visits: the service answers 400 ADDRESS_REQUIRED / VALIDATION_ERROR
+  couponCode: Joi.string().trim().max(50),
+  acceptedPriceMinor: Joi.number().integer().min(0).required(),
+  notes: Joi.string().trim().max(2000),
+  // Card / UPI for lab bookings is round 2b: the service answers 400 PAYMENT_METHOD_UNAVAILABLE for 'razorpay'.
+  paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
+});
+export const pharmacyLabBookingQuerySchema = Joi.object({
+  status: Joi.string().valid('confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
+  from: calendarDay,
+  to: calendarDay,
+  cursor: Joi.string().max(60),
+  limit: Joi.number().integer().min(1).max(50),
+});
+export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedVersion: Joi.number().integer().min(0) });
+export const labAcceptRescheduleSchema = Joi.object({ version: Joi.number().integer().min(0).required() });

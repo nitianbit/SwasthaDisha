@@ -1,0 +1,108 @@
+import { ClientSession, Types } from 'mongoose';
+import { AppError } from '@/modules/common/types';
+import { canonicalMobile } from '@/modules/common/utils/phone';
+import UserModel from '@/modules/user/model';
+import DependentModel from '@/modules/dependents/model';
+import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
+import { CouponModel } from '@/modules/coupon/model';
+import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
+import type { PharmacyActor } from '@/modules/assisted/consultations';
+
+/**
+ * r11 (§24.3): the patient steps an assisted lab booking shares with the 1a consultation create — the family member of
+ * the phone's account, the account of a new number (opened only in the booking transaction), the pharmacy-customer
+ * link with consent and the typed name, and the coupon redemption row.
+ *
+ * ASSUMED (r11 build): §24.3 asks to MOVE these helpers out of `consultations.ts`. They are copied here instead, because
+ * another branch (r10g) is removing the booking limits inside those very functions; moving them now would collide. The
+ * lab copies already follow the owner's 23 Nov answer (no new-account cap). Unify the two after r10g is merged.
+ */
+const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
+const lower = (v: unknown) => String(v ?? '').toLowerCase();
+export const cleanName = (s: unknown) => String(s ?? '').trim().replace(/\s+/g, ' ');
+export const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export type AssistedPatientInput =
+  | { relation: 'self'; name: string }
+  | { dependentId: string }
+  | { relation: string; name: string; gender?: 'Male' | 'Female' | 'Other'; dateOfBirth?: string };
+
+/** The patient part of a request hash (the same shape the 1a hash uses). */
+export function patientIdentity(p: AssistedPatientInput) {
+  if ('dependentId' in p) return { dependentId: lower(p.dependentId) };
+  return { relation: p.relation, name: cleanName(p.name), gender: (p as { gender?: string }).gender ?? null,
+    dateOfBirth: (p as { dateOfBirth?: string }).dateOfBirth ?? null };
+}
+
+/** A family member named by id must belong to the account of this phone (checked before any account is created). */
+export async function assertDependentOfPhone(dependentId: string, phone: string): Promise<{ name: string }> {
+  const notFound = () => err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
+  if (!Types.ObjectId.isValid(dependentId)) throw notFound();
+  const dep = await DependentModel.findOne({ _id: dependentId, isActive: true }).select({ userId: 1, name: 1 }).lean() as { userId?: string; name?: string } | null;
+  if (!dep?.userId || !Types.ObjectId.isValid(String(dep.userId))) throw notFound();
+  const u = await UserModel.findOne({ _id: dep.userId, userType: 'user' }).select({ phone: 1 }).lean() as { phone?: string } | null;
+  if (!u?.phone || canonicalMobile(u.phone) !== canonicalMobile(phone)) throw notFound();
+  return { name: cleanName(dep.name) };
+}
+
+/**
+ * In the booking transaction: a new number's account is inserted (typed name, language, never signed in); an existing
+ * account only gets an empty `preferredLanguage` filled. A number whose account appeared meanwhile aborts with
+ * ACCOUNT_OPENED_MEANWHILE (the caller books again on it). Owner, 23 Nov: no new-account cap on lab bookings.
+ */
+export async function openOrPrepareAccountIn(a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
+  preferredLanguage: string }, s: ClientSession): Promise<void> {
+  if (a.existingId) {
+    await UserModel.updateOne({ _id: a.existingId, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
+      { $set: { preferredLanguage: a.preferredLanguage } }, { session: s });
+    return;
+  }
+  if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
+  await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: 'assisted_booking', otpVerified: false,
+    ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
+}
+
+/** §17.4 / S3: the pharmacy's link to the account holder, with consent and the first typed name. */
+export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: string, typedName: string, s: ClientSession): Promise<void> {
+  const pid = new Types.ObjectId(actor.pharmacyId);
+  const uid = new Types.ObjectId(userId);
+  const link = await PharmacyCustomerModel.findOne({ pharmacyId: pid, userId: uid }).session(s).lean() as Record<string, any> | null;
+  const consent = { consent: 'patient_agreed', consentRecordedAt: new Date(), consentRecordedById: lower(actor.actorId) };
+  if (!link) {
+    await PharmacyCustomerModel.create([{ pharmacyId: pid, userId: uid, createdByRole: 'pharmacy', ...consent, ...(typedName ? { typedName } : {}) }], { session: s });
+    return;
+  }
+  const set: Record<string, unknown> = {};
+  // A link the customer made by ordering (`customer_order`) keeps that record: the pharmacy's tick never replaces it.
+  if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
+  if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
+  if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
+}
+
+/** §5.7: the redemption row and the guarded total count, in the booking transaction (r11: any booking and payer kind). */
+export async function redeemCouponIn(c: { code: string; discountMinor: number },
+  ctx: { bookingKind: 'booking' | 'lab_booking'; payerKind: 'pharmacy' | 'lab' | 'doctor'; bookingId: string; patientUserId: string; dependentId?: string; payerId: string },
+  s: ClientSession): Promise<void> {
+  const r = await CouponModel.updateOne({ code: c.code, isActive: true,
+    $or: [{ totalUsageLimit: { $exists: false } }, { totalUsageLimit: null }, { $expr: { $lt: ['$currentUsageCount', '$totalUsageLimit'] } }] },
+  { $inc: { currentUsageCount: 1 } }, { session: s });
+  if (r.modifiedCount !== 1) throw err(409, 'COUPON_EXHAUSTED', 'This coupon has been fully used');
+  await CouponRedemptionModel.create([{ couponCode: c.code, patientUserId: ctx.patientUserId, ...(ctx.dependentId ? { dependentId: ctx.dependentId } : {}),
+    bookingKind: ctx.bookingKind, bookingId: lower(ctx.bookingId), payerKind: ctx.payerKind, payerId: ctx.payerId, discountMinor: c.discountMinor,
+    state: 'counted', at: new Date() }], { session: s });
+}
+
+/**
+ * D4: a discount spread over lines in proportion to their prices, in whole paise, the remainder going to the largest
+ * fractional parts (earlier line first on a tie). Σ result = discount (when Σ prices > 0).
+ */
+export function spreadByPrice(prices: number[], discount: number): number[] {
+  const total = prices.reduce((a, p) => a + p, 0);
+  if (!(total > 0) || !(discount > 0)) return prices.map(() => 0);
+  const exact = prices.map((p) => (discount * p) / total);
+  const out = exact.map((x) => Math.floor(x));
+  let left = discount - out.reduce((a, x) => a + x, 0);
+  const order = exact.map((x, i) => ({ i, frac: x - Math.floor(x) })).sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (const o of order) { if (left <= 0) break; out[o.i]! += 1; left -= 1; }
+  return out;
+}

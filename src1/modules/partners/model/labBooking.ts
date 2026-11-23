@@ -1,5 +1,6 @@
 import { Schema, model, Model } from 'mongoose';
 import type { VisitMode } from '@/modules/partners/model/slot';
+import type { AssistedBlock } from '@/modules/assisted/types';
 
 export type LabBookingStatus =
   | 'pending_payment' | 'confirmed' | 'sample_collected' | 'visited' | 'processing'
@@ -22,6 +23,10 @@ export interface ILabBookingItem {
 
 export interface ILabBookingSlot { slotId: string; date: string; startTime: string; endTime: string; startsAt: Date }
 
+/** r11 (§24.4.1): who made the booking. Rows written before r11 have no `source`; readers derive `self`. */
+export type LabBookingSource = 'self' | 'pharmacy_assisted' | 'doctor_assisted' | 'lab_desk';
+export const LAB_BOOKING_SOURCES: LabBookingSource[] = ['self', 'pharmacy_assisted', 'doctor_assisted', 'lab_desk'];
+
 export interface ILabReportRelease {
   path: string;
   releasedAt: Date;
@@ -37,6 +42,10 @@ export interface IPartnerLabBooking {
   partnerId: string;
   branchId: string;
   userId: string;
+  /** r11: written on every new row; missing on older rows (= self). */
+  source?: LabBookingSource;
+  /** r11 (§24.4.1): the partner-paid block (`assisted/types.ts`) without `join`; written only by the assisted writers. */
+  assisted?: Omit<AssistedBlock, 'join'>;
   createRequestKey?: string;
   /** Hash of the create request: a resent create with a different request under the same key is refused. */
   createRequestHash?: string;
@@ -56,7 +65,9 @@ export interface IPartnerLabBooking {
   expiryNextAt?: Date;
   expiryChecks?: number;
   /** Q16a: 'admin_no_show' = a moved no-show cancelled by an admin; `refund` false = the money was kept (nobody earns it). */
-  cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show'; note?: string; by: string; byKind: 'customer' | 'member' | 'admin' | 'system'; at: Date;
+  /** r11: `partner` / `booker` = the booking partner (pharmacy) cancelled an assisted booking (§24.4.4). */
+  cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner'; note?: string; by: string;
+    byKind: 'customer' | 'member' | 'admin' | 'system' | 'booker'; at: Date;
     refund?: boolean; forfeitedMinor?: number };
   reschedule: { version: number; pending: boolean; previousSlot?: ILabBookingSlot; reason?: string; at?: Date; by?: string };
   collector?: { memberId?: string; name: string; phone?: string };
@@ -102,6 +113,8 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     partnerId: { type: String, required: true },
     branchId: { type: String, required: true },
     userId: { type: String, required: true },
+    source: { type: String, enum: LAB_BOOKING_SOURCES },
+    assisted: { type: Schema.Types.Mixed },
     createRequestKey: { type: String },
     createRequestHash: { type: String },
     patient: {
@@ -160,10 +173,10 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     expiryNextAt: { type: Date },
     expiryChecks: { type: Number },
     cancellation: {
-      reason: { type: String, enum: ['timeout', 'customer', 'lab_reject', 'admin_no_show'] },
+      reason: { type: String, enum: ['timeout', 'customer', 'lab_reject', 'admin_no_show', 'partner'] },
       note: { type: String, trim: true },
       by: { type: String },
-      byKind: { type: String, enum: ['customer', 'member', 'admin', 'system'] },
+      byKind: { type: String, enum: ['customer', 'member', 'admin', 'system', 'booker'] },
       at: { type: Date },
       refund: { type: Boolean },
       forfeitedMinor: { type: Number, min: 0 },
@@ -223,6 +236,10 @@ labBookingSchema.index({ userId: 1, createdAt: -1 });
 labBookingSchema.index({ partnerId: 1, branchId: 1, 'slot.startsAt': 1 });
 labBookingSchema.index({ partnerId: 1, status: 1, 'slot.startsAt': 1 });
 labBookingSchema.index({ status: 1, paymentStatus: 1, paymentDeadline: 1, expiryNextAt: 1 });
+// r11 (§24.4.1): assisted rows — one per booker request key, one per short ref, and the booker's own list.
+labBookingSchema.index({ 'assisted.requestKey': 1 }, { unique: true, partialFilterExpression: { 'assisted.requestKey': { $type: 'string' } } });
+labBookingSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
+labBookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1, _id: -1 });
 
 /** The model name is load-bearing: D1 file grants resolve `mongoose.models['PartnerLabBooking']`. */
 export const PartnerLabBookingModel: Model<IPartnerLabBooking> = model<IPartnerLabBooking>(

@@ -25,6 +25,9 @@ import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/ser
 import { takeSeat, releaseSeat, listBookableSlots, istDate, addDays } from '@/modules/partners/services/slots';
 import { attachFiles, grantFiles, rebindStored, uploadPathOf } from '@/modules/file/access';
 import type { AuthRequest } from '@/modules/middleware/auth';
+import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
+import { LAB_NOT_DISPUTED_QUERY, assistedLabCustomerPart, assistedLabPartnerPart } from '@/modules/assisted/labViews';
+import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
 
@@ -39,6 +42,8 @@ export function labSlotEnd(slot: { startsAt: Date | string; startTime?: string; 
 }
 /** Customers may cancel (full refund) until 2 hours before the slot, or any time while a lab reschedule is unanswered. */
 export const LAB_CANCEL_CUTOFF_MS = 2 * 3_600_000;
+/** r11 (decision 4): the booking partner may cancel an assisted lab booking up to 1 hour before the slot. */
+export const BOOKER_CANCEL_CUTOFF_MS = 60 * 60_000;
 /** A slot must start at least this long after booking. */
 export const LAB_MIN_LEAD_MS = 60 * 60_000;
 export const REPORT_UPLOAD_MODULE = 'partner-lab-reports';
@@ -105,10 +110,27 @@ function assertSameRequest(b: IPartnerLabBooking, requestHash: string): IPartner
   return b;
 }
 
-type Actor = { kind: 'customer'; userId: string } | { kind: 'partner'; actor: PartnerActor } | { kind: 'system' };
+/** r11: `booker` = the pharmacy that made and paid an assisted booking (§24.4.4). */
+type Actor = { kind: 'customer'; userId: string } | { kind: 'partner'; actor: PartnerActor } | { kind: 'system' } | { kind: 'booker'; id: string };
 const byOf = (a: Actor) => a.kind === 'customer' ? { by: a.userId, byKind: 'customer' as const }
   : a.kind === 'partner' ? { by: a.actor.memberId, byKind: a.actor.actorKind === 'admin' ? 'admin' as const : 'member' as const }
+  : a.kind === 'booker' ? { by: a.id, byKind: 'booker' as const }
   : { by: 'system', byKind: 'system' as const };
+type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner';
+/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it. */
+const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system' };
+const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
+const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
+
+/**
+ * r11: in-app notices to the partner that booked an assisted lab booking (after the commit, best effort; no health
+ * details), as afterAssistedCancel tells a consultation's booker.
+ */
+async function tellBooker(b: IPartnerLabBooking, n: Omit<AssistedNotice, 'audience' | 'userId' | 'bookingId'>): Promise<void> {
+  if (!b.assisted?.bookedBy?.id) return;
+  await sendAssistedNotices([{ ...n, audience: 'booker', userId: b.assisted.bookedBy.id, bookingId: String(b._id),
+    data: { bookingKind: 'lab_booking', shortRef: b.assisted.shortRef, ...(n.data ?? {}) } }]);
+}
 
 /** The D1 reader for a workspace actor (members are `partner` uploaders; admins have authority over every file). */
 export function readerOf(actor: PartnerActor): NonNullable<AuthRequest['user']> {
@@ -130,6 +152,10 @@ export async function customerViewNamed(b: IPartnerLabBooking): Promise<Record<s
 
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
+  return assistedLabCustomerPart(plainCustomerView(b), b as never);
+}
+
+function plainCustomerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, postPaymentCompletedFor: _p,
     report, settlement: _s, cancellation, reschedule, collector, noShows, ...rest } = b as any;
   return {
@@ -150,15 +176,15 @@ export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
 }
 
 export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
-  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, ...rest } = b as any;
-  return {
+  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, assisted: _a, ...rest } = b as any;
+  return assistedLabPartnerPart({
     ...rest,
     report: {
       draftFiles: (b.report?.draftFiles ?? []).map((p) => `/api/static/${p}`),
       releasedFiles: (b.report?.releasedFiles ?? []).map((p) => `/api/static/${p}`),
       releases: b.report?.releases ?? [],
     },
-  };
+  }, b as never);
 }
 
 @Service()
@@ -346,7 +372,10 @@ export class LabBookingService {
 
   /** Pay again within the window (P8): settle every earlier attempt first; reuse the open order or start a new one. */
   async retryPayment(userId: string, bookingId: string, useWallet: boolean, now = new Date()): Promise<LabBookingPaymentInit> {
-    return this.resume(await this.ownBooking(userId, bookingId), useWallet, now);
+    const b = await this.ownBooking(userId, bookingId);
+    // r11 (§24.4.4): a partner-paid booking is never paid by the patient.
+    if (isAssisted(b)) throw err(409, 'PARTNER_PAID_BOOKING', 'This booking was paid by the partner that booked it');
+    return this.resume(b, useWallet, now);
   }
 
   /** Payment context handler: a verified capture is applied exactly once (or returned to the wallet). */
@@ -451,7 +480,7 @@ export class LabBookingService {
    * release. Refunds draw only on what the booking holds.
    */
   private async cancelIn(b: IPartnerLabBooking, records: { _id: unknown; userId?: string; status?: string; finalAmount?: number }[],
-    c: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show'; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
+    c: { reason: CancelReason; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
     const id = String(b._id);
     const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
       $set: { status: 'cancelled', paymentStatus: 'refunded', 'lifecycle.cancelledAt': now,
@@ -459,6 +488,16 @@ export class LabBookingService {
       $inc: { statusVersion: 1 }, $unset: { expiryNextAt: 1, expiryChecks: 1 },
     }, { session: s });
     if (r.modifiedCount !== 1) throw changed();
+    // r11 (§24.4.4): a partner-paid booking refunds the PARTNER (its wallet, exactly once), never the customer wallet.
+    if (isAssisted(b) && b.assisted?.funding) {
+      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false }, s);
+      await releaseSeat(b.slot.slotId, s);
+      if (c.actor.kind === 'partner') {
+        await recordPartnerAudit(c.actor.actor, c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
+          { kind: 'lab_booking', id }, { note: c.note, refunded: back, toPartner: true }, s);
+      }
+      return back;
+    }
     await undoCouponUsageIn(records.map((x) => String(x._id)), s);
     const owned = records.filter((x) => String(x.userId) === String(b.userId));
     const paid = owned.filter((x) => x.status === 'paid');
@@ -492,6 +531,16 @@ export class LabBookingService {
       return this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (isAssisted(after)) {
+      // r11 (decision 4): the patient cancelled a partner-paid booking; the refund went to the partner, which is told.
+      // SMS phase 5: "Lab test Ref <ref> cancelled; the refund goes to <partner>"
+      await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
+        message: `Cancelled. The refund goes to ${after.assisted!.bookedBy.name}, who paid for this booking.`, bookingId: id, key: `plb:${id}:cancelled` });
+      await tellBooker(after, { type: 'booking_cancelled', title: 'Cancelled by the patient',
+        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was cancelled by the patient.${refunded > 0 ? ' The amount is back in your Jansetu wallet.' : ''}`,
+        key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'patient' } });
+      return { booking: customerView(after), refunded: 0 };
+    }
     await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
       message: refunded > 0 ? `Cancelled. ₹${refunded.toFixed(2)} is back in your wallet.` : 'Your lab booking was cancelled.',
       bookingId: id, key: `plb:${id}:cancelled` });
@@ -516,6 +565,16 @@ export class LabBookingService {
       return this.cancelIn(b, records, { reason: 'lab_reject', note, actor: { kind: 'partner', actor } }, s, now);
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (isAssisted(after)) {
+      // r11 (L8): the partner that paid is refunded in full; the patient is told without the wallet line.
+      // SMS phase 5: "The lab could not take lab test Ref <ref>"
+      await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking',
+        message: `${note}. ${after.assisted!.bookedBy.name} has been refunded.`, bookingId: id, key: `plb:${id}:cancelled` });
+      await tellBooker(after, { type: 'booking_cancelled', title: 'The lab could not take the booking',
+        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was refused by the lab. The amount is back in your Jansetu wallet.`,
+        key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'partner_lab_reject' } });
+      return { booking: partnerView(after), refunded };
+    }
     await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking',
       message: `${note}. Your full payment is back in your wallet.`, bookingId: id, key: `plb:${id}:cancelled` });
     return { booking: partnerView(after), refunded };
@@ -545,7 +604,7 @@ export class LabBookingService {
       // Q16a re-review (F): kept as FORFEITED — the funding record is closed (no money shown as held; a late capture goes
       // back to the wallet) and the amount kept is recorded on the cancellation.
       const wf = b.walletFunding as { total?: number; revision?: number; captures?: { amount: number; state: string }[] } | undefined;
-      const forfeitedMinor = wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter((c) => c.state === 'applied')
+      const forfeitedMinor = isAssisted(b) && b.assisted?.funding ? Number(b.assisted.funding.amountMinor || 0) : wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter((c) => c.state === 'applied')
         .reduce((a, c) => a + Number(c.amount || 0), 0)) * 100) : Number(b.pricing.payableMinor || 0);
       const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
         $set: { status: 'cancelled', 'lifecycle.cancelledAt': now, 'reschedule.pending': false,
@@ -554,11 +613,21 @@ export class LabBookingService {
         $inc: { statusVersion: 1 },
       }, { session: s });
       if (r.modifiedCount !== 1) throw changed();
+      // r11 (L9): a partner-paid booking keeps the partner's money too (funding `forfeited`, coupon stays used).
+      if (isAssisted(b) && b.assisted?.funding) await settleAssistedLabFundingIn(b, { cause: 'admin', keepMoney: true }, s);
       await releaseSeat(b.slot.slotId, s);
       await recordPartnerAudit(actor, 'lab_booking.no_show_cancelled', { kind: 'lab_booking', id }, { note, refunded: 0 }, s);
       return 0;
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (isAssisted(after)) {
+      await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: `${note}.`, bookingId: id,
+        key: `plb:${id}:no_show_admin_cancelled` });
+      await tellBooker(after, { type: 'booking_cancelled', title: 'Booking cancelled',
+        message: `Lab booking Ref ${after.assisted!.shortRef} was cancelled by the Jansetu team.${refunded > 0 ? ' The amount is back in your Jansetu wallet.' : ''}`,
+        key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'admin' } });
+      return { booking: partnerView(after), refunded };
+    }
     await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
       message: refunded > 0 ? `${note}. ₹${refunded.toFixed(2)} is back in your wallet.` : `${note}.`, bookingId: id, key: `plb:${id}:no_show_admin_cancelled` });
     return { booking: partnerView(after), refunded };
@@ -592,13 +661,22 @@ export class LabBookingService {
       return updated as IPartnerLabBooking;
     });
     await this.notify({ userId: after.userId, type: 'general', title: 'The lab proposed a new time',
-      message: `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel for a full refund.`,
+      message: isAssisted(after) ? `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel (the refund goes to ${after.assisted!.bookedBy.name}).`
+        : `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel for a full refund.`,
       bookingId: id, key: `plb:${id}:reschedule:${after.reschedule.version}` });
+    if (isAssisted(after)) {
+      // r11 (§24.4.4, L7): the booker may accept the new time for the patient, or cancel for a refund to its wallet.
+      // SMS phase 5: "The lab proposed a new time for lab test Ref <ref>: <date time>"
+      await tellBooker(after, { type: 'general', title: 'New time proposed',
+        message: `The lab proposed a new time for booking Ref ${after.assisted!.shortRef}: ${shownSlot(after)}. Accept it or cancel.`,
+        key: `assisted:lab:${id}:reschedule:${after.reschedule.version}:booker` });
+    }
     return partnerView(after);
   }
 
   async acceptReschedule(userId: string, bookingId: string, version: number): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
+    if (!Types.ObjectId.isValid(id)) throw notFound();
     const updated = await PartnerLabBookingModel.findOneAndUpdate(
       { _id: id, userId: { $eq: userId }, status: 'confirmed', 'reschedule.pending': true, 'reschedule.version': version },
       { $set: { 'reschedule.pending': false }, $inc: { statusVersion: 1 } },
@@ -610,6 +688,66 @@ export class LabBookingService {
       throw err(409, 'RESCHEDULE_CHANGED', 'The lab changed the time again; review the latest proposal');
     }
     return customerView(updated as IPartnerLabBooking);
+  }
+
+  /**
+   * r11 (owner, 23 Nov; L7): the partner that booked and paid an assisted booking accepts the lab's proposed new time
+   * for the patient — its own rows only (`bookerFilter`), the same compare-and-set as the patient's, audited in the same
+   * transaction (`inTx`). Any other booking is the one 404.
+   */
+  async acceptRescheduleAsBooker(bookerFilter: Record<string, unknown>, bookingId: string, version: number,
+    inTx: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>): Promise<IPartnerLabBooking> {
+    const id = String(bookingId).toLowerCase();
+    if (!Types.ObjectId.isValid(id)) throw notFound();
+    return runLedgerTransaction(async (s) => {
+      const b = await PartnerLabBookingModel.findOne({ _id: id, ...bookerFilter }).session(s).lean() as IPartnerLabBooking | null;
+      if (!b) throw notFound();
+      const updated = await PartnerLabBookingModel.findOneAndUpdate(
+        { _id: id, ...bookerFilter, status: 'confirmed', 'reschedule.pending': true, 'reschedule.version': version },
+        { $set: { 'reschedule.pending': false }, $inc: { statusVersion: 1 } },
+        { new: true, session: s }
+      ).lean() as IPartnerLabBooking | null;
+      if (!updated) {
+        if (b.status !== 'confirmed' || !b.reschedule?.pending) throw err(409, 'NO_PENDING_RESCHEDULE', 'There is no new time to accept');
+        throw err(409, 'RESCHEDULE_CHANGED', 'The lab changed the time again; review the latest proposal');
+      }
+      await inTx(updated, s);
+      return updated;
+    });
+  }
+
+  /**
+   * r11 (§24.4.4, L6): the partner that booked an assisted booking cancels it — its own rows only (`bookerFilter`),
+   * while `confirmed`, never after a no-show; until 1 hour before the slot, or at any time while a lab reschedule is
+   * unanswered. `expectedVersion` fences a stale screen. The refund goes to its wallet exactly once (cancelIn), the
+   * seat is released, and `inTx` audits in the same transaction. A cancelled row answers `alreadyCancelled`.
+   */
+  async cancelAsBooker(bookerFilter: Record<string, unknown>, bookerId: string, bookingId: string, input: { note?: string; expectedVersion?: number },
+    now: Date, inTx: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>): Promise<{ booking: IPartnerLabBooking; refunded: number; alreadyCancelled: boolean }> {
+    const id = String(bookingId).toLowerCase();
+    if (!Types.ObjectId.isValid(id)) throw notFound();
+    const out = await runLedgerTransaction(async (s) => {
+      const b = await PartnerLabBookingModel.findOne({ _id: id, ...bookerFilter }).session(s).lean() as IPartnerLabBooking | null;
+      if (!b) throw notFound();
+      if (b.status === 'cancelled') return { refunded: 0, alreadyCancelled: true };
+      if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
+      if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
+      this.assertVersion(b, input.expectedVersion);
+      if (!b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - BOOKER_CANCEL_CUTOFF_MS) {
+        throw err(409, 'CANCELLATION_WINDOW_CLOSED', 'Lab bookings can be cancelled up to 1 hour before the slot');
+      }
+      const refunded = await this.cancelIn(b, [], { reason: 'partner', note: input.note, actor: { kind: 'booker', id: bookerId } }, s, now);
+      await inTx(b, s);
+      return { refunded, alreadyCancelled: false };
+    });
+    const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (!out.alreadyCancelled) {
+      // SMS phase 5: "Lab test Ref <ref> on <date> was cancelled by <partner>"
+      await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
+        message: `The lab test on ${shownSlot(after)} (Ref ${after.assisted?.shortRef}) was cancelled.${out.refunded > 0 ? ` ${after.assisted?.bookedBy.name} has been refunded.` : ''}`,
+        bookingId: id, key: `plb:${id}:cancelled` });
+    }
+    return { booking: after, refunded: out.refunded, alreadyCancelled: out.alreadyCancelled };
   }
 
   // ───────────────────────────── Staff transitions (§4 table) ─────────────────────────────
@@ -703,6 +841,17 @@ export class LabBookingService {
   /** Earnings only for money actually collected through us (paid bookings), once per booking. */
   private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
     if (b.paymentStatus !== 'paid') return;
+    // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
+    const split = b.assisted?.split;
+    if (isAssisted(b) && split?.rule === 'provider_coupon_v2') {
+      if (b.assisted?.funding?.state !== 'captured' || !(Number(split.providerMinor) > 0)) return;
+      await postLedgerEntry({
+        settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: Number(split.providerMinor),
+        grossMinor: Number(split.baseMinor), commissionMinor: Number(split.cutMinor || 0), source: 'partner_lab_booking', sourceId: String(b._id),
+        by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'system',
+      }, s);
+      return;
+    }
     const amountMinor = Math.max(0, Number(b.pricing.subtotalMinor) - Number(b.pricing.discountMinor || 0));
     if (!(amountMinor > 0)) return; // a fully discounted booking earns nothing (the coupon is never money)
     await postLedgerEntry({
@@ -888,6 +1037,12 @@ export class LabBookingService {
       });
       await this.notify({ userId: after.userId, type: 'general', title: 'Your lab report is ready',
         message: 'Open the app to view your report.', bookingId: id, key: `plb:${id}:report:${path}` });
+      if (isAssisted(after) && (before.report?.releases ?? []).length === 0) {
+        // r11 (L4): the booker's "report ready" badge, no content; one per booking (first release).
+        // SMS phase 5: "Lab report ready, Ref <ref>"
+        await tellBooker(after, { type: 'general', title: 'Lab report ready', message: `Lab report ready, Ref ${after.assisted!.shortRef}.`,
+          key: `assisted:lab:${id}:report_ready:booker` });
+      }
     }
     await grantFiles(readerOf(actor), [path], 'partner_lab_report', { model: 'PartnerLabBooking', resourceId: id, field: 'report.releasedFiles' });
     return partnerView(after);
@@ -938,7 +1093,8 @@ export class LabBookingService {
   async listForCustomer(userId: string, page = 1, limit = 20) {
     const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const pg = Math.max(Number(page) || 1, 1);
-    const q = { userId: { $eq: userId } };
+    // r11 (§17.5): an assisted row reported as not mine (still open) leaves the holder's list.
+    const q = { userId: { $eq: userId }, ...LAB_NOT_DISPUTED_QUERY };
     const [rows, total] = await Promise.all([
       PartnerLabBookingModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
       PartnerLabBookingModel.countDocuments(q),

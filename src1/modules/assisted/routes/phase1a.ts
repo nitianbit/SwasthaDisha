@@ -5,6 +5,7 @@ import { validate } from '@/modules/common/middleware/validation';
 import { requireAdmin, requireOperationalPharmacy } from '@/modules/middleware/auth';
 import * as c from '@/modules/assisted/controller/phase1a';
 import * as v from '@/modules/assisted/validation';
+import * as lab from '@/modules/assisted/controller/phase2a';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -23,6 +24,20 @@ pharmacyAssistedRouter.post('/bookings/by-key/:key/abandon', validate(v.keyParam
 pharmacyAssistedRouter.post('/bookings/:id/cancel', validate(v.idParamSchema, 'params'), validate(v.bookerCancelSchema, 'body'), catchAsync(c.cancel));
 pharmacyAssistedRouter.post('/bookings/:id/reschedule', validate(v.idParamSchema, 'params'), validate(v.bookerRescheduleSchema, 'body'),
   catchAsync(c.reschedule));
+// r11 (§24.4.2): pharmacy → lab test bookings, paid from the pharmacy wallet. Static paths before `/:id`.
+pharmacyAssistedRouter.get('/labs', validate(v.labListQuerySchema, 'query'), catchAsync(lab.labs));
+pharmacyAssistedRouter.get('/labs/branches/:branchId/slots', validate(v.labBranchParamSchema, 'params'), validate(v.labSlotsQuerySchema, 'query'),
+  catchAsync(lab.labSlots));
+pharmacyAssistedRouter.get('/labs/:partnerId/catalogue', validate(v.labPartnerParamSchema, 'params'), validate(v.labCatalogueQuerySchema, 'query'),
+  catchAsync(lab.labCatalogue));
+pharmacyAssistedRouter.post('/lab-bookings', validate(v.labBookingSchema, 'body'), catchAsync(lab.createLabBooking));
+pharmacyAssistedRouter.get('/lab-bookings', validate(v.pharmacyLabBookingQuerySchema, 'query'), catchAsync(lab.listLabBookings));
+pharmacyAssistedRouter.get('/lab-bookings/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(lab.labByKey));
+pharmacyAssistedRouter.post('/lab-bookings/by-key/:key/abandon', validate(v.keyParamSchema, 'params'), catchAsync(lab.abandonLabKey));
+pharmacyAssistedRouter.get('/lab-bookings/:id', validate(v.idParamSchema, 'params'), catchAsync(lab.getLabBooking));
+pharmacyAssistedRouter.post('/lab-bookings/:id/cancel', validate(v.idParamSchema, 'params'), validate(v.labBookerCancelSchema, 'body'), catchAsync(lab.cancelLab));
+pharmacyAssistedRouter.post('/lab-bookings/:id/accept-reschedule', validate(v.idParamSchema, 'params'), validate(v.labAcceptRescheduleSchema, 'body'),
+  catchAsync(lab.acceptLabReschedule));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);

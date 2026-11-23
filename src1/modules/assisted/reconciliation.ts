@@ -11,6 +11,7 @@ import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/p
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { refreshWithdrawableIn, withdrawableOfIn } from '@/modules/pharmacyWallet/ledger';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
+import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { inTransaction } from '@/modules/partners/services';
 import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules/assisted/model';
 import { assistedFlags, assistedLimits } from '@/modules/assisted/flags';
@@ -104,6 +105,48 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
   return { checked: rows.length, mismatches };
 }
 
+/**
+ * r11 (§24.4, test 20): the same checks on assisted LAB bookings (wallet-paid in 2a): exactly one debit of the amount by
+ * the payer; every refund row posted once; a cancelled row not left captured (unless kept, `forfeited`); provider + cut
+ * = base, Σ lines = base; earned once on completion, never on a no-show.
+ */
+async function labBookingChecks(scope: { since: Date | null; flagged: string[] }): Promise<{ checked: number; mismatches: Mismatch[] }> {
+  const window = scope.since
+    ? { $or: [{ updatedAt: { $gte: scope.since } }, { _id: { $in: scope.flagged.filter((id) => Types.ObjectId.isValid(id)) } }] } : {};
+  const rows = await PartnerLabBookingModel.find({ 'assisted.funding.method': 'wallet', ...window }).select({ status: 1, paymentStatus: 1, assisted: 1 })
+    .lean() as unknown as IPartnerLabBooking[];
+  const mismatches: Mismatch[] = [];
+  for (const b of rows) {
+    const id = lower(b._id);
+    const a = b.assisted!;
+    const f = a.funding;
+    if (f.amountMinor > 0) {
+      const debits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted_lab:${id}:debit` }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
+      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+        mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
+      }
+    }
+    const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
+    const credits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted_lab:${id}:refund` }).select({ amountPaise: 1 }).lean();
+    if (credits.length > 1 || (refunded > 0 && (credits.length !== 1 || Number(credits[0]!.amountPaise) !== refunded)) || (refunded === 0 && credits.length > 0)) {
+      mismatches.push({ check: 'lab_refund_posted', ref: id, detail: { refundedMinor: refunded, credits: credits.length } });
+    }
+    if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'lab_cancelled_not_refunded', ref: id, detail: {} });
+    if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'lab_refunded_not_cancelled', ref: id, detail: { status: b.status } });
+    const sp = a.split;
+    const linesBase = (sp.lines ?? []).reduce((x, l) => x + Number(l.baseMinor || 0), 0);
+    if (sp.providerMinor + sp.cutMinor !== sp.baseMinor || (sp.lines?.length && linesBase !== sp.baseMinor)) {
+      mismatches.push({ check: 'lab_split_sum', ref: id, detail: { baseMinor: sp.baseMinor, providerMinor: sp.providerMinor, cutMinor: sp.cutMinor, linesBase } });
+    }
+    const earned = await LedgerEntryModel.find({ source: 'partner_lab_booking', sourceId: { $in: [id, String(b._id)] }, kind: 'earning' }).select({ amountMinor: 1 }).lean();
+    if (b.status === 'completed' && sp.providerMinor > 0 && (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor)) {
+      mismatches.push({ check: 'lab_provider_earning', ref: id, detail: { entries: earned.length, providerMinor: sp.providerMinor } });
+    }
+    if (['no_show', 'cancelled'].includes(b.status) && earned.length > 0) mismatches.push({ check: 'lab_earned_without_service', ref: id, detail: { status: b.status, entries: earned.length } });
+  }
+  return { checked: rows.length, mismatches };
+}
+
 /** Paid pharmacy top-ups with no wallet credit (and, before the sweep's start date, attempts nobody checks). */
 export async function uncreditedTopups(now: Date = new Date()) {
   // Review: without a sweep date the list covers the last 30 days (older attempts are not scanned on every read).
@@ -167,15 +210,26 @@ export async function stuckMoney(now: Date = new Date()) {
   };
 }
 
-/** Booker cancellation rate over the last 7 days (alert at ≥ 30 % with at least 10 bookings, P10). */
+/** Booker cancellation rate over the last 7 days (alert at ≥ 30 % with at least 10 bookings, P10); r11: lab bookings count too. */
 async function cancelRates(now: Date) {
   const since = new Date(now.getTime() - 7 * DAY);
-  const rows = await BookingModel.aggregate([
+  const [rows, labRows] = await Promise.all([BookingModel.aggregate([
     { $match: { 'assisted.bookedBy.id': { $exists: true }, createdAt: { $gte: since } } },
     { $group: { _id: { kind: '$assisted.bookedBy.kind', id: '$assisted.bookedBy.id' }, bookings: { $sum: 1 },
       cancelled: { $sum: { $cond: [{ $eq: ['$cancellationCause', 'booker'] }, 1, 0] } } } },
-  ]);
-  return rows.map((r) => ({ bookerKind: r._id.kind as string, bookerId: r._id.id as string, bookings: r.bookings as number, cancelledByBooker: r.cancelled as number }));
+  ]), PartnerLabBookingModel.aggregate([
+    { $match: { 'assisted.bookedBy.id': { $exists: true }, createdAt: { $gte: since } } },
+    { $group: { _id: { kind: '$assisted.bookedBy.kind', id: '$assisted.bookedBy.id' }, bookings: { $sum: 1 },
+      cancelled: { $sum: { $cond: [{ $eq: ['$cancellation.byKind', 'booker'] }, 1, 0] } } } },
+  ])]);
+  const by = new Map<string, { bookerKind: string; bookerId: string; bookings: number; cancelledByBooker: number }>();
+  for (const r of [...rows, ...labRows]) {
+    const k = `${r._id.kind}:${r._id.id}`;
+    const cur = by.get(k) ?? { bookerKind: r._id.kind as string, bookerId: r._id.id as string, bookings: 0, cancelledByBooker: 0 };
+    cur.bookings += Number(r.bookings); cur.cancelledByBooker += Number(r.cancelled);
+    by.set(k, cur);
+  }
+  return [...by.values()];
 }
 
 /** Booking ids an earlier run flagged (reconciliation_mismatch alerts), re-checked until they reconcile. */
@@ -186,11 +240,11 @@ async function flaggedBookingIds(): Promise<string[]> {
 
 export async function runReconciliation(now: Date = new Date(), opts: { full?: boolean } = {}) {
   const scope = opts.full ? { since: null, flagged: [] } : { since: new Date(now.getTime() - 7 * DAY), flagged: await flaggedBookingIds() };
-  const [wallets, bookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(scope), stuckMoney(now), cancelRates(now)]);
+  const [wallets, bookings, labBookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(scope), labBookingChecks(scope), stuckMoney(now), cancelRates(now)]);
   const pct = assistedLimits.cancelRateAlertPct();
   const min = assistedLimits.cancelRateAlertMin();
   const highCancelRates = rates.filter((r) => r.bookings >= min && r.cancelledByBooker * 100 >= pct * r.bookings);
-  const mismatches = [...wallets.mismatches, ...bookings.mismatches];
+  const mismatches = [...wallets.mismatches, ...bookings.mismatches, ...labBookings.mismatches];
   return {
     day: istDateIso(now),
     at: now,
@@ -198,6 +252,7 @@ export async function runReconciliation(now: Date = new Date(), opts: { full?: b
     checks: {
       wallets: { checked: wallets.checked, notMigrated: wallets.notMigrated },
       bookings: { checked: bookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
+      labBookings: { checked: labBookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
       // Chargebacks: wallets that owe Jansetu (a receivable) or show a negative balance.
       walletsOwing: await walletsOwing(),
       mismatches,

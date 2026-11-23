@@ -7,7 +7,10 @@ export type BookerKind = 'pharmacy' | 'lab' | 'doctor';
 
 export interface AssistedRefundRow {
   refundId: string;
-  /** booker | patient | doctor | admin (who cancelled), as the cancellation cause; phase 1b adds `late_capture`. */
+  /**
+   * booker | patient | doctor | admin (who cancelled), as the cancellation cause; phase 1b adds `late_capture`; r11 (lab
+   * bookings) adds `partner_lab_reject` (the lab refused it) and uses `admin` for an admin cancel.
+   */
   cause: string;
   amountMinor: number;
   /** Phase 1b: `razorpay` = back to the card/UPI of the payment (state follows the card refund row, `assisted_card_refunds`). */
@@ -50,6 +53,11 @@ export interface AssistedSplit {
   cutMinor: number;
   providerMinor: number;
   rule: 'provider_coupon_v2';
+  /**
+   * r11 (§24.4.1, D4, L16): lab bookings store the split per test. The coupon is spread over the lines by price, largest
+   * remainder in paise; `cutMinor` is 0 on every line (cuts are phase 4). Σ lines.baseMinor = baseMinor.
+   */
+  lines?: { catalogItemId: string; listMinor: number; discountMinor: number; baseMinor: number; cutMinor: number }[];
 }
 
 export interface AssistedBlock {

@@ -11,7 +11,7 @@ import DependentModel from '@/modules/dependents/model';
 import UserModel from '@/modules/user/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
-import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
+import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -64,15 +64,59 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
   return { reported: true, reviewItemId: out.itemId };
 }
 
-/** GET /admin/assisted/review-items?state — the queue with a booking summary (no clinical content). */
+/**
+ * r11 (§24.4.4): POST /lab-bookings/:id/not-mine — the holder flags an assisted LAB booking; it leaves their lab list
+ * and is queued for admins (`bookingKind: 'lab_booking'`). Any other booking of theirs or anyone's: the one 404.
+ */
+export async function reportLabNotMine(userId: string, bookingId: string, note?: string) {
+  assertAdminToolsOn();
+  await assertUniqueIndex(AssistedReviewItemModel, { bookingKind: 1, bookingId: 1 });
+  const missing = () => err(404, 'LAB_BOOKING_NOT_FOUND', 'Booking not found');
+  if (!/^[0-9a-fA-F]{24}$/.test(String(bookingId))) throw missing();
+  const text = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+  const out = await inTransaction(async (s) => {
+    const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: String(userId) } }).session(s).lean() as IPartnerLabBooking | null;
+    if (!b) throw missing();
+    if (!b.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only a booking made for you by a partner can be reported here');
+    if (b.assisted.identity?.disputed) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
+    const at = new Date();
+    const r = await PartnerLabBookingModel.updateOne({ _id: b._id, userId: { $eq: String(userId) }, 'assisted.identity.disputed': { $exists: false } },
+      { $set: { 'assisted.identity.disputed': { state: 'open', at } } }, { session: s });
+    if (r.modifiedCount !== 1) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
+    const [item] = await AssistedReviewItemModel.create([{ kind: 'not_mine', bookingKind: 'lab_booking', bookingId: lower(b._id), reportedBy: lower(userId),
+      ...(text ? { note: text } : {}), state: 'open', at }], { session: s });
+    await auditIn({ actorKind: 'customer', actorId: lower(userId), orgKind: b.assisted.bookedBy.kind, orgId: b.assisted.bookedBy.id, action: 'booking.not_mine',
+      bookingId: lower(b._id), detail: { kind: 'lab_booking', reviewItemId: String(item!._id) } }, s);
+    return { booking: b, itemId: String(item!._id) };
+  });
+  const a = out.booking.assisted!;
+  await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Reported as not mine',
+    message: `The account holder reported lab booking Ref ${a.shortRef} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
+    key: `assisted:lab:${out.booking._id}:not_mine:booker`, data: { bookingKind: 'lab_booking' } }]);
+  return { reported: true, reviewItemId: out.itemId };
+}
+
+/** GET /admin/assisted/review-items?state — the queue with a booking summary (no clinical content); r11: lab rows too. */
 export async function listReviewItems(q: { state?: string; limit?: number }) {
   const filter = q.state ? { state: q.state } : {};
   const items = await AssistedReviewItemModel.find(filter).sort({ at: -1 }).limit(Math.min(Math.max(Number(q.limit) || 50, 1), 200)).lean();
-  const bookings = await BookingModel.find({ _id: { $in: items.map((i) => i.bookingId).filter((id) => Types.ObjectId.isValid(id)) } })
+  const idsOf = (kind: string) => items.filter((i) => (i.bookingKind ?? 'booking') === kind).map((i) => i.bookingId).filter((id) => Types.ObjectId.isValid(id));
+  const bookings = await BookingModel.find({ _id: { $in: idsOf('booking') } })
     .select({ status: 1, bookingDate: 1, bookingTime: 1, userId: 1, dependentId: 1, doctorName: 1, 'assisted.shortRef': 1, 'assisted.bookedBy': 1,
       'assisted.identity': 1, updatedAt: 1 }).lean() as unknown as IBooking[];
+  const labRows = await PartnerLabBookingModel.find({ _id: { $in: idsOf('lab_booking') } })
+    .select({ status: 1, slot: 1, userId: 1, patient: 1, partnerId: 1, branchId: 1, 'assisted.shortRef': 1, 'assisted.bookedBy': 1,
+      'assisted.identity': 1, statusVersion: 1, updatedAt: 1 }).lean() as unknown as IPartnerLabBooking[];
   const byId = new Map(bookings.map((b) => [lower(b._id), b]));
+  const labById = new Map(labRows.map((b) => [lower(b._id), b]));
   return items.map((i) => {
+    if (i.bookingKind === 'lab_booking') {
+      const l = labById.get(lower(i.bookingId));
+      return { ...i, booking: l ? { _id: String(l._id), kind: 'lab_booking', status: l.status, slotDate: l.slot?.date, slotTime: l.slot?.startTime, userId: l.userId,
+        dependentId: l.patient?.dependentId ?? null, partnerId: l.partnerId, branchId: l.branchId, shortRef: l.assisted?.shortRef,
+        bookedBy: l.assisted?.bookedBy ? { kind: l.assisted.bookedBy.kind, id: l.assisted.bookedBy.id, name: l.assisted.bookedBy.name } : null,
+        disputed: l.assisted?.identity?.disputed ?? null, statusVersion: l.statusVersion, updatedAt: l.updatedAt } : null };
+    }
     const b = byId.get(lower(i.bookingId));
     return { ...i, booking: b ? { _id: String(b._id), status: b.status, bookingDate: b.bookingDate, bookingTime: b.bookingTime, userId: b.userId,
       dependentId: b.dependentId ?? null, doctorName: b.doctorName, shortRef: b.assisted?.shortRef, bookedBy: b.assisted?.bookedBy
@@ -94,9 +138,11 @@ export async function dismissReviewItem(adminId: string, itemId: string, reason?
       const exists = await AssistedReviewItemModel.exists({ _id: itemId }).session(s);
       throw exists ? err(409, 'REVIEW_ITEM_CLOSED', 'This item was already resolved') : err(404, 'REVIEW_ITEM_NOT_FOUND', 'Review item not found');
     }
-    await BookingModel.updateOne({ _id: item.bookingId, 'assisted.identity.disputed.state': 'open' },
+    // r11: a lab row's item names its collection.
+    const M = (item.bookingKind === 'lab_booking' ? PartnerLabBookingModel : BookingModel) as unknown as typeof BookingModel;
+    await M.updateOne({ _id: item.bookingId, 'assisted.identity.disputed.state': 'open' },
       { $set: { 'assisted.identity.disputed.state': 'dismissed', 'assisted.identity.disputed.resolvedAt': at } }, { session: s });
-    const b = await BookingModel.findById(item.bookingId).select({ 'assisted.bookedBy': 1 }).session(s).lean() as IBooking | null;
+    const b = await M.findById(item.bookingId).select({ 'assisted.bookedBy': 1 }).session(s).lean() as IBooking | null;
     await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: b?.assisted?.bookedBy.kind ?? 'pharmacy', orgId: b?.assisted?.bookedBy.id ?? '-',
       action: 'review.dismissed', bookingId: item.bookingId, detail: { reviewItemId: String(item._id) } }, s);
     return item;
@@ -140,7 +186,12 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
     return b;
   };
   const b0 = await BookingModel.findById(bookingId).lean() as IBooking | null;
-  if (!b0) throw notFound();
+  // r11 (§24.4.4): the move finds the booking in either collection.
+  if (!b0) {
+    const lab = await PartnerLabBookingModel.findById(bookingId).lean() as IPartnerLabBooking | null;
+    if (lab) return moveAssistedLabBooking(adminId, lab, input, hash);
+    throw notFound();
+  }
   if (!b0.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only partner-made bookings are moved with this tool');
   const prior = replay(b0);
   if (prior) return { booking: moveView(prior), replayed: true };
@@ -257,7 +308,10 @@ async function moveBookerLinkIn(pharmacyId: string, bookingId: string, fromUserI
   if (!old || fromUserId === toUserId) return;
   const otherBooking = await BookingModel.exists({ _id: { $ne: bookingId }, pharmacyId: { $eq: pharmacyId }, userId: { $eq: fromUserId } }).session(s);
   const order = await PharmacyOrderModel.exists({ pharmacyId: pid, customerId: new Types.ObjectId(fromUserId) }).session(s);
-  if (!otherBooking && !order) await PharmacyCustomerModel.deleteOne({ _id: old._id }, { session: s });
+  // r11: this pharmacy's other lab bookings of that holder keep the link too.
+  const otherLab = await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, 'assisted.bookedBy.kind': 'pharmacy', 'assisted.bookedBy.id': { $eq: lower(pharmacyId) },
+    userId: { $eq: fromUserId } }).session(s);
+  if (!otherBooking && !order && !otherLab) await PharmacyCustomerModel.deleteOne({ _id: old._id }, { session: s });
 }
 
 /**
@@ -277,6 +331,125 @@ async function deactivateBookingDependentIn(bookingId: string, dependentId: stri
   if (used) return false;
   const r = await DependentModel.updateOne({ _id: dependentId, isActive: true }, { $set: { isActive: false } }, { session: s });
   return r.modifiedCount === 1;
+}
+
+/**
+ * r11 (§24.4.4): the admin move of an assisted LAB booking, the §17.5 rules on `partner_lab_bookings`: in one
+ * transaction the `userId`, the patient snapshot (family member or the holder), the redemption, the booker's link and
+ * `disputed: moved`; exactly once per (admin, request key) with a content hash; `expectedUpdatedAt` fences a stale view.
+ * The patient name stays the typed one (or the family member's): the lab and the booker never see an account name.
+ */
+async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, input: MoveInput, hash: string) {
+  const bookingId = lower(b0._id);
+  const replay = (b: IPartnerLabBooking) => {
+    const prior = (b.assisted?.moves ?? []).find((m) => m.requestKey === `${adminId}:${input.requestKey}`);
+    if (!prior) return null;
+    if ((prior as { requestHash?: string }).requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different move');
+    return b;
+  };
+  if (!b0.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only partner-made bookings are moved with this tool');
+  const prior = replay(b0);
+  if (prior) return { booking: labMoveView(prior), replayed: true };
+  if (await RequestKeyModel.exists({ scope: `assisted_move:${adminId}`, key: input.requestKey, state: 'abandoned' })) {
+    throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
+  }
+  const toPhone = canonicalMobile(input.toPhone)!;
+  const target = await resolveCustomerByPhone(toPhone, 'assisted_booking');
+  if (target._id === lower(b0.userId) && !input.asFamily) throw err(409, 'SAME_ACCOUNT', 'The booking is already on this account');
+  let dependentId: string | undefined;
+  let newDependent: Record<string, unknown> | undefined;
+  if (input.asFamily) {
+    const name = cleanName(input.asFamily.name);
+    const same = await DependentModel.findOne({ userId: target._id, isActive: true, relationship: input.asFamily.relation,
+      name: { $regex: `^${escapeRx(name)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    if (same) dependentId = String(same._id);
+    else {
+      dependentId = new Types.ObjectId().toHexString();
+      newDependent = { _id: dependentId, userId: target._id, name, relationship: input.asFamily.relation, isActive: true,
+        ...(b0.assisted.preferredLanguage ? { preferredLanguage: b0.assisted.preferredLanguage } : {}),
+        ...(input.asFamily.gender ? { gender: input.asFamily.gender } : {}),
+        ...(input.asFamily.dateOfBirth ? { dateOfBirth: input.asFamily.dateOfBirth.replace(/-/g, '') } : {}) };
+    }
+  }
+  const holderName = cleanName(input.holderName);
+  if (target.created && holderName) {
+    await UserModel.updateOne({ _id: target._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name: holderName } });
+  }
+  let moved: IPartnerLabBooking & { __fromUserId?: string };
+  try {
+    moved = await inTransaction(async (s) => {
+      const b = await PartnerLabBookingModel.findById(bookingId).session(s).lean() as IPartnerLabBooking | null;
+      if (!b?.assisted) throw notFound();
+      const again = replay(b);
+      if (again) return again;
+      assertBookingVersion(b as never, input.expectedUpdatedAt ?? null);
+      await claimRequestKey(`assisted_move:${adminId}`, input.requestKey, s);
+      if (newDependent) await DependentModel.create([newDependent], { session: s });
+      const fromUserId = lower(b.userId);
+      const at = new Date();
+      const a = b.assisted;
+      // The patient snapshot: the family member's name, else the typed holder name (the admin's, else the old snapshot's).
+      const snapshotName = dependentId
+        ? cleanName((await DependentModel.findById(dependentId).select({ name: 1 }).session(s).lean() as { name?: string } | null)?.name) || b.patient.name
+        : holderName || (b.patient.kind === 'self' ? b.patient.name : '') || 'Patient';
+      const r = await PartnerLabBookingModel.updateOne({ _id: b._id, userId: b.userId, updatedAt: b.updatedAt }, {
+        $set: { userId: target._id, patient: { kind: dependentId ? 'dependent' : 'self', ...(dependentId ? { dependentId } : {}), name: snapshotName },
+          'assisted.identity.disputed': { state: 'moved', at: a.identity?.disputed?.at ?? at, resolvedAt: at } },
+        $push: { 'assisted.moves': { at, by: adminId, fromUserId, toUserId: target._id, requestKey: `${adminId}:${input.requestKey}`, requestHash: hash } },
+      }, { session: s });
+      if (r.modifiedCount !== 1) throw Object.assign(err(409, 'BOOKING_CHANGED', 'The booking changed; reload and try again'), { retryable: true });
+      const oldDep = b.patient?.dependentId ? lower(b.patient.dependentId) : '';
+      const familyDeactivated = oldDep && oldDep !== lower(dependentId) ? await deactivateLabDependentIn(bookingId, oldDep, s) : false;
+      if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, bookingId, fromUserId, target._id, holderName, s);
+      await CouponRedemptionModel.updateMany({ bookingKind: 'lab_booking', bookingId },
+        dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
+      await AssistedReviewItemModel.updateOne({ bookingKind: 'lab_booking', bookingId, state: 'open' },
+        { $set: { state: 'moved', resolvedAt: at, resolvedBy: adminId, resolution: String(input.reason).trim().slice(0, 500) } }, { session: s });
+      await auditIn({ actorKind: 'admin', actorId: adminId, orgKind: a.bookedBy.kind, orgId: a.bookedBy.id, action: 'booking.moved', bookingId,
+        requestKey: input.requestKey, detail: { kind: 'lab_booking', fromUserId, toUserId: target._id, ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}),
+          familyDeactivated, reason: String(input.reason).trim().slice(0, 500) } }, s);
+      return { ...(await PartnerLabBookingModel.findById(bookingId).session(s).lean() as IPartnerLabBooking), __fromUserId: fromUserId };
+    });
+  } catch (e) {
+    const raced = await PartnerLabBookingModel.findById(bookingId).lean() as IPartnerLabBooking | null;
+    const again = raced ? replay(raced) : null;
+    if (!again) throw e;
+    return { booking: labMoveView(again), replayed: true };
+  }
+  const fromUserId = moved.__fromUserId;
+  const { __fromUserId: _f, ...clean } = moved;
+  if (!fromUserId) return { booking: labMoveView(clean), replayed: true };
+  const ref = clean.assisted!.shortRef;
+  await sendAssistedNotices([
+    { audience: 'customer', userId: fromUserId, type: 'general', title: 'A booking was moved off your account',
+      message: `Lab booking Ref ${ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}` },
+    { audience: 'customer', userId: target._id, type: 'general', title: 'A booking was added to your account',
+      message: `Lab booking Ref ${ref} made by ${clean.assisted!.bookedBy.name} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}` },
+    { audience: 'booker', userId: clean.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
+      message: `Lab booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
+      key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } },
+  ]);
+  return { booking: labMoveView(clean), replayed: false };
+}
+
+/** A family member this lab booking created, deactivated on the old account when nothing else names it (as for consultations). */
+async function deactivateLabDependentIn(bookingId: string, dependentId: string, s: import('mongoose').ClientSession): Promise<boolean> {
+  if (!Types.ObjectId.isValid(dependentId)) return false;
+  const created = await AssistedAuditEventModel.exists({ bookingId: { $in: [lower(bookingId), bookingId] }, action: { $in: ['booking.created', 'booking.moved'] },
+    'detail.dependentId': dependentId, 'detail.dependentCreated': true }).session(s);
+  if (!created) return false;
+  const spellings = [dependentId, dependentId.toUpperCase()];
+  const used = await BookingModel.exists({ dependentId: { $in: spellings } }).session(s)
+    || await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, 'patient.dependentId': { $in: spellings } }).session(s)
+    || await InstantRequestModel.exists({ 'patient.dependentId': { $in: spellings } }).session(s);
+  if (used) return false;
+  const r = await DependentModel.updateOne({ _id: dependentId, isActive: true }, { $set: { isActive: false } }, { session: s });
+  return r.modifiedCount === 1;
+}
+
+function labMoveView(b: IPartnerLabBooking) {
+  return { _id: String(b._id), kind: 'lab_booking', userId: b.userId, dependentId: b.patient?.dependentId ?? null, status: b.status, slot: b.slot,
+    shortRef: b.assisted?.shortRef, disputed: b.assisted?.identity?.disputed ?? null, statusVersion: b.statusVersion, updatedAt: b.updatedAt };
 }
 
 function moveView(b: IBooking) {
