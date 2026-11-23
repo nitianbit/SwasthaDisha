@@ -68,8 +68,10 @@ async function bookingStillHoldsPrescription(bookingId: string, rel: string): Pr
 
 /**
  * Review of fb4063c7 (1): a file an admin clear withdrew (S5) stays withdrawn for everyone but admins, even after the
- * doctor saves a new prescription. Clears record the paths they withdrew; a clear recorded before that (no `paths`)
- * withdraws its own full PDFs and every dispensing copy made up to the clear (copies are named rx-dispense-<ms>).
+ * doctor saves a new prescription. Clears record the paths they withdrew (a clear recorded before that has none: its
+ * own full PDFs). r9 (owner decision): for every clear, also every dispensing copy made up to the clear (copies are
+ * named rx-dispense-<ms>), so the copies of older prescriptions stay hidden too; a copy made after the clear (of a new
+ * prescription) is not touched.
  */
 const COPY_MS = /\/rx-dispense-(\d+)(?:-[0-9a-f]{16})?\.pdf$/;
 async function withdrawnByAdminClear(bookingId: string, rel: string): Promise<boolean> {
@@ -77,7 +79,7 @@ async function withdrawnByAdminClear(bookingId: string, rel: string): Promise<bo
     .select({ paths: 1, 'removed.fileUrls': 1, clearedAt: 1 }).lean();
   const copyMs = Number(COPY_MS.exec(rel)?.[1] ?? NaN);
   return rows.some((row) => {
-    if (Array.isArray(row.paths)) return row.paths.includes(rel);
+    if (Array.isArray(row.paths) && row.paths.includes(rel)) return true;
     if ((row.removed?.fileUrls ?? []).some((u) => uploadPathOf(u) === rel)) return true;
     return Number.isFinite(copyMs) && copyMs <= new Date(row.clearedAt).getTime();
   });
@@ -337,6 +339,10 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
   if (!reader) return { allow: false, status: 401 };
   const ok: Decision = { allow: true, visibility: 'private' };
   if (reader.userType === 'admin') return ok;
+  // r9 (owner decision): a prescription file an admin clear withdrew is refused to everyone but admins by every route,
+  // the binding of a medicine order made from that prescription included (the order itself stays).
+  const rxFile = BOOKING_PRESCRIPTION.exec(rel) ?? BOOKING_RX_DISPENSE.exec(rel);
+  if (rxFile && await withdrawnByAdminClear(rxFile[1]!, rel)) return { allow: false, status: 404 };
   const upload = await FileUploadModel.findOne({ path: rel }).lean();
   if (upload) {
     // A partner lab report is judged by its binding (current permission + branch), so a member whose report rights were
@@ -344,10 +350,9 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     if (!PARTNER_LAB_REPORT.test(rel) && upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
-    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)
-      && !(await withdrawnByAdminClear(rx[1]!, rel))) return ok;
+    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)) return ok;
     const copy = BOOKING_RX_DISPENSE.exec(rel);
-    if (copy && await canReadDispensingCopy(reader, copy[1]!, rel) && !(await withdrawnByAdminClear(copy[1]!, rel))) return ok;
+    if (copy && await canReadDispensingCopy(reader, copy[1]!, rel)) return ok;
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }
