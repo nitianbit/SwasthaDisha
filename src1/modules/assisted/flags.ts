@@ -45,6 +45,8 @@ export const assistedLimits = {
   cancelRateAlertPct: () => int('ASSISTED_ALERT_CANCEL_RATE_PCT', 30),
   cancelRateAlertMin: () => int('ASSISTED_ALERT_CANCEL_RATE_MIN', 10),
   samePairAlertPerDay: () => int('ASSISTED_ALERT_SAME_PAIR_PER_DAY', 10),
+  /** r10b: card bookings of one booker waiting for payment at once. */
+  pendingCardBookings: () => int('ASSISTED_LIMIT_PENDING_CARD_BOOKINGS', 10),
 };
 
 export const disabled = (what = 'Assisted booking') =>

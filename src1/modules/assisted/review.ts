@@ -1,3 +1,4 @@
+import { unpaidCardBooking } from '@/modules/assisted/views';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
@@ -41,7 +42,8 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
   const text = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   const out = await inTransaction(async (s) => {
     const b = await BookingModel.findOne({ _id: bookingId, userId: { $eq: String(userId) } }).session(s).lean() as IBooking | null;
-    if (!b) throw notFound();
+    // r10b: a card-paid booking never confirmed is not the holder's to see (or report).
+    if (!b || unpaidCardBooking(b as never)) throw notFound();
     if (!b.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only a booking made for you by a partner can be reported here');
     if (b.assisted.identity?.disputed) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
     const at = new Date();

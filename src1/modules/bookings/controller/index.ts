@@ -1,7 +1,7 @@
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import { withPatientNames } from '@/modules/bookings/utils/patientNames';
 import { bookerView, bookerViews, withBookerBooking } from '@/modules/assisted/bookerView';
-import { assistedAdminView, assistedPublicView, notDisputed } from '@/modules/assisted/views';
+import { assistedAdminView, assistedPublicView, notDisputed, unpaidCardBooking } from '@/modules/assisted/views';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
 import { rebindStored, withFiles } from '@/modules/file/access';
@@ -62,7 +62,14 @@ export class BookingController {
 
   /** §17.5: a holder's lists leave out the bookings they reported as not theirs (direct reads still work). */
   private listFor<T>(req: AuthRequest, rows: T[]): T[] {
-    return req.user?.userType === 'user' && Array.isArray(rows) ? rows.filter((r) => notDisputed(r as never)) : rows;
+    const out = req.user?.userType === 'user' && Array.isArray(rows) ? rows.filter((r) => notDisputed(r as never)) : rows;
+    // r10b: a card-paid assisted booking never confirmed is the booker's alone (not the patient's or the doctor's).
+    return this.hidesUnpaidCard(req) && Array.isArray(out) ? out.filter((r) => !unpaidCardBooking(r as never)) : out;
+  }
+
+  /** r10b: patients and doctors never see a card-paid assisted booking that was never confirmed. */
+  private hidesUnpaidCard(req: AuthRequest): boolean {
+    return req.user?.userType === 'user' || req.user?.userType === 'specialist';
   }
 
   /** Assisted booking phase 0: the booking pharmacy's id when the caller is a pharmacy (its answers use the booker view). */
@@ -389,6 +396,9 @@ export class BookingController {
     const { id } = req.params;
     await this.ensureCanReadBooking(req, id);
     const result = await this.bookingService.getById(id, userId);
+    if (this.hidesUnpaidCard(req) && unpaidCardBooking(result as never)) {
+      throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    }
     // Q15: admins see the patient's name as on the admin list rows; other callers see the booking unchanged.
     const row = req.user?.userType === 'admin' ? (await withPatientNames([result as any]))[0] as unknown as typeof result : result;
     // Assisted booking phase 0 (§9.2): a pharmacy reads its bookings only in the booker view.
@@ -463,6 +473,7 @@ export class BookingController {
       ownerScope: staffScope,
       // §17.5: a holder's list leaves out what they reported as not theirs.
       ...(req.user?.userType === 'user' ? { hideDisputed: true } : {}),
+      ...(this.hidesUnpaidCard(req) ? { hideUnpaidCard: true } : {}),
     };
 
     const result = requiredCorporateId === undefined

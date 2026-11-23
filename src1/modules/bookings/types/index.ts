@@ -371,6 +371,8 @@ export interface BookingPaymentDetailsResponse {
 export interface BookingQueryParams {
   /** Assisted booking phase 1a (§17.5): leave out bookings the holder reported as not theirs. */
   hideDisputed?: boolean;
+  /** r10b: leave out card-paid assisted bookings never confirmed (patients and doctors). */
+  hideUnpaidCard?: boolean;
   userId?: string;
   pharmacyId?: string;
   dependentId?: string;

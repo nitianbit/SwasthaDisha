@@ -818,6 +818,11 @@ export class PaymentService {
 
   private handleExistingRecordStatus(paymentRecord: IPaymentRecord): void {
     if (paymentRecord.compensatedAt) throw topupClosedCompensated();
+    // r10b: a card dispute recorded on an assisted booking payment (not a top-up).
+    if (paymentRecord.chargebackAt && paymentRecord.context === 'assisted_booking') {
+      throw new AppError({ status: 409, code: 'PAYMENT_DISPUTED',
+        message: 'A card dispute was recorded on this booking payment; it is not applied again. Contact Jansetu support' });
+    }
     if (paymentRecord.chargebackAt) {
       throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
         message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
@@ -855,6 +860,11 @@ export class PaymentService {
       .digest('hex');
 
     if (generatedSignature !== data.razorpaySignature) {
+      // r10b: an assisted card payment's order is never closed by a bad signature (anyone holding the record id could
+      // otherwise strand it): the record stays as it is, so a real capture is still verified, reconciled or swept.
+      if (paymentRecord.context === 'assisted_booking') {
+        throw new AppError({ status: 400, code: 'PAYMENT_SIGNATURE_INVALID', message: 'Invalid Razorpay payment signature' });
+      }
       await this.paymentRepository.update(
         // A settled (paid/refunded) record is never rewritten by a later bad or replayed verify (milestone E10).
         { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },

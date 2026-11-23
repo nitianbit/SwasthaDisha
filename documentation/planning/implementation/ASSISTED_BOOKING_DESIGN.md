@@ -2074,7 +2074,7 @@ Checks: `test/assisted/r10-phase1b.integration.ts` (19 checks over HTTP with the
 |---|---|---|
 | Card booking create | `assisted/consultations.ts` | `paymentMethod: 'razorpay'` on `POST /pharmacy-assisted/consultations`: the same checks, key, hash, coupon, limits and transaction as the wallet create, but the booking is inserted `pending` / `pending` with its seat and the doctor's interval held (exactly like a customer's online booking), funding `{ method: 'razorpay', state: 'pending', paymentRecordId }` and no wallet debit. After the commit ONE Razorpay order is made on ONE payment record whose id was chosen before the insert |
 | Payment record | `payment/types`, `payment/model`, `payment/services` (`createOrder` takes an optional `recordId`; receipt code `ab`) | New context `assisted_booking`: `contextId` = the booking, `userId` = `payerUserId` = the booker actor, `payerPharmacyId` = the pharmacy, no `couponCode` (coupons count only through `coupon_redemptions`, §6.4) |
-| Confirmation | `assisted/cardPayments.ts` `applyAssistedCapture`, registered with `registerPaymentContextHandler('assisted_booking')` (`routes/index.ts`) | Verify, reconcile, the recovery sweep and the expiry sweep all reach it through the existing context routing (S6: the stored record's context only). ONE transaction claims the record (`isProcessed`) and moves the booking pending → confirmed / paid / funding `captured` (CAS on all three), audited `booking.paid`. Meet, reminders and the "booked" notices follow the confirmation, resumed until done (`postPaymentCompletedFor`) |
+| Confirmation | `assisted/cardPayments.ts` `applyAssistedCapture`, registered with `registerPaymentContextHandler('assisted_booking')` (`routes/index.ts`) | Verify, reconcile, the recovery sweep and the expiry sweep all reach it through the existing context routing (S6: the stored record's context only). ONE transaction moves the booking pending → confirmed / paid / funding `captured` (CAS on all three), audited `booking.paid`. Meet, reminders and the "booked" notices follow the confirmation. *Corrected by §23.6 item 5:* as built in `9f2a1807` the record was marked processed in that transaction, so a crash before the follow-up left it undone for good (a later call even treated the capture as late); from r10b the record is processed only after the follow-up, so any later verify, reconcile or recovery sweep finishes it (`postPaymentCompletedFor`) |
 | Late captures | same | A capture that cannot be applied (booking expired or cancelled, doctor no longer verified and active (S5), another record, another amount) queues its card refund row in the same transaction (`cause: 'late_capture'`), audited `booking.late_capture`; the booking is never revived |
 | Card refunds | `assisted/cardRefunds.ts`, model `assisted_card_refunds` (`assisted/model`) | One row per payment record (unique `paymentRecordId`): the cancellation refund and a late capture share it, so a capture is returned at most once whatever path finds it. Card rows are sent by a worker on the `prescriptionRefund.ts` pattern (fenced attempt + lease, the gateway is asked for a refund carrying the row's key before anything is (re)submitted, every submission counted first, only Razorpay `processed` completes it); sent at once after the commit and every 5 minutes (`assisted/schedulers.ts`, whatever the switches say). Always the full captured amount (Jansetu bears the fee) |
 | Cancel and refund | `assisted/refunds.ts` `settleAssistedFundingIn`, `bookings/holds.ts` | Every cancel path of a card-paid booking (booker, patient, doctor, admin, admin close) queues the refund in the cancel transaction: to the card, or to the pharmacy wallet when the booker chose it (`refundTo: 'wallet'`). A card booking cancelled before its capture was applied refunds nothing (funding `not_paid`) |
@@ -2089,7 +2089,7 @@ Checks: `test/assisted/r10-phase1b.integration.ts` (19 checks over HTTP with the
 |---|---|
 | C1 | **A switch of its own**, `ASSISTED_CARD_PAYMENT_ENABLED`, off by default, so 1b deploys dark where `ASSISTED_BOOKING_ENABLED_PHARMACY` is already on (stage). It gates only NEW card bookings; verify, reconcile, sweeps, late captures and refunds always run |
 | C2 | **Refund route** ("back the way the partner paid; partner's choice"): every refund of a card-paid booking goes back to the CARD by default — booker, patient, doctor and admin cancellations and every late capture. The wallet only when the booker chooses it on its own cancel (`refundTo: 'wallet'`); the patient, doctor or admin cannot choose for the partner |
-| C3 | Card money returned to the wallet (the partner's choice, or the admin fallback C5) opens no top-up lot, so it is **not withdrawable** (conservative, as admin credits) |
+| C3 | Card money returned to the wallet (the partner's choice, or the admin fallback C5) opens no top-up lot, so it is **not withdrawable** (conservative, as admin credits). **The web must say so** where the partner chooses "refund to wallet" ("goes to your Jansetu wallet for bookings; it cannot be withdrawn to the bank") |
 | C4 | **Card chargeback on a booking payment** (no wallet lot exists): bare minimum — RECORDED and FLAGGED only: `chargebackAt` on the payment record (once), an alert `booking_card_chargeback`, an audit `booking.card_chargeback`. No wallet debit, no receivable, no freeze, the booking is not changed. A card refund of that payment not yet sent is held (`manual_review`) and no later refund of it is ever made (card or wallet). Recovering the money from the partner is an admin decision — **no new money flow was built** |
 | C5 | **A card refund that fails** (Razorpay refuses it, or reports it failed) goes to the operator queue; it is never credited to the wallet automatically. An admin may move it to the partner's wallet only with the partner's recorded agreement (`agreement` text, audited), once (the same wallet key as C2) |
 | C6 | A consultation with nothing to pay (free, or a 100 % coupon) cannot be card-paid: 400 `NOTHING_TO_PAY` (book it with `wallet`, which debits nothing) |
@@ -2142,7 +2142,7 @@ booker view of the booking:
 → `{ booking, refundedMinor, alreadyCancelled, refund }`; `refund` (card bookings only) = `{ refundId, bookingId,
 paymentRecordId, amountMinor, cause, method: 'card' | 'wallet', state: 'pending' | 'processed' | 'failed' |
 'manual_review', lastError, attempts, razorpayRefundId, processedAt, createdAt, updatedAt }` or null (cancelled before
-payment: `refundedMinor: 0`). `refundTo` defaults to `card`; `wallet` credits the wallet at once (not withdrawable) and
+payment: `refundedMinor: 0`). `refundTo` defaults to `card`; `wallet` credits the wallet at once (NOT withdrawable — show this to the partner before it chooses) and
 is ignored for wallet-paid bookings. 400 `VALIDATION_ERROR` for another `refundTo`; other errors as §19.3. Show
 "refund to card: in progress" while `pending`; Razorpay usually completes in 5–7 working days.
 
@@ -2174,9 +2174,37 @@ patient cancel refunds the PARTNER's card; the partner is told ("being refunded 
   card booking is pending or a card refund row is `pending`: older code does not know the `assisted_booking` context, so
   a capture would stay unapplied and a cancel would refund nothing.
 
-### 23.5 Not built in 1b
+### 23.5 Not built in 1b (see §23.6 for what r10b added)
 
 Pay-again and switching a pending card booking to the wallet (C10); recovering a lost card dispute from the partner
 (C4); notices to the booker on expiry or late capture (C7); the daily reconciliation's per-booking checks for card
 bookings (one capture per paid booking, Razorpay totals) — they cover wallet bookings only; lab and doctor bookers,
 instant consults (later phases).
+
+### 23.6 Review fixes (r10b, review of `9f2a1807`)
+
+Branch `m0/r10b-phase1b-fixes` from `9f2a1807` (origin/stage). Local commits only. Checks:
+`test/assisted/r10b-phase1b-fixes.integration.ts` (12 checks; the 11 for fixes fail on `9f2a1807`, "7 guard" pins that
+other contexts still close a record on a bad signature). Where this section and an earlier one differ, this one wins.
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 (MEDIUM-HIGH, ₹) | A card refund Razorpay kept `pending` used up the 20 attempts with harmless lookups; then nobody looked again, the queue showed it and to-wallet refused it: the refund could be lost | `attempts` now counts REAL failures only (gateway unreachable, outcome unknown, refund mismatch). A refund still pending at Razorpay counts `checks` and is looked up again with back-off (10 min doubling, at most every 12 h) for as long as it stays pending — never given up (`nextCheckAt`). New admin `POST /admin/assisted/card-refunds/:id/recheck` (asks Razorpay now, whatever the back-off or failure count) and `POST …/:id/mark-failed { reason }` (admin tools switch; holds the row, reads Razorpay, refuses 409 `REFUND_AT_GATEWAY` while any refund of that payment is processed or pending there; audited `card_refund.marked_failed`), after which `to-wallet` works. Stuck money adds `cardRefundsPendingOverDays` (`ASSISTED_CARD_REFUND_STUCK_DAYS`, default 7). C11 stays | 1a, 1b, 1c |
+| 2 (MEDIUM) | Unpaid card bookings held doctors' slots for free (30 minutes each, without limit) | At most `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (default 10) card bookings of one booker wait for payment at once: decided in the booking transaction after a per-booker lock row (concurrent creates run one after the other), 429 `ASSISTED_LIMIT_REACHED` `limit: 'pending_card_bookings'`. An unpaid card booking that expires counts as a booker cancellation (P7 daily limit, alert at the threshold) | 2a, 2b |
+| 3 (MEDIUM) | The patient and the doctor saw card bookings never paid, with "Paid by" | A card booking never confirmed (`lifecycle.confirmed` absent: waiting for payment, or expired / cancelled before it) is the booker's alone: left out of the patient's and the doctor's lists (generic `/bookings` lists by query, the specialist portal's appointment list and patient history), 404 on their reads (`/bookings/:id`, portal appointment, status, prescription), on the patient's cancel, notes edit and "not mine", and on a doctor's cancel. `paidBy` is null unless paid. Once its payment confirms it, it is theirs (and stays so if cancelled later) | 3 |
+| 4 (LOW-MEDIUM, ₹) | to-wallet did not ask Razorpay first | Before crediting, Razorpay's refunds of the payment are read: any processed or pending one → 409 `REFUND_AT_GATEWAY` (502 `GATEWAY_LOOKUP_FAILED` when Razorpay cannot be asked) | 4 |
+| 5 (LOW-MEDIUM) | A crash between the confirmation and its follow-up (Meet, reminders, notices) left it undone, and a later call even returned the capture as late | The record is marked processed only after the follow-up; a record that already confirmed its booking is recognised as such and only finishes the follow-up (verify, reconcile, recovery sweep). The booking CAS alone confirms exactly once | 5 |
+| 6 (LOW) | A card dispute could be recorded on a payment never captured | 409 `PAYMENT_NOT_CAPTURED` unless the record is `paid` or `refunded` with a Razorpay payment id | 6 |
+| 7 (LOW) | A bad signature marked an assisted card record failed, so the real capture could no longer be verified, reconciled or swept | For `assisted_booking` records a bad signature answers 400 `PAYMENT_SIGNATURE_INVALID` and leaves the record as it is; other contexts unchanged | 7, 7 guard |
+| — | Wording; visibility of disputes | A disputed assisted record answers 409 `PAYMENT_DISPUTED` ("A card dispute was recorded on this booking payment…") instead of the top-up wording. C4 is unchanged (flag only, owner asked); stuck money adds `cardChargebacks` | 8 |
+
+**New answers for the web:** 429 `ASSISTED_LIMIT_REACHED` with `limit: 'pending_card_bookings'` on the card create
+("complete or cancel a waiting card booking first"); 409 `PAYMENT_DISPUTED` on verify / reconcile. Admin: `POST
+/api/v1/admin/assisted/card-refunds/:id/recheck` → `{ refund, gateway: [{ id, status, amountMinor, ours }] }` (409
+`REFUND_BUSY`, 404 `REFUND_NOT_FOUND`, 502 `GATEWAY_LOOKUP_FAILED`); `POST …/:id/mark-failed { reason }` → `{ refund }`
+(409 `REFUND_NOT_PENDING`, `REFUND_BUSY`, `REFUND_AT_GATEWAY`; 502 `GATEWAY_LOOKUP_FAILED`); `to-wallet` adds 409
+`REFUND_AT_GATEWAY` and 502 `GATEWAY_LOOKUP_FAILED`; the assisted chargeback adds 409 `PAYMENT_NOT_CAPTURED`; stuck money
+adds `cardRefundsPendingOverDays` and `cardChargebacks`. A refund row's `attempts` now counts failures only.
+
+**Switches added:** `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (10), `ASSISTED_CARD_REFUND_STUCK_DAYS` (7). No migration, no
+new index (the two new refund-row fields are unindexed).

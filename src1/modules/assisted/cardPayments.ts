@@ -85,7 +85,8 @@ export async function openCardOrder(b: IBooking, opts: { create: boolean } = { c
   }
 }
 
-type Outcome = 'applied' | 'already' | 'returned';
+/** applied: this call confirmed it; appliedBefore: confirmed by this record earlier, its follow-up not yet finished. */
+type Outcome = 'applied' | 'appliedBefore' | 'already' | 'returned';
 
 /** The `assisted_booking` payment context handler (registered at start-up and by tests). */
 export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }> {
@@ -106,6 +107,9 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
     const f = b?.assisted?.funding;
     if (!b || !f || f.method !== 'razorpay' || lower(f.payerId) !== lower(rec.payerPharmacyId)) throw notFound();
     const amount = recordPaiseOf(rec);
+    // r10b: this record already confirmed the booking (a crash or a racing call came between that and the follow-up):
+    // nothing moves again; the follow-up below is resumed and only then is the record processed.
+    if (lower(b.paymentTransactionId) === rid && lower(f.paymentRecordId) === rid && f.state !== 'pending' && f.state !== 'not_paid') return 'appliedBefore';
     const applicable = !doctorBlocked && b.status === 'pending' && b.paymentStatus === 'pending' && f.state === 'pending'
       && lower(f.paymentRecordId) === rid && amount === f.amountMinor;
     const audit = { actorKind: 'pharmacy' as const, actorId: lower(b.assisted!.bookedBy.actorId), orgKind: 'pharmacy' as const, orgId: lower(f.payerId), bookingId: id };
@@ -116,8 +120,8 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
           ...(rec.razorpayPaymentId ? { 'assisted.funding.razorpayPaymentId': rec.razorpayPaymentId } : {}),
           'lifecycle.paid': { at, by: 'pharmacy_card', amount: amount / 100 }, 'lifecycle.confirmed': { at } } }, { session: s });
       if (moved.modifiedCount !== 1) throw Object.assign(err(409, 'BOOKING_CHANGED', 'Booking changed; please retry'), { retryable: true });
-      const claimed = await PaymentRecordModel.updateOne({ _id: rid, isProcessed: { $ne: true } }, { $set: { isProcessed: true } }, { session: s });
-      if (claimed.modifiedCount !== 1) throw Object.assign(err(409, 'PAYMENT_CHANGED', 'Payment changed; please retry'), { retryable: true });
+      // r10b: the record stays unprocessed until the follow-up work is done (below), so verify, reconcile or the recovery
+      // sweep (paid, unprocessed records) resume it after a crash. The booking CAS above is what confirms exactly once.
       await auditIn({ ...audit, action: 'booking.paid', detail: { paymentRecordId: rid, amountMinor: amount } }, s);
       return 'applied';
     }
@@ -132,7 +136,8 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
   const confirmed = booking?.status === 'confirmed' && lower(booking.paymentTransactionId) === rid;
   let entity: IBooking = booking;
   if (confirmed && (booking as IBooking & { postPaymentCompletedFor?: string }).postPaymentCompletedFor !== rid) {
-    // After the confirmation only, resumed on a replay until it has completed: Meet (neutral), reminders, the notices.
+    // After the confirmation only: Meet (neutral), reminders, the notices. r10b: resumed by any later verify, reconcile or
+    // recovery sweep until done, because the record is marked processed only after this.
     const fx = assistedEffects();
     const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
     await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
@@ -140,6 +145,9 @@ export async function applyAssistedCapture(record: IPaymentRecord): Promise<{ pa
     await sendAssistedNotices(await bookedNotices(withMeet) as AssistedNotice[]);
     await BookingModel.updateOne({ _id: id }, { $set: { postPaymentCompletedFor: rid } });
     entity = (await BookingModel.findById(id).lean() as IBooking) ?? withMeet;
+  }
+  if (outcome === 'applied' || outcome === 'appliedBefore') {
+    await PaymentRecordModel.updateOne({ _id: rid, status: 'paid', isProcessed: { $ne: true } }, { $set: { isProcessed: true } });
   }
   const paymentRecord = await PaymentRecordModel.findById(rid).lean() as unknown as IPaymentRecord;
   return { paymentRecord, entity };

@@ -12,6 +12,16 @@
 type Row = Record<string, any>;
 export const IDENTITY_NOTE = 'Identity attested by the partner, not verified';
 
+/**
+ * r10b: a card-paid assisted booking that was never confirmed (waiting for its payment, or expired / cancelled before
+ * it) is the booker's alone: the patient and the doctor neither list nor read it, and it never says "Paid by". It
+ * becomes theirs once its payment confirmed it (`lifecycle.confirmed`), and stays so if it is cancelled afterwards.
+ */
+export const unpaidCardBooking = (r: Row | null | undefined): boolean =>
+  r?.assisted?.funding?.method === 'razorpay' && !r?.lifecycle?.confirmed;
+/** The same rule as a Mongo filter (rows matching it are left out). */
+export const UNPAID_CARD_QUERY = { 'assisted.funding.method': 'razorpay', 'lifecycle.confirmed': { $exists: false } };
+
 function one(row: Row): Row {
   if (!row || typeof row !== 'object' || !row.assisted || typeof row.assisted !== 'object') return row;
   const { price: _p, originalPrice: _o, paymentTransactionId: _t, walletFunding: _w, createTerms: _c, assisted, ...rest } = row;
@@ -29,7 +39,7 @@ function one(row: Row): Row {
     ...(lifecycle !== undefined ? { lifecycle } : {}),
     ...(noShowCancel !== undefined ? { noShowCancel } : {}),
     source: row.source ?? 'pharmacy_assisted',
-    paidBy: a.bookedBy?.name ?? null,
+    paidBy: unpaidCardBooking(row) ? null : a.bookedBy?.name ?? null,
     assisted: {
       shortRef: a.shortRef,
       bookedBy: a.bookedBy ? { kind: a.bookedBy.kind, name: a.bookedBy.name } : undefined,

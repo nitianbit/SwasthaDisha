@@ -11,7 +11,7 @@ import { assistedLimits } from '@/modules/assisted/flags';
  * phone number and per booker, on Mongo counters shared by every instance (the O1 pattern). Day windows are India
  * calendar days. A hit answers 429 ASSISTED_LIMIT_REACHED with `limit` naming the limit.
  */
-export type LimitName = 'lookups' | 'new_accounts' | 'bookings_per_phone' | 'booker_cancellations';
+export type LimitName = 'lookups' | 'new_accounts' | 'bookings_per_phone' | 'booker_cancellations' | 'pending_card_bookings';
 
 export class AssistedLimitError extends AppError {
   limit: LimitName;
@@ -28,6 +28,7 @@ function limitMessage(limit: LimitName): string {
     case 'lookups': return 'Too many patient lookups this hour; try again later';
     case 'new_accounts': return 'Too many new patient accounts today; try again tomorrow';
     case 'bookings_per_phone': return 'This mobile number has reached today\'s limit of assisted bookings';
+    case 'pending_card_bookings': return 'Too many card bookings are waiting for payment; complete or cancel one first';
     default: return 'Too many cancellations today; new assisted bookings are paused until tomorrow';
   }
 }
@@ -129,4 +130,15 @@ export async function raiseAlertIn(a: { kind: string; bookerKind?: string; booke
 export async function bookerCancellationsToday(orgKey: string): Promise<number> {
   const row = await AssistedCounterModel.findById(cancelId(orgKey, now())).lean();
   return Number(row?.count ?? 0);
+}
+
+/**
+ * r10b: at most N card bookings of one booker waiting for their payment at once (ASSISTED_LIMIT_PENDING_CARD_BOOKINGS,
+ * default 10), so unpaid card bookings cannot hold doctors' slots for free. In the booking transaction, after the insert:
+ * a per-booker lock row is written first (concurrent creates of one booker conflict and run one after the other), then
+ * the booker's pending card bookings — this one included — are counted.
+ */
+export async function assertPendingCardRoomIn(orgKind: string, orgId: string, countPending: () => Promise<number>, s: ClientSession): Promise<void> {
+  await bump(`pending_card_lock:${orgKind}:${orgId}`, 1, new Date(now() + DAY_MS), s);
+  if (await countPending() > assistedLimits.pendingCardBookings()) throw new AssistedLimitError('pending_card_bookings', 1800);
 }

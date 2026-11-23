@@ -25,7 +25,7 @@ import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { claimRequestKey } from '@/modules/requestKeys';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
-import { assertBookerMayBook, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
+import { assertBookerMayBook, assertPendingCardRoomIn, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
 import { assistedFlags } from '@/modules/assisted/flags';
@@ -353,6 +353,11 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       await countBookingForPhoneIn(phone, s);
       await countPairBookingIn('pharmacy', pharmacyId, lower(slot.specialistId), s);
       if (coupon) await redeemCouponIn(coupon, { bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
+      // r10b: unpaid card bookings cannot hold slots without end: a cap per booker (counted with this one).
+      if (card) {
+        await assertPendingCardRoomIn('pharmacy', pharmacyId, () => BookingModel.countDocuments({ 'assisted.bookedBy.kind': 'pharmacy',
+          'assisted.bookedBy.id': pharmacyId, 'assisted.funding.method': 'razorpay', 'assisted.funding.state': 'pending', status: 'pending' }).session(s).exec(), s);
+      }
       if (payMinor > 0 && !card) {
         await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);

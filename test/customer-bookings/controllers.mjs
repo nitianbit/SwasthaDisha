@@ -55,7 +55,7 @@ function fixture(kind, source, options = {}) {
     withFiles: async (_actor, _model, _data, _id, run) => run(), rebindStored: async () => undefined,
     publicNoShowView: value => value, withPatientNames: async rows => rows,
     bookerView: async row => row, bookerViews: async rows => rows, withBookerClinicalView: async value => value, withBookerBooking: async value => value,
-    assistedPublicView: value => value, assistedAdminView: value => value, notDisputed: () => true,
+    assistedPublicView: value => value, assistedAdminView: value => value, notDisputed: () => true, unpaidCardBooking: () => false,
     listOpenCancellations: async () => { throw new Error('not used here'); }, obligationSnapshot: async () => { throw new Error('not used here'); },
     logger: { info() {} }, calculateAgeFromDob: () => '30', toLabstackGender: () => 'male',
     UserModel: { findById(id) {

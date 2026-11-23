@@ -12,7 +12,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   'wallet.closed_compensated',
   /** Phase 1b: a card payment confirmed the booking; a late capture was sent back; a card dispute was recorded; an admin
    *  moved a failed card refund to the partner's wallet with its recorded agreement. */
-  'booking.paid', 'booking.late_capture', 'booking.card_chargeback', 'card_refund.to_wallet'] as const;
+  'booking.paid', 'booking.late_capture', 'booking.card_chargeback', 'card_refund.to_wallet',
+  /** r10b: an admin marked a card refund failed after checking Razorpay (no refund processed or pending there). */
+  'card_refund.marked_failed'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {
@@ -141,8 +143,13 @@ export interface IAssistedCardRefund {
   walletEntryId?: string;
   attemptId?: string;
   leaseUntil?: Date;
+  /** r10b: real failures only (gateway unreachable, outcome unknown, mismatch); at the cap the worker stops and admins act. */
   attempts: number;
   submissions: number;
+  /** r10b: lookups that found the refund still pending at Razorpay (never a failure; polled with back-off, without end). */
+  checks?: number;
+  /** r10b: when the worker looks at this row next (back-off). */
+  nextCheckAt?: Date;
   razorpayRefundId?: string;
   razorpayStatus?: string;
   lastError?: string;
@@ -168,6 +175,8 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   leaseUntil: { type: Date },
   attempts: { type: Number, required: true, default: 0 },
   submissions: { type: Number, required: true, default: 0 },
+  checks: { type: Number },
+  nextCheckAt: { type: Date },
   razorpayRefundId: { type: String },
   razorpayStatus: { type: String },
   lastError: { type: String },

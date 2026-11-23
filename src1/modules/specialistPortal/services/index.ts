@@ -1,3 +1,4 @@
+import { unpaidCardBooking } from '@/modules/assisted/views';
 import { Service } from 'typedi';
 import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
 import { AppError } from '@/modules/common/types';
@@ -197,7 +198,8 @@ export class SpecialistPortalService {
     if (
       !booking ||
       booking.bookingType !== 'consultation' ||
-      String(booking.specialistId) !== String(specialistId)
+      String(booking.specialistId) !== String(specialistId) ||
+      unpaidCardBooking(booking as never) // r10b: a card booking never paid is not the doctor's
     ) {
       throw new AppError({
         status: 404,
@@ -231,7 +233,8 @@ export class SpecialistPortalService {
     if (
       !booking ||
       booking.bookingType !== 'consultation' ||
-      String(booking.specialistId) !== String(specialistId)
+      String(booking.specialistId) !== String(specialistId) ||
+      unpaidCardBooking(booking as never) // r10b: a card booking never paid is not the doctor's
     ) {
       throw new AppError({
         status: 404,
@@ -329,7 +332,8 @@ export class SpecialistPortalService {
     if (
       !booking ||
       booking.bookingType !== 'consultation' ||
-      String(booking.specialistId) !== String(specialistId)
+      String(booking.specialistId) !== String(specialistId) ||
+      unpaidCardBooking(booking as never) // r10b: a card booking never paid is not the doctor's
     ) {
       throw new AppError({
         status: 404,

@@ -20,7 +20,7 @@ import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import PharmacyModel from '@/modules/pharmacies/model';
-import { cardRefundQueue, cardRefundToWallet, recordCardChargeback } from '@/modules/assisted/cardRefunds';
+import { cardRefundQueue, cardRefundToWallet, markCardRefundFailed, recheckCardRefund, recordCardChargeback } from '@/modules/assisted/cardRefunds';
 
 /** Assisted booking phase 1a controllers (§17.6). Answers are `{ success, data }`; nothing here is cached. */
 const actorOf = (req: AuthRequest): PharmacyActor => ({ pharmacyId: String(req.user?.pharmacyId || req.user?._id || ''), actorId: String(req.user?._id || '') });
@@ -245,4 +245,11 @@ export const cardRefundWallet = async (req: AuthRequest, res: Response) => {
 export const cardChargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
   send(res, await recordCardChargeback(String(req.user?._id), req.params.paymentId, String(req.body.reason).trim()));
+};
+/** r10b: POST /admin/assisted/card-refunds/:id/recheck — ask Razorpay about a card refund now. */
+export const cardRefundRecheck = async (req: AuthRequest, res: Response) => send(res, await recheckCardRefund(req.params.id));
+/** r10b: POST /admin/assisted/card-refunds/:id/mark-failed { reason } — after reading Razorpay; refused while a refund is live there. */
+export const cardRefundMarkFailed = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  send(res, await markCardRefundFailed(String(req.user?._id), req.params.id, String(req.body.reason).trim()));
 };

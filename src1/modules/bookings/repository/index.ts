@@ -1,3 +1,4 @@
+import { UNPAID_CARD_QUERY } from '@/modules/assisted/views';
 import { Service } from 'typedi';
 import { Model } from 'mongoose';
 import BookingModel from '@/modules/bookings/model';
@@ -213,6 +214,8 @@ export class BookingRepository extends BaseRepository<IBooking> {
     const query: Record<string, unknown> = {
       specialistId,
       bookingType: 'consultation',
+      // r10b: a card-paid assisted booking never confirmed is not the doctor's to see.
+      $nor: [UNPAID_CARD_QUERY],
     };
 
     if (options.bookingDate) {
@@ -258,7 +261,9 @@ export class BookingRepository extends BaseRepository<IBooking> {
         specialistId,
         userId,
         bookingType: 'consultation',
-      },
+        // r10b: a card-paid assisted booking never confirmed is not the doctor's to see.
+        $nor: [UNPAID_CARD_QUERY],
+      } as never,
       { sort: { bookingDate: -1, createdAt: -1 } }
     );
   }
@@ -333,6 +338,8 @@ export class BookingRepository extends BaseRepository<IBooking> {
     if (filter.hideDisputed) {
       query['assisted.identity.disputed.state'] = { $ne: 'open' };
     }
+    // r10b: a card-paid assisted booking never confirmed is the booker's alone (patients and doctors never list it).
+    if (filter.hideUnpaidCard) query.$nor = [UNPAID_CARD_QUERY];
 
     if (filter.dependentId) {
       query.dependentId = filter.dependentId;

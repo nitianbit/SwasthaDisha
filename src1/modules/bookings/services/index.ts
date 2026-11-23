@@ -1,3 +1,4 @@
+import { unpaidCardBooking } from '@/modules/assisted/views';
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { BookingRepository, flagLegacyOriginalMonth } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
@@ -1397,6 +1398,8 @@ export class BookingService {
     }
 
     const booking = await this.getById(id, signedOwner);
+    // r10b: a card-paid assisted booking never confirmed is not the patient's to see (or edit).
+    if (unpaidCardBooking(booking as never)) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
     if (Reflect.ownKeys(data).some(key => key !== 'notes')) {
       throw new AppError({
         status: 422,

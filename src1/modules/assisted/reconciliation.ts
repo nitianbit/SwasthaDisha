@@ -15,7 +15,7 @@ import { inTransaction } from '@/modules/partners/services';
 import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules/assisted/model';
 import { assistedFlags, assistedLimits } from '@/modules/assisted/flags';
 import { raiseAlertIn } from '@/modules/assisted/limits';
-import { cardRefundQueue } from '@/modules/assisted/cardRefunds';
+import { cardChargebacks, cardRefundQueue, cardRefundsStuckPending } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 
 /**
@@ -153,6 +153,10 @@ export async function stuckMoney(now: Date = new Date()) {
     lateCaptures: (await AssistedCardRefundModel.find({ cause: 'late_capture' }).sort({ createdAt: -1 }).limit(LIST_MAX).lean())
       .map((r) => ({ refundId: String(r._id), bookingId: r.bookingId, paymentRecordId: r.paymentRecordId, amountMinor: r.amountMinor, state: r.state,
         createdAt: r.createdAt })) as Row[],
+    // r10b: card refunds still pending at Razorpay after ASSISTED_CARD_REFUND_STUCK_DAYS (default 7), and card disputes
+    // recorded on assisted booking payments (C4: flagged only, an admin decides).
+    cardRefundsPendingOverDays: await cardRefundsStuckPending(now) as Row[],
+    cardChargebacks: await cardChargebacks() as Row[],
     withdrawalsRequestedOver7Days: [] as Row[],
     frozenWalletsWithReceivable: frozenWithReceivable.map((w) => ({ pharmacyId: String(w.pharmacyId), receivableMinor: w.receivableMinor })),
     topupsCapturedNotCredited: await uncreditedTopups(now),

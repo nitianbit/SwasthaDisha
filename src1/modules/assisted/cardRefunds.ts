@@ -30,7 +30,12 @@ import logger from '@/services/logger';
  * - Jansetu bears the gateway fee: the refund is always the full captured amount.
  */
 const LEASE_MS = 300_000;
+/** r10b: real failures (gateway unreachable, outcome unknown, mismatch) before the worker stops and the row waits for an admin. */
 export const CARD_REFUND_MAX_ATTEMPTS = 20;
+/** r10b: back-off between lookups of a refund Razorpay still reports pending: 10 min doubling, at most 12 h, without end. */
+const pendingDelay = (checks: number) => Math.min(12 * 3_600_000, 10 * 60_000 * 2 ** Math.min(Math.max(checks - 1, 0), 10));
+/** r10b: back-off after a real failure: 5 min doubling, at most 6 h (until the failure cap). */
+const failureDelay = (attempts: number) => Math.min(6 * 3_600_000, 5 * 60_000 * 2 ** Math.min(Math.max(attempts - 1, 0), 10));
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
 export const recordPaiseOf = (r: Pick<IPaymentRecord, 'finalAmountPaise' | 'finalAmount'>) =>
@@ -102,10 +107,19 @@ export const cardRefundView = (r: IAssistedCardRefund) => ({
 const fenceOf = (row: IAssistedCardRefund, attemptId: string) => ({ _id: row._id, state: 'pending', attemptId });
 const current = async (id: unknown) => (await AssistedCardRefundModel.findById(id).lean()) as unknown as IAssistedCardRefund | null;
 
-/** Keeps the row pending, records why and frees the lease so a later attempt looks the refund up first. */
-async function release(row: IAssistedCardRefund, attemptId: string, reason: string, attemptsFloor?: number) {
-  await AssistedCardRefundModel.updateOne(fenceOf(row, attemptId), { $set: { lastError: reason, leaseUntil: new Date() }, $unset: { attemptId: '' },
-    ...(attemptsFloor ? { $max: { attempts: attemptsFloor } } : {}) });
+/**
+ * Keeps the row pending, records why and frees the lease so a later attempt looks the refund up first. r10b: only a
+ * REAL failure counts toward CARD_REFUND_MAX_ATTEMPTS; a refund Razorpay still reports pending is looked up again with
+ * back-off for as long as it stays pending (it is never given up on).
+ */
+async function release(row: IAssistedCardRefund, attemptId: string, reason: string, kind: 'failure' | 'pending', attemptsFloor?: number) {
+  const now = Date.now();
+  const failures = Number(row.attempts || 0) + 1;
+  const checks = Number(row.checks || 0) + 1;
+  await AssistedCardRefundModel.updateOne(fenceOf(row, attemptId), {
+    $set: { lastError: reason, leaseUntil: new Date(now), nextCheckAt: new Date(now + (kind === 'failure' ? failureDelay(failures) : pendingDelay(checks))) },
+    $unset: { attemptId: '' },
+    ...(attemptsFloor ? { $max: { attempts: attemptsFloor } } : { $inc: kind === 'failure' ? { attempts: 1 } : { checks: 1 } }) });
   return current(row._id);
 }
 
@@ -123,7 +137,7 @@ async function runAttempt(row: IAssistedCardRefund, attemptId: string): Promise<
   let found: GatewayRefund | undefined;
   try {
     found = row.razorpayRefundId ? await gw().fetchRefund(paymentId, row.razorpayRefundId) : (await gw().listRefunds(paymentId)).find(ours);
-  } catch { return release(row, attemptId, 'GATEWAY_LOOKUP_FAILED'); }
+  } catch { return release(row, attemptId, 'GATEWAY_LOOKUP_FAILED', 'failure'); }
   if (!found) {
     // A card dispute recorded meanwhile: the bank already took this money back, so nothing is sent.
     const rec = await PaymentRecordModel.findById(row.paymentRecordId).select({ chargebackAt: 1 }).lean() as { chargebackAt?: Date } | null;
@@ -135,30 +149,39 @@ async function runAttempt(row: IAssistedCardRefund, attemptId: string): Promise<
       found = await gw().refund(paymentId, { amount: row.amountMinor, receipt: key, notes: { swasthadisha_refund_key: key, booking_id: row.bookingId } });
     } catch (error) {
       let after: GatewayRefund | undefined;
-      try { after = (await gw().listRefunds(paymentId)).find(ours); } catch { return release(row, attemptId, 'GATEWAY_OUTCOME_UNKNOWN'); }
+      try { after = (await gw().listRefunds(paymentId)).find(ours); } catch { return release(row, attemptId, 'GATEWAY_OUTCOME_UNKNOWN', 'failure'); }
       if (after) found = after;
       else if (marked.submissions === 1 && (error as { statusCode?: unknown })?.statusCode === 400) return finish(row, attemptId, 'failed', { lastError: 'GATEWAY_REJECTED' });
-      else return release(row, attemptId, marked.submissions > 1 ? 'GATEWAY_SUBMISSION_UNRESOLVED' : 'GATEWAY_OUTCOME_UNKNOWN');
+      else return release(row, attemptId, marked.submissions > 1 ? 'GATEWAY_SUBMISSION_UNRESOLVED' : 'GATEWAY_OUTCOME_UNKNOWN', 'failure');
     }
   }
   if (found.amount !== row.amountMinor || (found.paymentId && found.paymentId !== paymentId)) {
-    return release(row, attemptId, 'GATEWAY_REFUND_MISMATCH', CARD_REFUND_MAX_ATTEMPTS);
+    return release(row, attemptId, 'GATEWAY_REFUND_MISMATCH', 'failure', CARD_REFUND_MAX_ATTEMPTS);
   }
   await AssistedCardRefundModel.updateOne(fenceOf(row, attemptId), { $set: { razorpayRefundId: found.id, razorpayStatus: found.status } });
   if (found.status === 'processed') return finish(row, attemptId, 'processed', { razorpayRefundId: found.id, razorpayStatus: found.status, lastError: null });
   if (found.status === 'failed') return finish(row, attemptId, 'failed', { razorpayRefundId: found.id, razorpayStatus: found.status, lastError: 'GATEWAY_REFUND_FAILED' });
-  return release(row, attemptId, 'GATEWAY_REFUND_PENDING');
+  return release(row, attemptId, 'GATEWAY_REFUND_PENDING', 'pending');
 }
 
-/** Claims one pending card refund (lease) and pushes it forward. null when someone else holds it or it is not pending. */
-export async function advanceCardRefund(refundId: string, now: Date = new Date()): Promise<IAssistedCardRefund | null> {
-  if (!Types.ObjectId.isValid(refundId)) return null;
+const leaseFree = (now: Date) => ({ $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: null }, { leaseUntil: { $lte: now } }] });
+const due = (now: Date) => ({ $or: [{ nextCheckAt: { $exists: false } }, { nextCheckAt: null }, { nextCheckAt: { $lte: now } }] });
+
+/** Claims a pending card refund's lease (`force`: an admin action — ignores the back-off and the failure cap). */
+async function claim(refundId: string, now: Date, force: boolean): Promise<{ row: IAssistedCardRefund; attemptId: string } | null> {
   const attemptId = randomUUID();
-  const claimed = await AssistedCardRefundModel.findOneAndUpdate({ _id: refundId, method: 'razorpay', state: 'pending',
-    attempts: { $lt: CARD_REFUND_MAX_ATTEMPTS }, $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: null }, { leaseUntil: { $lte: now } }] },
-  { $set: { attemptId, leaseUntil: new Date(now.getTime() + LEASE_MS) }, $inc: { attempts: 1 } }, { new: true }).lean() as IAssistedCardRefund | null;
-  if (!claimed) return null;
-  return runAttempt(claimed, attemptId);
+  const row = await AssistedCardRefundModel.findOneAndUpdate({ _id: refundId, method: 'razorpay', state: 'pending',
+    ...(force ? {} : { attempts: { $lt: CARD_REFUND_MAX_ATTEMPTS } }), $and: [leaseFree(now), ...(force ? [] : [due(now)])] },
+  { $set: { attemptId, leaseUntil: new Date(now.getTime() + LEASE_MS) } }, { new: true }).lean() as IAssistedCardRefund | null;
+  return row ? { row, attemptId } : null;
+}
+
+/** Claims one pending card refund (lease) and pushes it forward. null when someone else holds it, it is not due or not pending. */
+export async function advanceCardRefund(refundId: string, now: Date = new Date(), force = false): Promise<IAssistedCardRefund | null> {
+  if (!Types.ObjectId.isValid(refundId)) return null;
+  const c = await claim(refundId, now, force);
+  if (!c) return null;
+  return runAttempt(c.row, c.attemptId);
 }
 
 /** After a commit that queued card refunds: try them now (best effort; the scheduled worker retries). */
@@ -172,7 +195,7 @@ export async function kickCardRefunds(bookingId: string): Promise<void> {
 /** Scheduled: every pending card refund whose lease is free, oldest first (bounded per run). */
 export async function runCardRefundsDue(now: Date = new Date(), limit = 25): Promise<{ advanced: number }> {
   const rows = await AssistedCardRefundModel.find({ method: 'razorpay', state: 'pending', attempts: { $lt: CARD_REFUND_MAX_ATTEMPTS },
-    $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: null }, { leaseUntil: { $lte: now } }] }).sort({ updatedAt: 1 }).limit(limit).select({ _id: 1 }).lean();
+    $and: [leaseFree(now), due(now)] }).sort({ nextCheckAt: 1, updatedAt: 1 }).limit(limit).select({ _id: 1 }).lean();
   let advanced = 0;
   for (const r of rows) {
     try { if (await advanceCardRefund(String(r._id), now)) advanced += 1; } catch (e) { logger.warn('assisted card refund failed', { refundId: String(r._id), error: (e as Error)?.message }); }
@@ -182,7 +205,7 @@ export async function runCardRefundsDue(now: Date = new Date(), limit = 25): Pro
 
 // ───────────────────────────── Operator queue and admin actions ─────────────────────────────
 
-/** GET /admin/assisted/card-refunds: failed and manual-review rows, pending rows over the attempt cap or older than 24 h. */
+/** GET /admin/assisted/card-refunds: failed and manual-review rows, pending rows at the failure cap or older than 24 h. */
 export async function cardRefundQueue(q: { state?: string; limit?: number } = {}, now: Date = new Date()) {
   const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
   const filter = q.state ? { state: { $eq: q.state } } : { $or: [{ state: { $in: ['failed', 'manual_review'] } },
@@ -198,6 +221,10 @@ export async function cardRefundQueue(q: { state?: string; limit?: number } = {}
  */
 export async function cardRefundToWallet(adminId: string, refundId: string, agreement: string) {
   if (!Types.ObjectId.isValid(refundId)) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  // r10b: Razorpay is asked first — a refund of this payment processed or pending there means the money is going back to
+  // the card already, so the wallet is never credited as well. (Failed and held rows are never claimed by the worker.)
+  const pre = await AssistedCardRefundModel.findById(refundId).lean() as IAssistedCardRefund | null;
+  if (pre && !pre.resolution && ['failed', 'manual_review'].includes(pre.state) && pre.razorpayPaymentId) await assertNoLiveGatewayRefund(pre.razorpayPaymentId);
   return inTransaction(async (s) => {
     const row = await AssistedCardRefundModel.findById(refundId).session(s).lean() as IAssistedCardRefund | null;
     if (!row) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
@@ -219,6 +246,80 @@ export async function cardRefundToWallet(adminId: string, refundId: string, agre
       detail: { refundId: String(row._id), paymentRecordId: row.paymentRecordId, amountMinor: row.amountMinor, agreement } }, s);
     return { refund: cardRefundView((await AssistedCardRefundModel.findById(row._id).session(s).lean()) as IAssistedCardRefund), replayed: false };
   });
+}
+
+/** r10b: every refund Razorpay holds for the payment (any key). 502 when it cannot be asked. */
+async function gatewayRefundsOf(paymentId: string): Promise<GatewayRefund[]> {
+  try { return await gw().listRefunds(paymentId); }
+  catch { throw err(502, 'GATEWAY_LOOKUP_FAILED', 'Razorpay could not be asked about this payment\'s refunds; try again'); }
+}
+const LIVE = ['processed', 'pending'];
+async function assertNoLiveGatewayRefund(paymentId: string): Promise<void> {
+  const live = (await gatewayRefundsOf(paymentId)).filter((r) => LIVE.includes(String(r.status)));
+  if (live.length) {
+    throw Object.assign(err(409, 'REFUND_AT_GATEWAY', 'Razorpay already holds a processed or pending refund of this payment; nothing more may be paid back'),
+      { details: { refunds: live.map((r) => ({ id: r.id, status: r.status, amountMinor: r.amount })) } });
+  }
+}
+
+/**
+ * r10b: POST /admin/assisted/card-refunds/:id/recheck — asks Razorpay now about a pending card refund (whatever its
+ * back-off or failure count), exactly as the worker does (lookup first; sends it only if Razorpay has none for this
+ * row). A row in another state is answered as it is, with what Razorpay holds for the payment.
+ */
+export async function recheckCardRefund(refundId: string, now: Date = new Date()) {
+  if (!Types.ObjectId.isValid(refundId)) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  const row = await current(refundId);
+  if (!row) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  if (row.state === 'pending' && row.method === 'razorpay') {
+    const c = await claim(refundId, now, true);
+    if (!c) throw err(409, 'REFUND_BUSY', 'This refund is being worked on right now; try again in a few minutes');
+    await runAttempt(c.row, c.attemptId);
+  }
+  const after = (await current(refundId))!;
+  const gateway = after.razorpayPaymentId ? (await gatewayRefundsOf(after.razorpayPaymentId))
+    .map((r) => ({ id: r.id, status: r.status, amountMinor: r.amount, ours: r.notes?.swasthadisha_refund_key === `ab-${String(after._id)}` })) : [];
+  return { refund: cardRefundView(after), gateway };
+}
+
+/**
+ * r10b: POST /admin/assisted/card-refunds/:id/mark-failed { reason } — a pending card refund the worker cannot settle
+ * (outcome unknown, failure cap reached) is marked failed only after Razorpay is read: refused (409 REFUND_AT_GATEWAY)
+ * while any refund of the payment is processed or pending there. The row is held (lease) meanwhile, so the worker cannot
+ * submit in between. Then `to-wallet` may credit the partner (with its agreement).
+ */
+export async function markCardRefundFailed(adminId: string, refundId: string, reason: string, now: Date = new Date()) {
+  if (!Types.ObjectId.isValid(refundId)) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  const row = await current(refundId);
+  if (!row) throw err(404, 'REFUND_NOT_FOUND', 'Refund not found');
+  if (row.state !== 'pending' || row.method !== 'razorpay') throw err(409, 'REFUND_NOT_PENDING', 'Only a pending card refund can be marked failed');
+  const c = await claim(refundId, now, true);
+  if (!c) throw err(409, 'REFUND_BUSY', 'This refund is being worked on right now; try again in a few minutes');
+  const free = () => AssistedCardRefundModel.updateOne(fenceOf(c.row, c.attemptId), { $set: { leaseUntil: new Date() }, $unset: { attemptId: '' } });
+  try {
+    await assertNoLiveGatewayRefund(String(c.row.razorpayPaymentId));
+  } catch (e) { await free(); throw e; }
+  const done = await finish(c.row, c.attemptId, 'failed', { lastError: 'MARKED_FAILED_BY_ADMIN' });
+  await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: 'pharmacy', orgId: c.row.payerId, action: 'card_refund.marked_failed',
+    bookingId: c.row.bookingId, detail: { refundId: String(c.row._id), paymentRecordId: c.row.paymentRecordId, amountMinor: c.row.amountMinor, reason } }, null);
+  return { refund: cardRefundView(done!) };
+}
+
+/** r10b (stuck money): card refunds still pending after N days (ASSISTED_CARD_REFUND_STUCK_DAYS, default 7). */
+export async function cardRefundsStuckPending(now: Date = new Date(), limit = 200) {
+  const days = Number(process.env.ASSISTED_CARD_REFUND_STUCK_DAYS);
+  const n = Number.isSafeInteger(days) && days > 0 ? days : 7;
+  const rows = await AssistedCardRefundModel.find({ method: 'razorpay', state: 'pending', createdAt: { $lt: new Date(now.getTime() - n * 86_400_000) } })
+    .sort({ createdAt: 1 }).limit(limit).lean() as IAssistedCardRefund[];
+  return rows.map(cardRefundView);
+}
+
+/** r10b (stuck money): assisted card payments with a card dispute recorded (C4: flagged only, waiting for an admin). */
+export async function cardChargebacks(limit = 200) {
+  const rows = await PaymentRecordModel.find({ context: 'assisted_booking', chargebackAt: { $exists: true } })
+    .select({ contextId: 1, payerPharmacyId: 1, finalAmount: 1, finalAmountPaise: 1, chargebackAt: 1, status: 1 }).sort({ chargebackAt: -1 }).limit(limit).lean() as unknown as IPaymentRecord[];
+  return rows.map((r) => ({ paymentRecordId: String(r._id), bookingId: r.contextId, pharmacyId: r.payerPharmacyId ?? null, amountMinor: recordPaiseOf(r),
+    status: r.status, chargebackAt: r.chargebackAt }));
 }
 
 /** An assisted card payment named by its record id, Razorpay order id or Razorpay payment id (database only). */
@@ -243,6 +344,10 @@ async function assistedPaymentRecord(paymentId: string): Promise<IPaymentRecord>
 export async function recordCardChargeback(adminId: string, paymentId: string, reason: string) {
   const record = await assistedPaymentRecord(paymentId);
   const rid = lower(record._id);
+  // r10b: only a captured payment can be disputed (paid, or returned after its capture); an order never paid has nothing.
+  if (!['paid', 'refunded'].includes(String(record.status)) || !record.razorpayPaymentId) {
+    throw err(409, 'PAYMENT_NOT_CAPTURED', 'This payment was never captured; there is nothing to dispute');
+  }
   return inTransaction(async (s) => {
     const at = new Date();
     const set = await PaymentRecordModel.updateOne({ _id: rid, chargebackAt: { $exists: false } }, { $set: { chargebackAt: at } }, { session: s });

@@ -20,6 +20,8 @@ import SpecialistModel from '@/modules/specialists/model';
 import { assertBookableDoctor } from '@/modules/specialists/eligibility';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import { assistedBookerFilter, assistedCauseOf, settleAssistedFundingIn } from '@/modules/assisted/refunds';
+import { countBookerCancellationIn } from '@/modules/assisted/limits';
+import { unpaidCardBooking } from '@/modules/assisted/views';
 import { clinicBranchContext, branchClosedOn } from '@/modules/doctors/services/schedule';
 
 /**
@@ -402,6 +404,8 @@ export async function cancelBookingSettlement(p: {
       : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
+    // r10b: a card-paid assisted booking never confirmed is the booker's alone; the patient and the doctor cannot see it.
+    if (['user', 'specialist'].includes(p.requester.userType) && unpaidCardBooking(booking as never)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation's money is held by its InstantRequest; only the instant cancel command refunds it.
     if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'Use the instant consultation cancel command');
     // Q16d (F5): a clinic desk appointment (paid at the clinic, nothing taken by us) is cancelled with the clinic's own
@@ -548,6 +552,8 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
       // Phase 1b: an unpaid assisted card booking — the coupon redemption is reversed, the funding ends `not_paid`, the
       // join link dies; nothing was taken, so nothing is refunded (a capture landing later is a late capture).
       await settleAssistedFundingIn(booking, { cause: 'payment_timeout', keepMoney: false }, s);
+      // r10b: an unpaid card booking left to expire counts as a cancellation by its booker (P7 daily limit).
+      await countBookerCancellationIn(booking.assisted.bookedBy.kind, String(booking.assisted.bookedBy.id).toLowerCase(), s);
     } else {
       await undoCouponUsageIn(records.map(r => String(r._id)), s);
       refunded = await settleMoney(booking, id, records, p.wallets, s);
