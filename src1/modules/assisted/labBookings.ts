@@ -21,7 +21,7 @@ import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partn
 import type { VisitMode } from '@/modules/partners/model/slot';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { takeSeat } from '@/modules/partners/services/slots';
-import { LAB_MIN_LEAD_MS, LabBookingService, admitLabItems, branchOffers, itemSnapshot } from '@/modules/partners/services/labBookings';
+import { LAB_MIN_LEAD_MS, LAB_PAYMENT_WINDOW_MS, LabBookingService, admitLabItems, branchOffers, itemSnapshot } from '@/modules/partners/services/labBookings';
 import { assertPharmacyLabOn } from '@/modules/assisted/flags';
 import { countPairBookingIn } from '@/modules/assisted/limits';
 import { auditIn } from '@/modules/assisted/support';
@@ -30,6 +30,8 @@ import { labDebitKey } from '@/modules/assisted/labRefunds';
 import { bookerNames } from '@/modules/assisted/names';
 import { bookerReportWindowOpen, labSourceOf } from '@/modules/assisted/labViews';
 import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultations';
+import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
+import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
   cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput,
@@ -46,6 +48,12 @@ import type { AssistedBlock } from '@/modules/assisted/types';
  *
  * Owner, 23 Nov: no blocking limits except the hourly phone lookups (no per-number, new-account, cancellation-block or
  * pending-payment cap); the same booker–lab pair still raises an alert (never refuses).
+ *
+ * r14 (§24.5): `paymentMethod: 'razorpay'` books the same way but pays by card/UPI through the phase 1b card machinery
+ * (assisted/cardPayments.ts, generalised by booking kind): the row is inserted `pending_payment` with its seat held and
+ * ONE payment record id chosen before the insert (context `assisted_lab_booking`), no wallet debit; its Razorpay order is
+ * made after the commit. Verify, reconcile and the sweeps confirm it once; the lab sweep expires it after 30 minutes.
+ * Until it is paid it is the booker's alone (hidden from the patient and the lab). No pending-card cap (owner, 23 Nov).
  */
 const LANGUAGE = /^[a-z]{2,3}$/;
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
@@ -141,8 +149,8 @@ export function validateLabRequest(input: Pick<AssistedLabInput, 'consent' | 're
 
 function validate(input: AssistedLabInput): void {
   validateLabRequest(input);
-  if (input.paymentMethod !== 'wallet') {
-    throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Lab tests booked for a patient are paid from the Jansetu wallet for now');
+  if (input.paymentMethod !== 'wallet' && input.paymentMethod !== 'razorpay') {
+    throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Lab tests booked for a patient are paid from the Jansetu wallet or by card/UPI');
   }
 }
 
@@ -185,10 +193,11 @@ type Row = Record<string, any>;
 export async function bookerLabViews(rows: Row[], pharmacyId: string, now: Date = new Date()): Promise<Row[]> {
   const list = rows.filter((r) => r && typeof r === 'object');
   if (!list.length) return [];
-  const [partners, branches, names] = await Promise.all([
+  const [partners, branches, names, payments] = await Promise.all([
     PartnerOrgModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.partnerId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1 }).lean() as unknown as Promise<Row[]>,
     BranchModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.branchId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1, address: 1, phone: 1 }).lean() as unknown as Promise<Row[]>,
     bookerNames(list.map((r) => ({ _id: r._id, userId: r.userId, dependentId: r.patient?.dependentId })), pharmacyId),
+    bookerPayments('lab_booking', list, pharmacyId),
   ]);
   const pBy = new Map(partners.map((x) => [String(x._id), x]));
   const bBy = new Map(branches.map((x) => [String(x._id), x]));
@@ -215,7 +224,9 @@ export async function bookerLabViews(rows: Row[], pharmacyId: string, now: Date 
         ...(a.identity?.disputed?.state ? { disputed: { state: a.identity.disputed.state } } : {}) },
       createdAt: b.createdAt, updatedAt: b.updatedAt,
     };
-    if (mine && a.funding) v.payment = { method: a.funding.method, state: a.funding.state, payBy: null };
+    // r10c / r10d / r14: how it is paid, this booker only (pay now and the refund choice on any device).
+    const payment = payments.get(String(b._id));
+    if (payment) v.payment = payment;
     const open = mine && bookerReportWindowOpen(b, now);
     v.report = { releases: open ? (b.report?.releases ?? []).map((r: Row) => ({ file: `/api/static/${r.path}`, releasedAt: r.releasedAt,
       signer: { name: r.signer?.name, kind: r.signer?.kind, registrationNumber: r.signer?.registrationNumber } })) : [] };
@@ -226,16 +237,38 @@ export async function bookerLabView(row: Row, pharmacyId: string, now?: Date): P
   return (await bookerLabViews([row], pharmacyId, now))[0]!;
 }
 
-/** The answer of a create (and of a replay): the booker's own receipt with its funding and split. */
-async function labReceipt(b: IPartnerLabBooking, pharmacyId: string, replayed: boolean) {
+/**
+ * The answer of a create (and of a replay): the booker's own receipt with its funding and split. r14: a card booking adds
+ * its funding's `paymentTransactionId` and `payment` — the open Razorpay order while the booking waits for it (made
+ * again here after a failed order call), else null.
+ */
+async function labReceipt(b: IPartnerLabBooking, pharmacyId: string, replayed: boolean, order?: CardPaymentView | null) {
   const a = b.assisted!;
+  const card = a.funding.method === 'razorpay';
+  // The order first, so the booking view below shows the same open order.
+  const payment = card ? (order !== undefined ? order : await openCardOrderOf('lab_booking', b as never)) : undefined;
   return {
     booking: await bookerLabView(b as never, pharmacyId),
-    funding: { method: a.funding.method, amountMinor: a.funding.amountMinor, state: a.funding.state, walletEntryId: a.funding.walletEntryId ?? null },
+    funding: { method: a.funding.method, amountMinor: a.funding.amountMinor, state: a.funding.state, walletEntryId: a.funding.walletEntryId ?? null,
+      ...(card ? { paymentTransactionId: a.funding.paymentRecordId ?? null } : {}) },
     split: { listMinor: a.split.listMinor, discountMinor: a.split.discountMinor, couponCode: a.split.couponCode ?? null },
+    ...(card ? { payment } : {}),
     newAccount: !!a.identity?.newAccount,
     replayed,
   };
+}
+
+/**
+ * After a lab booking is booked and paid (a wallet create; r14: the confirmation of a card payment), best effort: the
+ * patient is told who booked and paid. The lab sees the row in its list (L18).
+ */
+export async function notifyLabBooked(b: IPartnerLabBooking): Promise<void> {
+  // SMS phase 5: "<pharmacy> booked a lab test (lab visit / home collection) on <date time>. Ref <ref>"
+  try {
+    await labService().notify({ userId: b.userId, type: 'booking_confirmed', title: 'Lab test booked',
+      message: `${b.assisted!.bookedBy.name} booked a lab test (${b.visitMode === 'home' ? 'home collection' : 'lab visit'}) on ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted!.shortRef}.`,
+      bookingId: String(b._id), key: `assisted:lab:${b._id}:booked:customer` });
+  } catch { /* best effort */ }
 }
 
 async function replayOf(storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
@@ -260,6 +293,10 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   // The same key with the same content answers its receipt first, uncounted.
   const replay = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IPartnerLabBooking | null;
   if (replay && replay.assisted?.requestHash === hash) return labReceipt(replay, pharmacyId, true);
+  // r14: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on, the gateway has keys and the card refunds' index is built
+  // (decided before anything is counted or held, the same answer for every number).
+  const card = input.paymentMethod === 'razorpay';
+  if (card) await assertCardPaymentAvailable();
   // Every other create names a phone like a lookup does: counted (the one limit the owner kept) and audited (ids only).
   if (attempt === 0) {
     await countPhoneUse(orgKey(pharmacyId), phone, (seen) => auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId,
@@ -298,6 +335,8 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   if (input.acceptedPriceMinor !== payMinor) {
     throw err(409, 'PRICE_CHANGED', 'The price changed; check it with the patient and book again', { details: { priceMinor: payMinor, listMinor, discountMinor } });
   }
+  // r14: a card payment needs an amount (Razorpay refuses 0); free tests (a 100 % coupon) are booked with the wallet method.
+  if (card && payMinor <= 0) throw err(400, 'NOTHING_TO_PAY', 'Nothing to pay for these tests; book them with paymentMethod "wallet"');
   // provider_coupon_v2 (§8.3): coupon first, then the cut (0 in phase 2). Provider-funded: the base is what was paid.
   const platformFunded = coupon?.fundedBy === 'platform';
   const baseMinor = platformFunded ? listMinor : payMinor;
@@ -309,14 +348,18 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   const now = clock();
   const bookingId = new Types.ObjectId().toHexString();
   const entryId = new Types.ObjectId();
+  // r14: a card booking's one payment record id, stored on the funding before the order exists.
+  const paymentRecordId = card ? new Types.ObjectId().toHexString() : undefined;
   const assisted: Omit<AssistedBlock, 'join'> = {
     bookedBy: { kind: 'pharmacy', id: pharmacyId, actorKind: 'pharmacy', actorId: lower(actor.actorId), name: pharmacy?.name ?? 'Pharmacy' },
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
       at: now, actorId: lower(actor.actorId) },
     preferredLanguage: input.preferredLanguage,
     identity: { attested: true, newAccount: customer.created },
-    funding: { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
-      ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
+    funding: card
+      ? { method: 'razorpay', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
+      : { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
+        ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
     split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor, cutMinor: 0,
       providerMinor: baseMinor, rule: 'provider_coupon_v2', lines },
     referral: null,
@@ -352,20 +395,22 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
         items: ordered.map(itemSnapshot),
         pricing: { subtotalMinor: listMinor, ...(coupon ? { couponCode: coupon.code } : {}), discountMinor, payableMinor: payMinor, commissionMinor: 0, currency: 'INR' },
         settlement: { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName, settlementSystem: 'ledger' },
-        status: 'confirmed', statusVersion: 0, paymentStatus: 'paid',
-        // Never pending_payment, so the unpaid sweep never sees it (§24.4.1).
-        paymentDeadline: now,
+        // A wallet row is never pending_payment, so the unpaid sweep never sees it (§24.4.1). r14: a card row waits for its
+        // payment for 30 minutes (its seat held); the lab sweep then expires it, after asking Razorpay.
+        status: card ? 'pending_payment' : 'confirmed', statusVersion: 0, paymentStatus: card ? 'pending' : 'paid',
+        paymentDeadline: card ? new Date(now.getTime() + LAB_PAYMENT_WINDOW_MS) : now,
         reschedule: { version: 0, pending: false },
         report: { draftFiles: [], releasedFiles: [], releases: [] },
-        lifecycle: { paidAt: now, confirmedAt: now },
+        lifecycle: card ? {} : { paidAt: now, confirmedAt: now },
       }], { session: s });
-      if (payMinor > 0) {
+      if (payMinor > 0 && !card) {
         await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: labDebitKey(bookingId),
           referenceType: 'assisted_lab_booking', referenceId: `${bookingId}:debit`, description: 'Assisted lab test booking', entryId }, s);
       }
       await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.created',
         bookingId, requestKey: input.requestKey,
-        detail: { kind: 'lab_booking', partnerId: lower(partner!._id), branchId: lower(branch._id), itemCount: ordered.length, amountMinor: payMinor, method: 'wallet',
+        detail: { kind: 'lab_booking', partnerId: lower(partner!._id), branchId: lower(branch._id), itemCount: ordered.length, amountMinor: payMinor,
+          method: card ? 'razorpay' : 'wallet',
           accountCreated: customer.created, ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
       return { booking: created!.toObject() as IPartnerLabBooking, replayed: false };
     });
@@ -378,13 +423,9 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   }
   if (made.replayed) return labReceipt(made.booking, pharmacyId, true);
   const b = made.booking;
-  // After the commit, best effort: the patient is told who booked and paid. The lab sees the row in its list (L18).
-  // SMS phase 5: "<pharmacy> booked a lab test (lab visit / home collection) on <date time>. Ref <ref>"
-  try {
-    await labService().notify({ userId: b.userId, type: 'booking_confirmed', title: 'Lab test booked',
-      message: `${assisted.bookedBy.name} booked a lab test (${b.visitMode === 'home' ? 'home collection' : 'lab visit'}) on ${b.slot.date} at ${b.slot.startTime}. Ref ${assisted.shortRef}.`,
-      bookingId: String(b._id), key: `assisted:lab:${b._id}:booked:customer` });
-  } catch { /* best effort */ }
+  // r14: a card booking opens its Razorpay order now; the patient hears of it only once it is paid (C7).
+  if (card) return labReceipt(b, pharmacyId, false, await openCardOrderOf('lab_booking', b as never));
+  await notifyLabBooked(b);
   return labReceipt(b, pharmacyId, false);
 }
 
@@ -462,11 +503,17 @@ export async function listLabBookingsForPharmacy(actor: PharmacyActor, q: { stat
     nextCursor: rows.length > limit && last ? `${new Date(last.createdAt).getTime()}_${String(last._id)}` : null };
 }
 
-/** GET /pharmacy-assisted/lab-bookings/by-key/:key — 'used' (with the booking), 'abandoned' or 'unknown' (Q13). */
+/**
+ * GET /pharmacy-assisted/lab-bookings/by-key/:key — 'used' (with the booking), 'abandoned' or 'unknown' (Q13). r14: a card
+ * booking adds `payment` (its open order, or null; read only), as the consultation by-key does.
+ */
 export async function findLabByKey(actor: PharmacyActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
   const b = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedLabKey(actor, key) } }).lean() as IPartnerLabBooking | null;
-  if (b) return { state: 'used' as const, booking: await bookerLabView(b as never, lower(actor.pharmacyId)) };
+  if (b) {
+    return { state: 'used' as const, booking: await bookerLabView(b as never, lower(actor.pharmacyId)),
+      ...(b.assisted?.funding?.method === 'razorpay' ? { payment: await openCardOrderOf('lab_booking', b as never, { create: false }) } : {}) };
+  }
   const row = await RequestKeyModel.findOne({ scope: labKeyScope(actor), key }).lean();
   return { state: row?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
 }
@@ -481,18 +528,27 @@ export async function abandonLabByKey(actor: PharmacyActor, key: string) {
 
 /**
  * POST /pharmacy-assisted/lab-bookings/:id/cancel — the booker cancels its own lab booking (§24.4.4, L6): up to 1 hour
- * before the slot, or any time while a lab reschedule is unanswered; never after the sample or visit. Full refund to
- * its wallet once; audited in the same transaction. Owner, 23 Nov: no cancellation cap (nothing is counted).
+ * before the slot, or any time while a lab reschedule is unanswered; never after the sample or visit. Full refund once;
+ * audited in the same transaction. Owner, 23 Nov: no cancellation cap (nothing is counted).
+ * r14 (§24.5.3): a card-paid booking goes back to the card (default) or, on `refundTo: 'wallet'`, to the wallet (not
+ * withdrawable, C3); the answer adds `refund` (its card refund row, null when cancelled before payment). A card booking
+ * still waiting for its payment may be cancelled at any time (nothing was paid; its seat is released).
  */
-export async function cancelLabByBooker(actor: PharmacyActor, bookingId: string, input: { reason?: string; expectedVersion?: number }, clock: () => Date = () => new Date()) {
+export async function cancelLabByBooker(actor: PharmacyActor, bookingId: string, input: { reason?: string; expectedVersion?: number; refundTo?: 'card' | 'wallet' },
+  clock: () => Date = () => new Date()) {
   await ownLab(actor, bookingId);
   const reason = String(input.reason ?? '').trim() || 'Cancelled by the booking partner';
-  const r = await labService().cancelAsBooker(ownFilter(actor), lower(actor.pharmacyId), bookingId, { note: reason, expectedVersion: input.expectedVersion }, clock(),
+  const r = await labService().cancelAsBooker(ownFilter(actor), lower(actor.pharmacyId), bookingId,
+    { note: reason, expectedVersion: input.expectedVersion, ...(input.refundTo ? { refundTo: input.refundTo } : {}) }, clock(),
     async (b, s) => {
       await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.cancelled',
         bookingId: lower(b._id), detail: { kind: 'lab_booking', reason, cause: 'booker' } }, s);
     });
-  return { booking: await bookerLabView(r.booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled };
+  const card = r.booking.assisted?.funding?.method === 'razorpay';
+  // A card refund queued by this cancellation is sent now (best effort; the worker retries it).
+  if (card && !r.alreadyCancelled) await kickCardRefunds(lower(bookingId));
+  return { booking: await bookerLabView(r.booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled,
+    ...(card ? { refund: await cancellationRefundOf(lower(bookingId)) } : {}) };
 }
 
 /** POST /pharmacy-assisted/lab-bookings/:id/accept-reschedule { version } — the booker accepts the lab's new time (L7). */

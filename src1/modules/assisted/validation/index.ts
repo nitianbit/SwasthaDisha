@@ -124,15 +124,18 @@ export const labBookingSchema = Joi.object({
   couponCode: Joi.string().trim().max(50),
   acceptedPriceMinor: Joi.number().integer().min(0).required(),
   notes: Joi.string().trim().max(2000),
-  // Card / UPI for lab bookings is round 2b: the service answers 400 PAYMENT_METHOD_UNAVAILABLE for 'razorpay'.
+  // r14: 'razorpay' (card / UPI) needs ASSISTED_CARD_PAYMENT_ENABLED (else 400 PAYMENT_METHOD_UNAVAILABLE).
   paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
 });
 export const pharmacyLabBookingQuerySchema = Joi.object({
-  status: Joi.string().valid('confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
+  // r14: `pending_payment` = a card booking waiting for its payment.
+  status: Joi.string().valid('pending_payment', 'confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
   from: calendarDay,
   to: calendarDay,
   cursor: Joi.string().max(60),
   limit: Joi.number().integer().min(1).max(50),
 });
-export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedVersion: Joi.number().integer().min(0) });
+export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedVersion: Joi.number().integer().min(0),
+  /** r14: where a card-paid lab booking's money goes back (default `card`); ignored for wallet-paid bookings. */
+  refundTo: Joi.string().valid('card', 'wallet') });
 export const labAcceptRescheduleSchema = Joi.object({ version: Joi.number().integer().min(0).required() });

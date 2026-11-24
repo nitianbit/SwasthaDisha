@@ -23,11 +23,10 @@ import { bookerView } from '@/modules/assisted/bookerView';
 import { maskName } from '@/modules/assisted/names';
 import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
 import { countBookerCancellationIn, hitLookup } from '@/modules/assisted/limits';
-import { assistedBookerFilter } from '@/modules/assisted/refunds';
+import { assistedBookerFilter, bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
 import { ASSISTED_KEY, asDoctorUnavailable, assistedKeyScope, storedAssistedKey, type PharmacyActor } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
-import { AssistedCardRefundModel } from '@/modules/assisted/model';
-import { cardRefundView, kickCardRefunds } from '@/modules/assisted/cardRefunds';
+import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { openCardOrder } from '@/modules/assisted/cardPayments';
 
 /**
@@ -318,9 +317,9 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
   const when = `${shownDate(b.bookingDate)} at ${b.bookingTime}`;
   const a = b.assisted;
   // Phase 1b: what happened to the partner's money — wallet, card/UPI, or nothing (a card booking cancelled unpaid).
-  const row = [...(a.funding?.refunds ?? [])].reverse().find((r) => r.cause !== 'late_capture' && r.cause !== 'extra_capture');
+  const row = cancellationRowOf(a.funding);
   if (!row && a.funding?.method === 'razorpay') refunded = false;
-  const bookerMoney = row?.method === 'razorpay' ? ' The amount is being refunded to the card or UPI it was paid with.' : ' The amount is back in your Jansetu wallet.';
+  const bookerMoney = bookerMoneyLine(row);
   // Phase 1b: the patient and the doctor hear of a card booking only once it is paid; one cancelled before that is told
   // to nobody but the booker (when someone else cancelled it).
   const unannounced = a.funding?.method === 'razorpay' && !b.lifecycle?.confirmed;
@@ -366,13 +365,7 @@ export async function cancelByBooker(actor: PharmacyActor, bookingId: string,
   });
   const booking = r.alreadyCancelled ? r.booking : await afterAssistedCancel(r.booking, 'booker');
   return { booking: await bookerView(booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled,
-    ...(booking.assisted?.funding?.method === 'razorpay' ? { refund: await cardRefundOf(String(booking._id)) } : {}) };
-}
-
-/** Phase 1b: the cancellation refund of a card booking (card or wallet, its state), for the booker's own answers; null if none. */
-async function cardRefundOf(bookingId: string) {
-  const row = await AssistedCardRefundModel.findOne({ bookingId: lower(bookingId), cause: { $nin: ['late_capture', 'extra_capture'] } }).sort({ createdAt: -1 }).lean();
-  return row ? cardRefundView(row as never) : null;
+    ...(booking.assisted?.funding?.method === 'razorpay' ? { refund: await cancellationRefundOf(String(booking._id)) } : {}) };
 }
 
 /** POST /pharmacy-assisted/bookings/:id/reschedule — P9: same doctor and price, before the start, once per request key. */

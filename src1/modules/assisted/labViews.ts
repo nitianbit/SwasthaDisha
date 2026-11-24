@@ -65,3 +65,11 @@ export function assistedLabPartnerPart(view: Row, b: Row): Row {
 
 /** §17.5: an assisted row reported as not mine (still open) leaves the holder's lists; direct reads still work. */
 export const LAB_NOT_DISPUTED_QUERY = { 'assisted.identity.disputed.state': { $ne: 'open' } };
+
+/**
+ * r14 (§24.5.3, L5; as r10b item 3 for consultations): a card-paid lab booking never confirmed (`lifecycle.confirmedAt`
+ * absent: waiting for its payment, or expired or cancelled before it) is the booker's alone — left out of the patient's
+ * and the lab's lists, the one 404 on their reads and steps. Once its payment confirms it, it is theirs (and stays so).
+ */
+export const LAB_UNPAID_CARD_QUERY = { 'assisted.funding.method': 'razorpay', 'lifecycle.confirmedAt': { $exists: false } };
+export const isUnpaidCardLab = (b: Row | null | undefined): boolean => b?.assisted?.funding?.method === 'razorpay' && !b?.lifecycle?.confirmedAt;

@@ -5,7 +5,7 @@ import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
-import type { AssistedRefundRow } from '@/modules/assisted/types';
+import type { AssistedBookingKind, AssistedFunding, AssistedRefundRow } from '@/modules/assisted/types';
 import PaymentRecordModel from '@/modules/payment/model';
 import type { IPaymentRecord } from '@/modules/payment/types';
 import { queueCardRefundIn } from '@/modules/assisted/cardRefunds';
@@ -32,13 +32,38 @@ export const assistedBookerFilter = (kind: 'pharmacy' | 'lab' | 'doctor', id: st
 export const assistedCauseOf = (userType: string) =>
   userType === 'user' ? 'patient' : userType === 'pharmacy' ? 'booker' : userType === 'specialist' ? 'doctor' : userType;
 
-export async function reverseRedemptionIn(bookingKind: 'booking' | 'lab_booking', bookingId: string, s: ClientSession): Promise<boolean> {
+export async function reverseRedemptionIn(bookingKind: AssistedBookingKind, bookingId: string, s: ClientSession): Promise<boolean> {
   const row = await CouponRedemptionModel.findOneAndUpdate({ bookingKind, bookingId: String(bookingId).toLowerCase(), state: 'counted' },
     { $set: { state: 'reversed', reversedAt: new Date() } }, { new: true, session: s }).lean();
   if (!row) return false;
   await CouponModel.updateOne({ code: row.couponCode, currentUsageCount: { $gte: 1 } }, { $inc: { currentUsageCount: -1 } }, { session: s });
   return true;
 }
+
+/**
+ * Phase 1b, shared by consultations and (r14) lab bookings: the money step of cancelling a CARD-funded assisted booking,
+ * in the cancellation transaction. The coupon redemption is reversed once. A capture already applied (funding
+ * `captured`) goes back by the card refund row of its payment record (exactly once per record): to the card, or to the
+ * wallet when the booker chose it. Nothing applied yet: `not_paid` (a capture landing later is a late capture).
+ * Returns the funding state to set, the refund row to push (only when this call created it) and the amount queued.
+ */
+export async function settleCardFundingIn(kind: AssistedBookingKind, bookingId: string, f: AssistedFunding, p: { cause: string; refundTo?: 'card' | 'wallet' },
+  s: ClientSession): Promise<{ state: 'refunded' | 'not_paid'; push: AssistedRefundRow | null; refundedMinor: number }> {
+  const id = String(bookingId).toLowerCase();
+  await reverseRedemptionIn(kind, id, s);
+  const record = f.state === 'captured' && f.paymentRecordId && Types.ObjectId.isValid(f.paymentRecordId)
+    ? await PaymentRecordModel.findById(f.paymentRecordId).session(s).lean() as unknown as IPaymentRecord | null : null;
+  if (!record) return { state: 'not_paid', push: null, refundedMinor: 0 };
+  const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerId: f.payerId, record, cause: p.cause, to: p.refundTo === 'wallet' ? 'wallet' : 'card' }, s);
+  return { state: 'refunded', push: q.created ? q.row : null, refundedMinor: q.created ? q.row.amountMinor : 0 };
+}
+
+/** The refund of a cancellation (not a late or extra capture's return), newest first. */
+export const cancellationRowOf = (f?: Pick<AssistedFunding, 'refunds'> | null) =>
+  [...(f?.refunds ?? [])].reverse().find((r) => r.cause !== 'late_capture' && r.cause !== 'extra_capture');
+/** The booker notice's money line for a cancellation refund: back to the card/UPI, or into the Jansetu wallet. */
+export const bookerMoneyLine = (row?: Pick<AssistedRefundRow, 'method'> | null) =>
+  (row?.method === 'razorpay' ? ' The amount is being refunded to the card or UPI it was paid with.' : ' The amount is back in your Jansetu wallet.');
 
 export async function settleAssistedFundingIn(booking: IBooking, p: { cause: string; keepMoney: boolean; refundTo?: 'card' | 'wallet' },
   s: ClientSession): Promise<number> {
@@ -54,16 +79,10 @@ export async function settleAssistedFundingIn(booking: IBooking, p: { cause: str
     set['assisted.funding.state'] = 'forfeited';
     set['noShowCancel.forfeitedAmount'] = Number(a.funding.amountMinor) / 100;
   } else if (a.funding.method === 'razorpay') {
-    await reverseRedemptionIn('booking', id, s);
-    const record = a.funding.state === 'captured' && a.funding.paymentRecordId && Types.ObjectId.isValid(a.funding.paymentRecordId)
-      ? await PaymentRecordModel.findById(a.funding.paymentRecordId).session(s).lean() as unknown as IPaymentRecord | null : null;
-    if (record) {
-      const q = await queueCardRefundIn({ bookingId: id, payerId: a.funding.payerId, record, cause: p.cause, to: p.refundTo === 'wallet' ? 'wallet' : 'card' }, s);
-      if (q.created) { push = q.row; refundedMinor = q.row.amountMinor; }
-      set['assisted.funding.state'] = 'refunded';
-    } else {
-      set['assisted.funding.state'] = 'not_paid';
-    }
+    const card = await settleCardFundingIn('booking', id, a.funding, { cause: p.cause, refundTo: p.refundTo }, s);
+    set['assisted.funding.state'] = card.state;
+    push = card.push;
+    refundedMinor = card.refundedMinor;
   } else {
     await reverseRedemptionIn('booking', id, s);
     const already = (a.funding.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);

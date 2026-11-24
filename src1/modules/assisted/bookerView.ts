@@ -19,8 +19,6 @@ const TOP_LEVEL = ['_id', 'bookingType', 'bookingKind', 'userId', 'dependentId',
 const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName'] as const;
 const LIFECYCLE_EVENTS = ['created', 'confirmed', 'completed', 'cancelled'] as const;
 const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
-/** The booking payment window (bookings/holds.ts BOOKING_PAYMENT_WINDOW_MS; not imported, to keep this view free of the writers). */
-const PAYMENT_WINDOW_MS = 30 * 60_000;
 
 /** §5.1: rows written before `source` existed derive it (clinic desk, otherwise self). */
 const sourceOf = (b: Row) => (typeof b.source === 'string' ? b.source : b.clinicDesk ? 'clinic_desk' : 'self');
@@ -76,18 +74,10 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
   const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
   const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
-  // r10d: the open Razorpay order of each card booking of THIS pharmacy still waiting for its payment (read only), so
-  // "pay now" works from any device.
-  const waitingOwn = list.filter((b) => b.assisted?.funding?.method === 'razorpay' && b.assisted.funding.state === 'pending' && b.status === 'pending'
-    && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase());
-  const orders = new Map<string, { razorpayOrderId: string; razorpayKeyId: string } | null>();
-  if (waitingOwn.length) {
-    const { openCardOrder } = await import('@/modules/assisted/cardPayments');
-    for (const b of waitingOwn) {
-      const o = await openCardOrder(b as never, { create: false }).catch(() => null);
-      orders.set(String(b._id), o ? { razorpayOrderId: o.razorpayOrderId, razorpayKeyId: o.razorpayKeyId } : null);
-    }
-  }
+  // r10c / r10d: how each booking of THIS pharmacy is paid, with the open Razorpay order of a card booking still waiting
+  // for its payment (read only), so "pay now" works from any device (r14: the same helper serves lab bookings).
+  const { bookerPayments } = await import('@/modules/assisted/cardPayments');
+  const payments = await bookerPayments('booking', list, pharmacyId);
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -113,16 +103,8 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
       v.assisted = a;
       // r10c: how this booking is paid, for its OWN booker only (pay now / refund choice on any device). Never in the
       // patient's or the doctor's views (they strip `assisted.funding`); never another pharmacy's.
-      const f = b.assisted.funding;
-      if (f && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase()) {
-        const card = f.method === 'razorpay';
-        const waiting = card && f.state === 'pending' && b.status === 'pending' && b.createdAt;
-        v.payment = { method: card ? 'razorpay' : 'wallet', state: f.state,
-          payBy: waiting ? new Date(new Date(b.createdAt).getTime() + PAYMENT_WINDOW_MS).toISOString() : null,
-          ...(card ? { paymentTransactionId: f.paymentRecordId ?? null } : {}),
-          // r10d: while it waits, the open order to reopen Checkout (null when none is open yet: replay the create).
-          ...(waiting ? { razorpayOrderId: orders.get(String(b._id))?.razorpayOrderId ?? null, razorpayKeyId: orders.get(String(b._id))?.razorpayKeyId ?? null } : {}) };
-      }
+      const payment = payments.get(String(b._id));
+      if (payment) v.payment = payment;
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.
     const interval = appointmentIntervalOf(b, slotOf(b));

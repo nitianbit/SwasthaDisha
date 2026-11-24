@@ -175,6 +175,9 @@ export async function uncreditedTopups(now: Date = new Date()) {
 export async function stuckMoney(now: Date = new Date()) {
   const pendingPastDeadline = await BookingModel.find({ 'assisted.funding': { $exists: true }, status: 'pending', paymentStatus: 'pending',
     createdAt: { $lt: new Date(now.getTime() - 30 * 60_000 - HOUR) } }).select({ _id: 1, createdAt: 1 }).limit(LIST_MAX).lean();
+  // r14 (§24.5.3): card lab bookings still waiting for their payment an hour after their deadline.
+  const labPendingPastDeadline = await PartnerLabBookingModel.find({ 'assisted.funding.method': 'razorpay', status: 'pending_payment', paymentStatus: 'pending',
+    paymentDeadline: { $lt: new Date(now.getTime() - HOUR) } }).select({ _id: 1, createdAt: 1, paymentDeadline: 1 }).limit(LIST_MAX).lean();
   const open = await BookingModel.find({ 'assisted.funding.state': 'captured', status: { $in: ['pending', 'confirmed'] }, paymentStatus: 'paid' })
     .select({ bookingDate: 1, bookingTime: 1, slotId: 1, 'assisted.bookedBy': 1, 'assisted.funding.amountMinor': 1 }).limit(5000).lean() as unknown as IBooking[];
   const slots = await SlotModel.find({ _id: { $in: open.map((b) => b.slotId).filter((id) => Types.ObjectId.isValid(String(id))) } })
@@ -191,7 +194,8 @@ export async function stuckMoney(now: Date = new Date()) {
   const unknownFeeLots = await WalletTopupLotModel.find({ feeState: 'unknown', closed: false, createdAt: { $lt: new Date(now.getTime() - 2 * DAY) } })
     .select({ walletRef: 1, paymentRecordId: 1, amountMinor: 1, createdAt: 1 }).limit(LIST_MAX).lean();
   return {
-    pendingPaymentPastDeadline: pendingPastDeadline.map((b) => ({ bookingId: String(b._id), createdAt: b.createdAt })),
+    pendingPaymentPastDeadline: [...pendingPastDeadline.map((b) => ({ bookingId: String(b._id), createdAt: b.createdAt })),
+      ...labPendingPastDeadline.map((b) => ({ bookingId: String(b._id), bookingKind: 'lab_booking', createdAt: b.createdAt, paymentDeadline: b.paymentDeadline }))],
     // Phase 1b: card refunds pending over 24 h, failed or held for review (the operator queue), and late captures.
     refundRowsPending: await cardRefundQueue({}, now) as Row[],
     lateCaptures: (await AssistedCardRefundModel.find({ cause: { $in: ['late_capture', 'extra_capture'] } }).sort({ createdAt: -1 }).limit(LIST_MAX).lean())

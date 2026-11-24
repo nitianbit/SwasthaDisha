@@ -6,6 +6,7 @@ import { PaymentController } from '@/modules/payment/controller';
 import { AuthRequest, assertOperationalPharmacy } from '@/modules/middleware/auth';
 import { reconcilePaymentSchema, verifyPaymentSchema } from '@/modules/payment/validation';
 import PaymentRecordModel from '@/modules/payment/model';
+import { isAssistedCardContext } from '@/modules/payment/types';
 
 const paymentRouter = Router();
 const paymentController = new PaymentController();
@@ -19,8 +20,8 @@ const operationalPharmacyForBookings = catchAsync(async (req: AuthRequest, _res,
     const id = String(req.body?.paymentTransactionId ?? '');
     const record = /^[0-9a-fA-F]{24}$/.test(id)
       ? await PaymentRecordModel.findById(id).select({ context: 1 }).lean() as { context?: string } | null : null;
-    // Phase 1b: an assisted card payment of a booking is a booking payment too (its answer carries the booker view).
-    if (!record || record.context === 'booking' || record.context === 'assisted_booking') await assertOperationalPharmacy(req);
+    // Phase 1b: an assisted card payment of a booking is a booking payment too (its answer carries the booker view); r14: lab bookings too.
+    if (!record || record.context === 'booking' || isAssistedCardContext(record.context)) await assertOperationalPharmacy(req);
   }
   next();
 });
