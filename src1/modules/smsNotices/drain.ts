@@ -1,5 +1,4 @@
 import cron from 'node-cron';
-import type { Types } from 'mongoose';
 import logger from '@/services/logger';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { freeLease } from '@/modules/common/utils/lease';
@@ -23,19 +22,30 @@ const BACKOFF_MS = [2 * 60_000, 10 * 60_000];
 
 type Outcome = 'sent' | 'retry' | 'failed' | 'skipped';
 
-async function finish(_id: Types.ObjectId | unknown, lease: Date, set: Partial<ISmsNotice>, unset: Record<string, ''> = {}): Promise<boolean> {
+async function finish(_id: unknown, lease: Date, set: Partial<ISmsNotice>, unset: Record<string, ''> = {}): Promise<boolean> {
   const r = await SmsNoticeModel.collection.updateOne({ _id: _id as never, state: 'sending', leaseUntil: lease },
     { $set: { ...set, updatedAt: new Date() }, $unset: { leaseUntil: '', ...unset } });
   return r.modifiedCount === 1;
 }
 const done = (state: 'sent' | 'failed' | 'skipped', extra: Partial<ISmsNotice> = {}) => ({ state, ...finishedFields(new Date()), ...extra });
+type Result = { outcome: Outcome; reason?: string; retryable?: boolean };
+
+/** A failed call (or an unexpected error): back after 2, then 10 minutes, until the attempts run out. */
+async function failure(row: ISmsNotice, lease: Date, now: Date, reason: string, retryable: boolean, extra: Partial<ISmsNotice> = {}): Promise<Result> {
+  if (retryable && row.attempts < smsFlags.maxAttempts()) {
+    const wait = BACKOFF_MS[Math.min(row.attempts, BACKOFF_MS.length) - 1]!;
+    await finish(row._id, lease, { state: 'queued', reason, dueAt: new Date(now.getTime() + wait), ...extra });
+    return { outcome: 'retry', reason, retryable };
+  }
+  await finish(row._id, lease, done('failed', { reason, ...extra }));
+  return { outcome: 'failed', reason, retryable };
+}
 
 /** One claimed row: compose, send once (bounded), record. */
-async function handle(row: ISmsNotice, lease: Date, now: Date): Promise<{ outcome: Outcome; reason?: string; retryable?: boolean }> {
+async function handle(row: ISmsNotice, lease: Date, now: Date): Promise<Result> {
   const skip = async (reason: string) => { await finish(row._id, lease, done('skipped', { reason })); return { outcome: 'skipped' as const, reason }; };
   if (!smsFlags.enabled()) return skip('switched_off');
-  const provider = smsProvider();
-  if (!provider.configured()) return skip('provider_not_configured');
+  if (!smsProvider().configured()) return skip('provider_not_configured');
   const composer = composerOf(row.event);
   if (!composer) return skip('no_composer');
   const c = await composer(row, now);
@@ -44,17 +54,9 @@ async function handle(row: ISmsNotice, lease: Date, now: Date): Promise<{ outcom
   if ('skip' in sms) return skip(sms.skip);
   const r = await sendBounded({ to: sms.to, text: sms.text, templateId: sms.template.templateId, unicode: sms.unicode });
   const chosen = { message: sms.template.message, lang: sms.template.lang, ...(r.status ? { providerStatus: r.status } : {}) };
-  if (r.ok) {
-    await finish(row._id, lease, done('sent', { ...chosen, sentAt: new Date() }), { reason: '' });
-    return { outcome: 'sent' };
-  }
-  if (r.retryable && row.attempts < smsFlags.maxAttempts()) {
-    const wait = BACKOFF_MS[Math.min(row.attempts, BACKOFF_MS.length) - 1] ?? BACKOFF_MS[BACKOFF_MS.length - 1]!;
-    await finish(row._id, lease, { state: 'queued', reason: r.code, dueAt: new Date(now.getTime() + wait), ...chosen });
-    return { outcome: 'retry', reason: r.code, retryable: true };
-  }
-  await finish(row._id, lease, done('failed', { reason: r.code, ...chosen }));
-  return { outcome: 'failed', reason: r.code, retryable: r.retryable };
+  if (!r.ok) return failure(row, lease, now, r.code, r.retryable, chosen);
+  await finish(row._id, lease, done('sent', { ...chosen, sentAt: new Date() }), { reason: '' });
+  return { outcome: 'sent' };
 }
 
 /** One tick. `now` is when rows count as due (tests move it); leases are always judged on the wall clock. */
@@ -71,17 +73,8 @@ export async function drainSmsOnce(now: Date = new Date()): Promise<Record<Outco
       { $set: { state: 'sending', leaseUntil: lease }, $inc: { attempts: 1 } }, { new: true }).lean() as ISmsNotice | null;
     if (!claimed) continue;
     out.claimed += 1;
-    let r: Awaited<ReturnType<typeof handle>>;
-    try {
-      r = await handle(claimed, lease, now);
-    } catch {
-      // An unexpected error (database, a composer): retried like a gateway failure.
-      const attempts = Number(claimed.attempts);
-      const last = attempts >= smsFlags.maxAttempts();
-      await finish(claimed._id, lease, last ? done('failed', { reason: 'error' }) : { state: 'queued', reason: 'error',
-        dueAt: new Date(now.getTime() + (BACKOFF_MS[Math.min(attempts, BACKOFF_MS.length) - 1] ?? BACKOFF_MS[0]!)) }).catch(() => false);
-      r = { outcome: last ? 'failed' : 'retry', reason: 'error' };
-    }
+    // An unexpected error (the database, a composer) is retried like a gateway failure.
+    const r = await handle(claimed, lease, now).catch(() => failure(claimed, lease, now, 'error', true).catch((): Result => ({ outcome: 'retry', retryable: true })));
     out[r.outcome] += 1;
     if (r.outcome === 'failed') {
       await raiseAlertIn({ kind: 'sms_failed', subject: 'sms', detail: { reason: r.reason } }).catch(() => undefined);

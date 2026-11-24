@@ -5405,3 +5405,92 @@ else):
 | Later, for 3f: `SMS_RECORDS_CODE_<LANG>_TEMPLATE`, 5 values | The §10.6 security message per language |
 
 The operator generates `JOIN_LINK_SECRET` and sets the switches on the owner's word.
+
+### 27.12 Round 5a build record (r25, 2026-11-25)
+
+Branch `m0/r25-phase5a` from `m0/r19-stage-next` (`2273b88a`: r10h, 2b, 2c, 2d, 3d and their review fixes) with
+`m0/r23-phase5-spec` merged. Local commits only. Built: §27.5. Suite: `test/assisted/r25-phase5a.integration.ts`
+(11 checks).
+
+**Q1–Q5 (owner asleep, coordinator 25 Nov).** The recommended answers of §27.11 are used as ASSUMED (reversible) and stay
+open for the owner: Q1 the existing gateway account, with a new Jansetu header (`SMS_NOTICES_FROM` empty until it is
+approved); Q2 the customer web domain for `/j/`; Q3 2 hours before, 20:00 the evening before in quiet hours; Q4 no SMS
+for self-bookings; Q5 the phase 6 translator, English and Hindi registered first. Only Q1 and Q5 touch 5a.
+
+#### 27.12.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| Outbox | `smsNotices/model/index.ts` | `sms_notices` as §27.5.1. Also records admin test sends (`bookingKind: 'admin_test'`, `event: 'test'`) |
+| Enqueue | `smsNotices/outbox.ts` `enqueueSms` | As §27.5.2: never throws, never sends; nothing without the unique index |
+| Composers | `smsNotices/outbox.ts` `setSmsComposer(event, fn)` | What an event's SMS says, decided at send time. 5b registers one per event; 5a registers none, so a row would be skipped `no_composer` (5a has no hooks: nothing is queued in production) |
+| Drain | `smsNotices/drain.ts` `drainSmsOnce`, `runSmsNoticeScheduler` (started in `src1/index.ts`) | As §27.5.3 |
+| Sender | `smsNotices/provider.ts` | `SmsProvider`, the one implementation `gatewayProvider`, `sendBounded` (the timeout), `setSmsProvider` (tests) |
+| Shared gateway request | `sms/services/index.ts` `gatewayRequest`, `gatewayConfigured` | `SMSService.sendSMS` builds the same request as before: same keys, order, header and fallbacks (sign-in template, PE id). The suite compares it byte for byte with the code before 5a |
+| Templates | `smsNotices/templates.ts` | The English texts of §10.2 and §10.6 (`RECORDS_CODE` for 3f) |
+| Switches | `smsNotices/flags.ts` | §27.5.6, read on every call |
+| Shared helpers | `common/utils/lease.ts` (`freeLease`, `withDeadline`) | Also used by `meet/retry.ts` and `assisted/cardPayments.ts` (their own copies removed) |
+| Admin | `smsNotices/admin.ts`, mounted at `/api/v1/admin/sms-notices` | Summary and test send |
+
+#### 27.12.2 Choices made while building (ASSUMED r25, reversible)
+
+1. **Named variables.** The repo text writes each variable with its name (`{#name#}`), so every language keeps its own
+   word order. The DLT text is derived (each becomes `{#var#}`) and shown in the summary for registration.
+2. **English only in the code.** Hindi, Assamese, Bengali and Odia are added once their registered text exists, instead
+   of drafts in the repo (no unreviewed translation in the code). Until then a notice in those languages falls back to
+   English (SM6).
+3. **`attempts` counts claims.** Each claim makes at most one gateway call.
+4. **No "refused 2xx" class yet.** Every 2xx counts as sent until a stage send shows the gateway's refusal shape
+   (§27.5.4).
+5. **Test sends** are recorded as `admin_test` rows (the admin's id, no phone), because `assisted_audit_events` needs an
+   organisation. Refused requests (400, 409, 503) do not count towards the 20 an hour.
+6. **The per-booking admin read** (`GET /admin/sms-notices?bookingKind&bookingId`) moves to 5b, when rows exist.
+7. **`last24h`** in the summary scans the rows created in the last 24 hours (no `createdAt` index; admins only).
+8. **The drain checks the unique index only while the master switch is on.** With it off it only marks due rows
+   `skipped: switched_off`.
+9. **Settings** are read from `process.env` by `smsNotices/flags.ts`; nothing is added to `CONFIG`.
+
+#### 27.12.3 API for the web (admin screens)
+
+- `GET /api/v1/admin/sms-notices/summary` → `{ enabled, provider: { configured, unicode, noticesHeader, joinBase },
+  pairs: [{ message, lang, enabled, templateSet, dltText }], last24h: { queued, sending, sent, failed, skipped:
+  { <reason>: n } } }`. `pairs` covers the 8 messages (the 7 notices and `RECORDS_CODE`) × `en hi as bn or`; `dltText`
+  is `null` where the repo has no text yet. Booleans and counts only: never a secret, a template id or a phone number.
+- `POST /api/v1/admin/sms-notices/test { message, lang, phone }` → `{ ok: true }` or `{ ok: false, code }` (`timeout`,
+  `network`, `http_5xx`, `http_429`, `http_4xx`). It sends even while that pair's switch is off. Errors: 400
+  `VALIDATION_ERROR`; 403 `FORBIDDEN` (not an admin); 409 `SMS_TEMPLATE_NOT_SET` (no id or no text in that language);
+  429 `SMS_TEST_LIMIT` (20 an hour per admin); 503 `SMS_NOTICES_DISABLED`, `SMS_PROVIDER_NOT_CONFIGURED`.
+
+#### 27.12.4 Switches, indexes, deploy, rollback
+
+- **Switches** as §27.5.6, all off. `SMS_SEND_TIMEOUT_MS` 1–20000 (default 5000); `SMS_NOTICE_MAX_ATTEMPTS` 1–10
+  (default 3).
+- **Indexes:** `sms_notices` (the unique key, `{ state, dueAt }`, TTL `expireAt`). Run `npm run sync-indexes`.
+- **Deploy:** as §27.5.9. With 5a alone nothing is queued; the test send works once the master switch, a template id
+  and the gateway are set.
+- **Rollback:** `SMS_NOTICES_ENABLED=false`. Rolling the code back is safe: the collection is ignored and sign-in SMS is
+  unchanged.
+
+#### 27.12.5 Checks
+
+`test/assisted/r25-phase5a.integration.ts`, 11 checks:
+1. sign-in code SMS unchanged: the same text, and byte for byte the same gateway request as the code before 5a
+   (fallbacks included); the notices header never reaches it; unconfigured still throws;
+2. the notice sender: request shape, notices header, no template fallback, Unicode flag only for non-Latin text, each
+   gateway answer classified, never a throw;
+3. double enqueue: 10 at once → one row; again after it was sent → one row, one SMS;
+4. two drains at once over 20 rows → 20 gateway calls, each row sent once;
+5. a row under a live lease is left alone; once the lease is past it is taken over and sent once;
+6. retry and give-up: 5xx back after 2 then 10 minutes; the third failure is final with one alert for the day; a 4xx is
+   final at once; success after two failures;
+7. a gateway that hangs (or a sender that ignores its signal) is cut at the timeout; a tick stops after 3 failures in a
+   row; rows it did not claim keep 0 attempts;
+8. switches and recipients: master off, pair off (English fallback, then `no_template`), no template id (no call),
+   Unicode flag, no phone, inactive account, stale, no composer, gateway not configured;
+9. a missing index, a refused write or a dropped collection never affects a committed booking; the drain does not run
+   without the index;
+10. admin summary and test send;
+11. no phone number, text, template id or secret in any log line or outbox row.
+
+**Mutation check.** Each of these, undone alone, makes its check fail: the enqueue's index check (9), the claim's lease
+(4, 5), the stop after 3 failures in a row (7), the sign-in template fallback in `sendSMS` (1).
