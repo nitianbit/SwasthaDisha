@@ -22,7 +22,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   /** r13: an admin credited a lab wallet by hand (non-withdrawable, L20). */
   'wallet.admin_topup',
   /** Phase 3d: a pharmacy or doctor loaded a doctor's recommended tests by code and phone (§25.7.4). */
-  'recommendation.lookup'] as const;
+  'recommendation.lookup',
+  /** r17: the booker offered its instant request again (another doctor, or any online doctor). */
+  'instant.reoffered'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {

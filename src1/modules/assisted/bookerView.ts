@@ -4,6 +4,8 @@ import { bookerNames } from '@/modules/assisted/names';
 import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
 import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
 import { refOf, type BookerLike } from '@/modules/assisted/bookers';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
+import { isInstantFunding } from '@/modules/assisted/types';
 
 type Row = Record<string, any>;
 
@@ -87,6 +89,11 @@ export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerV
   // for its payment (read only), so "pay now" works from any device (r14: the same helper serves lab bookings).
   const { bookerPayments } = await import('@/modules/assisted/cardPayments');
   const payments = await bookerPayments('booking', list, ref);
+  // r17 (§25.8.3): an instant consultation's call runs from the acceptance to the end of the doctor's held interval
+  // (extensions included), not a slot.
+  const instantIds = list.filter((b) => b.bookingKind === 'instant').map((b) => String(b._id).toLowerCase());
+  const held = new Map((instantIds.length ? await DoctorReservationModel.find({ kind: 'instant', refId: { $in: instantIds } }).select({ refId: 1, endTime: 1 }).lean() : [])
+    .map((x) => [String(x.refId).toLowerCase(), new Date(x.endTime)]));
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -112,11 +119,17 @@ export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerV
       v.assisted = a;
       // r10c: how this booking is paid, for its OWN booker only (pay now / refund choice on any device). Never in the
       // patient's or the doctor's views (they strip `assisted.funding`); never another pharmacy's.
-      const payment = payments.get(String(b._id));
-      if (payment) v.payment = payment;
+      const f = b.assisted.funding;
+      // r17: an instant booking's money lives on its request (the booker reads it at /instant/requests/:id).
+      if (isInstantFunding(f)) v.instantRequestId = f.instantRequestId;
+      else if (payments.has(String(b._id))) v.payment = payments.get(String(b._id));
     }
-    // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.
-    const interval = appointmentIntervalOf(b, slotOf(b));
+    // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end;
+    // r17: an instant consultation from its acceptance to the end of the doctor's held interval.
+    const heldEnd = b.bookingKind === 'instant' ? held.get(String(b._id).toLowerCase()) : undefined;
+    const interval = b.bookingKind === 'instant'
+      ? (heldEnd && b.createdAt ? { start: new Date(b.createdAt), end: heldEnd } : null)
+      : appointmentIntervalOf(b, slotOf(b));
     if (b.assisted?.join?.on === 'partner_device' && b.virtualMeeting?.joinUrl && interval
         && now.getTime() >= interval.start.getTime() - JOIN_OPENS_BEFORE_MS && now.getTime() <= interval.end.getTime()) {
       v.virtualMeeting = { joinUrl: b.virtualMeeting.joinUrl };

@@ -22,7 +22,7 @@ import { maskName } from '@/modules/assisted/names';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { labAdmissible, labRequestContent, validateLabRequest, type AssistedLabInput } from '@/modules/assisted/labBookings';
-import { cleanName, countPhoneUse, linkAssistedIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
+import { applyPatientPlanIn, cleanName, countPhoneUse, linkAssistedIn, planAssistedPatient } from '@/modules/assisted/patient';
 
 /**
  * Assisted booking round 2c (ASSISTED_BOOKING_DESIGN.md §24.6, §5.5, §7.5): the LAB FRONT DESK books the lab's own tests
@@ -180,7 +180,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
     throw err(409, 'PRICE_CHANGED', 'The price changed; check it with the patient and book again', { details: { priceMinor: totalMinor, listMinor: totalMinor, discountMinor: 0 } });
   }
   // The patient: refusable steps before any account opens, one answer for known and unknown numbers.
-  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const pp = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
   // L15: the lab sees only names it typed, or masked ones: a family member chosen by id (not typed) is stored masked.
   const patientName = (pp.chosenById ? maskName(pp.patientName) : pp.patientName) || 'Patient';
 
@@ -194,7 +194,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
       at: now, actorId: lower(actor.memberId) },
     preferredLanguage: input.preferredLanguage, payAtLab: true, ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
-    newAccount: pp.created,
+    newAccount: pp.customer.created,
   };
 
   let made: { booking: IPartnerLabBooking; replayed: boolean };
@@ -207,15 +207,15 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
       // The S5 pattern: the lab and the branch are read again in the transaction (suspended, unverified or closed meanwhile: refused).
       await labOf(actor, { eligible: true }, s);
       await deskBranch(actor, String(branch._id), input.visitMode, s);
-      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage, createdSource: 'lab_desk' }, s);
-      await linkAssistedIn({ bookerKind: 'lab', bookerId: actor.partnerId, actorId: actor.memberId }, pp.userId, pp.holderTyped, now, s);
+      await applyPatientPlanIn(pp, input.preferredLanguage, s, 'lab_desk');
+      await linkAssistedIn({ bookerKind: 'lab', bookerId: actor.partnerId, actorId: actor.memberId }, pp.customer._id, pp.holderTyped, now, s);
       // The desk may book a slot starting now (the 60-minute lead is for online bookings); a walk-in takes no seat (L11).
       const seat = walkIn ? null
         : await takeSeat(String(input.slotId), { partnerId, branchId: String(branch._id), visitMode: input.visitMode, minStart: now }, s);
       const slot = seat ? { slotId: String(seat._id), date: seat.date, startTime: seat.startTime, endTime: seat.endTime, startsAt: seat.startsAt }
         : { walkIn: true, startsAt: now, date: istDateIso(now), startTime: istTimeHhmm(now) };
       const [created] = await PartnerLabBookingModel.create([{
-        _id: bookingId, partnerId, branchId: String(branch._id), userId: pp.userId,
+        _id: bookingId, partnerId, branchId: String(branch._id), userId: pp.customer._id,
         source: 'lab_desk', desk,
         patient: { kind: pp.dependentId ? 'dependent' : 'self', ...(pp.dependentId ? { dependentId: pp.dependentId } : {}), name: patientName },
         visitMode: input.visitMode, ...(input.visitMode === 'home' ? { address: input.address } : {}),
@@ -231,7 +231,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
         lifecycle: { confirmedAt: now },
       }], { session: s });
       await recordPartnerAudit(actor, 'lab_desk.booked', { kind: 'lab_booking', id: bookingId }, {
-        branchId: lower(branch._id), visitMode: input.visitMode, walkIn, itemCount: ordered.length, totalMinor, accountCreated: pp.created,
+        branchId: lower(branch._id), visitMode: input.visitMode, walkIn, itemCount: ordered.length, totalMinor, accountCreated: pp.customer.created,
         ...(pp.dependentId ? { dependentId: pp.dependentId, dependentCreated: !!pp.newDependent } : {}), ...(collector?.memberId ? { collectorMemberId: collector.memberId } : {}),
       }, s);
       return { booking: created!.toObject() as IPartnerLabBooking, replayed: false };

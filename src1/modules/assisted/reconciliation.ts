@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { bookerEntriesByKey } from '@/modules/assisted/bookerWallet';
+import { bookerEntriesOf } from '@/modules/assisted/bookerWallet';
 import logger from '@/services/logger';
 import { istDateIso } from '@/modules/common/utils/istDate';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
@@ -23,6 +23,7 @@ import { raiseAlertIn } from '@/modules/assisted/limits';
 import { cardChargebacks, cardRefundQueue, cardRefundsStuckPending } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { upcomingMeetsMissing } from '@/modules/meet/retry';
+import { InstantRequestModel, type IInstantRequest } from '@/modules/doctors/model/instant';
 
 /**
  * Assisted booking phase 1a (design §8.2, §8.8, P10): the daily reconciliation and the stuck-money report. Mismatches are
@@ -83,15 +84,15 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
     const f = a.funding;
     if (f.amountMinor > 0) {
       // 2e: the payer's own wallet store (a pharmacy's or a lab's).
-      const debits = await bookerEntriesByKey(f.payerKind, `assisted:${id}:debit`);
-      if (debits.length !== 1 || debits[0]!.amountMinor !== f.amountMinor || lower(debits[0]!.ownerId) !== lower(f.payerId)) {
+      const debits = await bookerEntriesOf(f.payerKind, `assisted:${id}:debit`);
+      if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
     if (refunded > 0) {
-      const [credit] = await bookerEntriesByKey(f.payerKind, `assisted:${id}:refund`);
-      if (!credit || credit.amountMinor !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
+      const [credit] = await bookerEntriesOf(f.payerKind, `assisted:${id}:refund`);
+      if (!credit || credit.amountPaise !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
     }
     if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'cancelled_not_refunded', ref: id, detail: {} });
     if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'refunded_not_cancelled', ref: id, detail: { status: b.status } });
@@ -127,13 +128,13 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      const debits = await bookerEntriesByKey(f.payerKind, `assisted_lab:${id}:debit`);
-      if (debits.length !== 1 || debits[0]!.amountMinor !== f.amountMinor || lower(debits[0]!.ownerId) !== lower(f.payerId)) {
+      const debits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:debit`);
+      if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const credits = (await bookerEntriesByKey(f.payerKind, `assisted_lab:${id}:refund`)).map((c) => ({ amountPaise: c.amountMinor }));
+    const credits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:refund`);
     if (credits.length > 1 || (refunded > 0 && (credits.length !== 1 || Number(credits[0]!.amountPaise) !== refunded)) || (refunded === 0 && credits.length > 0)) {
       mismatches.push({ check: 'lab_refund_posted', ref: id, detail: { refundedMinor: refunded, credits: credits.length } });
     }
@@ -178,6 +179,56 @@ export async function uncreditedTopups(now: Date = new Date()) {
   ...await uncreditedLabTopups()];
 }
 
+/**
+ * r17 (§25.8.4): partner instant requests. Exactly one debit of what the partner held, by the payer; a request refunded
+ * before acceptance got exactly that back, once; an accepted one returned exactly `returned.partnerMinor`, refunds after
+ * it never exceed the allocation, and nothing was refunded as "before acceptance"; the booking's split adds up; one
+ * earning on completion, none on a no-show.
+ */
+async function instantChecks(scope: { since: Date | null; flagged: string[] }): Promise<{ checked: number; mismatches: Mismatch[] }> {
+  const window = scope.since
+    ? { $or: [{ updatedAt: { $gte: scope.since } }, { _id: { $in: scope.flagged.filter((id) => Types.ObjectId.isValid(id)) } }] } : {};
+  const rows = await InstantRequestModel.find({ 'assisted.funding.method': 'wallet', ...window }).lean() as unknown as IInstantRequest[];
+  const mismatches: Mismatch[] = [];
+  const total = (xs: { amountPaise: number }[]) => xs.reduce((a, x) => a + Number(x.amountPaise || 0), 0);
+  for (const r of rows) {
+    const id = lower(r._id);
+    const f = r.assisted!.funding;
+    const held = r.funding?.partnerMinor ?? 0;
+    const entries = (kind: string) => bookerEntriesOf(f.payerKind, `assisted_instant:${id}:${kind}`);
+    const [debits, refunds, returns, cancels] = await Promise.all([entries('debit'), entries('refund'), entries('quote_return'), entries('cancel_refund')]);
+    if (held !== f.amountMinor || (f.amountMinor > 0 && (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor
+      || lower(debits[0]!.payerId) !== lower(f.payerId)))) {
+      mismatches.push({ check: 'instant_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor, heldMinor: held } });
+    }
+    if (r.acceptedBy) {
+      if (refunds.length) mismatches.push({ check: 'instant_refund_after_accept', ref: id, detail: { entries: refunds.length } });
+      if (returns.length > 1 || total(returns) !== (r.returned?.partnerMinor ?? 0)) {
+        mismatches.push({ check: 'instant_quote_return', ref: id, detail: { entries: returns.length, returnedMinor: r.returned?.partnerMinor ?? 0 } });
+      }
+      if (cancels.length > 1 || total(cancels) > (r.allocated?.partnerMinor ?? 0)) {
+        mismatches.push({ check: 'instant_cancel_refund', ref: id, detail: { entries: cancels.length, allocatedMinor: r.allocated?.partnerMinor ?? 0 } });
+      }
+    } else if (r.status === 'refunded' && (refunds.length !== (held > 0 ? 1 : 0) || total(refunds) !== held)) {
+      mismatches.push({ check: 'instant_refund_posted', ref: id, detail: { entries: refunds.length, heldMinor: held } });
+    } else if (r.status === 'offered' && (refunds.length || returns.length || cancels.length)) {
+      mismatches.push({ check: 'instant_open_refunded', ref: id, detail: {} });
+    }
+    if (!r.bookingId) continue;
+    const b = await BookingModel.findById(r.bookingId).select({ status: 1, 'assisted.split': 1 }).lean() as unknown as IBooking | null;
+    const sp = b?.assisted?.split;
+    if (!sp) { mismatches.push({ check: 'instant_booking_split', ref: id, detail: { bookingId: r.bookingId } }); continue; }
+    if (sp.providerMinor + sp.cutMinor !== sp.baseMinor) mismatches.push({ check: 'split_sum', ref: lower(r.bookingId), detail: { ...sp } });
+    const earned = await LedgerEntryModel.find({ source: 'consultation', sourceId: { $in: [lower(r.bookingId), String(r.bookingId)] }, kind: 'earning' })
+      .select({ amountMinor: 1 }).lean();
+    if (b!.status === 'completed' && sp.providerMinor > 0 && (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor)) {
+      mismatches.push({ check: 'provider_earning', ref: lower(r.bookingId), detail: { entries: earned.length, providerMinor: sp.providerMinor } });
+    }
+    if (b!.status === 'no_show' && earned.length > 0) mismatches.push({ check: 'no_show_earned', ref: lower(r.bookingId), detail: { entries: earned.length } });
+  }
+  return { checked: rows.length, mismatches };
+}
+
 /** §8.8 stuck-money report. Items of later phases (Razorpay refund rows, late captures, withdrawals) are listed empty. */
 export async function stuckMoney(now: Date = new Date()) {
   const pendingPastDeadline = await BookingModel.find({ 'assisted.funding': { $exists: true }, status: 'pending', paymentStatus: 'pending',
@@ -200,9 +251,15 @@ export async function stuckMoney(now: Date = new Date()) {
   const frozenWithReceivable = await PharmacyWalletModel.find({ frozen: true, receivableMinor: { $gt: 0 } }).select({ pharmacyId: 1, receivableMinor: 1 }).limit(LIST_MAX).lean();
   const unknownFeeLots = await WalletTopupLotModel.find({ feeState: 'unknown', closed: false, createdAt: { $lt: new Date(now.getTime() - 2 * DAY) } })
     .select({ walletRef: 1, paymentRecordId: 1, amountMinor: 1, createdAt: 1 }).limit(LIST_MAX).lean();
+  // r17 (§25.8.4): a partner's instant request still offered more than an hour after its inactivity refund was due.
+  const instantOffered = await InstantRequestModel.find({ 'assisted.bookedBy.kind': { $exists: true }, status: 'offered',
+    inactivityRefundAt: { $lt: new Date(now.getTime() - HOUR) } }).select({ 'assisted.bookedBy': 1, 'assisted.funding.amountMinor': 1, inactivityRefundAt: 1 })
+    .limit(LIST_MAX).lean() as unknown as IInstantRequest[];
   return {
     pendingPaymentPastDeadline: [...pendingPastDeadline.map((b) => ({ bookingId: String(b._id), createdAt: b.createdAt })),
       ...labPendingPastDeadline.map((b) => ({ bookingId: String(b._id), bookingKind: 'lab_booking', createdAt: b.createdAt, paymentDeadline: b.paymentDeadline }))],
+    instantOfferedPastRefund: instantOffered.map((r) => ({ requestId: String(r._id), bookerId: r.assisted?.bookedBy.id, amountMinor: r.assisted?.funding.amountMinor,
+      inactivityRefundAt: r.inactivityRefundAt })),
     // Phase 1b: card refunds pending over 24 h, failed or held for review (the operator queue), and late captures.
     refundRowsPending: await cardRefundQueue({}, now) as Row[],
     lateCaptures: (await AssistedCardRefundModel.find({ cause: { $in: ['late_capture', 'extra_capture'] } }).sort({ createdAt: -1 }).limit(LIST_MAX).lean())
@@ -254,12 +311,12 @@ async function flaggedBookingIds(): Promise<string[]> {
 
 export async function runReconciliation(now: Date = new Date(), opts: { full?: boolean } = {}) {
   const scope = opts.full ? { since: null, flagged: [] } : { since: new Date(now.getTime() - 7 * DAY), flagged: await flaggedBookingIds() };
-  const [wallets, bookings, labBookings, stuck, rates, partnerWallets] = await Promise.all([walletInvariants(), bookingChecks(scope), labBookingChecks(scope),
-    stuckMoney(now), cancelRates(now), partnerWalletInvariants()]);
+  const [wallets, bookings, labBookings, instantRequests, stuck, rates, partnerWallets] = await Promise.all([walletInvariants(), bookingChecks(scope),
+    labBookingChecks(scope), instantChecks(scope), stuckMoney(now), cancelRates(now), partnerWalletInvariants()]);
   const pct = assistedLimits.cancelRateAlertPct();
   const min = assistedLimits.cancelRateAlertMin();
   const highCancelRates = rates.filter((r) => r.bookings >= min && r.cancelledByBooker * 100 >= pct * r.bookings);
-  const mismatches = [...wallets.mismatches, ...bookings.mismatches, ...labBookings.mismatches, ...partnerWallets.mismatches];
+  const mismatches = [...wallets.mismatches, ...bookings.mismatches, ...labBookings.mismatches, ...instantRequests.mismatches, ...partnerWallets.mismatches];
   return {
     day: istDateIso(now),
     at: now,
@@ -270,6 +327,7 @@ export async function runReconciliation(now: Date = new Date(), opts: { full?: b
       partnerWallets: { checked: partnerWallets.checked },
       bookings: { checked: bookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
       labBookings: { checked: labBookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
+      instantRequests: { checked: instantRequests.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
       // Chargebacks: wallets that owe Jansetu (a receivable) or show a negative balance.
       walletsOwing: await walletsOwing(),
       mismatches,

@@ -3,7 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
-import { bookerDebitAllocationsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
+import { bookerEntryLotsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import type { AssistedBookingKind, AssistedFunding, AssistedRefundRow } from '@/modules/assisted/types';
 import PaymentRecordModel from '@/modules/payment/model';
 import type { IPaymentRecord } from '@/modules/payment/types';
@@ -31,7 +31,7 @@ export const assistedBookerFilter = (kind: 'pharmacy' | 'lab' | 'doctor', id: st
 export const assistedCauseOf = (userType: string) =>
   userType === 'user' ? 'patient' : userType === 'pharmacy' ? 'booker' : userType === 'specialist' ? 'doctor' : userType;
 
-export async function reverseRedemptionIn(bookingKind: AssistedBookingKind, bookingId: string, s: ClientSession): Promise<boolean> {
+export async function reverseRedemptionIn(bookingKind: AssistedBookingKind | 'instant_request', bookingId: string, s: ClientSession): Promise<boolean> {
   const row = await CouponRedemptionModel.findOneAndUpdate({ bookingKind, bookingId: String(bookingId).toLowerCase(), state: 'counted' },
     { $set: { state: 'reversed', reversedAt: new Date() } }, { new: true, session: s }).lean();
   if (!row) return false;
@@ -68,12 +68,12 @@ export async function refundWalletFundingIn(f: AssistedFunding, p: { cause: stri
   const already = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
   const budget = Number(f.amountMinor || 0) - already;
   if (!(budget > 0) || f.method !== 'wallet') return { push: null, refundedMinor: 0 };
-  const restore = already === 0 ? await bookerDebitAllocationsIn(f.payerKind, f.walletEntryId, s) : undefined;
-  const posted = await postBookerMovementIn({ payerKind: f.payerKind, payerId: f.payerId, kind: 'refund_credit', amountMinor: budget,
-    operationKey: p.operationKey, referenceType: p.referenceType, referenceId: p.referenceId, description: p.description, ...(restore ? { restore } : {}) }, s);
+  const restore = already === 0 ? await bookerEntryLotsIn(f.payerKind, f.walletEntryId, s) : [];
+  const posted = await postBookerMovementIn({ payerKind: f.payerKind, payerId: f.payerId, kind: 'refund_credit', amountPaise: budget,
+    operationKey: p.operationKey, referenceType: p.referenceType, referenceId: p.referenceId, description: p.description, ...(restore.length ? { restore } : {}) }, s);
   const attemptId = new Types.ObjectId().toHexString();
   return { refundedMinor: budget, push: { refundId: attemptId, cause: p.cause, amountMinor: budget, method: 'wallet', sourceRef: String(f.walletEntryId ?? ''),
-    state: 'processed', walletEntryId: posted.entryId, attemptId, at: new Date() } };
+    state: 'processed', walletEntryId: String(posted.entry._id), attemptId, at: new Date() } };
 }
 
 /** The refund of a cancellation (not a late or extra capture's return), newest first. */

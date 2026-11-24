@@ -144,3 +144,39 @@ export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().ma
   /** r14: where a card-paid lab booking's money goes back (default `card`); ignored for wallet-paid bookings. */
   refundTo: Joi.string().valid('card', 'wallet') });
 export const labAcceptRescheduleSchema = Joi.object({ version: Joi.number().integer().min(0).required() });
+
+// ── r17 (§25.8.3): pharmacy → instant "Consult now", wallet-paid ──
+const instantMode = Joi.string().valid('video', 'call'); // DR19: never chat
+const instantTarget = Joi.alternatives().try(
+  Joi.object({ kind: Joi.string().valid('any').required() }),
+  Joi.object({ kind: Joi.string().valid('specific').required(), doctorId: objectId }), // missing doctorId: 400 DOCTOR_REQUIRED from the service
+);
+const speciality = Joi.string().trim().min(1).max(100);
+export const instantSpecialitiesQuerySchema = Joi.object({ mode: instantMode });
+export const instantDoctorsQuerySchema = Joi.object({ speciality: speciality.required(), mode: instantMode.required() });
+export const instantQuoteQuerySchema = Joi.object({ speciality: speciality.required(), mode: instantMode.required(), doctorId: objectId });
+export const instantRequestSchema = Joi.object({
+  requestKey: key.required(),
+  phone: mobile.required(),
+  patient: consultationSchema.extract('patient'),
+  holderName: personName,
+  consent: consultationSchema.extract('consent'),
+  preferredLanguage: Joi.string().trim().pattern(/^[a-z]{2,3}$/).required(),
+  specialization: speciality.required(),
+  mode: instantMode.required(),
+  target: instantTarget.required(),
+  join: Joi.object({ on: Joi.string().valid('partner_device', 'patient_phone').required(), phone: mobile }).required(),
+  couponCode: Joi.string().trim().max(50),
+  acceptedQuoteMinor: Joi.number().integer().min(0).required(),
+  acceptedPayableMinor: Joi.number().integer().min(0).required(),
+  primaryConcern: Joi.string().trim().max(500),
+  // Q2 / DR18: the service answers 400 PAYMENT_METHOD_UNAVAILABLE for 'razorpay'.
+  paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
+});
+export const instantListQuerySchema = Joi.object({
+  status: Joi.string().valid('offered', 'accepted', 'refunded'),
+  cursor: Joi.string().max(60),
+  limit: Joi.number().integer().min(1).max(50),
+});
+export const instantReofferSchema = Joi.object({ target: instantTarget.required(), expectedStatusVersion: Joi.number().integer().min(0).required() });
+export const instantRefundSchema = Joi.object({ expectedStatusVersion: Joi.number().integer().min(0).required() });

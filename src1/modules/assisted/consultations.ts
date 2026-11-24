@@ -27,7 +27,9 @@ import {
   type BookerActor, type PharmacyActor,
 } from '@/modules/assisted/bookers';
 import { assertBookerWalletIndexes, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
-import { cleanName, countPhoneUse, patientIdentity, preparePatient, redeemCouponIn, writePatientIn, type AssistedPatientInput } from '@/modules/assisted/patient';
+import {
+  applyPatientPlanIn, cleanName, countPhoneUse, patientIdentity, planAssistedPatient, redeemCouponIn, type AssistedPatientInput,
+} from '@/modules/assisted/patient';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -161,26 +163,30 @@ function validate(input: AssistedConsultInput, booker: BookerActor): void {
   }
 }
 
-/** §6.3 (decisions 11, B, E): coupons are validated against the PATIENT, with the assisted rules on top. */
-async function couponFor(input: AssistedConsultInput, ctx: { userId: string; dependentId?: string; doctorId: string; listMinor: number }) {
-  if (!input.couponCode || !(ctx.listMinor > 0)) return null;
+/**
+ * §6.3 (decisions 11, B, E): coupons are validated against the PATIENT, with the assisted rules on top. r17: shared by
+ * the instant create (no doctor yet for "any doctor"; it also needs the coupon itself, to freeze its terms).
+ */
+export async function assistedCouponFor(code: string | undefined, ctx: { userId: string; dependentId?: string; doctorId?: string; listMinor: number }) {
+  if (!code || !(ctx.listMinor > 0)) return null;
   const repo = new CouponRepository();
   const notForAssisted = () => err(400, 'COUPON_NOT_FOR_ASSISTED', 'This coupon cannot be used on a booking made for a patient');
   const fundedByOf = (c: { fundedBy?: string; corporateIds?: string[] }) => c.fundedBy ?? ((c.corporateIds ?? []).length > 0 ? 'platform' : 'provider');
   // Decided on the coupon itself first: E — a per-user-limited coupon is never used on a partner booking (the patient
   // never sees it); N1 — a platform-funded coupon only when an admin allowed it on partner bookings.
-  const known = await repo.findByCode(input.couponCode);
+  const known = await repo.findByCode(code);
   if (known && (known.usageLimitPerUser || (fundedByOf(known) === 'platform' && known.partnerUsable !== true))) throw notForAssisted();
   // Then the existing rules, against the PATIENT: account, family member and the account's corporate.
   const patient = await UserModel.findById(ctx.userId).select({ corporateId: 1 }).lean() as { corporateId?: string } | null;
-  const v = await new CouponService(repo).validateCoupon({ code: input.couponCode, userId: ctx.userId, bookingType: 'consultation', bookingId: ctx.doctorId,
+  const v = await new CouponService(repo).validateCoupon({ code, userId: ctx.userId, bookingType: 'consultation', bookingId: ctx.doctorId,
     dependentId: ctx.dependentId, ...(patient?.corporateId ? { corporateId: String(patient.corporateId) } : {}), purchaseAmount: ctx.listMinor / 100 });
   if (!v.isValid || !v.coupon) throw err(400, 'INVALID_COUPON', v.message || 'Invalid coupon code');
   const c = v.coupon;
   if (c.usageLimitPerUser || (fundedByOf(c) === 'platform' && c.partnerUsable !== true)) throw notForAssisted();
   const fundedBy = fundedByOf(c);
   const money = normalizeCouponDiscount(ctx.listMinor / 100, v.discountAmount, 'BOOKING_RECONCILIATION_REQUIRED');
-  return { code: c.code, fundedBy: fundedBy as 'provider' | 'platform', discountMinor: Math.round(money.discountAmount * 100), totalUsageLimit: c.totalUsageLimit };
+  return { code: c.code, fundedBy: fundedBy as 'provider' | 'platform', discountMinor: Math.round(money.discountAmount * 100), totalUsageLimit: c.totalUsageLimit,
+    coupon: c };
 }
 
 async function replayOf(storedKey: string, hash: string): Promise<IBooking | null> {
@@ -243,10 +249,12 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   const listMinor = sp.isConsultationFree === true ? 0 : Math.round(Number(sp.consultationFee || 0) * 100);
 
   // The patient (review 4: no create is an existence test). Every step that can refuse runs BEFORE any account is
-  // opened and gives the same answer for a known and an unknown number; a new number's account opens only in the
-  // booking transaction (a refused or failed booking leaves no account behind).
-  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
-  const coupon = await couponFor(input, { userId: pp.userId, dependentId: pp.dependentId, doctorId: String(slot.specialistId), listMinor });
+  // counted or opened, and gives the same answer for a known and an unknown number; the account of a new number is
+  // opened only inside the booking transaction (a refused or failed booking leaves no account behind).
+  const plan = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const { customer, dependentId, holderTyped } = plan;
+
+  const coupon = await assistedCouponFor(input.couponCode, { userId: customer._id, dependentId, doctorId: String(slot.specialistId), listMinor });
   const discountMinor = coupon?.discountMinor ?? 0;
   const payMinor = listMinor - discountMinor;
   if (input.acceptedPriceMinor !== payMinor) {
@@ -267,7 +275,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
       at: now, actorId: bookedByOf(booker, origin.name).actorId },
     preferredLanguage: input.preferredLanguage,
-    identity: { attested: true, newAccount: pp.created },
+    identity: { attested: true, newAccount: customer.created },
     ...(input.join ? { join: { on: input.join.on, ...(input.join.phone ? { phone: canonicalMobile(input.join.phone)! } : {}), linkVersion: 1 } } : {}),
     funding: card
       ? { method: 'razorpay', payerKind: payer.kind, payerId: payer.id, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
@@ -284,7 +292,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   let booking: IBooking;
   try {
     booking = await createBookingWithHolds({
-      bookingType: 'consultation', userId: pp.userId, ...(pp.dependentId ? { dependentId: pp.dependentId } : {}),
+      bookingType: 'consultation', userId: customer._id, ...(dependentId ? { dependentId } : {}),
       // S2 readers find a pharmacy's bookings by `pharmacyId`; a lab's rely on `assisted.bookedBy` (a lab never reads /bookings).
       ...(booker.kind === 'pharmacy' ? { pharmacyId: payer.id } : {}),
       specialistId: String(slot.specialistId), doctorName: sp.name, slotId: String(slot._id), bookingDate: slot.date, bookingTime: slot.startTime,
@@ -298,21 +306,21 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
         : { created: { at, by: payer.id }, paid: { at, by: `${payer.kind}_wallet`, amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
       await claimRequestKey(consultKeyScope(booker), input.requestKey, s);
-      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
-      await linkBookerIn(booker, pp.userId, pp.holderTyped, s);
+      await applyPatientPlanIn(plan, input.preferredLanguage, s);
+      await linkBookerIn(booker, customer._id, holderTyped, s);
       await countPairBookingIn(payer.kind, payer.id, lower(slot.specialistId), s);
       if (coupon) {
-        await redeemCouponIn(coupon, { bookingKind: 'booking', payerKind: payer.kind, bookingId: String(b._id), patientUserId: pp.userId,
-          dependentId: pp.dependentId, payerId: payer.id }, s);
+        await redeemCouponIn(coupon, { bookingKind: 'booking', payerKind: payer.kind, bookingId: String(b._id), patientUserId: customer._id,
+          dependentId, payerId: payer.id }, s);
       }
       if (payMinor > 0 && !card) {
-        await postBookerMovementIn({ payerKind: payer.kind, payerId: payer.id, kind: 'booking_debit', amountMinor: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
+        await postBookerMovementIn({ payerKind: payer.kind, payerId: payer.id, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);
       }
       await auditBookerIn(booker, 'booking.created', { bookingId: String(b._id), requestKey: input.requestKey,
-        detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: pp.created,
+        detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: customer.created,
           ...(booker.kind === 'lab' ? { branchId: lower(booker.branchId) } : {}),
-          ...(pp.dependentId ? { dependentId: pp.dependentId, dependentCreated: !!pp.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
+          ...(dependentId ? { dependentId, dependentCreated: !!plan.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
     });
   } catch (e) {
     // A racing identical request may have committed first: answer with its receipt.
@@ -327,14 +335,14 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
     return receiptOf(booking, true, !!booking.assisted?.identity?.newAccount);
   }
   // Phase 1b: a card booking opens its Razorpay order now; Meet, reminders and the notices follow its confirmation.
-  if (card) return assistedReceipt(booking, false, pp.created, await openCardOrder(booking));
+  if (card) return assistedReceipt(booking, false, customer.created, await openCardOrder(booking));
   // After the commit, best effort: Meet (neutral text), reminders, notices to the patient and the doctor.
   const fx = assistedEffects();
   const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
   await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
   await sendAssistedNotices(await bookedNotices(withMeet));
   const fresh = await BookingModel.findById(booking._id).lean() as IBooking | null;
-  return assistedReceipt(fresh ?? withMeet, false, pp.created);
+  return assistedReceipt(fresh ?? withMeet, false, customer.created);
 }
 
 const shownDate = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : String(d ?? ''));

@@ -33,7 +33,7 @@ import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultatio
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
-  cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
+  applyPatientPlanIn, cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, planAssistedPatient, redeemCouponIn, spreadByPrice,
   type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 import type { AssistedBlock } from '@/modules/assisted/types';
@@ -323,9 +323,8 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
 
   // The patient (review 4 of 1a: no create is an existence test): every refusable step runs BEFORE any account is
   // opened and answers the same for a known and an unknown number; a new number's account opens only in the transaction.
-  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
-  const customer = { _id: pp.userId, created: pp.created };
-  const { dependentId, newDependent, holderTyped } = pp;
+  const pp = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const { customer, dependentId, newDependent, holderTyped } = pp;
   // The names rule (§24.3): the stored patient name is the family member's or the TYPED holder name, never the account name.
   const patientName = pp.patientName;
 
@@ -376,7 +375,7 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
       const again = await replayOf(storedKey, hash, s);
       if (again) return { booking: again, replayed: true };
       await claimRequestKey(labKeyScope(actor), input.requestKey, s);
-      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
+      await applyPatientPlanIn(pp, input.preferredLanguage, s);
       await linkPharmacyCustomerIn(actor, customer._id, holderTyped, s);
       // P10, alert only: the same pharmacy–lab pair at N bookings a day.
       await countPairBookingIn('pharmacy', pharmacyId, `lab:${lower(partner!._id)}`, s);

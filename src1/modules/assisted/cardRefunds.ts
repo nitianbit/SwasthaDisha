@@ -10,8 +10,7 @@ import PartnerOrgModel from '@/modules/partners/model';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { RazorpayRefundGateway, type GatewayRefund, type RefundGateway } from '@/modules/pharmacyOrders/prescriptionRefund';
 import { AssistedCardRefundModel, type IAssistedCardRefund } from '@/modules/assisted/model';
-import type { AssistedBookingKind, AssistedRefundRow } from '@/modules/assisted/types';
-import type { PayerKind } from '@/modules/assisted/bookerWallet';
+import type { AssistedBookingKind, AssistedRefundRow, BookerKind } from '@/modules/assisted/types';
 import { raiseAlertIn } from '@/modules/assisted/limits';
 import { auditIn } from '@/modules/assisted/support';
 import { runLedgerTransaction as inTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -75,7 +74,7 @@ async function syncBookingRow(row: Pick<IAssistedCardRefund, '_id' | 'bookingId'
  * onto `assisted.funding.refunds`) and whether this call created it (a repeat answers the existing row, nothing moves).
  * The payment record becomes `refunded` (returned to its payer), as the customer paths mark a returned capture.
  */
-export async function queueCardRefundIn(p: { bookingId: string; bookingKind?: AssistedBookingKind; payerKind?: PayerKind; payerId: string; record: IPaymentRecord;
+export async function queueCardRefundIn(p: { bookingId: string; bookingKind?: AssistedBookingKind; payerKind?: BookerKind; payerId: string; record: IPaymentRecord;
   cause: string; to: 'card' | 'wallet' }, s: ClientSession): Promise<{ row: AssistedRefundRow; created: boolean; refund: IAssistedCardRefund }> {
   const bookingKind = p.bookingKind ?? 'booking';
   const rid = lower(p.record._id);
@@ -90,11 +89,11 @@ export async function queueCardRefundIn(p: { bookingId: string; bookingKind?: As
   let walletEntryId: string | undefined;
   if (p.record.chargebackAt) { state = 'manual_review'; lastError = 'CHARGEBACK_RECORDED'; }
   else if (p.to === 'wallet') {
-    const posted = await postBookerMovementIn({ payerKind: p.payerKind ?? 'pharmacy', payerId: lower(p.payerId), kind: 'refund_credit', amountMinor: amount,
+    const posted = await postBookerMovementIn({ payerKind: p.payerKind ?? 'pharmacy', payerId: lower(p.payerId), kind: 'refund_credit', amountPaise: amount,
       operationKey: `assisted_card:${rid}:refund`, referenceType: walletReferenceOf(bookingKind), referenceId: `${lower(p.bookingId)}:card_refund:${rid}`,
       description: 'Card payment of an assisted booking returned to the wallet' }, s);
     state = 'processed';
-    walletEntryId = posted.entryId;
+    walletEntryId = String(posted.entry._id);
   } else if (!p.record.razorpayPaymentId) { state = 'manual_review'; lastError = 'PAYMENT_ID_MISSING'; }
   const doc = { _id, bookingKind, bookingId: lower(p.bookingId), paymentRecordId: rid, ...(p.record.razorpayPaymentId ? { razorpayPaymentId: p.record.razorpayPaymentId } : {}),
     captureKey: p.record.razorpayPaymentId ? `pay:${p.record.razorpayPaymentId}` : `record:${rid}`,
@@ -112,7 +111,7 @@ export async function queueCardRefundIn(p: { bookingId: string; bookingKind?: As
  * second "pay now" can both capture): always to the card, exactly once per Razorpay payment id (unique `captureKey`).
  * The payment record is not touched (it keeps the capture that counts).
  */
-export async function queueExtraCaptureRefundIn(p: { bookingId: string; bookingKind?: AssistedBookingKind; payerKind?: PayerKind; payerId: string; recordId: string;
+export async function queueExtraCaptureRefundIn(p: { bookingId: string; bookingKind?: AssistedBookingKind; payerKind?: BookerKind; payerId: string; recordId: string;
   razorpayPaymentId: string; amountMinor: number }, s: ClientSession): Promise<{ row: AssistedRefundRow; created: boolean; refund: IAssistedCardRefund }> {
   const captureKey = `pay:${p.razorpayPaymentId}`;
   const prior = await AssistedCardRefundModel.findOne({ captureKey }).session(s).lean() as IAssistedCardRefund | null;
@@ -320,15 +319,16 @@ export async function cardRefundToWallet(adminId: string, refundId: string, agre
     if (row.lastError === 'CHARGEBACK_RECORDED' || row.chargebackAt || (rec?.chargebackAt && row.cause !== 'extra_capture')) {
       throw err(409, 'CHARGEBACK_RECORDED', 'A card dispute was recorded on this payment; the bank already took the money back');
     }
-    const posted = await postBookerMovementIn({ payerKind: row.payerKind ?? 'pharmacy', payerId: row.payerId, kind: 'refund_credit', amountMinor: row.amountMinor,
+    const posted = await postBookerMovementIn({ payerKind: row.payerKind ?? 'pharmacy', payerId: row.payerId, kind: 'refund_credit', amountPaise: row.amountMinor,
       operationKey: row.cause === 'extra_capture' ? `assisted_card:${row.paymentRecordId}:extra:${row.razorpayPaymentId}:refund` : `assisted_card:${row.paymentRecordId}:refund`,
       referenceType: walletReferenceOf(row.bookingKind), referenceId: `${row.bookingId}:card_refund:${row.paymentRecordId}${row.cause === 'extra_capture' ? `:${row.razorpayPaymentId}` : ''}`,
       description: 'Card refund of an assisted booking credited to the wallet' }, s);
     const at = new Date();
+    const walletEntryId = String(posted.entry._id);
     const moved = await AssistedCardRefundModel.updateOne({ _id: row._id, state: row.state }, { $set: { state: 'processed', method: 'wallet', processedAt: at,
-      walletEntryId: posted.entryId, resolution: { by: lower(adminId), agreement, at, walletEntryId: posted.entryId } } }, { session: s });
+      walletEntryId, resolution: { by: lower(adminId), agreement, at, walletEntryId } } }, { session: s });
     if (moved.modifiedCount !== 1) throw Object.assign(err(409, 'REFUND_CHANGED', 'The refund changed; reload'), { retryable: true });
-    await syncBookingRow(row, { state: 'processed', method: 'wallet', walletEntryId: posted.entryId }, s);
+    await syncBookingRow(row, { state: 'processed', method: 'wallet', walletEntryId }, s);
     await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: row.payerKind ?? 'pharmacy', orgId: row.payerId, action: 'card_refund.to_wallet', bookingId: row.bookingId,
       detail: { refundId: String(row._id), paymentRecordId: row.paymentRecordId, amountMinor: row.amountMinor, agreement } }, s);
     return { refund: cardRefundView((await AssistedCardRefundModel.findById(row._id).session(s).lean()) as IAssistedCardRefund), replayed: false };
