@@ -76,7 +76,9 @@ const TODAY = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10).rep
 
 // The converter stand-in: copies its HTML input to the PDF path, so the printed content can be read back.
 const CONVERTER = path.join(FIXTURE_DIR, 'fake-wkhtmltopdf.sh');
-fs.writeFileSync(CONVERTER, '#!/bin/sh\ncp "$1" "$2"\n', { mode: 0o755 });
+/** While this file exists the converter fails (a PDF that cannot be written). */
+const FAIL_MARK = path.join(FIXTURE_DIR, 'converter-fails');
+fs.writeFileSync(CONVERTER, `#!/bin/sh\n[ -f '${FAIL_MARK}' ] && exit 3\ncp "$1" "$2"\n`, { mode: 0o755 });
 process.env.WKHTMLTOPDF_BINARY = CONVERTER;
 const read = (url: string) => fs.readFileSync(path.join(UPLOAD_DIR, url.replace(/^\/api\/static\//, '')), 'utf8');
 
@@ -209,11 +211,12 @@ async function main() {
     const PA = '/api/v1/pharmacy-assisted';
     const SP = '/api/v1/specialists';
     const WS = '/api/v1/partner-workspace';
-    const loadUrl = { P: `${PA}/recommendations`, Q: `${PA}/recommendations`, U: `${PA}/recommendations`, D: `${SP}/me/assisted/recommendations`,
-      E: `${SP}/me/assisted/recommendations`, DU: `${SP}/me/assisted/recommendations`, DESK: `${WS}/lab-desk/recommendations`,
-      OWNER: `${WS}/lab-desk/recommendations`, VIEWER: `${WS}/lab-desk/recommendations` } as Record<string, string>;
+    const loadUrl = { P: `${PA}/recommendations/lookup`, Q: `${PA}/recommendations/lookup`, U: `${PA}/recommendations/lookup`,
+      D: `${SP}/me/assisted/recommendations/lookup`, E: `${SP}/me/assisted/recommendations/lookup`, DU: `${SP}/me/assisted/recommendations/lookup`,
+      DESK: `${WS}/lab-desk/recommendations/lookup`, OWNER: `${WS}/lab-desk/recommendations/lookup`, VIEWER: `${WS}/lab-desk/recommendations/lookup` } as Record<string, string>;
+    // r16b: the code and the phone travel in the body (never in a logged request line or path).
     const load = (who: string, code: string, phone: string | null = PHONE_X) =>
-      call(who, 'GET', `${loadUrl[who]}/${encodeURIComponent(code)}${phone === null ? '' : `?phone=${phone}`}`);
+      call(who, 'POST', loadUrl[who]!, { code, ...(phone === null ? {} : { phone }) });
     const lookups = async (orgKey: string) => (await AssistedCounterModel.find({ _id: { $regex: `^lookups:\\d+:${orgKey}$` } }).lean())
       .reduce((a, r) => a + Number(r.count), 0);
 
@@ -316,22 +319,35 @@ async function main() {
       assert.notEqual(dispensingHashOf({ ...row, prescription: { ...row.prescription, recommendationCode: code } }), before3d);
     });
 
-    await check('re-save keeps the code and replaces the tests; an empty list withdraws it (no code printed, loads 404); tests again reopen it with the same code', async () => {
+    await check('re-save keeps the code and replaces the tests; without tests no code is printed and the code stops loading (404); tests again bring the same code back', async () => {
       const r = await save(rxBooking, ['HbA1c']);
       assert.equal(r.json.data.prescription.recommendationCode, code);
-      let rec = await TestRecommendationModel.findOne({ consultationId: rxBooking }).lean() as any;
+      const rec = await TestRecommendationModel.findOne({ consultationId: rxBooking }).lean() as any;
       assert.deepEqual(rec.items, [{ index: 0, name: 'HbA1c' }]);
       assert.equal(rec.version, 2);
       const none = await save(rxBooking, []);
       assert.equal(none.json.data.prescription.recommendationCode, undefined);
-      rec = await TestRecommendationModel.findOne({ consultationId: rxBooking }).lean() as any;
-      assert.equal(rec.status, 'withdrawn');
-      assert.deepEqual(rec.items, []);
       assert.equal(read((await stored(rxBooking)).prescription.fileUrls[0]).includes('Recommended tests code'), false);
-      assert.equal((await load('P', code)).status, 404);
+      assert.equal((await load('P', code)).status, 404, 'the prescription no longer carries it (R3)');
       const again = await save(rxBooking, ['CBC', 'Lipid profile']);
       assert.equal(again.json.data.prescription.recommendationCode, code, 'the same code comes back');
       assert.equal((await TestRecommendationModel.findOne({ consultationId: rxBooking }).lean() as any).status, 'open');
+    });
+
+    await check('r16b: a re-save whose PDF fails leaves the prescription as it was, and a load shows ITS tests (never the recommendation\'s own copy); no stale 404', async () => {
+      const b = await consultation();
+      const c = (await save(b, ['CBC', 'Lipid profile'])).json.data.prescription.recommendationCode;
+      fs.writeFileSync(FAIL_MARK, '');
+      try {
+        await expect('D', 'POST', `${SP}/me/appointments/${b}/prescription`, 500, { ...RX, testsAdvised: ['X-ray chest'] });
+        await expect('D', 'POST', `${SP}/me/appointments/${b}/prescription`, 500, { ...RX, testsAdvised: [] });
+      } finally { fs.rmSync(FAIL_MARK, { force: true }); }
+      assert.deepEqual((await stored(b)).prescription.testsAdvised, ['CBC', 'Lipid profile'], 'the stored prescription is unchanged');
+      assert.deepEqual((await TestRecommendationModel.findOne({ consultationId: b }).lean() as any).items, [{ index: 0, name: 'X-ray chest' }],
+        'the recommendation was updated before the PDF failed');
+      const r = await load('P', c);
+      assert.equal(r.status, 200, r.text);
+      assert.deepEqual(r.json.data.items, [{ index: 0, name: 'CBC' }, { index: 1, name: 'Lipid profile' }]);
     });
 
     await check('race: two saves of one consultation at once make one recommendation with one code', async () => {
@@ -396,8 +412,10 @@ async function main() {
       assert.equal((await load('P', code, '12')).json.code, 'INVALID_PHONE');
       assert.equal((await load('P', code, null)).json.code, 'VALIDATION_ERROR');
       assert.equal(await lookups(`pharmacy:${P}`), before + 2, 'malformed input is not counted');
-      await expect('U', 'GET', `${PA}/recommendations/${code}?phone=${PHONE_X}`, 403);
-      await expect('X', 'GET', `${PA}/recommendations/${code}?phone=${PHONE_X}`, 403);
+      // r16b: the old GET form (code and phone in the request line) no longer exists.
+      assert.equal((await call('P', 'GET', `${PA}/recommendations/${code}?phone=${PHONE_X}`)).status, 404);
+      assert.equal((await load('U', code)).status, 403);
+      assert.equal((await call('X', 'POST', `${PA}/recommendations/lookup`, { code, phone: PHONE_X })).status, 403);
     });
 
     await check('the hourly lookup limit (the one limit kept) refuses loads with 429 lookups', async () => {
@@ -432,7 +450,7 @@ async function main() {
       assert.equal(audit.detail.found, true);
       assert.equal(audit.targetKind, 'test_recommendation');
       assert.equal((await load('VIEWER', code)).status, 403);
-      const admin = (partnerId: string) => call('ADMIN', 'GET', `${WS}/admin/${partnerId}/workspace/lab-desk/recommendations/${code}?phone=${PHONE_X}`);
+      const admin = (partnerId: string) => call('ADMIN', 'POST', `${WS}/admin/${partnerId}/workspace/lab-desk/recommendations/lookup`, { code, phone: PHONE_X });
       assert.equal((await admin(L)).status, 200);
       assert.equal((await admin(CL)).json.code, 'LAB_PARTNER_REQUIRED');
       assert.equal((await admin(LU)).json.code, 'PARTNER_NOT_VERIFIED');

@@ -4367,7 +4367,7 @@ built.** It needs 2b, 2c and 3b, which are not merged; the seam is described bel
 |---|---|---|
 | The code | `testRecommendations/code.ts` | `newRecommendationCode` (7 Crockford base32 characters from `crypto.randomInt` + a Luhn mod 32 check), `normalizeRecommendationCode` (upper case; spaces and hyphens removed; I and L read as 1, O as 0; shape and check), `formatRecommendationCode` (`ABCD-EFGH`) |
 | The model | `testRecommendations/model/index.ts` | `test_recommendations { code, consultationId, specialistId, items: [{ index, name }], status, bookings: [], version }`; unique `{code}` and `{consultationId}` |
-| Made at the save | `testRecommendations/service.ts` `recommendTestsAtSave`, called by `createAppointmentPrescription` (`specialistPortal/services/index.ts:359`) before the PDF | One per consultation, upserted. The code stays the same across re-saves; the items come from `testsAdvised` (kept filled, unchanged). An empty list → `withdrawn`. Best effort (DR12): switched off, a missing unique index or any error → null (logged), and the prescription is saved without a code |
+| Made at the save | `testRecommendations/service.ts` `recommendTestsAtSave`, called by `createAppointmentPrescription` (`specialistPortal/services/index.ts:359`) before the PDF | One per consultation, upserted. The code stays the same across re-saves; the items come from `testsAdvised` (kept filled, unchanged). A save without tests makes no code (r16b: nothing else is written; R3 retires the old code). Best effort (DR12): switched off, a missing unique index or any error → null (logged), and the prescription is saved without a code |
 | On the prescription | `bookings/model`, `bookings/types` | `prescription.recommendationCode` (server-written). A new save never keeps the previous one's code |
 | The PDF box | `specialistPortal/pdf.ts:67` `recommendationBoxHtml` | One box shared by both documents: "Jansetu", "Recommended tests code: ABCD-EFGH", "Show this code and your mobile number at a Jansetu pharmacy or lab to book these tests." On the full PDF under Tests Advised (`specialistPortal/services/index.ts:641`; the header stays "MyEwaCare", DR13) and on the dispensing copy (`assisted/dispensingCopy.ts:106`) |
 | Dispensing copy hash | `assisted/dispensingCopy.ts` `dispensingHashOf` | Includes `recommendationCode` only when present, so copies made before 3d stay current (DR14) |
@@ -4414,17 +4414,17 @@ Each of the three load routes answers `{ success, data }` with `Cache-Control: p
 
 | Who | Route | Guard |
 |---|---|---|
-| Pharmacy | `GET /api/v1/pharmacy-assisted/recommendations/:code?phone=` | operational, verified pharmacy |
-| Lab desk | `GET /api/v1/partner-workspace/lab-desk/recommendations/:code?phone=` (admins: `/api/v1/partner-workspace/admin/:partnerId/workspace/lab-desk/recommendations/:code?phone=`) | member with `bookings.manage`, at a verified lab |
-| Doctor | `GET /api/v1/specialists/me/assisted/recommendations/:code?phone=` | verified, active doctor |
+| Pharmacy | `POST /api/v1/pharmacy-assisted/recommendations/lookup` | operational, verified pharmacy |
+| Lab desk | `POST /api/v1/partner-workspace/lab-desk/recommendations/lookup` (admins: `/api/v1/partner-workspace/admin/:partnerId/workspace/lab-desk/recommendations/lookup`) | member with `bookings.manage`, at a verified lab |
+| Doctor | `POST /api/v1/specialists/me/assisted/recommendations/lookup` | verified, active doctor |
 
-- **`:code`** as printed (`ABCD-EFGH`); lower case, spaces and hyphens are fine. **`phone`**: the patient's 10-digit
-  mobile number.
+- **Body** `{ code, phone }` (r16b: in the body, like `/patients/lookup`, so neither reaches an access log). `code` as
+  printed (`ABCD-EFGH`); lower case, spaces and hyphens are fine. `phone`: the patient's 10-digit mobile number.
 - **200:** `data: { code: 'ABCDEFGH', status: 'open', items: [{ index: 0, name: 'CBC' }, { index: 1, name: 'Lipid profile' }] }`.
-  Nothing else: no doctor, patient or diagnosis. Show the names; keep `code` and the indexes for booking (linking comes
+  The items are the tests of the prescription as stored (r16b). Nothing else: no doctor, patient or diagnosis. Show the names; keep `code` and the indexes for booking (linking comes
   later).
 - **Errors:**
-  - 400 `VALIDATION_ERROR` (no `phone`; a code longer than 20 characters);
+  - 400 `VALIDATION_ERROR` (no `code` or `phone`; a code longer than 20 characters);
   - 400 `INVALID_CODE` ("This code is not valid; check it on the prescription": a typo, caught by the check character);
   - 400 `INVALID_PHONE`;
   - 403: pharmacy admission codes, `INSUFFICIENT_PERMISSIONS`, `LAB_PARTNER_REQUIRED`, `PARTNER_NOT_VERIFIED`,
@@ -4469,3 +4469,13 @@ formatted (`ABCD-EFGH`) after saving. It is absent when no code could be made: t
 - **The admin booking edit** (`PUT /api/v1/bookings/:id`, `updateBookingSchema` with its `prescription` part,
   `bookings/validation/index.ts:109-137`) does not know `recommendationCode`, and it leaves the recommendation's items as
   they were. A code the edited prescription no longer carries is not loadable (R3). Unchanged (S4 admin path).
+
+#### 25.12.7 Review fixes (r16b, review of `8e5337f4`)
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (privacy) | The patient's phone and the code reached access logs: `GET …/recommendations/:code?phone=` put both in the request line (nginx `combined`), and the app logger logs `req.path` (the code) | The three loads are `POST …/recommendations/lookup` with `{ code, phone }` in the body, validated as the body (`recommendationLookupSchema`), as `/patients/lookup` is. The old GET form is gone (404) |
+| 2 | A load could show tests that are not on the prescription: after a re-save whose PDF failed, or racing saves, the recommendation's `items` differed from the stored prescription | A load answers the items from the consultation it already reads: `testNames(prescription.testsAdvised)`, one cleaner shared with the save (trim, collapse spaces, drop empties). New check: a re-save whose PDF fails leaves the prescription as it was, and the load shows its tests |
+| 3 | Less code; a stale 404 | The `withdrawn` write at a save without tests is gone (R3 already retires a code the prescription no longer carries; with a failing PDF that write made a still-printed code answer 404). `withdrawn` left the status enum (never written; nothing stored yet) |
+
+Checks: `test/assisted/r16-phase3d.integration.ts` (15 checks).
