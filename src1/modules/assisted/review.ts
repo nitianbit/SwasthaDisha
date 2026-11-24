@@ -13,6 +13,7 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { LAB_UNPAID_CARD_QUERY } from '@/modules/assisted/labViews';
+import { InvoiceModel } from '@/modules/partners/model/invoice';
 import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -438,6 +439,10 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
       const again = replay(b);
       if (again) return again;
       assertBookingVersion(b as never, input.expectedUpdatedAt ?? null);
+      // r19b: a desk row's open bill names the old account (bills are immutable): the bill is cancelled first.
+      if (o.root === 'desk' && await InvoiceModel.exists({ openLabBookingId: bookingId }).session(s)) {
+        throw err(409, 'LAB_BOOKING_BILLED_CANCEL_FIRST', 'This lab booking has an open bill in the old account\'s name; cancel the bill first, then move the booking');
+      }
       await claimRequestKey(`assisted_move:${adminId}`, input.requestKey, s);
       if (newDependent) await DependentModel.create([newDependent], { session: s });
       const fromUserId = lower(b.userId);
