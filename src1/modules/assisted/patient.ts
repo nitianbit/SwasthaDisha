@@ -11,13 +11,12 @@ import { customerPhoneIndexReady } from '@/modules/partners/services/customerRes
 import { hitLookup } from '@/modules/assisted/limits';
 
 /**
- * r11 (§24.3): the patient steps an assisted lab booking shares with the 1a consultation create — the family member of
- * the phone's account, the account of a new number (opened only in the booking transaction), the pharmacy-customer
- * link with consent and the typed name, and the coupon redemption row.
+ * r11 (§24.3): the patient steps every assisted create shares — the family member of the phone's account, the account
+ * of a new number (opened only in the booking transaction), the pharmacy-customer link with consent and the typed name,
+ * and the coupon redemption row.
  *
- * ASSUMED (r11 build): §24.3 asks to MOVE these helpers out of `consultations.ts`. They are copied here instead, because
- * another branch (r10g) is removing the booking limits inside those very functions; moving them now would collide. The
- * lab copies already follow the owner's 23 Nov answer (no new-account cap). Unify the two after r10g is merged.
+ * r17 / r24: every assisted create (the 1a consultation, the 2a lab booking, the 2c lab desk, the 3e instant request)
+ * prepares its patient with `preparePatient` / `writePatientIn` below; the 1a create's private copies are gone.
  */
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
@@ -83,7 +82,7 @@ export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: strin
 
 /** §5.7: the redemption row and the guarded total count, in the booking transaction (r11: any booking and payer kind). */
 export async function redeemCouponIn(c: { code: string; discountMinor: number },
-  ctx: { bookingKind: 'booking' | 'lab_booking'; payerKind: 'pharmacy' | 'lab' | 'doctor'; bookingId: string; patientUserId: string; dependentId?: string; payerId: string },
+  ctx: { bookingKind: 'booking' | 'lab_booking' | 'instant_request'; payerKind: 'pharmacy' | 'lab' | 'doctor'; bookingId: string; patientUserId: string; dependentId?: string; payerId: string },
   s: ClientSession): Promise<void> {
   const r = await CouponModel.updateOne({ code: c.code, isActive: true,
     $or: [{ totalUsageLimit: { $exists: false } }, { totalUsageLimit: null }, { $expr: { $lt: ['$currentUsageCount', '$totalUsageLimit'] } }] },

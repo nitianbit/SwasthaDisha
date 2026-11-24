@@ -26,6 +26,13 @@ import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { reserveInterval, moveInterval, releaseInterval, bumpGuard } from '@/modules/doctors/services/reservations';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
+import { bookerEntryLotsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
+import { reverseRedemptionIn } from '@/modules/assisted/refunds';
+import { sendAssistedNotices } from '@/modules/assisted/support';
+import { IDENTITY_NOTE } from '@/modules/assisted/views';
+import type { InstantAssistedBlock } from '@/modules/assisted/types';
 
 export const OFFER_MS = 5 * 60_000;
 export const INACTIVITY_MS = 30 * 60_000;
@@ -41,29 +48,41 @@ const paiseOf = (r: number) => Math.round(Number(r || 0) * 100);
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * §5 funding split at acceptance. Fee is allocated coupon → wallet → gateway; the quote difference is returned gateway
- * first, then wallet, and the unused coupon part is voided (never money). allocated.total + returned.total == funding.total.
+ * §5 funding split at acceptance. Fee is allocated coupon → wallet → partner → gateway (r17: `partner` = a booking
+ * partner's wallet money, §25.8.2); the quote difference is returned from what was not allocated, and the unused coupon
+ * part is voided (never money). allocated.total + returned.total == funding.total. A customer's own request has no
+ * partner part, and its split keeps exactly its former shape.
  */
 export function allocateFunding(f: MoneySplit, feeMinor: number, couponForFeeMinor?: number) {
   if (!Number.isSafeInteger(feeMinor) || feeMinor < 0 || feeMinor > f.totalMinor) throw err(409, 'FEE_ABOVE_QUOTE', 'The fee is above the quoted amount');
+  const hasPartner = f.partnerMinor !== undefined;
+  const heldPartner = f.partnerMinor ?? 0;
   // Q16a: the coupon part is what the coupon gives on the fee actually charged (never more than was held for it).
   const couponMinor = Math.min(f.couponMinor, feeMinor, couponForFeeMinor ?? f.couponMinor);
   const walletMinor = Math.min(f.walletMinor, feeMinor - couponMinor);
-  const gatewayMinor = feeMinor - couponMinor - walletMinor;
+  const partnerMinor = Math.min(heldPartner, feeMinor - couponMinor - walletMinor);
+  const gatewayMinor = feeMinor - couponMinor - walletMinor - partnerMinor;
   if (gatewayMinor > f.gatewayMinor) throw err(500, 'FUNDING_INCONSISTENT', 'The held funding does not cover the fee');
-  const allocated = { couponMinor, walletMinor, gatewayMinor, totalMinor: feeMinor };
+  const allocated = { couponMinor, walletMinor, ...(hasPartner ? { partnerMinor } : {}), gatewayMinor, totalMinor: feeMinor };
   const returned = {
-    couponVoidedMinor: f.couponMinor - couponMinor, walletMinor: f.walletMinor - walletMinor, gatewayMinor: f.gatewayMinor - gatewayMinor,
-    totalMinor: f.totalMinor - feeMinor,
+    couponVoidedMinor: f.couponMinor - couponMinor, walletMinor: f.walletMinor - walletMinor, ...(hasPartner ? { partnerMinor: heldPartner - partnerMinor } : {}),
+    gatewayMinor: f.gatewayMinor - gatewayMinor, totalMinor: f.totalMinor - feeMinor,
   };
   if (allocated.totalMinor + returned.totalMinor !== f.totalMinor
-    || returned.couponVoidedMinor + returned.walletMinor + returned.gatewayMinor !== returned.totalMinor) {
+    || returned.couponVoidedMinor + returned.walletMinor + (returned.partnerMinor ?? 0) + returned.gatewayMinor !== returned.totalMinor) {
     throw err(500, 'FUNDING_INVARIANT', 'Funding allocation does not add up');
   }
   return { allocated, returned };
 }
 
 type CouponTerms = NonNullable<IInstantRequest['couponTerms']>;
+
+/** Q16a: the coupon's terms frozen at create (rupees, as on the coupon), so acceptance can compute it again on the fee. */
+export function couponTermsOf(c: { discountType?: string; discountValue?: unknown; maximumDiscountAmount?: unknown; minimumPurchaseAmount?: unknown }): CouponTerms {
+  return { discountType: c.discountType === 'percentage' ? 'percentage' : 'fixed', discountValue: Number(c.discountValue || 0),
+    ...(c.maximumDiscountAmount ? { maximumDiscountAmount: Number(c.maximumDiscountAmount) } : {}),
+    ...(c.minimumPurchaseAmount ? { minimumPurchaseAmount: Number(c.minimumPurchaseAmount) } : {}) };
+}
 
 /**
  * Q16a (owner, 22 Nov 2026): the coupon's discount on the fee actually charged, in paise. A percentage applies to that
@@ -139,11 +158,21 @@ export function instantRequestHash(input: CreateInstantInput): string {
   })).digest('hex');
 }
 
-/** Customer view: no ledger internals, no request hash/key. */
+/**
+ * Customer view: no ledger internals, no request hash/key. r17 (§25.8.4): a request a partner made and paid shows the
+ * patient no money at all (not the quote, coupon, funding or fee) and none of the partner's keys: `paidBy` instead.
+ */
 export function requestView(r: IInstantRequest): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, offerFees: _f, couponTerms: _t, ...rest } = r as any;
-  return rest;
+  if (!r.assisted) return rest;
+  const { quotedAmountMinor: _q, discountMinor: _d, funding: _fu, allocated: _al, returned: _re, refunded: _rf, acceptedFeeMinor: _fee,
+    couponCode: _cc, couponDoctorIds: _cd, paymentTransactionId: _pt, assisted: a, ...patientRow } = rest;
+  return { ...patientRow, paidBy: a.bookedBy.name,
+    assisted: { shortRef: a.shortRef, preferredLanguage: a.preferredLanguage, ...(a.join ? { join: { on: a.join.on } } : {}), bookedBy: { name: a.bookedBy.name } } };
 }
+
+/** r17: a partner-paid request is driven by its booker; the patient's commands answer this (§25.8.4). */
+const partnerPaid = () => err(409, 'PARTNER_PAID_BOOKING', 'This consultation was booked and paid by a partner; ask them to change it');
 
 const istParts = (at: Date) => {
   const ist = new Date(at.getTime() + 330 * 60_000).toISOString();
@@ -152,6 +181,20 @@ const istParts = (at: Date) => {
 
 // Q13 review: the one eligibility rule for instant consultations — the stored flags must be true (a legacy doctor missing
 // either is not eligible), exactly as discovery (`onlineDoctors`) and speciality listing query it. S5b: the shared S5 predicate.
+
+/**
+ * r17 (§25.8.1): the `assisted` block of the booking made when a doctor accepts a partner's request — the request's
+ * block with only a pointer to its money (`funding: { instantRequestId }`) and the split frozen on the fee charged:
+ * list = fee, discount = the coupon on that fee, base = fee − coupon (provider-funded) or the fee (platform-funded),
+ * cut 0, provider = base.
+ */
+function instantBookingAssisted(a: InstantAssistedBlock, requestId: string, feeMinor: number, couponMinor: number, couponCode?: string) {
+  const { funding: _f, couponFundedBy, primaryConcern: _p, ...rest } = a;
+  const baseMinor = couponFundedBy === 'platform' ? feeMinor : feeMinor - couponMinor;
+  return { ...rest, funding: { instantRequestId: requestId },
+    split: { listMinor: feeMinor, ...(couponCode && couponMinor > 0 ? { couponCode, couponFundedBy: couponFundedBy ?? 'provider' } : {}),
+      discountMinor: couponMinor, baseMinor, cutMinor: 0, providerMinor: baseMinor, rule: 'provider_coupon_v2' as const } };
+}
 
 /**
  * Q16a (L7): a doctor is busy for instant consultations when any held interval overlaps [now, now + 30 min) — the
@@ -311,9 +354,7 @@ export class InstantConsultService {
       // A coupon for named doctors stays bound to them through re-offers and acceptance (frozen with the price).
       if (v.coupon.applicableTo === 'specific') couponDoctorIds = (v.coupon.applicableIds ?? []).map(String);
       // Q16a: frozen so the discount can be computed again on the fee actually charged at acceptance.
-      couponTerms = { discountType: v.coupon.discountType === 'percentage' ? 'percentage' : 'fixed', discountValue: Number(v.coupon.discountValue || 0),
-        ...(v.coupon.maximumDiscountAmount ? { maximumDiscountAmount: Number(v.coupon.maximumDiscountAmount) } : {}),
-        ...(v.coupon.minimumPurchaseAmount ? { minimumPurchaseAmount: Number(v.coupon.minimumPurchaseAmount) } : {}) };
+      couponTerms = couponTermsOf(v.coupon);
     }
 
     // Q9: nothing is funded at a price the customer did not accept (a doctor's fee or the coupon may have changed).
@@ -411,7 +452,7 @@ export class InstantConsultService {
    * Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote, coupon's
    * doctors only). Q16a: each with the fee frozen for this offer (never above the quote the patient paid).
    */
-  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds' | 'couponTerms' | 'discountMinor'>
+  async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds' | 'couponTerms' | 'discountMinor'>
     & { offerFees?: IInstantRequest['offerFees'] }, now: Date): Promise<{ doctorId: string; feeMinor: number }[]> {
     if (r.target.kind === 'specific') {
       const doctorId = String(r.target.doctorId);
@@ -427,9 +468,14 @@ export class InstantConsultService {
       .filter((o) => feeAffordable(r, o.feeMinor));
   }
 
-  /** The held state: funding recorded (coupon + wallet + gateway == quote) and the first offer generation opened. */
-  private holdPatch(r: IInstantRequest, walletMinor: number, gatewayMinor: number, offers: { doctorId: string; feeMinor: number }[], now: Date) {
-    const funding = { couponMinor: r.discountMinor, walletMinor, gatewayMinor, totalMinor: r.discountMinor + walletMinor + gatewayMinor };
+  /**
+   * The held state: funding recorded (coupon + wallet + gateway == quote; r17: + partner for a partner's request) and
+   * the first offer generation opened.
+   */
+  holdPatch(r: Pick<IInstantRequest, 'discountMinor'>, walletMinor: number, gatewayMinor: number, offers: { doctorId: string; feeMinor: number }[], now: Date,
+    partnerMinor?: number) {
+    const funding = { couponMinor: r.discountMinor, walletMinor, ...(partnerMinor !== undefined ? { partnerMinor } : {}), gatewayMinor,
+      totalMinor: r.discountMinor + walletMinor + (partnerMinor ?? 0) + gatewayMinor };
     return {
       status: 'offered', fundingState: 'held', funding, offerGeneration: 1, offeredTo: offers.map((o) => o.doctorId), offerFees: offers,
       offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS),
@@ -437,7 +483,7 @@ export class InstantConsultService {
   }
 
   async payAgain(userId: string, requestId: string, useWallet: boolean, now = new Date()) {
-    return this.resume(await this.own(userId, requestId), useWallet, now);
+    return this.resume(await this.ownCommand(userId, requestId), useWallet, now);
   }
 
   /** Payment context handler: a verified capture is applied once (funding held, offers open) or returned to the wallet. */
@@ -466,10 +512,11 @@ export class InstantConsultService {
     return { paymentRecord: await helpers.finalize(record), entity: requestView(after) };
   }
 
-  private async notifyOffer(r: IInstantRequest) {
+  async notifyOffer(r: IInstantRequest) {
+    const by = r.assisted ? ` Booked by ${r.assisted.bookedBy.name}.` : '';
     for (const doctorId of r.offeredTo) {
       await this.notify({ userId: doctorId, userType: 'specialist', title: 'Instant consultation request',
-        message: `${r.mode} consultation · ${r.specialization}. Accept within 5 minutes.`,
+        message: `${r.mode} consultation · ${r.specialization}.${by} Accept within 5 minutes.`,
         key: `instant:${r._id}:offer:${r.offerGeneration}:${doctorId}`, data: { requestId: String(r._id), generation: r.offerGeneration } });
     }
   }
@@ -489,8 +536,11 @@ export class InstantConsultService {
     return rows.map((r) => {
       const offeredFeeMinor = (r.offerFees ?? []).find((o) => o.doctorId === String(doctorId))?.feeMinor ?? null;
       const chargeFeeMinor = yourFeeMinor === null ? null : chargedFeeFor(r as IInstantRequest, String(doctorId), yourFeeMinor);
+      // r17 (§25.8.4): a partner's request says who booked it and that the identity is the partner's word, not checked.
+      const a = (r as IInstantRequest).assisted;
       return { requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
-        gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt,
+        gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt, source: r.source ?? 'self',
+        ...(a ? { bookedBy: { name: a.bookedBy.name }, identityNote: IDENTITY_NOTE } : {}),
         quotedAmountMinor: r.quotedAmountMinor, quotedAmount: rupees(r.quotedAmountMinor), yourFeeMinor, offeredFeeMinor, chargeFeeMinor,
         feeWithinQuote: chargeFeeMinor !== null && feeAffordable(r as IInstantRequest, chargeFeeMinor) };
     });
@@ -514,6 +564,11 @@ export class InstantConsultService {
     };
     const prior = await replay();
     if (prior) return prior;
+    // r17 (§25.8.5): the booking made from a partner's request relies on the bookings' assisted unique indexes.
+    if (await InstantRequestModel.exists({ _id: id, 'assisted.requestKey': { $type: 'string' } })) {
+      await assertUniqueIndex(BookingModel, { 'assisted.shortRef': 1 });
+      await assertUniqueIndex(BookingModel, { 'assisted.requestKey': 1 });
+    }
     let out: { request: IInstantRequest; booking: IBooking };
     try {
       out = await this.acceptIn(doctorId, id, now);
@@ -557,38 +612,57 @@ export class InstantConsultService {
       const bookingId = new Types.ObjectId();
       await reserveInterval({ doctorId: String(doctorId), kind: 'instant', refId: String(bookingId), start: now, end: new Date(now.getTime() + CONSULT_MS) }, s);
 
+      const a = r.assisted;
       const wf = (r.walletFunding ?? { total: 0, revision: 0, closed: false, captures: [] }) as any;
       const taken = await InstantRequestModel.findOneAndUpdate(
         { _id: id, status: 'offered', fundingState: 'held', offerGeneration: r.offerGeneration, offeredTo: String(doctorId),
           offerExpiresAt: { $gt: now }, acceptedBy: { $exists: false }, statusVersion: r.statusVersion },
-        { $set: { status: 'accepted', fundingState: 'allocated', allocated, returned, refunded: { walletMinor: 0, gatewayMinor: 0, totalMinor: 0 },
+        { $set: { status: 'accepted', fundingState: 'allocated', allocated, returned,
+          refunded: { walletMinor: 0, ...(a ? { partnerMinor: 0 } : {}), gatewayMinor: 0, totalMinor: 0 },
           acceptedBy: String(doctorId), acceptedFeeMinor: fee, bookingId: String(bookingId),
           // The allocation now owns the money: the funding ledger is closed (a late capture is returned to the wallet).
-          walletFunding: { ...wf, total: 0, revision: Number(wf.revision ?? 0) + 1, closed: true, updatedAt: now } },
+          // r17: a partner's request has no customer ledger; its booker funding moves to `allocated`.
+          ...(a ? { 'assisted.funding.state': 'allocated' } : { walletFunding: { ...wf, total: 0, revision: Number(wf.revision ?? 0) + 1, closed: true, updatedAt: now } }) },
           $inc: { statusVersion: 1 } },
         { new: true, session: s }
       ).lean() as IInstantRequest | null;
       if (!taken) throw err(409, 'OFFER_NO_LONGER_AVAILABLE', 'This request was taken, refunded or withdrawn');
 
-      const back = returned.walletMinor + returned.gatewayMinor;
-      if (back > 0) await this.creditWallet(r.userId, back, `instant_request_return:${id}`, 'Instant consultation: quote difference returned', id, s);
-      // Q16a: a coupon that gives nothing on the fee charged (below its minimum purchase) was not used: its count is undone.
-      if (r.discountMinor > 0 && allocated.couponMinor === 0) {
-        const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: id }).session(s).lean();
-        await undoCouponUsageIn(records.map((x) => String(x._id)), s);
+      if (a) {
+        // §25.8.2 (DR20): the quote difference goes back to the partner's wallet, once, as money that cannot be withdrawn.
+        await this.creditBookerIn(r, returned.partnerMinor ?? 0, 'quote_return', 'quote_difference', s);
+        // The redemption follows the coupon actually used on the fee: its discount, or reversed when it gives nothing.
+        if (r.couponCode && allocated.couponMinor > 0) {
+          await CouponRedemptionModel.updateOne({ bookingKind: 'instant_request', bookingId: id, state: 'counted' },
+            { $set: { discountMinor: allocated.couponMinor } }, { session: s });
+        } else if (r.couponCode) await reverseRedemptionIn('instant_request', id, s);
+      } else {
+        const back = returned.walletMinor + returned.gatewayMinor;
+        if (back > 0) await this.creditWallet(r.userId, back, `instant_request_return:${id}`, 'Instant consultation: quote difference returned', id, s);
+        // Q16a: a coupon that gives nothing on the fee charged (below its minimum purchase) was not used: its count is undone.
+        if (r.discountMinor > 0 && allocated.couponMinor === 0) {
+          const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: id }).session(s).lean();
+          await undoCouponUsageIn(records.map((x) => String(x._id)), s);
+        }
       }
 
       const { date, time } = istParts(now);
-      const settlementSystem = settlementSystemFor(now);
+      // r17 (§25.8.1): a partner-made consultation always settles by the ledger (it earns its frozen split once).
+      const settlementSystem = a ? 'ledger' : settlementSystemFor(now);
       const account = settlementSystem === 'ledger' ? await ensureSettlementAccount('doctor', String(doctorId), sp.name || 'Doctor', s) : null;
+      const contact = a ? await UserModel.findById(r.userId).select({ phone: 1 }).session(s).lean() as { phone?: string } | null : null;
       const [booking] = await BookingModel.create([{
         _id: bookingId, bookingType: 'consultation', bookingKind: 'instant', instantRequestId: id, userId: r.userId,
         ...(r.patient.kind === 'dependent' ? { dependentId: r.patient.dependentId } : {}),
         specialistId: String(doctorId), doctorName: sp.name, consultationMode: r.mode, serviceMode: r.mode, bookingDate: date, bookingTime: time,
         price: rupees(fee - allocated.couponMinor), originalPrice: rupees(fee), status: 'confirmed', paymentStatus: 'paid',
         paymentTransactionId: r.paymentTransactionId, settlementSystem, ...(account ? { settlement: { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName } } : {}),
+        ...(a ? { source: r.source, earningRule: 'provider_coupon_v2', ...(contact?.phone ? { contactNo: contact.phone } : {}),
+          ...(a.primaryConcern ? { primaryConcern: a.primaryConcern } : {}),
+          ...(a.bookedBy.kind === 'pharmacy' ? { pharmacyId: a.bookedBy.id } : {}), assisted: instantBookingAssisted(a, id, fee, allocated.couponMinor, r.couponCode) } : {}),
       }], { session: s });
-      return { request: taken, booking: booking!.toObject() as IBooking };
+      const request = a ? await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest : taken;
+      return { request, booking: booking!.toObject() as IBooking };
     });
   }
 
@@ -604,14 +678,30 @@ export class InstantConsultService {
     } catch (e) {
       console.error('instant consult meet link failed', (e as Error)?.message);
     }
-    await this.notify({ userId: r.userId, userType: 'user', title: 'Your doctor is joining', message: 'A doctor accepted your consultation.',
+    const a = r.assisted;
+    // SMS phase 5: BOOKED_LINK to the patient (a partner's instant consultation, a doctor is joining).
+    await this.notify({ userId: r.userId, userType: 'user', title: 'Your doctor is joining',
+      message: a ? `${a.bookedBy.name} booked an instant consultation; a doctor is joining.` : 'A doctor accepted your consultation.',
       key: `instant:${r._id}:accepted`, data: { requestId: String(r._id), bookingId: String(booking._id) } });
+    if (a) {
+      await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_confirmed', title: 'Doctor accepted',
+        message: `Doctor accepted, Ref ${a.shortRef}: join now.`, bookingId: String(booking._id), key: `assisted_instant:${r._id}:accepted:booker`,
+        data: { requestId: String(r._id), shortRef: a.shortRef } }]);
+    }
   }
 
   /** "No accept in time": the customer offers again (another doctor, or any available) within the paid quote. */
   async reoffer(userId: string, requestId: string, target: { kind: 'specific' | 'any'; doctorId?: string }, now = new Date()) {
-    const r = await this.own(userId, requestId);
+    return this.reofferOwned(await this.ownCommand(userId, requestId), target, now);
+  }
+
+  /**
+   * The re-offer rules on a request its caller already owns (the customer's own, or r17: the booker's, scope checked by
+   * the assisted routes). `expectedStatusVersion` fences a booker's screen against a change it has not seen.
+   */
+  async reofferOwned(r: IInstantRequest, target: { kind: 'specific' | 'any'; doctorId?: string }, now = new Date(), expectedStatusVersion?: number) {
     if (r.status !== 'offered' || r.fundingState !== 'held') throw err(409, 'REQUEST_NOT_OPEN', 'This request is no longer waiting for a doctor');
+    if (expectedStatusVersion !== undefined && expectedStatusVersion !== r.statusVersion) throw changed();
     // Q16a: each re-offered doctor's fee is frozen again with the new offer.
     let offers: { doctorId: string; feeMinor: number }[];
     if (target.kind === 'specific') {
@@ -630,7 +720,7 @@ export class InstantConsultService {
     }
     const offeredTo = offers.map((o) => o.doctorId);
     const updated = await InstantRequestModel.findOneAndUpdate(
-      { _id: r._id, userId: { $eq: userId }, status: 'offered', fundingState: 'held', offerGeneration: r.offerGeneration, statusVersion: r.statusVersion },
+      { _id: r._id, userId: { $eq: r.userId }, status: 'offered', fundingState: 'held', offerGeneration: r.offerGeneration, statusVersion: r.statusVersion },
       { $set: { target, offeredTo, offerFees: mergeOfferFees(r.offerFees, offers), offerExpiresAt: new Date(now.getTime() + OFFER_MS), inactivityRefundAt: new Date(now.getTime() + INACTIVITY_MS) },
         $inc: { offerGeneration: 1, statusVersion: 1 } },
       { new: true }
@@ -642,33 +732,61 @@ export class InstantConsultService {
 
   /** The customer is still on the screen: the inactivity refund moves 30 minutes out. */
   async activity(userId: string, requestId: string, now = new Date()) {
-    const r = await InstantRequestModel.findOneAndUpdate(
-      { _id: requestId, userId: { $eq: userId }, status: 'offered', fundingState: 'held' },
+    const r = await this.bumpActivity({ _id: requestId, userId: { $eq: userId }, assisted: { $exists: false } }, now);
+    if (!r) {
+      if (Types.ObjectId.isValid(requestId) && await InstantRequestModel.exists({ _id: requestId, userId: { $eq: userId }, assisted: { $exists: true } })) throw partnerPaid();
+      throw err(409, 'REQUEST_NOT_OPEN', 'This request is no longer waiting for a doctor');
+    }
+    return requestView(r);
+  }
+
+  /** r17 (§7.7): the booker's screen is still open — the inactivity refund follows the booker's activity. */
+  async activityOwned(r: IInstantRequest, now = new Date()): Promise<IInstantRequest> {
+    const after = await this.bumpActivity({ _id: r._id }, now);
+    if (!after) throw err(409, 'REQUEST_NOT_OPEN', 'This request is no longer waiting for a doctor');
+    return after;
+  }
+
+  private async bumpActivity(filter: Record<string, unknown>, now: Date): Promise<IInstantRequest | null> {
+    const r = await InstantRequestModel.findOneAndUpdate({ ...filter, status: 'offered', fundingState: 'held' },
       [{ $set: { inactivityRefundAt: { $max: ['$inactivityRefundAt', new Date(now.getTime() + INACTIVITY_MS)] } } }],
-      { new: true }
-    ).lean();
-    if (!r) throw err(409, 'REQUEST_NOT_OPEN', 'This request is no longer waiting for a doctor');
-    return requestView(r as IInstantRequest);
+      { new: true }).lean();
+    return r as IInstantRequest | null;
   }
 
   // ───────────────────────────── Refunds ─────────────────────────────
 
   async requestRefund(userId: string, requestId: string) {
-    await this.own(userId, requestId);
+    await this.ownCommand(userId, requestId);
     return this.refundHeld(requestId, 'customer');
+  }
+
+  /**
+   * r17: the booker asks for its money back before any doctor accepted (scope checked by the assisted routes); `inTx`
+   * adds the booker's audit to the refund's own transaction.
+   */
+  async refundAsBooker(r: IInstantRequest, expectedStatusVersion: number, inTx: (s: ClientSession) => Promise<void>, now = new Date()) {
+    return this.refundHeld(String(r._id), 'booker', now, expectedStatusVersion, inTx);
   }
 
   /**
    * Refund of held funding (before any acceptance): held → refunded is a CAS that excludes acceptance (which needs
    * held). Everything the request holds goes back to the wallet exactly once; the coupon count is undone.
    */
-  private async refundHeld(requestId: string, reason: 'customer' | 'inactivity', now = new Date()) {
+  private async refundHeld(requestId: string, reason: 'customer' | 'booker' | 'inactivity', now = new Date(), expectedStatusVersion?: number,
+    inTx?: (s: ClientSession) => Promise<void>) {
     const id = String(requestId).toLowerCase();
     const out = await runLedgerTransaction(async (s) => {
       const r = await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest | null;
       if (!r) throw notFound();
       if (r.status !== 'offered' || r.fundingState !== 'held') throw err(409, 'REQUEST_NOT_REFUNDABLE', 'A doctor already accepted, or it was refunded');
       if (reason === 'inactivity' && (!r.inactivityRefundAt || now < new Date(r.inactivityRefundAt))) return { refunded: 0, request: r, skipped: true };
+      if (expectedStatusVersion !== undefined && expectedStatusVersion !== r.statusVersion) throw changed();
+      if (r.assisted) {
+        const refunded = await this.refundHeldToBookerIn(r, reason, s);
+        if (inTx) await inTx(s);
+        return { refunded, request: r, skipped: false };
+      }
       const records = await this.fenceRecords(id, s);
       const done = await InstantRequestModel.updateOne({ _id: id, status: 'offered', fundingState: 'held', statusVersion: r.statusVersion },
         { $set: { status: 'refunded', fundingState: 'refunded', paymentStatus: 'refunded', refundReason: reason,
@@ -681,10 +799,54 @@ export class InstantConsultService {
       return { refunded, request: r, skipped: false };
     });
     if (!out.skipped) {
-      await this.notify({ userId: out.request.userId, userType: 'user', title: 'Consultation request refunded',
-        message: `₹${out.refunded.toFixed(2)} is back in your wallet.`, key: `instant:${id}:refunded`, data: { requestId: id } });
+      const a = out.request.assisted;
+      if (a) {
+        await this.notify({ userId: out.request.userId, userType: 'user', title: 'Consultation request closed',
+          message: `No doctor joined this time. ${a.bookedBy.name} was refunded.`, key: `instant:${id}:refunded`, data: { requestId: id } });
+        await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Instant consultation refunded',
+          message: `Ref ${a.shortRef}: ₹${out.refunded.toFixed(2)} is back in your wallet.`, bookingId: id, key: `assisted_instant:${id}:refunded:booker`,
+          data: { requestId: id, shortRef: a.shortRef } }]);
+      } else {
+        await this.notify({ userId: out.request.userId, userType: 'user', title: 'Consultation request refunded',
+          message: `₹${out.refunded.toFixed(2)} is back in your wallet.`, key: `instant:${id}:refunded`, data: { requestId: id } });
+      }
     }
     return { refunded: out.refunded, skipped: out.skipped };
+  }
+
+  /**
+   * r17 (§25.8.2, DR20): a partner's request refunded before any acceptance — everything the booker paid goes back to its
+   * wallet once, restoring the lots its debit used (withdrawable money stays withdrawable); the redemption is reversed.
+   * Returns rupees, as the customer refund does.
+   */
+  private async refundHeldToBookerIn(r: IInstantRequest, reason: 'customer' | 'booker' | 'inactivity', s: ClientSession): Promise<number> {
+    const held = r.funding?.partnerMinor ?? 0;
+    const done = await InstantRequestModel.updateOne({ _id: r._id, status: 'offered', fundingState: 'held', statusVersion: r.statusVersion },
+      { $set: { status: 'refunded', fundingState: 'refunded', paymentStatus: 'refunded', refundReason: reason, 'assisted.funding.state': 'refunded',
+        refunded: { walletMinor: 0, partnerMinor: held, gatewayMinor: 0, totalMinor: held } }, $inc: { statusVersion: 1 } }, { session: s });
+    if (done.modifiedCount !== 1) throw changed();
+    await reverseRedemptionIn('instant_request', String(r._id), s);
+    await this.creditBookerIn(r, held, 'refund', reason, s, true);
+    return rupees(held);
+  }
+
+  /**
+   * r17: one credit back to the partner who paid, exactly once per kind (`assisted_instant:<id>:<kind>`), recorded on
+   * the request. It always posts (frozen, inactive or suspended wallets too). Only a full refund before acceptance gives
+   * back the debit's lots (`restoreLots`); the quote difference and refunds after acceptance are not withdrawable (DR20).
+   */
+  private async creditBookerIn(r: IInstantRequest, minor: number, kind: 'quote_return' | 'refund' | 'cancel_refund', cause: string, s: ClientSession,
+    restoreLots = false): Promise<void> {
+    if (!(minor > 0)) return;
+    const f = r.assisted!.funding;
+    const id = String(r._id).toLowerCase();
+    const lots = restoreLots ? await bookerEntryLotsIn(f.payerKind, f.walletEntryId, s) : [];
+    const posted = await postBookerMovementIn({ payerKind: f.payerKind, payerId: f.payerId, kind: 'refund_credit', amountPaise: minor,
+      operationKey: `assisted_instant:${id}:${kind}`, referenceType: 'assisted_instant', referenceId: `${id}:${kind}`,
+      description: kind === 'quote_return' ? 'Instant consultation: quote difference returned' : 'Refund of an instant consultation',
+      ...(lots.length ? { restore: lots } : {}) }, s);
+    await InstantRequestModel.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': { kind, cause, amountMinor: minor,
+      walletEntryId: String(posted.entry._id), at: new Date() } } }, { session: s });
   }
 
   private async fenceRecords(id: string, s: ClientSession) {
@@ -731,6 +893,21 @@ export class InstantConsultService {
       const done = await BookingModel.updateOne({ _id: id, status: 'confirmed' },
         { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: istTodayYyyymmdd() } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
+      if (r.assisted) {
+        // r17 (§25.8.2, D13): the doctor or an admin cancels a partner's consultation — the allocation still owed goes
+        // back to the partner's wallet once (not withdrawable, DR20); never the patient's wallet; the join link dies.
+        const before = r.refunded ?? { walletMinor: 0, partnerMinor: 0, gatewayMinor: 0, totalMinor: 0 };
+        const back = (r.allocated.partnerMinor ?? 0) - (before.partnerMinor ?? 0);
+        const upd = await InstantRequestModel.updateOne({ _id: r._id, statusVersion: r.statusVersion, fundingState: 'allocated' },
+          { $set: { fundingState: 'refunded', status: 'refunded', refundReason: byAdmin ? 'admin_cancelled' : 'doctor_cancelled', 'assisted.funding.state': 'refunded',
+            refunded: { ...before, partnerMinor: (before.partnerMinor ?? 0) + back, totalMinor: before.totalMinor + back } }, $inc: { statusVersion: 1 } }, { session: s });
+        if (upd.modifiedCount !== 1) throw changed();
+        await this.creditBookerIn(r, back, 'cancel_refund', byAdmin ? 'admin' : 'doctor', s);
+        await reverseRedemptionIn('instant_request', String(r._id), s);
+        if (b.assisted?.join) await BookingModel.updateOne({ _id: id }, { $inc: { 'assisted.join.linkVersion': 1 } }, { session: s });
+        await releaseInterval('instant', id, s);
+        return { userId: r.userId, refunded: rupees(back), assisted: r.assisted };
+      }
       const already = r.refunded ?? { walletMinor: 0, gatewayMinor: 0, totalMinor: 0 };
       const wallet = r.allocated.walletMinor - already.walletMinor;
       const gateway = r.allocated.gatewayMinor - already.gatewayMinor;
@@ -744,11 +921,18 @@ export class InstantConsultService {
       const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: String(r._id) }).session(s).lean();
       await undoCouponUsageIn(records.map((x) => String(x._id)), s);
       await releaseInterval('instant', id, s);
-      return { userId: r.userId, refunded: rupees(wallet + gateway) };
+      return { userId: r.userId, refunded: rupees(wallet + gateway), assisted: undefined as InstantAssistedBlock | undefined };
     });
-    await this.notify({ userId: out.userId, userType: 'user', title: 'Consultation cancelled', message: `${reason}. ₹${out.refunded.toFixed(2)} is back in your wallet.`,
-      key: `instant-booking:${id}:cancelled`, data: { bookingId: id } });
-    return out;
+    const a = out.assisted;
+    // SMS phase 5: CANCELLED_MOVED to the patient of a partner's consultation.
+    await this.notify({ userId: out.userId, userType: 'user', title: 'Consultation cancelled',
+      message: a ? `${reason}.` : `${reason}. ₹${out.refunded.toFixed(2)} is back in your wallet.`, key: `instant-booking:${id}:cancelled`, data: { bookingId: id } });
+    if (a) {
+      await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: 'Consultation cancelled',
+        message: `Ref ${a.shortRef}: cancelled by ${requester.userType === 'admin' ? 'the Jansetu team' : 'the doctor'}. ₹${out.refunded.toFixed(2)} is back in your wallet.`,
+        bookingId: id, key: `assisted_instant:${id}:cancelled:booker`, data: { shortRef: a.shortRef } }]);
+    }
+    return { userId: out.userId, refunded: out.refunded };
   }
 
   /**
@@ -868,6 +1052,13 @@ export class InstantConsultService {
     const r = await InstantRequestModel.findOne({ _id: requestId, userId: { $eq: userId } }).lean();
     if (!r) throw notFound();
     return r as IInstantRequest;
+  }
+
+  /** The patient's own request for a command (pay, re-offer, refund): r17, a partner-paid one is its booker's to change. */
+  private async ownCommand(userId: string, requestId: string): Promise<IInstantRequest> {
+    const r = await this.own(userId, requestId);
+    if (r.assisted) throw partnerPaid();
+    return r;
   }
 
   async getForCustomer(userId: string, requestId: string) { return requestView(await this.own(userId, requestId)); }

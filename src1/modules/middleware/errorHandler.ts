@@ -7,6 +7,8 @@ import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 const DETAIL_KEYS = new Map<string, string[]>([
   ['PRICE_CHANGED', ['priceMinor', 'listMinor', 'discountMinor']],
   ['WALLET_LIMIT_REACHED', ['maxBalanceMinor', 'balanceMinor', 'pendingMinor', 'allowedMinor']],
+  // r17: QUOTE_CHANGED (partner instant): the quote and the coupon discount.
+  ['QUOTE_CHANGED', ['quotedAmountMinor', 'discountMinor']],
 ]);
 const paiseDetails = (keys: string[], d: Record<string, unknown>) => Object.fromEntries(keys.filter((k) => Number.isSafeInteger(d[k])).map((k) => [k, d[k]]));
 

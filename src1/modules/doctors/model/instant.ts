@@ -1,4 +1,5 @@
 import { Schema, model, Model } from 'mongoose';
+import type { InstantAssistedBlock } from '@/modules/assisted/types';
 
 export type InstantMode = 'video' | 'call' | 'chat';
 
@@ -35,7 +36,8 @@ export const DoctorPresenceModel: Model<IDoctorPresence> = model<IDoctorPresence
 
 export type InstantStatus = 'pending_payment' | 'offered' | 'accepted' | 'refunded' | 'expired_unpaid';
 export type FundingState = 'awaiting' | 'held' | 'allocated' | 'refunded';
-export interface MoneySplit { couponMinor: number; walletMinor: number; gatewayMinor: number; totalMinor: number }
+/** r17 (§25.8.1): `partnerMinor` is what a booking partner put in from its wallet (absent on the customer's own requests). */
+export interface MoneySplit { couponMinor: number; walletMinor: number; partnerMinor?: number; gatewayMinor: number; totalMinor: number }
 
 /**
  * §5 instant consultation request. The customer pays the quoted amount upfront (coupon + wallet + gateway). Acceptance
@@ -72,9 +74,9 @@ export interface IInstantRequest {
   /** Used for the consultation (fee), coupon → wallet → gateway. */
   allocated?: MoneySplit;
   /** Quote minus fee, returned at acceptance: gateway → wallet; coupon remainder voided (not money). */
-  returned?: { couponVoidedMinor: number; walletMinor: number; gatewayMinor: number; totalMinor: number };
-  /** Refunded later against the allocation (never more than allocated wallet + gateway). */
-  refunded?: { walletMinor: number; gatewayMinor: number; totalMinor: number };
+  returned?: { couponVoidedMinor: number; walletMinor: number; partnerMinor?: number; gatewayMinor: number; totalMinor: number };
+  /** Refunded later against the allocation (never more than allocated wallet + partner + gateway). */
+  refunded?: { walletMinor: number; partnerMinor?: number; gatewayMinor: number; totalMinor: number };
   status: InstantStatus;
   statusVersion: number;
   /** Mirrors for the shared wallet-funding ledger (bookingWalletFunding.ts). */
@@ -91,12 +93,18 @@ export interface IInstantRequest {
   acceptedBy?: string;
   acceptedFeeMinor?: number;
   bookingId?: string;
-  refundReason?: 'customer' | 'inactivity' | 'doctor_cancelled' | 'admin_cancelled';
+  refundReason?: 'customer' | 'booker' | 'inactivity' | 'doctor_cancelled' | 'admin_cancelled';
+  /**
+   * r17 (§25.8.1): who made the request. A partner's request (`pharmacy_assisted`, later `lab_assisted`) carries the
+   * `assisted` block: the booker, consent, keys, short ref, and its wallet funding (the customer's wallet is never used).
+   */
+  source?: 'self' | 'pharmacy_assisted' | 'lab_assisted';
+  assisted?: InstantAssistedBlock;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-const split = { couponMinor: Number, walletMinor: Number, gatewayMinor: Number, totalMinor: Number };
+const split = { couponMinor: Number, walletMinor: Number, partnerMinor: Number, gatewayMinor: Number, totalMinor: Number };
 
 const instantSchema = new Schema<IInstantRequest>(
   {
@@ -123,8 +131,8 @@ const instantSchema = new Schema<IInstantRequest>(
     funding: split,
     fundingState: { type: String, required: true, enum: ['awaiting', 'held', 'allocated', 'refunded'] },
     allocated: split,
-    returned: { couponVoidedMinor: Number, walletMinor: Number, gatewayMinor: Number, totalMinor: Number },
-    refunded: { walletMinor: Number, gatewayMinor: Number, totalMinor: Number },
+    returned: { couponVoidedMinor: Number, walletMinor: Number, partnerMinor: Number, gatewayMinor: Number, totalMinor: Number },
+    refunded: { walletMinor: Number, partnerMinor: Number, gatewayMinor: Number, totalMinor: Number },
     status: { type: String, required: true, enum: ['pending_payment', 'offered', 'accepted', 'refunded', 'expired_unpaid'] },
     statusVersion: { type: Number, required: true, default: 0 },
     paymentStatus: { type: String, required: true, enum: ['pending', 'paid', 'refunded'] },
@@ -153,7 +161,9 @@ const instantSchema = new Schema<IInstantRequest>(
     acceptedBy: String,
     acceptedFeeMinor: Number,
     bookingId: String,
-    refundReason: { type: String, enum: ['customer', 'inactivity', 'doctor_cancelled', 'admin_cancelled'] },
+    refundReason: { type: String, enum: ['customer', 'booker', 'inactivity', 'doctor_cancelled', 'admin_cancelled'] },
+    source: { type: String, enum: ['self', 'pharmacy_assisted', 'lab_assisted'] },
+    assisted: { type: Schema.Types.Mixed, default: undefined },
   },
   { timestamps: true }
 );
@@ -162,6 +172,10 @@ instantSchema.index({ bookingId: 1 }, { unique: true, partialFilterExpression: {
 instantSchema.index({ status: 1, offeredTo: 1, offerExpiresAt: 1 });
 instantSchema.index({ status: 1, fundingState: 1, inactivityRefundAt: 1 });
 instantSchema.index({ status: 1, paymentStatus: 1, paymentDeadline: 1 });
+// r17 (§25.8.1): a partner's request — exactly once per stored key, one short ref, and the booker's own list.
+instantSchema.index({ 'assisted.requestKey': 1 }, { unique: true, partialFilterExpression: { 'assisted.requestKey': { $type: 'string' } } });
+instantSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
+instantSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1, _id: -1 });
 
 /** Model name is load-bearing for the payment/wallet ledgers that resolve it. */
 export const InstantRequestModel: Model<IInstantRequest> = model<IInstantRequest>('InstantRequest', instantSchema, 'instant_requests');

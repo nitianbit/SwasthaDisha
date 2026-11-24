@@ -32,7 +32,7 @@ export const assistedBookerFilter = (kind: 'pharmacy' | 'lab' | 'doctor', id: st
 export const assistedCauseOf = (userType: string) =>
   userType === 'user' ? 'patient' : userType === 'pharmacy' ? 'booker' : userType === 'specialist' ? 'doctor' : userType;
 
-export async function reverseRedemptionIn(bookingKind: AssistedBookingKind, bookingId: string, s: ClientSession): Promise<boolean> {
+export async function reverseRedemptionIn(bookingKind: AssistedBookingKind | 'instant_request', bookingId: string, s: ClientSession): Promise<boolean> {
   const row = await CouponRedemptionModel.findOneAndUpdate({ bookingKind, bookingId: String(bookingId).toLowerCase(), state: 'counted' },
     { $set: { state: 'reversed', reversedAt: new Date() } }, { new: true, session: s }).lean();
   if (!row) return false;
