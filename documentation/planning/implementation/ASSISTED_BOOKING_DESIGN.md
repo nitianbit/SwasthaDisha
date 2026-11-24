@@ -3383,6 +3383,129 @@ desk row of this lab, outside scope, or an online row, L10); 400 `LAB_BOOKING_BR
 - The Q3 customer create keeps its own test check (database order of lines); only `itemSnapshot` / `branchOffers` are shared with it.
 - The unpaged `listForPartner` and the admin lab list carry no `bill`.
 
+### 24.13 Round 2d build record: the lab wallet (r13, 2026-11-25)
+
+Branch `m0/r13-phase2d` from `f5f171c9` (stage head, 2a). Local commits only. Built §24.7 with the owner's decisions of
+25 Nov, which win over §24.7 where they differ: O2 (₹50,000 most in a wallet, one withdrawal a week, card money
+withdrawable 7 days after payment: stored, withdrawals stay off); chargebacks **flag only**, as C4 for card payments; no
+blocking limits except phone lookups; admin top-ups non-withdrawable (L20). And the owner's instruction of 25 Nov
+00:20 IST: **one implementation shared by the pharmacy and lab wallets, parameterised by store, no copies.**
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Shared wallet rules | `pharmacyWallet/walletCore.ts` (new) | One implementation, moved from the pharmacy ledger and controllers: movements (`postMovementIn`: exactly once per operation key, wallet read and compare-and-set on `version` in the transaction, debits refused when owing, frozen, inactive or short, credits always post and clear a receivable first, lots consumed oldest first and restored on refund, withdrawable recomputed), `refreshWithdrawableIn`, the lot chargeback (`chargeBackLotIn`, the pharmacy's `take` rule), `resolveTopupRecord`, `recordTopupChargebackIn` (`taken` / `flagged` / `blocked`), `closeTopupCompensatedIn`, the top-up credit (`creditTopupIn`: the `walletCreditedAt` claim, then the ledger credit and the lot), `adminTopup` (Idempotency-Key, content hash, replay, 409), `setFrozenIn`, `checkTopup`. A **store** adapts one wallet's persistence (`WalletStore`); a **top-up kind** says how a card top-up record names its wallet (`TopupKind`) |
+| Lots | `pharmacyWallet/walletLots.ts` (new) | `withdrawableOfIn`, `consumeLots`, `restoreLots` moved unchanged with a `walletRef` parameter, plus `openLotIn` and `lotsOf`. `wallet_topup_lots` gains `withdrawableAfter` (lab lots only) |
+| Pharmacy store | `pharmacyWallet/ledger.ts`, `pharmacyWallet/services` | Now the pharmacy store adapter (rupee fields written beside paise, `transactionType`, ObjectId `pharmacyId`) and `pharmacyTopups`; `postPharmacyMovementIn`, `recordChargebackIn`, `withdrawableOfIn` keep their signatures. `PharmacyWalletService.topup`, `adminTopupByKey`, `checkTopup` call the shared functions. Wrappers nobody calls any more were removed (`pharmacyWalletIn`, `resolveTopupRecordId`, `recordPaymentChargebackIn`, `closeTopupCompensatedIn`, `refreshWithdrawableIn`) |
+| Lab store | `partnerWallets/model` (new: `partner_wallets`, `partner_wallet_entries`), `partnerWallets/ledger.ts` (new) | The partner store adapter (`ownerKind: 'lab' \| 'doctor'`, integer paise, signed entries), `labTopups` (flag chargebacks; a lot with the fee while `ASSISTED_BOOKING_ENABLED_LAB` is on and the lot index exists; `withdrawableAfter` = payment + 7 days), `LAB_WALLET_POLICY` (O2 and the admin cap), `debitLabWalletIn` (S5: an active, verified lab; 2e spends through it) and `refundLabWalletIn` (always posts) |
+| Payments | `payment/services`, `payment/model`, `payment/types` | Every card top-up (pharmacy and lab) is credited by `creditTopupIn` through its kind; a lab top-up never reaches the customer wallet; an already processed lab top-up answers the lab wallet; the recovery sweep takes every lab top-up; a member of the paying lab (`requesterUserType: 'partner'`) may verify; `createOrder` stores `payerPartnerId`, `payerMemberId`, `requestKey`, `requestHash`. New indexes `payment_records {payerPartnerId, createdAt}` (partial `$exists`) and `{requestKey}` unique (partial `$exists`) |
+| Workspace and admin routes | `partnerWallets/routes.ts`, `service.ts`, `validation.ts` (new); `src1/routes/index.ts` | Below. The workspace router is mounted at `/api/v1/partner-workspace/assisted` (2e adds its routes there), the admin one at `/api/v1/admin/labs` |
+| Admin tools on any top-up | `assisted/controller/phase1a.ts` | The existing chargeback (by payment and by lot) and close-compensated routes, and the close by-key read, take lab top-ups too (the kind comes from the record or the lot); pharmacy answers are unchanged. The pharmacy freeze and lots reads use the shared functions |
+| Permissions, switch | `partners/types`, `assisted/flags.ts` | `wallet.view`, `wallet.manage` (owners hold all; L13). `ASSISTED_BOOKING_ENABLED_LAB` and `assertLabWalletOn` |
+| Reconciliation | `partnerWallets/reconciliation.ts` (new), `assisted/reconciliation.ts` | The report checks partner wallets (`checks.partnerWallets.checked`; mismatches `partner_wallet_balance`, `partner_wallet_withdrawable`, `partner_wallet_receivable_unfrozen`, `ref: 'lab:<partnerId>'`); the uncredited list adds paid lab top-ups never claimed; the daily fee fill refreshes the withdrawable amount of the lot's own wallet, whatever its kind |
+| Audit, alerts, errors | `assisted/model`, `middleware/errorHandler.ts` | Lab admin wallet actions are audited in `assisted_audit_events` with `orgKind: 'lab'` (ids, codes, paise; new action `wallet.admin_topup`); a flagged chargeback raises the alert `wallet_topup_chargeback`; `WALLET_LIMIT_REACHED` answers carry paise `details` |
+
+Checks: `test/assisted/r13-phase2d.integration.ts` (18 checks). The lot-helper move and the sharing are proven by the
+1a/1b/2a and S6 suites passing unchanged: full regression 69 suites, 68 passed, `tsc` 17 (unchanged); the one failure,
+`q16c-pharmacy` N1 (an import file's removal under parallel load), passed alone (31/31) and does not touch wallets.
+
+**ASSUMED (r13 build, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| D1 | A lab chargeback is **flag only**: `chargebackAt` on the record once, its lot `disputeState: 'lost'` (no longer withdrawable; not closed, balance unchanged), alert `wallet_topup_chargeback`, audit `wallet.chargeback` (`flaggedOnly: true`). No debit, receivable or freeze; recovering the money is an admin decision. A lab top-up never credited is **blocked** (never credited), as for pharmacies; one closed as compensated is flagged (nothing taken) | owner C4 |
+| D2 | The ₹50,000 maximum is checked when a top-up is ordered: balance + the lab's unpaid orders of the last 30 minutes + this one (409 `WALLET_LIMIT_REACHED`). Two orders made at the same moment, or an old order paid late, can still take the balance past it: a paid top-up is always credited. Admin top-ups and refunds do not check it (admin top-ups: at most ₹2,00,000 each) | money paid must be credited; no other blocking limits |
+| D3 | `withdrawableAfter` (payment + 7 days) is stored on lab lots only (the pharmacy store is not touched); `withdrawableMinor` counts card money before its 7 days. Phase 4 must apply the date and the one-a-week rule (`LAB_WALLET_POLICY`) | O2: store the data, withdrawals off |
+| D4 | Lab top-ups always join the recovery sweep (not gated by `WALLET_RECHARGE_SWEEP_FROM`) | none predates the sweep |
+| D5 | Reads, the top-up check, verify and reconcile admit any active member (with the permission) of an active lab, verified or not: a paid top-up is its own money (§19.8 item b). A new top-up needs an operational (verified) lab; spending needs an active, verified lab (403 `PARTNER_NOT_VERIFIED` / `PARTNER_INACTIVE`); refunds always post | S5 pattern |
+| D6 | Lab admin wallet actions go to `assisted_audit_events` (`orgKind: 'lab'`), the trail the pharmacy's already use, not `partner_audit_events` | one shared path |
+| D7 | No lab-only chargeback or close routes: the existing admin routes take any top-up kind (§24.7.3) | one code path |
+| D8 | The top-up request key lives on the payment record (`requestKey` = `wallet_topup:lab:<partnerId>:<memberId>:<key>`, unique; hash of the amount). Two first sends at once: one record; the loser's Razorpay order is never shown, so never paid (as 1b) | no new collection |
+| D9 | Two conservative pharmacy changes came with the sharing: the credit and the payment chargeback find an earlier credit row in any id spelling (the r9b read the close already used), and `PharmacyWalletService.topup` refuses a missing key (the admin route always required one) | one lookup per rule |
+| D10 | A member of a clinic gets 404 `WALLET_NOT_FOUND` on the wallet routes | doctor wallets are phase 3 |
+| D11 | The O2 numbers are code constants (`LAB_WALLET_POLICY`), not per-wallet data | phase 4 may move them |
+| D12 | The `postBookerMovementIn` dispatcher (§24.7.1) is left to 2e, with its callers; 2d provides `debitLabWalletIn` / `refundLabWalletIn` | nothing spends the lab wallet yet |
+| D13 | The history read lists entries newest first with a `<ms>_<id>` cursor (index `{ownerKind, ownerId, at: -1, _id: -1}`); a second list shows the lab's top-ups with their state, so a lost answer can be found and checked | §24.7.6 "Check" |
+
+**API for the web**
+
+Lab workspace (partner member token; `{ success, data }`, `Cache-Control: private, no-store`; money in paise):
+
+| Route | Guard | Request | `data` |
+|---|---|---|---|
+| `GET /api/v1/partner-workspace/assisted/wallet` | `wallet.view` | — | `{ balanceMinor, withdrawableMinor, receivableMinor, frozen, isActive, updatedAt }` (no wallet yet: zeros, `updatedAt: null`) |
+| `GET …/assisted/wallet/entries` | `wallet.view` | `?cursor&limit` (≤ 50, default 20) | `[{ _id, kind, amountMinor (signed), balanceAfterMinor, description, referenceType, referenceId, at }]`; top-level `pagination: { nextCursor }` |
+| `GET …/assisted/wallet/topups` | `wallet.view` | `?cursor&limit` | `[{ paymentTransactionId, amountMinor, state, status, memberId, razorpayOrderId, createdAt, paidAt }]`, `pagination`; `state`: `awaiting_payment`, `credited`, `paid_not_credited`, `blocked`, `closed_compensated`, `failed`, `refunded` |
+| `POST …/assisted/wallet/topups` | `wallet.manage`, operational lab, switch | `{ amountMinor (100…5000000), requestKey (^[A-Za-z0-9_-]{8,100}$) }` | `{ paymentTransactionId, razorpayOrderId, razorpayKeyId, amountMinor, currency, state, replayed }` |
+| `POST …/assisted/wallet/topups/:paymentTransactionId/check` | `wallet.view` | — | `{ state: 'credited' \| 'unpaid', wallet }` |
+| `POST …/assisted/payments/verify` | `wallet.manage` | `{ paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature }` | `{ context: 'wallet_recharge', paymentRecord: { _id, status, amountMinor, currency, razorpayOrderId, razorpayPaymentId, paidAt, credited }, entity: <wallet> }` |
+| `POST …/assisted/payments/reconcile` | `wallet.manage` | `{ paymentTransactionId }` | as verify with `state: 'paid'`, or `{ state: 'unpaid', gatewayStatuses }` |
+
+Flow: create the order, open Razorpay Checkout (`key = razorpayKeyId`, `order_id`, `amount = amountMinor`, `currency`),
+then verify. A lost answer: send the same body with the same `requestKey` (the same order comes back), or `reconcile` /
+"Check" the `paymentTransactionId`. The server also sweeps every lab top-up, so a capture is never lost. Show
+`withdrawableMinor` as "card money (withdrawals coming later)"; show `frozen` and `receivableMinor` as a banner.
+
+Errors: 400 `VALIDATION_ERROR`, and as §23.3 `PAYMENT_SIGNATURE_INVALID`, `PAYMENT_ORDER_MISMATCH`, `PAYMENT_AMOUNT_MISMATCH`,
+`PAYMENT_NOT_COMPLETED`, `PAYMENT_FAILED`, `PAYMENT_REFUNDED`; 403 `FORBIDDEN` (not a partner token, e.g. a pharmacy),
+`PARTNER_MEMBER_INACTIVE`, `PARTNER_INACTIVE`, `PARTNER_NOT_VERIFIED` (new top-up), `INSUFFICIENT_PERMISSIONS`; 404
+`WALLET_NOT_FOUND` (not a lab), `PAYMENT_RECORD_NOT_FOUND` (another lab's, a pharmacy's or an unknown record: one answer);
+409 `IDEMPOTENCY_KEY_REUSED`, `WALLET_LIMIT_REACHED` (`details: { maxBalanceMinor, balanceMinor, pendingMinor,
+allowedMinor }`), `TOPUP_BLOCKED` (blocked after a dispute, or closed as compensated), `PAYMENT_CHANGED` (retry); 502
+`RAZORPAY_ORDER_CREATION_FAILED` (send the same request again), `RAZORPAY_PAYMENT_FETCH_FAILED`; 503
+`ASSISTED_BOOKING_DISABLED` (switch off: new top-ups only), `INDEXES_OUTDATED`, `RAZORPAY_NOT_CONFIGURED`.
+
+Admin (admin token; writes need `ASSISTED_ADMIN_TOOLS_ENABLED`, else 503 `ASSISTED_BOOKING_DISABLED`):
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET /api/v1/admin/labs/:partnerId/wallet` | — | the wallet view plus `{ exists, frozenReason, frozenAt, version, createdAt }` |
+| `GET …/labs/:partnerId/wallet/entries` | `?cursor&limit` | entries plus `{ withdrawableDeltaMinor, receivableDeltaMinor, operationKey, notes, lotAllocations, actor }`; `pagination` |
+| `GET …/labs/:partnerId/wallet/lots` | — | lots, newest first (≤ 200): `{ _id, walletRef, paymentRecordId, amountMinor, gatewayFeeMinor, feeState, disputeState, closed, remainingMinor, withdrawableAfter, createdAt }` |
+| `POST …/labs/:partnerId/wallet/topup` | header `Idempotency-Key` (`^[A-Za-z0-9_-]{8,100}$`); `{ amountMinor (1…20000000), notes? (≤ 500) }` | the admin wallet view. Non-withdrawable; once per key (same body → the wallet again; other amount or note → 409 `IDEMPOTENCY_KEY_REUSED`) |
+| `GET …/labs/:partnerId/wallet/topups/by-key/:key` | — | `{ state: 'credited', entry, wallet }` or `{ state: 'not_found' }` (resend the same body with the same key) |
+| `PUT …/labs/:partnerId/wallet/freeze` | `{ frozen, reason }` | the admin wallet view; 409 `WALLET_RECEIVABLE` to unfreeze a wallet that owes |
+| `POST /api/v1/admin/wallet-payments/:paymentId/chargeback` (existing) | `{ reason }`; `paymentId` = record id, `order_…` or `pay_…` | lab top-up credited: `{ blockedUncredited: false, flagged: true, credited: true, replayed, paymentRecordId, lotId, walletKind: 'lab', partnerId, compensated?, message }`; never credited: the §19.3 blocked answer. Pharmacy answers unchanged |
+| `POST /api/v1/admin/wallet-lots/:lotId/chargeback` (existing) | `{ reason }` | a lab lot: the flagged answer (its top-up is flagged) |
+| `POST /api/v1/admin/wallet-payments/:paymentId/close-compensated` and `GET …/close-compensated/by-key/:key` (existing) | as §22.2 | a lab top-up answers `walletKind: 'lab', partnerId` instead of `pharmacyId`, message "… paid to the lab …" |
+| `GET /api/v1/admin/wallet-recharges/uncredited` (existing) | — | adds `{ paymentTransactionId, walletKind: 'lab', partnerId, amountMinor, createdAt, state: 'paid_not_credited' }` |
+
+Admin errors: 400 `IDEMPOTENCY_KEY_REQUIRED`, `VALIDATION_ERROR` (key, amount over ₹2,00,000, note); 403 for non-admins;
+404 `LAB_NOT_FOUND` (a pharmacy id, a clinic, an unknown or malformed id: one answer); 409 as above and §19.3 / §22.2;
+503 `INDEXES_OUTDATED`.
+
+**Switches and deploy order**
+
+- `ASSISTED_BOOKING_ENABLED_LAB` (new, off unless exactly `"true"`): new lab top-ups, and lots on their credits (2e: lab-made
+  consultations). Off: `POST …/wallet/topups` answers 503; reads, the check, verify, reconcile and the sweep keep
+  crediting paid top-ups (without a lot: non-withdrawable). `ASSISTED_ADMIN_TOOLS_ENABLED` (existing) gates the admin
+  top-up, freeze, chargebacks and close.
+- Order: 1. deploy (switch off); 2. `npm run sync-indexes` (`partner_wallets {ownerKind, ownerId}` unique and `{frozen}`;
+  `partner_wallet_entries {walletId, operationKey}` unique and `{ownerKind, ownerId, at, _id}`; `payment_records
+  {payerPartnerId, createdAt}` and `{requestKey}` unique; until then top-ups and admin writes answer 503
+  `INDEXES_OUTDATED`); 3. owners grant `wallet.view` / `wallet.manage` to staff (owners already hold them); 4.
+  `ASSISTED_BOOKING_ENABLED_LAB=true`; 5. restart. No migration (new collections).
+- Rollback: the switch. Rolling the code back below r13 strands lab money: older code never credits a lab top-up (the
+  generic payment routes refuse partner tokens and its sweep skips them), and reads no lab wallet. Before such a rollback
+  `db.payment_records.countDocuments({ 'notes.flow': 'lab_wallet_recharge', status: { $in: ['created', 'paid'] },
+  walletCreditedAt: { $exists: false } })` must be 0 and no lab wallet may hold money.
+- Merge notes (small edits in shared files): `assisted/flags.ts` (one switch and its assert), `assisted/model` (one
+  audit action), `assisted/reconciliation.ts` (imports, one list append, partner checks in the report, the fee refresh
+  line), `src1/routes/index.ts` (two mounts), `partners/types` (two permissions), `payment/*`, `middleware/errorHandler.ts`.
+  The pharmacy wallet files and `assisted/controller/phase1a.ts` (wallet tools only) changed more; r10h and 2c do not
+  touch them.
+
+**Seen, not changed**
+
+- The pharmacy admin top-up has no server-side amount cap (only the web form's ₹2,00,000); the lab one is checked by the server.
+- A partial index filtered on `$type: 'string'` is not used by an equality query (checked with `explain` on MongoDB 7):
+  `payment_records {compensation.requestKey}` (the close by-key reads scan the collection) and `pharmacy_wallet_transactions
+  {pharmacyId, operationKey}` (the ledger's replay read walks the pharmacy's rows on `{pharmacyId}`; the admin by-key reads
+  are hinted and fine). The new r13 indexes use `$exists`.
+- The pharmacy's own Razorpay top-up order (`POST /pharmacy-wallet/topup`) has no request key: a resend makes another order.
+- `PaymentService` keeps its two pharmacy wallet repositories as constructor parameters (positional callers); the credit no longer uses them.
+
 ### 24.14 Round 2b build record: pharmacy → lab test by card/UPI (r14, 2026-11-25)
 
 Branch `m0/r14-phase2b` from `f5f171c9` (2a on r10f). Local commits only; nothing pushed or deployed. Built: §24.5 with the

@@ -21,6 +21,8 @@ export interface IWalletTopupLot {
    * sync-indexes or before phase 1a): closed from the start, nothing in it, never withdrawable.
    */
   openedAtChargeback?: boolean;
+  /** r13 (O2, partner wallets): card money becomes withdrawable from this time (7 days after payment); read by phase 4. */
+  withdrawableAfter?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -38,6 +40,7 @@ const lotSchema = new Schema<IWalletTopupLot>({
   closed: { type: Boolean, required: true, default: false },
   remainingMinor: { type: Number, required: true, min: 0 },
   openedAtChargeback: { type: Boolean },
+  withdrawableAfter: { type: Date },
 }, { timestamps: true, strict: 'throw' });
 lotSchema.index({ paymentRecordId: 1 }, { unique: true });
 lotSchema.index({ 'walletRef.kind': 1, 'walletRef.id': 1, createdAt: 1 });

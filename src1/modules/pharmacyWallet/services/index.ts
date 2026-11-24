@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import { startSession, Types } from 'mongoose';
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
+import { pharmacyStore, pharmacyTopups } from '@/modules/pharmacyWallet/ledger';
+import { adminTopup, checkTopup } from '@/modules/pharmacyWallet/walletCore';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { BookingRepository } from '@/modules/bookings/repository';
@@ -15,11 +16,7 @@ import {
 } from '@/modules/pharmacyWallet/types';
 import { AppError } from '@/modules/common/types';
 import { PaymentService } from '@/modules/payment/services';
-import PaymentRecordModel from '@/modules/payment/model';
 import PharmacyModel from '@/modules/pharmacies/model';
-import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { requestHashOf } from '@/modules/common/utils/canonicalJson';
-import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 
 /**
  * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
@@ -45,16 +42,8 @@ export function walletView(w: IPharmacyWallet): Record<string, unknown> {
     receivableMinor: Number(w.receivableMinor ?? 0) };
 }
 
-/**
- * r7: the two exact reads of an admin top-up by its key, each pinned to its unique ledger index (the planner would
- * otherwise walk the pharmacy's rows by `pharmacyId`): the reference (every admin top-up; older rows have only this),
- * then the operation key (ledger rows).
- */
-export const adminTopupByKeyLookups = (pharmacyId: string, key: string) => [
-  { filter: { pharmacyId: new Types.ObjectId(pharmacyId), referenceType: 'topup', referenceId: key },
-    hint: { pharmacyId: 1, referenceType: 1, referenceId: 1 } },
-  { filter: { pharmacyId: new Types.ObjectId(pharmacyId), operationKey: `admin_topup:${key}` }, hint: { pharmacyId: 1, operationKey: 1 } },
-];
+/** r7: the exact reads of an admin top-up by its key (now with the pharmacy store, r13). */
+export { adminTopupByKeyLookups } from '@/modules/pharmacyWallet/ledger';
 
 @Service()
 export class PharmacyWalletService {
@@ -110,18 +99,11 @@ export class PharmacyWalletService {
    * with the gateway and credits it once if it was captured. Another pharmacy's (or a missing) record is 404.
    */
   async checkTopup(pharmacyId: string, paymentTransactionId: string): Promise<{ state: 'credited' | 'unpaid'; wallet: Record<string, unknown> | null }> {
-    const notFound = () => new AppError({ status: 404, code: 'PAYMENT_RECORD_NOT_FOUND', message: 'Payment record not found' });
-    if (!/^[0-9a-fA-F]{24}$/.test(String(paymentTransactionId))) throw notFound();
-    const record = await PaymentRecordModel.findById(paymentTransactionId).lean() as Record<string, any> | null;
-    if (!record || record.context !== 'wallet_recharge' || record.notes?.flow !== 'pharmacy_wallet_recharge'
-        || String(record.payerPharmacyId ?? '').toLowerCase() !== String(pharmacyId).toLowerCase()) throw notFound();
-    if (!this.paymentService) {
-      throw new AppError({ status: 500, code: 'PAYMENT_SERVICE_UNAVAILABLE', message: 'Payment service is unavailable' });
-    }
-    const out = await this.paymentService.reconcilePaymentAndProcess({ paymentTransactionId: String(record._id),
-      userId: String(record.payerUserId || record.userId), requesterUserType: 'pharmacy', requesterPharmacyId: pharmacyId });
-    const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
-    return { state: out.state === 'paid' ? 'credited' : 'unpaid', wallet: wallet ? walletView(wallet) : null };
+    const paymentService = this.paymentService;
+    if (!paymentService) throw new AppError({ status: 500, code: 'PAYMENT_SERVICE_UNAVAILABLE', message: 'Payment service is unavailable' });
+    const out = await checkTopup(pharmacyTopups, pharmacyId, paymentTransactionId, (r) =>
+      paymentService.reconcilePaymentAndProcess({ ...r, requesterUserType: 'pharmacy', requesterPharmacyId: pharmacyId }));
+    return { state: out.state, wallet: out.wallet ? walletView(out.wallet) : null };
   }
 
   /**
@@ -133,14 +115,7 @@ export class PharmacyWalletService {
   async adminTopupByKey(pharmacyId: string, rawKey: string): Promise<{ state: 'credited'; transaction: ReturnType<typeof transactionView>; wallet: Record<string, unknown> | null }
     | { state: 'not_found' }> {
     const key = String(rawKey ?? '').trim();
-    // r8 B1: a hinted read on a missing or different (narrower) partial index would answer not_found; fail closed (503).
-    await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, referenceType: 1, referenceId: 1 });
-    await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, operationKey: 1 });
-    let row: IPharmacyWalletTransaction | null = null;
-    for (const q of adminTopupByKeyLookups(pharmacyId, key)) {
-      row = await PharmacyWalletTransactionModel.findOne(q.filter).hint(q.hint).lean() as IPharmacyWalletTransaction | null;
-      if (row) break;
-    }
+    const row = await pharmacyStore(pharmacyId).adminTopupByKey(key);
     if (!row) return { state: 'not_found' };
     const wallet = await this.walletRepo.findByPharmacy(pharmacyId);
     return { state: 'credited', transaction: transactionView(row), wallet: wallet ? walletView(wallet) : null };
@@ -185,55 +160,11 @@ export class PharmacyWalletService {
       throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND', message: 'Pharmacy not found' });
     }
     await this.getOrCreateWallet(pharmacyId);
-    const normalizedKey = idempotencyKey?.trim();
-    const amountPaise = Math.round(req.amount * 100);
-    const notes = req.notes ?? null;
-    const requestHash = requestHashOf({ kind: 'admin_topup', amountPaise, notes });
-    /** The wallet when this key already credited this same content; 409 when it credited something else. */
-    const replayOf = async (): Promise<IPharmacyWallet | null> => {
-      if (!normalizedKey) return null;
-      const existing = await this.txRepo.findOne({ pharmacyId, referenceType: 'topup', referenceId: normalizedKey });
-      if (!existing) return null;
-      const same = existing.requestHash ? existing.requestHash === requestHash
-        : Number(existing.amountPaise ?? Math.round(Number(existing.amount ?? 0) * 100)) === amountPaise && (existing.notes ?? null) === notes;
-      if (!same) {
-        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This Idempotency-Key was already used for a different top-up' });
-      }
-      return this.walletRepo.findByPharmacy(pharmacyId);
-    };
-    const prior = await replayOf();
-    if (prior) return prior;
-
-    const session = await startSession();
-    try {
-      let result: IPharmacyWallet | undefined;
-      await session.withTransaction(async () => {
-        // Assisted booking phase 1a (§17.3): through the ledger (signed amount, operation key, version). An admin credit
-        // is never withdrawable (no lot) and posts whatever the wallet state.
-        const posted = await postPharmacyMovementIn({
-          pharmacyId, kind: 'credit', amountPaise,
-          operationKey: `admin_topup:${normalizedKey || new Types.ObjectId().toHexString()}`,
-          referenceType: 'topup', referenceId: normalizedKey as string, description: 'Admin top-up', notes: req.notes,
-          requestHash, ...(adminId ? { actor: { kind: 'admin' as const, id: String(adminId) } } : {}),
-        }, session);
-        if (posted.replayed && posted.entry.requestHash && posted.entry.requestHash !== requestHash) {
-          throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This Idempotency-Key was already used for a different top-up' });
-        }
-        result = posted.wallet;
-      });
-      if (!result) {
-        throw new AppError({ status: 500, code: 'TOPUP_FAILED', message: 'Failed to top up wallet' });
-      }
-      return result;
-    } catch (error) {
-      if (normalizedKey && isDuplicateKeyError(error)) {
-        const wallet = await replayOf();
-        if (wallet) return wallet;
-      }
-      throw error;
-    } finally {
-      await session.endSession();
-    }
+    const key = idempotencyKey?.trim();
+    if (!key) throw new AppError({ status: 400, code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'An Idempotency-Key header is required for an admin top-up' });
+    // Assisted booking phase 1a (§17.3), r13 (shared with the lab wallet): through the ledger (signed amount, operation
+    // key, version). An admin credit is never withdrawable (no lot) and posts whatever the wallet state.
+    return adminTopup(pharmacyStore(pharmacyId), { key, amountMinor: Math.round(req.amount * 100), notes: req.notes, adminId });
   }
 
   async payConsultation(

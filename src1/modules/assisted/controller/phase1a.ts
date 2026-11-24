@@ -10,13 +10,16 @@ import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { inTransaction } from '@/modules/partners/services';
-import { closeTopupCompensatedIn, pharmacyWalletIn, recordChargebackIn, recordPaymentChargebackIn, resolveTopupRecordId } from '@/modules/pharmacyWallet/ledger';
+import { pharmacyStore, recordChargebackIn } from '@/modules/pharmacyWallet/ledger';
+import { closeTopupCompensatedIn, recordTopupChargebackIn, resolveTopupRecord, setFrozenIn, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
+import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
+import { TOPUP_KINDS, topupKindOf, topupKindOfWallet } from '@/modules/partnerWallets/topupKinds';
+import { raiseAlertIn } from '@/modules/assisted/limits';
 import { PaymentRecordModel } from '@/modules/payment/model';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
-import { PharmacyWalletModel } from '@/modules/pharmacyWallet/model';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import PharmacyModel from '@/modules/pharmacies/model';
@@ -87,12 +90,8 @@ export const freeze = async (req: AuthRequest, res: Response) => {
   const frozen = req.body.frozen === true;
   const reason = String(req.body.reason).trim();
   const wallet = await inTransaction(async (s) => {
-    const w = await pharmacyWalletIn(pharmacyId, s);
-    // A wallet that owes a receivable (lost card dispute) stays frozen until a credit has cleared it.
-    if (!frozen && Number(w.receivableMinor ?? 0) > 0) throw new AppError({ status: 409, code: 'WALLET_RECEIVABLE', message: 'This wallet still owes a receivable' });
-    const updated = await PharmacyWalletModel.findOneAndUpdate({ _id: w._id },
-      frozen ? { $set: { frozen: true, frozenReason: reason, frozenAt: new Date() }, $inc: { version: 1 } }
-        : { $set: { frozen: false }, $unset: { frozenReason: 1, frozenAt: 1 }, $inc: { version: 1 } }, { new: true, session: s }).lean();
+    // r13: the shared freeze (a wallet that owes a receivable stays frozen until a credit has cleared it).
+    const updated = await setFrozenIn(pharmacyStore(pharmacyId), frozen, reason, s);
     await auditIn({ actorKind: 'admin', actorId: String(req.user?._id).toLowerCase(), orgKind: 'pharmacy', orgId: pharmacyId.toLowerCase(),
       action: frozen ? 'wallet.frozen' : 'wallet.unfrozen', detail: { reason } }, s);
     return updated;
@@ -101,8 +100,7 @@ export const freeze = async (req: AuthRequest, res: Response) => {
 };
 
 /** GET /admin/pharmacies/:id/wallet/lots — the pharmacy's top-up lots (to pick the one a chargeback is for). */
-export const lots = async (req: AuthRequest, res: Response) => send(res, await WalletTopupLotModel.find({ 'walletRef.kind': 'pharmacy',
-  'walletRef.id': String(req.params.id).toLowerCase() }).sort({ createdAt: -1 }).limit(200).lean());
+export const lots = async (req: AuthRequest, res: Response) => send(res, await lotsOf({ kind: 'pharmacy', id: req.params.id }));
 
 /**
  * POST /admin/wallet-lots/:lotId/chargeback { reason } — a card dispute lost on a top-up: the lot is closed for good,
@@ -111,6 +109,11 @@ export const lots = async (req: AuthRequest, res: Response) => send(res, await W
 export const chargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
   const reason = String(req.body.reason).trim();
+  // r13: a lab lot's dispute is recorded on its top-up and flagged only (owner C4); pharmacy lots are charged back.
+  const lot = Types.ObjectId.isValid(req.params.lotId)
+    ? await WalletTopupLotModel.findById(req.params.lotId).select({ walletRef: 1, paymentRecordId: 1 }).lean() : null;
+  const kind = lot ? topupKindOfWallet(lot.walletRef.kind) : null;
+  if (lot && kind?.chargeback === 'flag') return send(res, await topupChargeback(kind, lot.paymentRecordId, String(req.user?._id).toLowerCase(), reason));
   const out = await inTransaction(async (s) => {
     const r = await recordChargebackIn(req.params.lotId, s);
     if (!r.replayed) {
@@ -133,22 +136,32 @@ export const chargeback = async (req: AuthRequest, res: Response) => {
 export const paymentChargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
   const reason = String(req.body.reason).trim();
-  const actorId = String(req.user?._id).toLowerCase();
-  // Outside the transaction (it may ask the gateway, read only): the payment record the admin named.
+  // Outside the transaction (it may ask the gateway, read only): the top-up the admin named (r13: pharmacy or lab).
   const { Container } = await import('typedi');
   const { PaymentService } = await import('@/modules/payment/services');
-  const paymentRecordId = await resolveTopupRecordId(req.params.paymentId, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
+  const { paymentRecordId, kind } = await resolveTopupRecord(req.params.paymentId, TOPUP_KINDS, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
+  send(res, await topupChargeback(kind, paymentRecordId, String(req.user?._id).toLowerCase(), reason));
+};
+
+/**
+ * A lost card dispute on a top-up (`recordTopupChargebackIn`), audited `wallet.chargeback` in the same transaction (a
+ * flagged one also raises the alert `wallet_topup_chargeback`). A racing twin that inserted the payment's lot first: this
+ * attempt runs once more and answers replayed.
+ */
+async function topupChargeback(kind: TopupKind, paymentRecordId: string, actorId: string, reason: string) {
   const run = () => inTransaction(async (s) => {
-    const r = await recordPaymentChargebackIn(paymentRecordId, s);
+    const r = await recordTopupChargebackIn(kind, paymentRecordId, s);
     if (r.replayed) return r;
-    if (r.blockedUncredited) {
-      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: r.pharmacyId,
-        action: 'wallet.chargeback', detail: { paymentRecordId: r.paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 } }, s);
+    const audit = (detail: Record<string, unknown>) => auditIn({ actorKind: 'admin', actorId, orgKind: kind.kind, orgId: r.ownerId, action: 'wallet.chargeback', detail }, s);
+    if (r.outcome === 'blocked') {
+      await audit({ paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 });
+    } else if (r.outcome === 'flagged') {
+      await audit({ paymentRecordId, lotId: r.lotId, flaggedOnly: true, ...(r.compensated ? { compensated: true } : {}), reason, debitedPaise: 0 });
+      await raiseAlertIn({ kind: 'wallet_topup_chargeback', subject: `${kind.kind}:${paymentRecordId}`,
+        detail: { walletKind: kind.kind, ownerId: r.ownerId, paymentRecordId, lotId: r.lotId } }, s);
     } else {
-      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
-        action: 'wallet.chargeback', detail: { lotId: r.lotId, paymentRecordId: r.paymentRecordId, withoutLot: r.withoutLot,
-          ...(r.compensated ? { compensated: true } : {}), reason,
-          debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
+      await audit({ lotId: r.lotId, paymentRecordId, withoutLot: r.withoutLot, ...(r.compensated ? { compensated: true } : {}), reason,
+        debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise });
     }
     return r;
   });
@@ -157,25 +170,35 @@ export const paymentChargeback = async (req: AuthRequest, res: Response) => {
     if (!isDuplicateKeyError(e)) throw e;
     out = await run();
   }
-  if (out.blockedUncredited) {
-    return send(res, { blockedUncredited: true, credited: false, replayed: out.replayed, paymentRecordId: out.paymentRecordId,
-      message: 'Nothing was credited for this top-up, so nothing was taken from the wallet. The top-up is now blocked and will never be credited.' });
+  if (out.outcome === 'blocked') {
+    return { blockedUncredited: true, credited: false, replayed: out.replayed, paymentRecordId: out.paymentRecordId,
+      message: 'Nothing was credited for this top-up, so nothing was taken from the wallet. The top-up is now blocked and will never be credited.' };
   }
-  send(res, { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
-    withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) });
-};
+  if (out.outcome === 'flagged') {
+    return { blockedUncredited: false, flagged: true, credited: true, replayed: out.replayed, paymentRecordId: out.paymentRecordId, lotId: out.lotId,
+      walletKind: kind.kind, partnerId: out.ownerId, ...(out.compensated ? { compensated: true } : {}),
+      message: 'Recorded and flagged only: nothing was taken from the wallet and it was not frozen; this card money is no longer withdrawable. Recovering the amount is an admin decision.' };
+  }
+  return { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
+    withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) };
+}
 
-/** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). */
-const closedView = (r: { replayed: boolean; paymentRecordId: string; pharmacyId: string; amountPaise: number; compensatedAt: Date; status: string }) => ({
-  closed: true, credited: false, replayed: r.replayed, paymentRecordId: r.paymentRecordId, pharmacyId: r.pharmacyId, amountPaise: r.amountPaise,
+/** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). r13: a lab top-up names the lab. */
+const closedView = (r: { replayed: boolean; paymentRecordId: string; ownerId: string; amountPaise: number; compensatedAt: Date; status: string },
+  kind: Pick<TopupKind, 'kind'>) => ({
+  closed: true, credited: false, replayed: r.replayed, paymentRecordId: r.paymentRecordId,
+  ...(kind.kind === 'pharmacy' ? { pharmacyId: r.ownerId } : { walletKind: kind.kind, partnerId: r.ownerId }), amountPaise: r.amountPaise,
   compensatedAt: r.compensatedAt, status: r.status,
-  message: 'This top-up is closed as already paid to the pharmacy by Jansetu support. It will never be credited to the wallet.',
+  message: `This top-up is closed as already paid to the ${kind.kind} by Jansetu support. It will never be credited to the wallet.`,
 });
 const COMPENSATION_KEY_INDEX = { 'compensation.requestKey': 1 } as const;
 /** A stored closure, as answered to a replay. */
-const closureOf = (r: Record<string, any>) => ({ replayed: true, paymentRecordId: String(r._id), pharmacyId: String(r.payerPharmacyId).toLowerCase(),
-  amountPaise: Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100),
-  compensatedAt: r.compensatedAt as Date, status: String(r.status) });
+const closureOf = (r: Record<string, any>) => {
+  const kind = topupKindOf(r) ?? { kind: 'pharmacy' as const, ownerOf: (x: Record<string, any>) => String(x.payerPharmacyId).toLowerCase() };
+  return closedView({ replayed: true, paymentRecordId: String(r._id), ownerId: kind.ownerOf(r),
+    amountPaise: Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100),
+    compensatedAt: r.compensatedAt as Date, status: String(r.status) }, kind);
+};
 
 /**
  * POST /admin/wallet-payments/:paymentId/close-compensated { reason, requestKey } — r9 (owner decision): support already
@@ -193,7 +216,7 @@ export const closeCompensated = async (req: AuthRequest, res: Response) => {
   await assertUniqueIndex(PaymentRecordModel, COMPENSATION_KEY_INDEX);
   const { Container } = await import('typedi');
   const { PaymentService } = await import('@/modules/payment/services');
-  const paymentRecordId = await resolveTopupRecordId(req.params.paymentId, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
+  const { paymentRecordId, kind } = await resolveTopupRecord(req.params.paymentId, TOPUP_KINDS, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
   const requestHash = requestHashOf({ paymentRecordId, reason });
   /** The record this (admin, key) already closed: its closure when the content matches, else 409. */
   const byKey = async () => {
@@ -203,23 +226,23 @@ export const closeCompensated = async (req: AuthRequest, res: Response) => {
     return closureOf(prior);
   };
   const prior = await byKey();
-  if (prior) return send(res, closedView(prior));
+  if (prior) return send(res, prior);
   const run = () => inTransaction(async (s) => {
-    const r = await closeTopupCompensatedIn(paymentRecordId, { by: actorId, reason, requestKey, requestHash }, s);
+    const r = await closeTopupCompensatedIn(kind, paymentRecordId, { by: actorId, reason, requestKey, requestHash }, s);
     if (!r.replayed) {
-      await auditIn({ actorKind: 'admin', actorId, orgKind: 'pharmacy', orgId: r.pharmacyId, action: 'wallet.closed_compensated',
+      await auditIn({ actorKind: 'admin', actorId, orgKind: kind.kind, orgId: r.ownerId, action: 'wallet.closed_compensated',
         requestKey: String(req.body.requestKey), detail: { paymentRecordId: r.paymentRecordId, amountPaise: r.amountPaise, reason } }, s);
     }
     return r;
   });
   try {
-    send(res, closedView(await run()));
+    send(res, closedView(await run(), kind));
   } catch (e) {
     // The same key raced on another record (unique `compensation.requestKey`): answered by what that key did.
     if (!isDuplicateKeyError(e)) throw e;
     const raced = await byKey();
     if (!raced) throw e;
-    send(res, closedView(raced));
+    send(res, raced);
   }
 };
 
@@ -230,7 +253,7 @@ export const closeCompensatedByKey = async (req: AuthRequest, res: Response) => 
   const requestKey = `${String(req.user?._id).toLowerCase()}:${String(req.params.key)}`;
   const r = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
   if (!r) return send(res, { state: 'not_found' });
-  send(res, { state: 'closed', ...closedView(closureOf(r)) });
+  send(res, { state: 'closed', ...closureOf(r) });
 };
 
 // ── Phase 1b: card payments of assisted bookings (admin) ──

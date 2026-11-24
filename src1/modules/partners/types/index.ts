@@ -52,7 +52,10 @@ export type PartnerPermission =
   | 'invoices.create'
   | 'invoices.cancel'
   | 'payments.record'
-  | 'finance.view';
+  | 'finance.view'
+  /** r13 (§24.7.3, L13): the lab wallet — see it; top it up. */
+  | 'wallet.view'
+  | 'wallet.manage';
 
 export const ALL_PERMISSIONS: readonly PartnerPermission[] = [
   'staff.manage',
@@ -67,6 +70,8 @@ export const ALL_PERMISSIONS: readonly PartnerPermission[] = [
   'invoices.cancel',
   'payments.record',
   'finance.view',
+  'wallet.view',
+  'wallet.manage',
 ] as const;
 
 export type ProfessionalKind = 'pathologist' | 'pharmacist' | 'doctor';

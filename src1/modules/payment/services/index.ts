@@ -70,17 +70,11 @@ interface RazorpayOrderResponse {
   status: string;
 }
 
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
-import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { assistedFlags } from '@/modules/assisted/flags';
-import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
+import { creditTopupIn, topupClosedCompensated, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
+import { topupKindOf } from '@/modules/partnerWallets/topupKinds';
 
 const rechargeSweepFrom = () => assistedFlags.rechargeSweepFrom();
-/** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
-async function rechargeLotsWritable(): Promise<boolean> {
-  if (!assistedFlags.pharmacy()) return false;
-  try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
-}
 
 interface RazorpayPaymentDetails {
   id: string;
@@ -109,10 +103,6 @@ const UNSETTLED_ATTEMPT = {
   paymentGateway: 'razorpay', razorpayOrderId: { $type: 'string' },
   $or: [{ status: 'created' }, { status: 'paid', isProcessed: { $ne: true } }],
 };
-
-/** r9: a pharmacy top-up an admin closed as already compensated by hand is never credited (same code as a blocked one). */
-const topupClosedCompensated = () => new AppError({ status: 409, code: 'TOPUP_BLOCKED',
-  message: 'This top-up was closed: Jansetu support already paid this amount to you, so it is not credited to the wallet' });
 
 /** D3: thrown inside the payment commit transaction when the capture was already decided (aborts the transaction). */
 class SettlementAlreadyDecided extends Error {}
@@ -186,8 +176,9 @@ export class PaymentService {
     private slotRepository: SlotRepository,
     private userRepository: UserRepository,
     private emailService: EmailService,
-    private pharmacyWalletRepository: PharmacyWalletRepository,
-    private pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository,
+    // r13: kept for the constructor's positions (DI and positional callers); top-up credits go through the wallet stores.
+    protected pharmacyWalletRepository: PharmacyWalletRepository,
+    protected pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository,
     private medicineRepository: MedicineRepository
   ) {}
 
@@ -671,6 +662,9 @@ export class PaymentService {
       userId: data.userId,
       payerUserId: this.getPaymentPayerUserId(data),
       payerPharmacyId: data.payerPharmacyId,
+      // r13 (§24.7.2): a partner-paid order (a lab top-up) names the paying partner and member, and its request key.
+      ...(data.payerPartnerId ? { payerPartnerId: data.payerPartnerId, payerMemberId: data.payerMemberId } : {}),
+      ...(data.requestKey ? { requestKey: data.requestKey, requestHash: data.requestHash } : {}),
       context: data.context,
       contextId: data.contextId,
       baseAmount: data.baseAmount,
@@ -806,7 +800,13 @@ export class PaymentService {
       }
     }
 
-    if (!belongsToRequester && !pharmacyCanVerify) {
+    // r13 (§24.7.2): a lab top-up is verified by any member of its paying lab (the partner-workspace routes, which admit
+    // members holding wallet.manage).
+    const topupKind = topupKindOf(paymentRecord);
+    const partnerCanVerify = !belongsToRequester && data.requesterUserType === 'partner' && !!data.requesterPartnerId
+      && topupKind?.kind === 'lab' && topupKind.ownerOf(paymentRecord) === String(data.requesterPartnerId).toLowerCase();
+
+    if (!belongsToRequester && !pharmacyCanVerify && !partnerCanVerify) {
       throw new AppError({
         status: 404,
         code: 'PAYMENT_RECORD_NOT_FOUND',
@@ -1162,10 +1162,9 @@ export class PaymentService {
       };
     }
 
-    if (this.isPharmacyWalletRecharge(paymentRecord)) {
-      const wallet = await this.pharmacyWalletRepository.findByPharmacy(
-        paymentRecord.payerPharmacyId!
-      );
+    const topupKind = topupKindOf(paymentRecord);
+    if (topupKind) {
+      const wallet = await topupKind.storeFor(paymentRecord as unknown as Record<string, unknown>).findIn(null);
       return {
         context: 'wallet_recharge',
         paymentRecord,
@@ -1616,65 +1615,24 @@ export class PaymentService {
     return wallet;
   }
 
-  private isPharmacyWalletRecharge(paymentRecord: IPaymentRecord): boolean {
-    return (
-      paymentRecord.context === 'wallet_recharge' &&
-      Boolean(paymentRecord.payerPharmacyId) &&
-      paymentRecord.notes?.flow === 'pharmacy_wallet_recharge'
-    );
-  }
-
-  private async ensurePharmacyWalletRechargeTransaction(
-    paymentRecord: IPaymentRecord
-  ): Promise<unknown> {
-    const pharmacyId = paymentRecord.payerPharmacyId!;
-    await this.pharmacyWalletRepository.upsertWallet(pharmacyId);
-    // Assisted booking phase 1a (§5.3, P2): a card top-up opens a withdrawable lot while the pharmacy switch is on and
-    // the lot index exists (otherwise the money is credited non-withdrawable, the conservative side).
-    const lots = await rechargeLotsWritable();
-
+  /**
+   * The credit of a pharmacy or lab card top-up (r13: one implementation, `walletCore.creditTopupIn`): claimed once in a
+   * transaction, then the ledger credit; a lot (with the Razorpay fee) while the kind's switch is on and the lot index
+   * exists, otherwise the money is credited non-withdrawable (the conservative side).
+   */
+  private async ensureTopupCredit(paymentRecord: IPaymentRecord, kind: TopupKind): Promise<unknown> {
+    const store = kind.storeFor(paymentRecord as unknown as Record<string, unknown>);
+    await store.ensure();
+    const lots = await kind.lotsWritable();
     try {
       return await this.runPharmacyPaymentCoreTransaction(async (session) => {
-        const existingTransaction = await this.pharmacyWalletTransactionRepository.findOne(
-          {
-            pharmacyId,
-            referenceType: 'wallet_recharge',
-            referenceId: paymentRecord._id!,
-            status: 'completed',
-          },
-          session
-        );
-        if (existingTransaction) {
-          return this.pharmacyWalletRepository.findOne({ pharmacyId }, session);
-        }
-        // Review of db252c1 (item a): the credit claims the record in this transaction — a write, so a concurrent
-        // chargeback that blocks the uncredited top-up and this credit can never both commit. Refused once blocked.
-        // r9: nor once closed as already compensated by hand (`compensatedAt`): the close writes this same document.
-        const claimed = await PaymentRecordModel.updateOne(
-          { _id: paymentRecord._id, status: 'paid', chargebackAt: { $exists: false }, compensatedAt: { $exists: false } },
-          { $set: { walletCreditedAt: new Date() } }, { session });
-        if (claimed.modifiedCount !== 1) {
-          const now = await PaymentRecordModel.findById(paymentRecord._id).select({ compensatedAt: 1 }).session(session).lean();
-          if (now?.compensatedAt) throw topupClosedCompensated();
-          throw new AppError({ status: 409, code: 'TOPUP_BLOCKED',
-            message: 'This top-up was blocked after a lost card dispute and is not credited; contact Jansetu support' });
-        }
-
-        const amountPaise =
-          paymentRecord.baseAmountPaise ?? Math.round(paymentRecord.baseAmount * 100);
-        // §17.3: through the ledger (signed amount, operation key, version); credits post whatever the wallet state.
-        const posted = await postPharmacyMovementIn({
-          pharmacyId, kind: 'credit', amountPaise, operationKey: `wallet_recharge:${paymentRecord._id}`,
-          referenceType: 'wallet_recharge', referenceId: String(paymentRecord._id), description: 'Pharmacy wallet recharge via Razorpay',
-          notes: paymentRecord.razorpayPaymentId,
-          ...(lots ? { lot: { paymentRecordId: String(paymentRecord._id), gatewayFeeMinor: paymentRecord.gatewayFeeMinor ?? null } } : {}),
-        }, session);
-        if (!posted.replayed) this.onWalletRechargeCredited?.(String(posted.entry._id));
-        return posted.wallet;
+        const credited = await creditTopupIn(kind, paymentRecord, { lots }, session);
+        if (credited.entryId) this.onWalletRechargeCredited?.(credited.entryId);
+        return credited.wallet;
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
-        const wallet = await this.pharmacyWalletRepository.findByPharmacy(pharmacyId);
+        const wallet = await store.findIn(null);
         if (wallet) return wallet;
       }
       throw error;
@@ -1889,8 +1847,10 @@ export class PaymentService {
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
-    const wallet = this.isPharmacyWalletRecharge(paymentRecord)
-      ? await this.ensurePharmacyWalletRechargeTransaction(paymentRecord)
+    // r13: a lab top-up must never reach the customer wallet (its payer is a partner member, not a customer).
+    const topupKind = topupKindOf(paymentRecord);
+    const wallet = topupKind
+      ? await this.ensureTopupCredit(paymentRecord, topupKind)
       : await this.ensureWalletRechargeTransaction(paymentRecord);
     const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
 
@@ -1927,7 +1887,8 @@ export class PaymentService {
    * cancelled or duplicate cases are handled exactly as for verify. Nothing is changed when nothing was captured.
    * Records already failed or refunded are not revived.
    */
-  async reconcilePaymentAndProcess(data: { paymentTransactionId: string; userId: string; requesterUserType?: string; requesterPharmacyId?: string }):
+  async reconcilePaymentAndProcess(data: { paymentTransactionId: string; userId: string; requesterUserType?: string; requesterPharmacyId?: string;
+    requesterPartnerId?: string }):
   Promise<{ state: 'unpaid'; gatewayStatuses: string[] } | ({ state: 'paid' } & Awaited<ReturnType<PaymentService['processVerifiedPayment']>>)> {
     // The order checked is always the record's own (never one supplied by the client); ownership is checked as for verify.
     const own = await this.paymentRepository.findById(data.paymentTransactionId);
@@ -2023,6 +1984,8 @@ export class PaymentService {
           // r14: lab bookings too.
           { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking', 'assisted_lab_booking'] } },
           ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
+          // r13: lab top-ups always join (every one is new; none predates the sweep).
+          { context: 'wallet_recharge', 'notes.flow': 'lab_wallet_recharge' },
         ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
     let unsettled = 0;
