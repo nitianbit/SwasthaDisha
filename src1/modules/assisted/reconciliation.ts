@@ -9,7 +9,10 @@ import SlotModel from '@/modules/slots/model';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
-import { refreshWithdrawableIn, withdrawableOfIn } from '@/modules/pharmacyWallet/ledger';
+import { withdrawableOfIn } from '@/modules/pharmacyWallet/ledger';
+import { refreshWithdrawableIn } from '@/modules/pharmacyWallet/walletCore';
+import { topupKindOfWallet } from '@/modules/partnerWallets/topupKinds';
+import { partnerWalletInvariants, uncreditedLabTopups } from '@/modules/partnerWallets/reconciliation';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { inTransaction } from '@/modules/partners/services';
@@ -167,7 +170,9 @@ export async function uncreditedTopups(now: Date = new Date()) {
       ...(sweepFrom ? {} : { $gte: new Date(now.getTime() - 30 * DAY) }) } })
     .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(LIST_MAX).lean() as Row[];
   return [...uncredited, ...unchecked.map((r) => ({ paymentTransactionId: String(r._id), pharmacyId: r.payerPharmacyId,
-    amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'not_checked_with_gateway' }))];
+    amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'not_checked_with_gateway' })),
+  // r13: paid lab top-ups never credited (`walletKind: 'lab'`, `partnerId`).
+  ...await uncreditedLabTopups()];
 }
 
 /** §8.8 stuck-money report. Items of later phases (Razorpay refund rows, late captures, withdrawals) are listed empty. */
@@ -240,17 +245,20 @@ async function flaggedBookingIds(): Promise<string[]> {
 
 export async function runReconciliation(now: Date = new Date(), opts: { full?: boolean } = {}) {
   const scope = opts.full ? { since: null, flagged: [] } : { since: new Date(now.getTime() - 7 * DAY), flagged: await flaggedBookingIds() };
-  const [wallets, bookings, labBookings, stuck, rates] = await Promise.all([walletInvariants(), bookingChecks(scope), labBookingChecks(scope), stuckMoney(now), cancelRates(now)]);
+  const [wallets, bookings, labBookings, stuck, rates, partnerWallets] = await Promise.all([walletInvariants(), bookingChecks(scope), labBookingChecks(scope),
+    stuckMoney(now), cancelRates(now), partnerWalletInvariants()]);
   const pct = assistedLimits.cancelRateAlertPct();
   const min = assistedLimits.cancelRateAlertMin();
   const highCancelRates = rates.filter((r) => r.bookings >= min && r.cancelledByBooker * 100 >= pct * r.bookings);
-  const mismatches = [...wallets.mismatches, ...bookings.mismatches, ...labBookings.mismatches];
+  const mismatches = [...wallets.mismatches, ...bookings.mismatches, ...labBookings.mismatches, ...partnerWallets.mismatches];
   return {
     day: istDateIso(now),
     at: now,
     ok: mismatches.length === 0,
     checks: {
       wallets: { checked: wallets.checked, notMigrated: wallets.notMigrated },
+      // r13: lab (and later doctor) wallets.
+      partnerWallets: { checked: partnerWallets.checked },
       bookings: { checked: bookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
       labBookings: { checked: labBookings.checked, scope: opts.full ? 'all' : 'changed_in_7_days_and_flagged' },
       // Chargebacks: wallets that owe Jansetu (a receivable) or show a negative balance.
@@ -277,7 +285,8 @@ export async function fillUnknownLotFees(fetchFee: (razorpayPaymentId: string) =
       if (fee === undefined || !Number.isSafeInteger(fee) || fee < 0) continue;
       await inTransaction(async (s) => {
         const r = await WalletTopupLotModel.updateOne({ _id: lot._id, feeState: 'unknown' }, { $set: { feeState: 'known', gatewayFeeMinor: fee } }, { session: s });
-        if (r.modifiedCount === 1 && lot.walletRef.kind === 'pharmacy') await refreshWithdrawableIn(lot.walletRef.id, s);
+        const kind = topupKindOfWallet(lot.walletRef.kind);
+        if (r.modifiedCount === 1 && kind) await refreshWithdrawableIn(kind.store(lot.walletRef.id), s);
       });
       if (record && record.gatewayFeeMinor === undefined) await PaymentRecordModel.updateOne({ _id: record._id, gatewayFeeMinor: { $exists: false } }, { $set: { gatewayFeeMinor: fee } });
       filled += 1;

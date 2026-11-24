@@ -7,6 +7,12 @@ export interface IPaymentRecord {
   userId: string;
   payerUserId?: string;
   payerPharmacyId?: string;
+  /** r13 (§24.7.2): a partner-paid record (a lab top-up): the paying partner and member. */
+  payerPartnerId?: string;
+  payerMemberId?: string;
+  /** r13: a keyed order (a lab top-up): the scoped request key and its content hash (exactly one order per key). */
+  requestKey?: string;
+  requestHash?: string;
   /** Assisted booking phase 1a (P2): Razorpay `fee` of the capture, paise. */
   gatewayFeeMinor?: number;
   context: PaymentContext;
@@ -52,6 +58,11 @@ export interface CreatePaymentOrderRequest {
   userId: string;
   payerUserId?: string;
   payerPharmacyId?: string;
+  /** r13: a lab top-up's paying partner and member, and its scoped request key with the content hash. */
+  payerPartnerId?: string;
+  payerMemberId?: string;
+  requestKey?: string;
+  requestHash?: string;
   context: PaymentContext;
   contextId: string;
   baseAmount: number;
@@ -69,6 +80,8 @@ export interface VerifyPaymentRequest {
   userId: string;
   requesterUserType?: string;
   requesterPharmacyId?: string;
+  /** r13: a partner member verifying (the partner-workspace routes). */
+  requesterPartnerId?: string;
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;

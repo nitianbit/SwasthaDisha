@@ -33,6 +33,11 @@ export const assistedFlags = {
    * always work.
    */
   pharmacyLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_PHARMACY'),
+  /**
+   * r13 (§24.7.4): lab wallets — new lab top-ups, and lots on their credits (2e: lab-made consultations). Off: a new
+   * top-up answers 503 ASSISTED_BOOKING_DISABLED; verify, reconcile, the check, the sweep, reads and admin tools run.
+   */
+  lab: () => on('ASSISTED_BOOKING_ENABLED_LAB'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -69,4 +74,9 @@ export function assertAdminToolsOn(): void {
 /** r11: both switches must be on for the pharmacy lab-booking reads and new bookings. */
 export function assertPharmacyLabOn(): void {
   if (!assistedFlags.pharmacy() || !assistedFlags.pharmacyLab()) throw disabled('Lab test booking for patients');
+}
+
+/** r13: lab wallet top-ups (§24.7.4). */
+export function assertLabWalletOn(): void {
+  if (!assistedFlags.lab()) throw disabled('Lab wallet top-up');
 }

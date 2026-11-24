@@ -44,6 +44,7 @@ import pharmacyCustomerRouter from '@/modules/pharmacyCustomers/routes';
 import pharmacyOrderRouter from '@/modules/pharmacyOrders/routes';
 import pharmacyBookingRouter from '@/modules/assisted/routes';
 import { adminAssistedRouter, pharmacyAssistedRouter } from '@/modules/assisted/routes/phase1a';
+import { adminLabWalletRouter, labWalletWorkspaceRouter } from '@/modules/partnerWallets/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
 import pharmacyInventoryImportRouter from '@/modules/pharmacyInventoryImports/routes';
@@ -81,6 +82,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/meet', meetRouter);
   app.use('/api/v1/partners', authenticate, partnerDirectoryRouter);
   // Q: operational lab/clinic partners (accounts, members, branches); separate from the display directory above.
+  // r13 (§24.7.3): the lab wallet in the partner workspace (top-up, its verify and reconcile: /payments refuses partners).
+  app.use('/api/v1/partner-workspace/assisted', authenticate, labWalletWorkspaceRouter);
   app.use('/api/v1/partner-workspace', authenticate, partnerWorkspaceRouter);
   app.use('/api/v1/bills', authenticate, denyRoles('partner'), customerBillsRouter);
   app.use('/api/v1/partner-labs', authenticate, denyRoles('partner'), customerLabRouter);
@@ -119,6 +122,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/pharmacy-bookings', authenticate, denyRoles('partner'), pharmacyBookingRouter);
   // Assisted booking phase 1a (§17.6): the pharmacy's assisted bookings and the admin tools.
   app.use('/api/v1/pharmacy-assisted', authenticate, denyRoles('partner'), pharmacyAssistedRouter);
+  // r13 (§24.7.3): admin lab wallet tools (/admin/labs/:partnerId/wallet…).
+  app.use('/api/v1/admin/labs', authenticate, denyRoles('partner'), adminLabWalletRouter);
   app.use('/api/v1/admin', authenticate, denyRoles('partner'), adminAssistedRouter);
   app.use('/api/v1/pharmacy-suppliers', authenticate, denyRoles('partner'), pharmacySupplierRouter);
   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, denyRoles('partner'), orderHealthCheckRouter);
