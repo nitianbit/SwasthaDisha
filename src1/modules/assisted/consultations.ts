@@ -31,6 +31,7 @@ import {
 } from '@/modules/assisted/patient';
 
 export type { AssistedPatientInput } from '@/modules/assisted/patient';
+import { snapshotCuts } from '@/modules/referralCuts/service';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -260,6 +261,8 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   // Phase 1b: the card booking's one payment record id, stored on the funding before the order exists.
   const paymentRecordId = card ? new Types.ObjectId().toHexString() : undefined;
   const pharmacyId = lower(actor.pharmacyId);
+  // Phase 4a (§26.5.3): the pharmacy's referral cut, snapshotted now (0 while the switch is off or no rule applies).
+  const cut = await snapshotCuts({ kind: 'pharmacy', id: pharmacyId, name: pharmacy?.name ?? 'Pharmacy' }, [{ category: 'consultation', baseMinor }]);
   const assisted: AssistedBlock = {
     bookedBy: { kind: 'pharmacy', id: pharmacyId, actorKind: 'pharmacy', actorId: lower(actor.actorId), name: pharmacy?.name ?? 'Pharmacy' },
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
@@ -271,9 +274,9 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       ? { method: 'razorpay', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
       : { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
         ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
-    split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor, cutMinor: 0,
-      providerMinor: baseMinor, rule: 'provider_coupon_v2' },
-    referral: null,
+    split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor,
+      cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2', referral: cut.lines[0]! },
+    referral: cut.referral,
     shortRef,
     requestKey: storedKey,
     requestHash: hash,

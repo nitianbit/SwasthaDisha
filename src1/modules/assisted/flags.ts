@@ -55,6 +55,15 @@ export const assistedFlags = {
    * the sweeps always run.
    */
   instant: () => on('ASSISTED_INSTANT_ENABLED'),
+  /**
+   * r24 (§26.5.5): referral cuts. Off: every new booking snapshots a cut of 0 (`cuts_off`); bookings already made keep
+   * their snapshot, and completion still posts it. Switch on only with the 4b posting deployed.
+   */
+  referralCuts: () => on('REFERRAL_CUTS_ENABLED'),
+  /** r24 (owner, 22 Nov): a doctor booker's cut stays 0 (`doctor_cuts_off`) until legal advice. */
+  referralDoctorCuts: () => on('REFERRAL_DOCTOR_CUTS_ENABLED'),
+  /** r24 (O1): payouts from `*_referral` accounts are refused (409 REFERRAL_PAYOUTS_DISABLED) until the CA answers. */
+  referralPayouts: () => on('REFERRAL_PAYOUTS_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {

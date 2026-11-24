@@ -5552,3 +5552,77 @@ The owner asked for decisions in line with their earlier answers. These replace 
 | Q3 | Referral earnings cannot fund the wallet while payouts are paused | No route |
 | Q4 | Minimum withdrawal ₹500, configurable | `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000) |
 | Q5 | Rolling 7 days | §26.8.1 |
+
+### 26.15 Rounds 4a + 4b build record (r24, 2026-11-25)
+
+Branch `m0/r24-phase4ab`. It is built from `m0/r19-stage-next` `2273b88a`, with two merges:
+- `m0/r17-phase3e` → `f7f57ad2`, conflicts resolved, tsc 17;
+- `m0/r22-phase4-spec` → `f605c0a6`.
+
+Local commits only. Built: §26.5 (4a) and §26.6 (4b), with the 25 Nov decisions (§26.14): pharmacy and lab cuts
+work in every category, consultations included, behind `REFERRAL_CUTS_ENABLED`; doctor cuts stay off.
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Rules | `referralCuts/model.ts` (new) | `referral_rules` unique `{bookerKind, bookerId, category}`, `version`; `referral_rule_events` unique `{ruleId, version}`, append-only |
+| Cut and snapshot | `referralCuts/service.ts` (new) | <ul><li>`cutFor`: pure; % floor, fixed per line, cap per line, ≤ base, 0 with a reason (`cuts_off`, `doctor_cuts_off`, `no_rule`, `category_not_cut`);</li><li>`snapshotCuts(booker, lines, s?)`: reads the booker's active rules; when the total is > 0 it opens the `*_referral` account idempotently (`assertUniqueIndex` on `settlement_accounts {ownerKind, ownerId}`);</li><li>`labCategoryOf`: catalogue `test` → `lab_test`, `package` → `lab_package`, otherwise none;</li><li>`postReferralEarningIn`: the booker's `earning` on its referral account, once by the ledger key;</li><li>`putRule` / `listRules` / `ruleEvents`.</li></ul> |
+| Snapshots | `assisted/consultations.ts`, `assisted/labBookings.ts`, `doctors/services/instant.ts` | <ul><li>pharmacy consultation: `split.referral`, `cutMinor`, `providerMinor = base − cut`, `assisted.referral`;</li><li>pharmacy lab booking: per line, `lines[].category`, `cutMinor`, `referral`;</li><li>partner instant: at accept, inside the accept transaction, on the fee (base after a provider-funded coupon).</li></ul> 2e (lab → consultation) and 3b (doctor → lab) are not on this line; they call `snapshotCuts` the same way when merged |
+| Types | `assisted/types.ts` | `ReferralCategory`, `ReferralSnapshot`, `AssistedReferral`; `AssistedSplit.referral`, `lines[].category` / `referral`; `AssistedBlock.referral: AssistedReferral \| null` |
+| Accounts | `partners/model/settlement.ts`, `partners/services/settlement.ts`, `finance.ts` | Owner kinds `pharmacy_referral`, `lab_referral`, `doctor_referral` (`isReferralOwnerKind`) |
+| Posting | `doctors/services/earnings.ts`, `partners/services/labBookings.ts` `postEarning` | Completion posts the provider entry (base − cut, commission = cut) **and** the booker entry (`referral_consultation` / `referral_lab_booking`) in the same transaction. A provider amount of 0 no longer skips the cut. Nothing posts on a no-show, cancel or desk row |
+| Payout guard | `finance.ts` `recordPayout` | A `*_referral` account → 409 `REFERRAL_PAYOUTS_DISABLED` while `REFERRAL_PAYOUTS_ENABLED` is off (pulled forward from 4e, because referral accounts now have balances in the admin list) |
+| Statements | `finance.ts` | Referral rows say "Referral · consultation · <date> · Ref <shortRef>" (no patient name); earning lines add `grossMinor` and `commissionMinor`. The CSV columns are unchanged (M16) |
+| Reconciliation | `assisted/reconciliation.ts` | `referral_posted`, on scheduled consultations, lab bookings and instant bookings: completed → exactly one referral earning of the cut on the snapshot's account; otherwise none |
+| Switches | `assisted/flags.ts` | `REFERRAL_CUTS_ENABLED`, `REFERRAL_DOCTOR_CUTS_ENABLED`, `REFERRAL_PAYOUTS_ENABLED` (all off) |
+
+**API**
+
+- **Admin**, on `adminAssistedRouter`; PUT needs `ASSISTED_ADMIN_TOOLS_ENABLED`:
+  - `GET /api/v1/admin/referral-rules?bookerKind&bookerId` → `[{ _id, category, basis, percentBasisPoints, fixedMinor,
+    capMinor, isActive, version, updatedAt, effective, updatedBy }]`;
+  - `PUT /api/v1/admin/referral-rules/:bookerKind/:bookerId/:category` with `{ basis, percentBasisPoints? (1–5000),
+    fixedMinor? (≥ 1), capMinor?, isActive, expectedVersion (0 = create), reason }` → the rule. Errors: 400
+    `VALIDATION_ERROR`, 404 `BOOKER_NOT_FOUND`, 409 `RECORD_CHANGED`, 503 `ASSISTED_BOOKING_DISABLED`,
+    `INDEXES_OUTDATED`;
+  - `GET …/:category/events` → `[{ ruleId, version, before, after, by, reason, at }]`.
+- **Pharmacy**, on `pharmacyAssistedRouter`:
+  - `GET /api/v1/pharmacy-assisted/referral-rules` → the list above, without `updatedBy`;
+  - `GET /api/v1/pharmacy-assisted/referral` → `{ earnedMinor, paidMinor, dueMinor, payoutsEnabled }`;
+  - `GET /api/v1/pharmacy-assisted/referral/statement?before&limit&from&to` → `[{ _id, at, kind, source, sourceId,
+    description, amountMinor, balanceAfterMinor, grossMinor?, commissionMinor? }]`, plus `pagination.nextCursor`.
+
+Lab and doctor reads of their rules and referral accounts arrive with 2e and 3b, the rounds where they become
+bookers (M17).
+
+**ASSUMED while building**
+
+| # | Choice | Why |
+|---|---|---|
+| M16 | The statement CSV keeps its columns; base and cut are in the JSON lines only | The CSV header is a released contract |
+| M17 | Lab and doctor read routes for rules and referral accounts are not built until 2e / 3b put them on this line | Minimal API; no booker of those kinds exists here yet |
+| M18 | Rules are read and the referral account is opened before the create transaction (as the lab create does for its settlement account). The instant snapshot runs inside the accept transaction | A rule edit racing a create gives one consistent version, which the snapshot records (`ruleVersion`). An unused empty referral account is harmless |
+| M19 | The referral payout refusal (§26.9) ships now | Referral accounts with balances appear in the admin payout list from 4b |
+
+**Tests:** `test/assisted/r24-phase4ab.integration.ts`, 15 checks:
+- rules: create, change, stale 409, bad terms 400, unknown booker 404, tools switch 503, history;
+- rule-edit race: one wins;
+- partner read and `effective`; partners can't write;
+- `cutFor` over 10,000 random lines;
+- snapshot with the switch off and on; the account opened once under 3 parallel creates; no-rule pharmacy;
+- coupon first, then the cut (provider- and platform-funded);
+- a rule edit racing a create;
+- completion posts provider and referral once under racing completions;
+- completion racing the pharmacy cancel: one outcome;
+- a no-show posts nothing;
+- instant: snapshot at accept on the fee, posted at completion;
+- lab lines (5%, ₹40 fixed, other kinds 0), doctor cuts off, posting once;
+- pharmacy reads and statements (short ref, no name) and the doctor statement's base and cut;
+- payout refused while off;
+- reconciliation: clean, then a missing referral earning is flagged.
+
+**Seen, not changed**
+- `assisted/labBookings.ts` keeps its own `newShortRef`.
+- Lab desk rows never snapshot (§5.5).
+- 4c to 4f are not built.

@@ -22,6 +22,7 @@ import { PartnerLabBookingModel, IPartnerLabBooking, LabBookingStatus, ILabBooki
 import type { VisitMode } from '@/modules/partners/model/slot';
 import { PartnerActor, assertBranchInScope, hasGlobalScope, recordPartnerAudit } from '@/modules/partners/services';
 import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/services/settlement';
+import { postReferralEarningIn } from '@/modules/referralCuts/service';
 import { takeSeat, releaseSeat, listBookableSlots, istDate, addDays } from '@/modules/partners/services/slots';
 import { attachFiles, grantFiles, rebindStored, uploadPathOf } from '@/modules/file/access';
 import type { AuthRequest } from '@/modules/middleware/auth';
@@ -967,12 +968,16 @@ export class LabBookingService {
     // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
     const split = b.assisted?.split;
     if (isAssisted(b) && split?.rule === 'provider_coupon_v2') {
-      if (b.assisted?.funding?.state !== 'captured' || !(Number(split.providerMinor) > 0)) return;
-      await postLedgerEntry({
-        settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: Number(split.providerMinor),
-        grossMinor: Number(split.baseMinor), commissionMinor: Number(split.cutMinor || 0), source: 'partner_lab_booking', sourceId: String(b._id),
-        by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'system',
-      }, s);
+      if (b.assisted?.funding?.state !== 'captured') return;
+      const by = { by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' as const : 'system' as const };
+      if (Number(split.providerMinor) > 0) {
+        await postLedgerEntry({
+          settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: Number(split.providerMinor),
+          grossMinor: Number(split.baseMinor), commissionMinor: Number(split.cutMinor || 0), source: 'partner_lab_booking', sourceId: String(b._id), ...by,
+        }, s);
+      }
+      // Phase 4b (§26.6.1): the booking partner's referral cut, out of the lab's earning, once, in the same transaction.
+      await postReferralEarningIn(b as never, 'referral_lab_booking', s, by);
       return;
     }
     const amountMinor = Math.max(0, Number(b.pricing.subtotalMinor) - Number(b.pricing.discountMinor || 0));

@@ -15,9 +15,18 @@ export interface IPayoutDetails {
 }
 
 /** §7a: whoever earns through the platform (a partner, or a doctor as the service provider). */
+/**
+ * r24 (§26.5.1): `*_referral` accounts hold a booking partner's referral cuts (pharmacy id, lab partner id, doctor
+ * specialist id). They have no payout destination of their own (§5.4 home account) and pay out only when
+ * REFERRAL_PAYOUTS_ENABLED is on.
+ */
+export type ReferralOwnerKind = 'pharmacy_referral' | 'lab_referral' | 'doctor_referral';
+export type SettlementOwnerKind = 'partner' | 'doctor' | ReferralOwnerKind;
+export const isReferralOwnerKind = (k: unknown): k is ReferralOwnerKind => k === 'pharmacy_referral' || k === 'lab_referral' || k === 'doctor_referral';
+
 export interface ISettlementAccount {
   _id?: string;
-  ownerKind: 'partner' | 'doctor';
+  ownerKind: SettlementOwnerKind;
   /** partnerId or specialistId */
   ownerId: string;
   beneficiaryName: string;
@@ -40,7 +49,7 @@ export interface ISettlementAccount {
 
 const settlementAccountSchema = new Schema<ISettlementAccount>(
   {
-    ownerKind: { type: String, required: true, enum: ['partner', 'doctor'] },
+    ownerKind: { type: String, required: true, enum: ['partner', 'doctor', 'pharmacy_referral', 'lab_referral', 'doctor_referral'] },
     ownerId: { type: String, required: true },
     beneficiaryName: { type: String, required: true, trim: true },
     payoutDetails: {

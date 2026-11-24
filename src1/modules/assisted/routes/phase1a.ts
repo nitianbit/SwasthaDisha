@@ -9,6 +9,8 @@ import * as lab from '@/modules/assisted/controller/phase2a';
 import { pharmacyRecommendation } from '@/modules/testRecommendations/controller';
 import { recommendationLookupSchema } from '@/modules/testRecommendations/validation';
 import * as instant from '@/modules/assisted/controller/phase3e';
+import * as referral from '@/modules/referralCuts/controller';
+import * as rv from '@/modules/referralCuts/validation';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -55,9 +57,18 @@ pharmacyAssistedRouter.get('/instant/requests/:id', validate(v.idParamSchema, 'p
 pharmacyAssistedRouter.post('/instant/requests/:id/reoffer', validate(v.idParamSchema, 'params'), validate(v.instantReofferSchema, 'body'), catchAsync(instant.reoffer));
 pharmacyAssistedRouter.post('/instant/requests/:id/activity', validate(v.idParamSchema, 'params'), catchAsync(instant.activity));
 pharmacyAssistedRouter.post('/instant/requests/:id/refund', validate(v.idParamSchema, 'params'), validate(v.instantRefundSchema, 'body'), catchAsync(instant.refund));
+// Phase 4a/4b (§26.5.4, §26.6.2): the pharmacy's referral rates (read-only) and what its cuts earned.
+pharmacyAssistedRouter.get('/referral-rules', catchAsync(referral.pharmacyRules));
+pharmacyAssistedRouter.get('/referral', catchAsync(referral.pharmacyReferral));
+pharmacyAssistedRouter.get('/referral/statement', validate(rv.statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferralStatement));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);
+// Phase 4a (§26.5.4): referral rules per partner and category (writes need ASSISTED_ADMIN_TOOLS_ENABLED).
+adminAssistedRouter.get('/referral-rules', validate(rv.rulesQuerySchema, 'query'), catchAsync(referral.adminRules));
+adminAssistedRouter.put('/referral-rules/:bookerKind/:bookerId/:category', validate(rv.ruleParamSchema, 'params'), validate(rv.ruleBodySchema, 'body'),
+  catchAsync(referral.adminPutRule));
+adminAssistedRouter.get('/referral-rules/:bookerKind/:bookerId/:category/events', validate(rv.ruleParamSchema, 'params'), catchAsync(referral.adminRuleEvents));
 adminAssistedRouter.post('/assisted-bookings/:id/move', validate(v.idParamSchema, 'params'), validate(v.moveSchema, 'body'), catchAsync(c.move));
 adminAssistedRouter.get('/assisted/review-items', validate(v.reviewQuerySchema, 'query'), catchAsync(c.reviewItems));
 adminAssistedRouter.post('/assisted/review-items/:id/dismiss', validate(v.idParamSchema, 'params'), validate(v.dismissSchema, 'body'), catchAsync(c.dismiss));

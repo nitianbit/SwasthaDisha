@@ -4,7 +4,9 @@ import { AppError } from '@/modules/common/types';
 import {
   SettlementAccountModel, LedgerEntryModel, LedgerHistoryRefModel, SettlementPayoutModel, SettlementEventModel,
   ISettlementAccount, ILedgerEntry, IPayoutDetails, ISettlementPayout,
+  isReferralOwnerKind, type SettlementOwnerKind,
 } from '@/modules/partners/model/settlement';
+import { assistedFlags } from '@/modules/assisted/flags';
 import PartnerOrgModel from '@/modules/partners/model';
 import SpecialistModel from '@/modules/specialists/model';
 import BookingModel from '@/modules/bookings/model';
@@ -56,7 +58,7 @@ export async function accountById(id: string, s?: ClientSession): Promise<ISettl
 }
 
 /** Reads never create: a partner/doctor without an account yet simply has nothing to show. */
-export async function findOwnerAccount(ownerKind: 'partner' | 'doctor', ownerId: string): Promise<ISettlementAccount | null> {
+export async function findOwnerAccount(ownerKind: SettlementOwnerKind, ownerId: string): Promise<ISettlementAccount | null> {
   return (await SettlementAccountModel.findOne({ ownerKind, ownerId: String(ownerId) }).lean()) as ISettlementAccount | null;
 }
 
@@ -159,6 +161,8 @@ export async function financeSummary(account: ISettlementAccount | null, full: b
 export interface StatementLine {
   _id: string; at: Date; kind: ILedgerEntry['kind']; source: string; sourceId: string; description: string;
   reference?: string; note?: string; amountMinor: number; balanceAfterMinor: number;
+  /** r24 (§26.6.2): on earnings, the base and the referral cut taken from it (net = amountMinor). */
+  grossMinor?: number; commissionMinor?: number;
 }
 
 const ymdIso = (d: string) => (/^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d);
@@ -173,6 +177,13 @@ async function describe(entries: ILedgerEntry[]): Promise<Map<string, string>> {
   for (const b of cons) {
     out.set(`consultation:${b._id}`, `${b.bookingKind === 'instant' ? 'Instant consultation' : 'Consultation'} · ${ymdIso(b.bookingDate)} ${b.bookingTime ?? ''}${b.consultationMode ? ' · ' + b.consultationMode : ''}`.trim());
   }
+  // r24 (§26.6.2): a referral row names the booking by its short ref and date, never the patient.
+  const refLab = await PartnerLabBookingModel.find({ _id: { $in: ids('referral_lab_booking') } }).select({ slot: 1, 'assisted.shortRef': 1 }).lean() as any[];
+  for (const b of refLab) out.set(`referral_lab_booking:${b._id}`, `Referral · lab booking · ${b.slot?.date ?? ''} · Ref ${b.assisted?.shortRef ?? ''}`.trim());
+  const refCons = await BookingModel.find({ _id: { $in: ids('referral_consultation') } }).select({ bookingDate: 1, bookingKind: 1, 'assisted.shortRef': 1 }).lean() as any[];
+  for (const b of refCons) {
+    out.set(`referral_consultation:${b._id}`, `Referral · ${b.bookingKind === 'instant' ? 'instant consultation' : 'consultation'} · ${ymdIso(b.bookingDate)} · Ref ${b.assisted?.shortRef ?? ''}`.trim());
+  }
   const pays = await SettlementPayoutModel.find({ _id: { $in: [...ids('payout'), ...ids('payout_void')] } }).select({ reference: 1, paidOn: 1, destination: 1 }).lean() as any[];
   for (const p of pays) {
     out.set(`payout:${p._id}`, `Payout · ${p.paidOn} · ${p.destination?.label ?? ''}`.trim());
@@ -183,6 +194,7 @@ async function describe(entries: ILedgerEntry[]): Promise<Map<string, string>> {
 
 const FALLBACK: Record<string, string> = {
   partner_lab_booking: 'Lab booking', consultation: 'Consultation', payout: 'Payout', payout_void: 'Payout voided', admin_adjustment: 'Adjustment',
+  referral_consultation: 'Referral · consultation', referral_lab_booking: 'Referral · lab booking',
 };
 
 /** Balance after `e` = Σ every entry at or before it in (at, _id) order — independent of any date filter. */
@@ -238,7 +250,8 @@ export async function statementPage(account: ISettlementAccount | null, opts: { 
   const lines: StatementLine[] = entries.map((e) => {
     const line = { _id: String(e._id), at: e.at, kind: e.kind, source: e.source, sourceId: e.sourceId,
       description: labels.get(`${e.source}:${e.sourceId}`) ?? FALLBACK[e.source] ?? e.source, reference: e.reference, note: e.note,
-      amountMinor: e.amountMinor, balanceAfterMinor: after };
+      amountMinor: e.amountMinor, balanceAfterMinor: after,
+      ...(e.kind === 'earning' && e.grossMinor !== undefined ? { grossMinor: e.grossMinor, commissionMinor: e.commissionMinor ?? 0 } : {}) };
     after -= e.amountMinor;
     return line;
   });
@@ -449,6 +462,10 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
       await claimRequestKey(payoutKeyScope(accountId, adminId), input.requestKey, s);
       const a = await bumpFinance(accountId, s, input.expectedFinanceVersion);
       if (!a.isActive) throw err(409, 'ACCOUNT_INACTIVE', 'This settlement account is inactive');
+      // r24 (O1, §26.9): referral cuts accrue, but are not paid out until the tax question is answered.
+      if (isReferralOwnerKind(a.ownerKind) && !assistedFlags.referralPayouts()) {
+        throw err(409, 'REFERRAL_PAYOUTS_DISABLED', 'Referral payouts are paused until the tax question is answered');
+      }
       if (!a.payoutDetails || a.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DETAILS_NOT_VERIFIED', 'Verify the payout details before recording a payout');
       if (a.payoutDetailsVersion !== input.detailsVersion) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
       const balance = await ledgerBalance(String(a._id), s);

@@ -6,6 +6,7 @@ import {
   ISettlementAccount,
   ILedgerEntry,
   LedgerEntryKind,
+  type SettlementOwnerKind,
 } from '@/modules/partners/model/settlement';
 
 /** Q16a: an ObjectId-shaped owner id in its canonical (lower-case) spelling; anything else as given. */
@@ -20,7 +21,7 @@ export const canonicalOwnerId = (id: unknown): string => {
  * spelling) and never creates a second one.
  */
 export async function ensureSettlementAccount(
-  ownerKind: 'partner' | 'doctor',
+  ownerKind: SettlementOwnerKind,
   ownerIdIn: string,
   beneficiaryName: string,
   session?: ClientSession
