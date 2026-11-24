@@ -303,7 +303,7 @@ async function main() {
       assert.equal((await doctorDebits(rs[0]!.json.data.booking._id)).length, 1);
       const again = await expect('D', 'POST', `${ME}/lab-bookings`, 200, body);
       assert.equal(again.json.data.replayed, true);
-      await expect('D', 'POST', `${ME}/lab-bookings`, 409, { ...body, notes: 'other' }, 'IDEMPOTENCY_KEY_REUSED');
+      await expect('D', 'POST', `${ME}/lab-bookings`, 409, { ...body, typedName: 'Other Name' }, 'IDEMPOTENCY_KEY_REUSED');
     });
 
     await check('treating window: another doctor\'s or a missing booking 404; cancelled or long closed 409 TREATING_WINDOW_CLOSED; an unpaid card booking and an open "not mine" 404', async () => {
