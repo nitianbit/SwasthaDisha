@@ -13,6 +13,11 @@
  *  8. 120 ended rows do not starve an upcoming booking (retry and stuck money);
  *  9. failures no retry can fix stop after one attempt, with at most one alert (none for a customer without email);
  * 10. a failed attempt never changes the booking's updatedAt; 11. attempts go back to 0 on success.
+ * r10i (each fails on a18adba7):
+ * 12. Meet not configured closes nothing: no attempt, one alert a day; the bookings are linked once it is back;
+ * 13. a reused event still at an older time (a reschedule whose update failed) is moved to the current appointment;
+ * 14. a permanent close is cleared by a move to another slot and by a success;
+ * 15. a stored bookingTime that is not a string fails neither the retry nor stuck money.
  *
  * Run (throwaway DB only; the script clears its database):
  *   MONGODB_URL='mongodb://127.0.0.1:27917/assisted_r10g_meet_retry_check?directConnection=true' JWT_SECRET_KEY=local-integration-only \
@@ -53,7 +58,9 @@ const calls = () => google.creates + google.patches + google.reads + google.list
 /** Events Google holds for one booking (the retry runs over every due booking, so totals mix bookings). */
 const eventsOf = (bookingId: string) => [...google.events.values()].filter((e) => e.bookingId === bookingId).length;
 const realFetch = globalThis.fetch;
-const shown = (e: { id: string; start?: unknown; end?: unknown }) => ({ id: e.id, status: 'confirmed', start: e.start, end: e.end,
+/** Google answers date-times with their offset (ours are sent as India wall-clock). */
+const withOffset = (t: any) => (t?.dateTime && !/[+-]\d{2}:\d{2}$|Z$/.test(t.dateTime) ? { ...t, dateTime: `${t.dateTime}+05:30` } : t);
+const shown = (e: { id: string; start?: unknown; end?: unknown }) => ({ id: e.id, status: 'confirmed', start: withOffset(e.start), end: withOffset(e.end),
   ...(google.withoutLink ? {} : { hangoutLink: `https://meet.google.com/abc-${e.id.slice(-4)}-xyz`, conferenceData: { conferenceId: 'abc-defg-hij' } }) });
 globalThis.fetch = (async (input: any, init?: any) => {
   const url = String(input?.url ?? input);
@@ -77,7 +84,12 @@ globalThis.fetch = (async (input: any, init?: any) => {
       return e ? new Response(JSON.stringify(shown(e)), { status: 200 }) : new Response('{"error":"notFound"}', { status: 404 });
     }
     const body = JSON.parse(String(init?.body ?? '{}'));
-    if (method === 'PATCH') { google.patches += 1; return new Response(JSON.stringify(shown(google.events.get(id) ?? { id })), { status: 200 }); }
+    if (method === 'PATCH') {
+      google.patches += 1;
+      const e = google.events.get(id) ?? { id };
+      if (body.start) Object.assign(e, { start: body.start, end: body.end });
+      return new Response(JSON.stringify(shown(e)), { status: 200 });
+    }
     google.creates += 1;
     const e = { id: 'evt' + oid(), bookingId: body.extendedProperties?.private?.jansetuBookingId, start: body.start, end: body.end };
     google.events.set(e.id, e);
@@ -294,6 +306,75 @@ async function main() {
       const ok = await read(id);
       assert.equal(ok.virtualMeeting.status, 'active');
       assert.equal(ok.meetRetry.attempts, 0);
+    });
+    // ───────────────────────── r10i ─────────────────────────
+    const { upcomingMeetsMissing } = await import('@/modules/meet/retry');
+    await check('12 (r10i): Meet not configured closes nothing — no attempt, one alert a day; once configured again the bookings are linked', async () => {
+      const id = await booking(null);
+      const cal = (CONFIG as any).GOOGLE_CALENDAR_ID;
+      (CONFIG as any).GOOGLE_CALENDAR_ID = '';
+      const calls0 = calls();
+      try {
+        await retry(new Date()); await retry(new Date(Date.now() + 30 * MIN));
+      } finally { (CONFIG as any).GOOGLE_CALENDAR_ID = cal; }
+      assert.equal(calls() - calls0, 0);
+      const b = await read(id);
+      assert.equal(b.meetRetry, undefined, 'not attempted, not closed');
+      assert.equal(await AssistedAlertModel.countDocuments({ kind: 'meet_link_missing', 'detail.permanent': 'meet_not_configured' }), 1, 'one alert a day');
+      await retry(new Date());
+      assert.equal((await read(id)).virtualMeeting?.status, 'active');
+    });
+
+    await check('13 (r10i): a reused event still at an older time is moved to the booking\'s current appointment (one update), then the link is active', async () => {
+      const id = await booking(null);
+      const b0 = await read(id);
+      const evId = 'evt' + oid();
+      google.events.set(evId, { id: evId, bookingId: id, start: { dateTime: '2030-01-01T09:00:00', timeZone: 'Asia/Kolkata' }, end: { dateTime: '2030-01-01T09:15:00' } });
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { virtualMeeting: { ...failedVm, calendarEventId: evId } } });
+      const patches0 = google.patches;
+      await retry(new Date());
+      const b = await read(id);
+      assert.equal(b.virtualMeeting.status, 'active');
+      assert.equal(google.patches - patches0, 1, 'moved once');
+      const want = `${b0.bookingDate.slice(0, 4)}-${b0.bookingDate.slice(4, 6)}-${b0.bookingDate.slice(6, 8)}T${b0.bookingTime}`;
+      assert.ok(String((google.events.get(evId) as any).start.dateTime).startsWith(want), JSON.stringify((google.events.get(evId) as any).start));
+      // An event already at the right time is never updated.
+      const again = await booking(null);
+      const p1 = google.patches;
+      await retry(new Date());
+      assert.equal((await read(again)).virtualMeeting.status, 'active');
+      assert.equal(google.patches, p1);
+    });
+
+    await check('14 (r10i): a permanent close is cleared by a move to another slot and by a success', async () => {
+      const D3 = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(D3), name: 'Dr Late Mail', isActive: true, isVerified: true } as never);
+      const id = await booking(null, { specialistId: D3 });
+      await retry(new Date());
+      assert.equal((await read(id)).meetRetry.closed, 'permanent');
+      // The doctor adds an email; the same appointment stays closed …
+      await SpecialistModel.updateOne({ _id: D3 }, { $set: { email: 'late@doc.test' } });
+      await retry(new Date(Date.now() + 3 * 60 * MIN));
+      assert.equal((await read(id)).meetRetry.closed, 'permanent');
+      // … until the booking moves to another slot; then it is linked and the close is cleared.
+      const at = istParts(new Date(Date.now() + 20 * 60 * MIN));
+      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { bookingDate: at.date, bookingTime: at.time } });
+      await SlotModel.updateOne({ _id: (await read(id)).slotId }, { $set: { date: at.date, startTime: at.time, endTime: istParts(new Date(Date.now() + 20 * 60 * MIN + 15 * MIN)).time } });
+      await retry(new Date());
+      const b = await read(id);
+      assert.equal(b.virtualMeeting.status, 'active');
+      assert.equal(b.meetRetry.closed, undefined); assert.equal(b.meetRetry.closedReason, undefined); assert.equal(b.meetRetry.closedFor, undefined);
+    });
+
+    await check('15 (r10i): a stored bookingTime that is not a string fails neither the retry nor stuck money', async () => {
+      const today = istParts(new Date()).date;
+      await BookingModel.collection.insertOne({ _id: new Types.ObjectId(), bookingType: 'consultation', userId: X, specialistId: D, bookingDate: today, bookingTime: 1030,
+        consultationMode: 'video', status: 'confirmed', paymentStatus: 'paid', price: 500, createdAt: new Date(Date.now() - 60 * MIN), updatedAt: new Date(),
+        virtualMeeting: failedVm } as never);
+      const up = await booking(failedVm);
+      await retry(new Date());
+      assert.equal((await read(up)).virtualMeeting.status, 'active', 'the run went on');
+      await upcomingMeetsMissing(new Date());
     });
   } finally {
     globalThis.fetch = realFetch;

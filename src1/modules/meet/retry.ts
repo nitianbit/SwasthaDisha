@@ -9,7 +9,7 @@ import { SpecialistRepository } from '@/modules/specialists/repository';
 import { SlotRepository } from '@/modules/slots/repository';
 import { appointmentStartOf } from '@/modules/bookings/holds';
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
-import { permanentMeetFailure, syncBookingMeet } from '@/modules/meet/service';
+import { hasOAuthMeetConfig, permanentMeetFailure, syncBookingMeet } from '@/modules/meet/service';
 import { raiseAlertIn } from '@/modules/assisted/limits';
 import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 
@@ -34,8 +34,10 @@ import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
  *   a booking found ended is marked (`meetRetry.endedFor`: that appointment) and left out of the query until it moves.
  * - A failure no retry can fix (patient or doctor without email, Meet not configured, slot missing) closes the booking
  *   (`closed: 'permanent'`, `closedReason`) after one attempt. Alerts: one per booking, except a customer booking whose
- *   patient has no email (phone-only customers are common; listed in stuck money, no alert) and "not configured" (one
- *   alert a day for all bookings).
+ *   patient has no email (phone-only customers are common; listed in stuck money, no alert).
+ * r10i: a permanent close holds only for the appointment it was decided on (`closedFor`; a move brings the booking back)
+ *   and is cleared on a success. Meet NOT configured closes nothing: the run attempts nothing and raises one alert a
+ *   day, so the bookings are linked once the configuration is back. The appointment key tolerates non-string values.
  * - Attempts go back to 0 on success; the retry's own writes never change the booking's `updatedAt`.
  */
 const LEASE_MS = 5 * 60_000;
@@ -62,7 +64,9 @@ function candidateFilter(now: Date): Record<string, unknown> {
     ...NO_LINK,
   };
 }
-const APPOINTMENT_KEY = { $concat: [{ $ifNull: ['$bookingDate', ''] }, ' ', { $ifNull: ['$bookingTime', ''] }] };
+/** r10i: never fails on a stored value that is not a string (a failed conversion is an empty part). */
+const asText = (field: string) => ({ $convert: { input: field, to: 'string', onError: '', onNull: '' } });
+const APPOINTMENT_KEY = { $concat: [asText('$bookingDate'), ' ', asText('$bookingTime')] };
 const appointmentKeyOf = (b: IBooking) => `${b.bookingDate ?? ''} ${b.bookingTime ?? ''}`;
 
 /** The consultation's start (an instant one: when it was accepted); null when the time does not parse. */
@@ -97,7 +101,15 @@ async function bounded(sync: Sync, b: IBooking): Promise<void> {
 
 /** One run: every due candidate, each claimed (lease) before its one bounded attempt. */
 export async function retryMissingMeets(now: Date = new Date(), opts: { limit?: number; sync?: Sync } = {}): Promise<{ examined: number; linked: number; failed: number }> {
-  const rows = await BookingModel.find({ ...candidateFilter(now), 'meetRetry.closed': { $ne: 'permanent' },
+  // r10i (H5): without Meet configuration nothing is attempted (and nothing closed); one alert a day.
+  if (!opts.sync && !hasOAuthMeetConfig()) {
+    await raiseAlertIn({ kind: 'meet_link_missing', subject: 'meet_not_configured', detail: { permanent: 'meet_not_configured' } }).catch(() => undefined);
+    return { examined: 0, linked: 0, failed: 0 };
+  }
+  const filter = candidateFilter(now);
+  const rows = await BookingModel.find({ ...filter,
+    // r10i: a permanent close holds only for the appointment it was decided on.
+    $expr: { $and: [filter.$expr, { $ne: [{ $ifNull: ['$meetRetry.closedFor', null] }, APPOINTMENT_KEY] }] },
     $and: [{ $or: [{ 'meetRetry.nextAt': { $exists: false } }, { 'meetRetry.nextAt': { $lte: now } }] }] })
     .sort({ bookingDate: 1, bookingTime: 1 }).lean() as unknown as IBooking[];
   let linked = 0; let failed = 0; let attempted = 0;
@@ -122,7 +134,7 @@ export async function retryMissingMeets(now: Date = new Date(), opts: { limit?: 
     if (after?.virtualMeeting?.status === 'active') {
       linked += 1;
       await BookingModel.collection.updateOne({ _id }, { $set: { 'meetRetry.doneAt': new Date(), 'meetRetry.attempts': 0 },
-        $unset: { 'meetRetry.leaseUntil': '', 'meetRetry.nextAt': '' } });
+        $unset: { 'meetRetry.leaseUntil': '', 'meetRetry.nextAt': '', 'meetRetry.closed': '', 'meetRetry.closedReason': '', 'meetRetry.closedFor': '' } });
       continue;
     }
     failed += 1;
@@ -130,9 +142,10 @@ export async function retryMissingMeets(now: Date = new Date(), opts: { limit?: 
     const permanent = permanentMeetFailure(after?.virtualMeeting?.error);
     if (permanent) {
       await BookingModel.collection.updateOne({ _id }, { $set: { 'meetRetry.closed': 'permanent', 'meetRetry.closedReason': permanent,
+        'meetRetry.closedFor': appointmentKeyOf(fresh),
         'meetRetry.attempts': Number(after?.meetRetry?.attempts ?? 0) + 1 }, $unset: { 'meetRetry.leaseUntil': '', 'meetRetry.nextAt': '' } });
       if (!(permanent === 'patient_email_missing' && !after?.assisted)) {
-        await alertOnce(_id, after, { permanent }, permanent === 'meet_not_configured' ? 'meet_not_configured' : String(_id));
+        await alertOnce(_id, after, { permanent });
       }
       continue;
     }
