@@ -334,6 +334,13 @@ async function main() {
       await onlyOnline(cheap, dear);
       const before = await balance(P);
       const out = await svc.accept(cheap, firstId);
+      // r17b (D8): the doctor's accept answer shows the booking as every non-booker sees it — no price, no partner keys.
+      const shown = out.booking as any;
+      assert.equal(shown.price, undefined);
+      assert.equal(shown.originalPrice, undefined);
+      assert.equal(shown.paidBy, 'Sharma Medicals');
+      for (const k of ['requestKey', 'requestHash', 'split', 'funding', 'referral']) assert.ok(!(k in (shown.assisted ?? {})), `no assisted.${k}`);
+      assert.ok(!JSON.stringify(shown).includes(firstKey));
       acceptedBookingId = String(out.booking._id);
       const b = await BookingModel.findById(acceptedBookingId).lean() as any;
       assert.equal(b.source, 'pharmacy_assisted');
@@ -477,6 +484,8 @@ async function main() {
       assert.equal(rs.find((x) => x.status === 200)!.json.data.refundedMinor, 30000);
       assert.equal((await entries(id, 'refund')).length, 1);
       assert.equal(await balance(P), before + 30000);
+      // r17b: the booker cancelled it at the counter: the patient gets no "No doctor joined" notice.
+      assert.ok(!instantNotices.some((n) => n.key === `instant:${id}:refunded`));
     });
 
     await check('re-offer: to a chosen online doctor (fenced by statusVersion), to any; offline doctor 409 DOCTOR_NOT_ONLINE', async () => {
@@ -625,6 +634,29 @@ async function main() {
     });
 
     // ───────────────────────── Reconciliation ─────────────────────────
+    await check('r17b: an admin move of an instant booking moves its request and deactivates the family member the request created on the old holder', async () => {
+      await onlyOnline(cheap);
+      const created = (await create('P', order({ patient: { relation: 'Son', name: 'Kiran Das' }, holderName: 'Rina Das',
+        acceptedQuoteMinor: 30000, acceptedPayableMinor: 30000 }))).request;
+      const dep = (await stored(created._id)).patient.dependentId;
+      const acc = await svc.accept(cheap, created._id);
+      const bookingId = String(acc.booking._id);
+      const toPhone = nextPhone();
+      const moved = await call('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${bookingId}/move`, { toPhone, reason: 'Wrong number', requestKey: newKey() });
+      assert.equal(moved.status, 200, moved.text.slice(0, 300));
+      const r = await stored(created._id);
+      const newHolder = await UserModel.findOne({ phone: toPhone }).lean() as any;
+      assert.equal(r.userId, String(newHolder._id));
+      assert.equal(r.patient.kind, 'self');
+      assert.equal((await DependentModel.findById(dep).lean() as any).isActive, false, 'the family member is deactivated on the old holder');
+      // The join link of a booking that is no longer on: none in the booker's list once cancelled.
+      await BookingModel.updateOne({ _id: bookingId }, { $set: { virtualMeeting: { joinUrl: 'https://meet.example/abc' } } });
+      const listed = async () => ((await expect('P', 'GET', '/api/v1/pharmacy-bookings', 200)).json.data as any[]).find((x) => x._id === bookingId);
+      assert.equal((await listed())?.virtualMeeting?.joinUrl, 'https://meet.example/abc');
+      await svc.cancelAccepted(bookingId, { _id: cheap, userType: 'specialist' }, 'Clean up');
+      assert.equal((await listed())?.virtualMeeting, undefined);
+    });
+
     await check('reconciliation: instantChecks are clean; a tampered request is flagged; stuck offered requests are listed', async () => {
       const report = await runReconciliation(new Date(), { full: true });
       const instantMismatches = report.checks.mismatches.filter((m: any) => String(m.check).startsWith('instant_') || m.check === 'split_sum' || m.check === 'provider_earning');
