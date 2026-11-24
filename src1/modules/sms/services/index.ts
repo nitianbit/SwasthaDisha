@@ -21,22 +21,49 @@ export interface BuildSMSContentPayload {
   change?: 'set' | 'changed' | 'removed';
 }
 
-@Service()
-export class SMSService {
-  private normalizePhone(phone: string): string {
-    const digits = phone.replace(/\D/g, '');
+function gatewayPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
 
-    if (digits.length === 10) {
-      return `91${digits}`;
-    }
+  if (digits.length === 10) {
+    return `91${digits}`;
+  }
 
-    if (digits.length === 12 && digits.startsWith('91')) {
-      return digits;
-    }
-
+  if (digits.length === 12 && digits.startsWith('91')) {
     return digits;
   }
 
+  return digits;
+}
+
+/** The gateway account is set (sign-in codes, bills, member e-mail notices and phase 5 booking notices share it). */
+export const gatewayConfigured = (): boolean =>
+  !!(CONFIG.SMS_API_BASE_URL && CONFIG.SMS_USERNAME && CONFIG.SMS_PASSWORD && CONFIG.SMS_FROM);
+
+/**
+ * The gateway's one request shape (HTTP GET). Callers choose the template and PE id; `from` defaults to SMS_FROM and
+ * `extra` adds gateway parameters (phase 5: the Unicode flag).
+ */
+export function gatewayRequest(p: { to: string; text: string; templateId?: string; peId?: string; from?: string; extra?: Record<string, string> }) {
+  return {
+    url: CONFIG.SMS_API_BASE_URL as string,
+    params: {
+      username: CONFIG.SMS_USERNAME,
+      password: CONFIG.SMS_PASSWORD,
+      from: p.from || CONFIG.SMS_FROM,
+      to: gatewayPhone(p.to),
+      text: p.text,
+      tmplId: p.templateId,
+      peId: p.peId,
+      ...p.extra,
+    },
+    headers: {
+      ...(CONFIG.SMS_COOKIE ? { Cookie: CONFIG.SMS_COOKIE } : {}),
+    },
+  };
+}
+
+@Service()
+export class SMSService {
   buildSMSContent(
     type: SMSType,
     payload: BuildSMSContentPayload = {}
@@ -69,12 +96,7 @@ export class SMSService {
   }
 
   async sendSMS(payload: SendSMSPayload): Promise<{ success: boolean; data: unknown }> {
-    if (
-      !CONFIG.SMS_API_BASE_URL ||
-      !CONFIG.SMS_USERNAME ||
-      !CONFIG.SMS_PASSWORD ||
-      !CONFIG.SMS_FROM
-    ) {
+    if (!gatewayConfigured()) {
       throw new AppError({
         status: 500,
         code: 'SMS_PROVIDER_NOT_CONFIGURED',
@@ -83,23 +105,14 @@ export class SMSService {
     }
 
     try {
-      const response = await axios.get(
-        CONFIG.SMS_API_BASE_URL,
-        {
-          params: {
-            username: CONFIG.SMS_USERNAME,
-            password: CONFIG.SMS_PASSWORD,
-            from: CONFIG.SMS_FROM,
-            to: this.normalizePhone(payload.to),
-            text: payload.text,
-            tmplId: payload.templateId || CONFIG.SMS_TEMPLATE_ID,
-            peId: payload.peId || CONFIG.SMS_PE_ID,
-          },
-          headers: {
-            ...(CONFIG.SMS_COOKIE ? { Cookie: CONFIG.SMS_COOKIE } : {}),
-          },
-        }
-      );
+      // Sign-in codes and the other callers keep the sign-in template and PE id as their fallbacks.
+      const request = gatewayRequest({
+        to: payload.to,
+        text: payload.text,
+        templateId: payload.templateId || CONFIG.SMS_TEMPLATE_ID,
+        peId: payload.peId || CONFIG.SMS_PE_ID,
+      });
+      const response = await axios.get(request.url, { params: request.params, headers: request.headers });
 
       return {
         success: true,

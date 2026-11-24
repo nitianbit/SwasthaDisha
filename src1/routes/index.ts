@@ -46,6 +46,7 @@ import pharmacyBookingRouter from '@/modules/assisted/routes';
 import { adminAssistedRouter, pharmacyAssistedRouter } from '@/modules/assisted/routes/phase1a';
 import { doctorLabRouter } from '@/modules/assisted/routes/doctorLab';
 import { adminDoctorWalletRouter, adminLabWalletRouter, doctorWalletRouter, labWalletWorkspaceRouter } from '@/modules/partnerWallets/routes';
+import { smsAdminRouter } from '@/modules/smsNotices/admin';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
 import pharmacyInventoryImportRouter from '@/modules/pharmacyInventoryImports/routes';
@@ -130,6 +131,8 @@ export const configureRoutes = (app: Express): void => {
   // r13 (§24.7.3), r20 (§25.4.2): admin lab and doctor wallet tools (/admin/{labs|doctors}/:id/wallet…).
   app.use('/api/v1/admin/labs', authenticate, denyRoles('partner'), adminLabWalletRouter);
   app.use('/api/v1/admin/doctors', authenticate, denyRoles('partner'), adminDoctorWalletRouter);
+  // Phase 5a (§27.5.7): SMS notice summary and test send.
+  app.use('/api/v1/admin/sms-notices', authenticate, denyRoles('partner'), smsAdminRouter);
   app.use('/api/v1/admin', authenticate, denyRoles('partner'), adminAssistedRouter);
   app.use('/api/v1/pharmacy-suppliers', authenticate, denyRoles('partner'), pharmacySupplierRouter);
   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, denyRoles('partner'), orderHealthCheckRouter);
