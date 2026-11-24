@@ -176,25 +176,25 @@ async function topupChargeback(kind: TopupKind, paymentRecordId: string, actorId
   }
   if (out.outcome === 'flagged') {
     return { blockedUncredited: false, flagged: true, credited: true, replayed: out.replayed, paymentRecordId: out.paymentRecordId, lotId: out.lotId,
-      walletKind: kind.kind, partnerId: out.ownerId, ...(out.compensated ? { compensated: true } : {}),
+      walletKind: kind.kind, [kind.ownerField]: out.ownerId, ...(out.compensated ? { compensated: true } : {}),
       message: 'Recorded and flagged only: nothing was taken from the wallet and it was not frozen; this card money is no longer withdrawable. Recovering the amount is an admin decision.' };
   }
   return { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
     withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) };
 }
 
-/** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). r13: a lab top-up names the lab. */
+/** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). r13/r20: a lab or doctor top-up names its owner. */
 const closedView = (r: { replayed: boolean; paymentRecordId: string; ownerId: string; amountPaise: number; compensatedAt: Date; status: string },
-  kind: Pick<TopupKind, 'kind'>) => ({
+  kind: Pick<TopupKind, 'kind' | 'ownerField'>) => ({
   closed: true, credited: false, replayed: r.replayed, paymentRecordId: r.paymentRecordId,
-  ...(kind.kind === 'pharmacy' ? { pharmacyId: r.ownerId } : { walletKind: kind.kind, partnerId: r.ownerId }), amountPaise: r.amountPaise,
+  ...(kind.kind === 'pharmacy' ? { pharmacyId: r.ownerId } : { walletKind: kind.kind, [kind.ownerField]: r.ownerId }), amountPaise: r.amountPaise,
   compensatedAt: r.compensatedAt, status: r.status,
   message: `This top-up is closed as already paid to the ${kind.kind} by Jansetu support. It will never be credited to the wallet.`,
 });
 const COMPENSATION_KEY_INDEX = { 'compensation.requestKey': 1 } as const;
 /** A stored closure, as answered to a replay. */
 const closureOf = (r: Record<string, any>) => {
-  const kind = topupKindOf(r) ?? { kind: 'pharmacy' as const, ownerOf: (x: Record<string, any>) => String(x.payerPharmacyId).toLowerCase() };
+  const kind = topupKindOf(r) ?? { kind: 'pharmacy' as const, ownerField: 'pharmacyId', ownerOf: (x: Record<string, any>) => String(x.payerPharmacyId).toLowerCase() };
   return closedView({ replayed: true, paymentRecordId: String(r._id), ownerId: kind.ownerOf(r),
     amountPaise: Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100),
     compensatedAt: r.compensatedAt as Date, status: String(r.status) }, kind);

@@ -12,7 +12,7 @@ import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { withdrawableOfIn } from '@/modules/pharmacyWallet/ledger';
 import { refreshWithdrawableIn } from '@/modules/pharmacyWallet/walletCore';
 import { topupKindOfWallet } from '@/modules/partnerWallets/topupKinds';
-import { partnerWalletInvariants, uncreditedLabTopups } from '@/modules/partnerWallets/reconciliation';
+import { partnerWalletInvariants, uncreditedPartnerTopups } from '@/modules/partnerWallets/reconciliation';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { inTransaction } from '@/modules/partners/services';
@@ -174,8 +174,8 @@ export async function uncreditedTopups(now: Date = new Date()) {
     .select({ payerPharmacyId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(LIST_MAX).lean() as Row[];
   return [...uncredited, ...unchecked.map((r) => ({ paymentTransactionId: String(r._id), pharmacyId: r.payerPharmacyId,
     amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'not_checked_with_gateway' })),
-  // r13: paid lab top-ups never credited (`walletKind: 'lab'`, `partnerId`).
-  ...await uncreditedLabTopups()];
+  // r13, r20: paid lab and doctor top-ups never credited (`walletKind`, then `partnerId` or `specialistId`).
+  ...await uncreditedPartnerTopups()];
 }
 
 /**

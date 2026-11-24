@@ -19,6 +19,8 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     // r13 (§24.7.2): a partner-paid record (a lab wallet top-up): the paying partner and member.
     payerPartnerId: { type: String },
     payerMemberId: { type: String },
+    // r20 (§25.4.1): a doctor-paid record (a doctor wallet top-up): the paying doctor.
+    payerSpecialistId: { type: String },
     // r13: a keyed order (a lab top-up): `<scope>:<key>` and the request's content hash; one order per key.
     requestKey: { type: String },
     requestHash: { type: String },
@@ -152,6 +154,8 @@ paymentRecordSchema.index({ 'compensation.requestKey': 1 }, { unique: true, part
 // (`$exists`, not `$type`: an equality query can use an `$exists` partial index; it cannot use a `$type` one.)
 paymentRecordSchema.index({ payerPartnerId: 1, createdAt: -1 }, { partialFilterExpression: { payerPartnerId: { $exists: true } } });
 paymentRecordSchema.index({ requestKey: 1 }, { unique: true, partialFilterExpression: { requestKey: { $exists: true } } });
+// r20: a doctor's top-ups, newest first.
+paymentRecordSchema.index({ payerSpecialistId: 1, createdAt: -1 }, { partialFilterExpression: { payerSpecialistId: { $exists: true } } });
 
 const PaymentRecordModel: Model<IPaymentRecord> = model<IPaymentRecord>(
   'PaymentRecord',

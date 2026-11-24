@@ -4985,3 +4985,95 @@ The customer suites (Q4b, Q13, Q16a) run unchanged in the full regression.
   there is no booking. It is refunded within 30 minutes of the booker leaving the screen.
 - The booker's weekly cancellation rate counts bookings only. Refunding a request before any doctor accepts it is not
   counted as a cancellation.
+
+### 25.14 Round 3a build record: the doctor wallet (r20, 2026-11-25)
+
+Branch `m0/r20-phase3a` from `215556e2` (2d, the lab wallet) with `m0/r15-phase3-spec` merged. Local commits only. Built
+§25.4 with DR2–DR5 and the §25.11 decisions, on 2d's partner store and shared wallet rules (`pharmacyWallet/walletCore.ts`):
+no new store, no copied money code. Pharmacy and lab behaviour is unchanged (their suites are the regression check).
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Owners of the partner store | `partnerWallets/ledger.ts` | One top-up kind factory (`partnerTopupKind`) makes `labTopups` and the new `doctorTopups` (`notes.flow: 'doctor_wallet_recharge'`, owner in `payerSpecialistId`; flag-only chargebacks; a lot with the Razorpay fee while `ASSISTED_BOOKING_ENABLED_DOCTOR` is on; `withdrawableAfter` = payment + 7 days). One owner descriptor each (`LAB`, `DOCTOR`): switch, existence (admin tools), may-spend (S5, read in the spending transaction), the top-up order (request-key scope and payer fields). `debitDoctorWalletIn` / `refundDoctorWalletIn` for 3b (and the lab pair, unchanged in signature) share one debit and one refund |
+| Shared core | `pharmacyWallet/walletCore.ts` | `TopupKind` gains `kind: 'doctor'`, `payerField`, `ownerField` and an optional `assertCreditable` (the partner kinds fail closed, 503, before a credit while the store's unique indexes are missing; the sweep retries) |
+| Payments | `payment/services`, `payment/controller`, model, types | `PaymentRecord.payerSpecialistId` (+ index `{payerSpecialistId, createdAt}`, partial `$exists`); doctor top-ups are credited through the shared credit like every top-up kind, routed BEFORE the customer-wallet default; a record carrying a lab or doctor flow but naming no owner is refused (409 `TOPUP_OWNER_MISSING`), never credited to a customer wallet (DR5); a doctor top-up is verified only by its doctor or an admin (DR4); the sweep takes every lab and doctor top-up; `/payments/verify` and `/reconcile` answer the doctor wallet view (state only for an ineligible doctor) |
+| Doctor app | `partnerWallets/routes.ts` (`doctorWalletRouter`), `src1/routes/index.ts` | Mounted at `/api/v1/specialists/me/assisted` (before `/specialists/:id`), below |
+| Admin | `partnerWallets/routes.ts` (`adminWalletRouter(owner)`) | One router per owner kind: `/api/v1/admin/labs` (2d, unchanged) and `/api/v1/admin/doctors` (new). The existing chargeback, lot chargeback and close-compensated routes take doctor top-ups (the kind's `ownerField` names the doctor) |
+| Service | `partnerWallets/service.ts` | Reads, the keyed top-up order, the check, admin reads, admin top-up, by-key and freeze take the owner (`LAB` or `DOCTOR`): one implementation |
+| Switch | `assisted/flags.ts` | `ASSISTED_BOOKING_ENABLED_DOCTOR` and `assertDoctorWalletOn` |
+| Reconciliation | `partnerWallets/reconciliation.ts` | Partner wallet invariants already cover doctor wallets (`ref: 'doctor:<id>'`); the uncredited list covers lab and doctor top-ups (`walletKind`, then `partnerId` or `specialistId`; `state: 'paid_no_owner'` for a partner-flow record naming nobody) |
+
+Checks: `test/assisted/r20-phase3a.integration.ts` (14 checks; 15 with the review fix below).
+
+**ASSUMED (r20 build, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| E1 | Doctor wallets take the O2 limits as lab wallets (₹50,000 checked at order time, card money withdrawable 7 days after payment, stored) and the admin top-up cap (₹2,00,000) | O2 is about partner wallets |
+| E2 | A lost card dispute on a doctor top-up is flagged only (C4), as for labs | coordinator's instruction |
+| E3 | Doctor top-ups always join the recovery sweep (not gated by `WALLET_RECHARGE_SWEEP_FROM`) | none predates it (as 2d D4) |
+| E4 | The DR4 rule binds only callers that name themselves (the routes): a doctor-flow record answers 404 to anyone but its doctor (`specialist` with the same id) or an admin; the internal sweep and the check keep reconciling as the payer | DR4 |
+| E5 | The partner kinds (lab and doctor) fail closed before a credit while `partner_wallets {ownerKind, ownerId}`, `partner_wallet_entries {walletId, operationKey}` or `wallet_topup_lots {paymentRecordId}` is missing (503; the record stays paid and the sweep credits it after `sync-indexes`). For labs this is new; it changes nothing once the indexes exist | §25.4.4 "before any credit" |
+| E6 | A record with a lab or doctor flow but no owner field is refused with 409 `TOPUP_OWNER_MISSING` and listed (`paid_no_owner`); pharmacy records keep their old routing | DR5, pharmacy unchanged |
+| E7 | The doctor app has no top-up history list (the 2d lab list stays); a lost answer is resolved by resending the same request key (same order) or the check | "keep the API minimal" |
+| E8 | The check answers `{ state }` for an ineligible doctor and adds `wallet` only for an eligible one; `/payments` answers `entity: { state }` for an ineligible doctor | §25.4.2 |
+| E9 | Admin wallet tools 404 `SPECIALIST_NOT_FOUND` for any id that is not a doctor (pharmacy, lab, unknown, malformed); they work for an unverified doctor | admin tools |
+
+**API for the web**
+
+Doctor app (specialist token; `{ success, data }`, `Cache-Control: private, no-store`; paise):
+
+| Route | Guard | Request | `data` |
+|---|---|---|---|
+| `GET /api/v1/specialists/me/assisted/wallet` | eligible doctor | — | `{ balanceMinor, withdrawableMinor, receivableMinor, frozen, isActive, updatedAt }` (no wallet: zeros, `updatedAt: null`; nothing created) |
+| `GET …/me/assisted/wallet/entries` | eligible doctor | `?cursor&limit` (≤ 50, default 20) | `[{ _id, kind, amountMinor (signed), balanceAfterMinor, description, referenceType, referenceId, at }]`; top-level `pagination: { nextCursor }` |
+| `POST …/me/assisted/wallet/topups` | eligible doctor, switch | `{ amountMinor (100…5000000), requestKey (^[A-Za-z0-9_-]{8,100}$) }` | `{ paymentTransactionId, razorpayOrderId, razorpayKeyId, amountMinor, currency, state, replayed }` |
+| `POST …/me/assisted/wallet/topups/:paymentTransactionId/check` | any doctor (its own record) | — | `{ state: 'credited' \| 'unpaid', wallet? }` (`wallet` only for an eligible doctor) |
+| `POST /api/v1/payments/verify` (existing) | the doctor | `{ paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature }` | `{ context: 'wallet_recharge', paymentRecord, entity }`, `entity` = the wallet view, or `{ state }` for an ineligible doctor |
+| `POST /api/v1/payments/reconcile` (existing) | the doctor or an admin | `{ paymentTransactionId }` | as verify with `state: 'paid'`, or `{ state: 'unpaid', gatewayStatuses }` |
+
+Flow: create the order, open Razorpay Checkout (`key = razorpayKeyId`, `order_id`, `amount = amountMinor`), then
+`/payments/verify`. A lost answer: resend the same body and key (same order), or "Check" / `/payments/reconcile`. The server
+sweeps every doctor top-up, so a capture is never lost. Show the line "Collect from your patient at your counter".
+
+Errors: 400 `VALIDATION_ERROR` and the §23.3 payment errors; 403 `FORBIDDEN` (not a doctor token), `SPECIALIST_NOT_VERIFIED`
+(reads and new top-ups of an ineligible doctor); 404 `PAYMENT_RECORD_NOT_FOUND` (another doctor's, a pharmacy's or an unknown
+record: one answer, also on `/payments` for any other caller); 409 `IDEMPOTENCY_KEY_REUSED`, `WALLET_LIMIT_REACHED` (with
+`details`), `TOPUP_BLOCKED`, `TOPUP_OWNER_MISSING`, `PAYMENT_CHANGED`; 502 `RAZORPAY_ORDER_CREATION_FAILED`; 503
+`ASSISTED_BOOKING_DISABLED` (switch off: new top-ups only), `INDEXES_OUTDATED`, `RAZORPAY_NOT_CONFIGURED`.
+
+Admin (admin token; writes need `ASSISTED_ADMIN_TOOLS_ENABLED`): `GET /api/v1/admin/doctors/:specialistId/wallet`,
+`/wallet/entries`, `/wallet/lots`; `POST …/wallet/topup` (header `Idempotency-Key`; `{ amountMinor (1…20000000), notes? }`);
+`GET …/wallet/topups/by-key/:key`; `PUT …/wallet/freeze { frozen, reason }` — the same shapes and errors as the lab admin
+routes of §24.13, with 404 `SPECIALIST_NOT_FOUND`. The existing `POST /api/v1/admin/wallet-payments/:paymentId/chargeback`,
+`/wallet-lots/:lotId/chargeback` and `/wallet-payments/:paymentId/close-compensated` (+ by-key) answer a doctor top-up with
+`walletKind: 'doctor', specialistId` (chargeback: flagged only; close: message "… paid to the doctor …").
+`GET /api/v1/admin/wallet-recharges/uncredited` lists doctor rows `{ paymentTransactionId, walletKind: 'doctor', specialistId,
+amountMinor, createdAt, state }`.
+
+**Switches and deploy order**
+
+- `ASSISTED_BOOKING_ENABLED_DOCTOR` (new, off unless exactly `"true"`): new doctor top-ups and their lots. Off: 503 on a new
+  top-up; verify, reconcile, the check, the sweep and the admin tools keep working (paid money is credited, without a lot).
+- Order: 1. deploy (switch off); 2. `npm run sync-indexes` (new `paymentrecords {payerSpecialistId, createdAt}`; 2d's
+  partner-store indexes if 2d is deployed with it); 3. `ASSISTED_BOOKING_ENABLED_DOCTOR=true`; 4. restart. No migration.
+- Rollback: the switch. Never roll the code back below r20 while a doctor top-up is `created` or paid and not credited:
+  older code would credit a CUSTOMER wallet keyed by the doctor's id. Check
+  `db.paymentrecords.countDocuments({ 'notes.flow': 'doctor_wallet_recharge', walletCreditedAt: { $exists: false }, status: { $in: ['created', 'paid'] } })` = 0.
+
+**Review of 2d, folded in (r20b, its own commit)**
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The lab wallet routes re-implemented member admission (`labMember`) | The shared partner permission guard (`middleware/auth.ts`) takes `{ verified }`: `requirePartnerPermission` (operational partner, as before) and the new `requirePartnerPermissionUnverified` (an active member of an active partner, verified or not: 2d D5). The lab routes use them, then a lab check (404 `WALLET_NOT_FOUND`). A clinic member without the wallet permission now gets 403 `INSUFFICIENT_PERMISSIONS` before that 404. Doctors keep `requireSpecialist` + `requireEligibleDoctor` |
+| 2 | `lotsWritable` was copied in the pharmacy and partner kinds | One `walletLots.lotsWritableWhen(switch)` for every kind |
+| 3 | The pharmacy admin top-up had no server-side cap (only the web form's ₹2,00,000) | Owner: keep ₹2,00,000. The shared `adminTopup` refuses an amount over ₹2,00,000 (400 `VALIDATION_ERROR`, nothing credited) for every kind, so `POST /api/v1/pharmacy-wallet/topup` (admin) too. The pharmacy's own Razorpay top-up is not an admin top-up and is unchanged. Check: "review of 2d (3)" (15 checks in all) |
+
+**Seen, not changed**
+
+- Before r20 a `wallet_recharge` record whose flow was not the pharmacy's was always credited to the customer wallet of its
+  `userId`; r20 refuses partner flows without an owner, but a pharmacy-flow record without `payerPharmacyId` still takes
+  the old customer path (pharmacy behaviour kept; the S6 audit lists such records).
+- The 2d note on `$type` partial indexes stands (the pharmacy admin top-up cap is now enforced, above).
