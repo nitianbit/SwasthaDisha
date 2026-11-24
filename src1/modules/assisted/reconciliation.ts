@@ -18,6 +18,7 @@ import { assistedFlags, assistedLimits } from '@/modules/assisted/flags';
 import { raiseAlertIn } from '@/modules/assisted/limits';
 import { cardChargebacks, cardRefundQueue, cardRefundsStuckPending } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
+import { upcomingMeetsMissing } from '@/modules/meet/retry';
 
 /**
  * Assisted booking phase 1a (design §8.2, §8.8, P10): the daily reconciliation and the stuck-money report. Mismatches are
@@ -200,6 +201,8 @@ export async function stuckMoney(now: Date = new Date()) {
     // recorded on assisted booking payments (C4: flagged only, an admin decides).
     cardRefundsPendingOverDays: await cardRefundsStuckPending(now) as Row[],
     cardChargebacks: await cardChargebacks() as Row[],
+    // r10g: paid call / video bookings of the next 48 hours with no working Meet link (all bookings, not only assisted).
+    upcomingMeetsMissing: await upcomingMeetsMissing(now) as Row[],
     withdrawalsRequestedOver7Days: [] as Row[],
     frozenWalletsWithReceivable: frozenWithReceivable.map((w) => ({ pharmacyId: String(w.pharmacyId), receivableMinor: w.receivableMinor })),
     topupsCapturedNotCredited: await uncreditedTopups(now),

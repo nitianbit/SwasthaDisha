@@ -249,17 +249,18 @@ export async function createMeetEvent({
   }
 
   const event = JSON.parse(text) as Record<string, any>;
-  const joinUrl =
-    event.hangoutLink ||
-    event.conferenceData?.entryPoints?.find(
-      (entry: any) => entry.entryPointType === 'video'
-    )?.uri;
+  const joinUrl = joinUrlOf(event);
 
   return {
     event,
     joinUrl,
     meetingCode: extractMeetingCode(joinUrl, event.conferenceData?.conferenceId),
   };
+}
+
+/** The Meet join link of a Calendar event (its hangout link, else its video entry point). */
+function joinUrlOf(event: Record<string, any>): string | undefined {
+  return event.hangoutLink || event.conferenceData?.entryPoints?.find((entry: any) => entry.entryPointType === 'video')?.uri;
 }
 
 export function extractMeetingCode(
@@ -419,14 +420,16 @@ export function meetWindowOf(slot: { date?: string; startTime?: string; endTime?
 
 function buildBookingFailureVirtualMeeting(
   booking: IBooking,
-  message: string
+  message: string,
+  /** r10h: the event Google already made (created without a link), so later attempts reuse it instead of a new one. */
+  calendarEventId?: string
 ): IVirtualMeeting {
   return {
     provider: 'google_meet',
     status: 'failed',
     joinUrl: booking.virtualMeeting?.joinUrl,
     meetingCode: booking.virtualMeeting?.meetingCode,
-    calendarEventId: booking.virtualMeeting?.calendarEventId,
+    calendarEventId: calendarEventId ?? booking.virtualMeeting?.calendarEventId,
     startDateTime: booking.virtualMeeting?.startDateTime,
     endDateTime: booking.virtualMeeting?.endDateTime,
     error: message,
@@ -434,6 +437,19 @@ function buildBookingFailureVirtualMeeting(
     updatedAt: new Date(),
   };
 }
+
+/** r10h: Meet failures no retry can fix (the retry stops and alerts at most once). Matches the messages above. */
+export function permanentMeetFailure(error?: string | null): 'meet_not_configured' | 'patient_email_missing' | 'doctor_email_missing' | 'slot_missing' | null {
+  const e = String(error ?? '');
+  if (e === MEET_NOT_CONFIGURED) return 'meet_not_configured';
+  if (e.endsWith('because patient email is missing')) return 'patient_email_missing';
+  if (e.endsWith('because specialist email is missing')) return 'doctor_email_missing';
+  if (e.endsWith('because slot details are missing')) return 'slot_missing';
+  return null;
+}
+const MEET_NOT_CONFIGURED = 'Google Calendar / Meet is not configured';
+/** r10h: a failure record never bumps the booking's updatedAt (a booker's expectedUpdatedAt stays valid). */
+const FAILURE_WRITE = { new: true, timestamps: false } as const;
 
 /**
  * Assisted booking phase 1a (§6.6, N6): the Meet event of a partner-made booking is NEUTRAL — title "Jansetu
@@ -472,17 +488,23 @@ export async function syncBookingMeet(params: {
   slotRepository: SlotRepository;
   /** r10f: bounds every Google call of this sync (token, create, update); the assisted follow-up passes one. */
   signal?: AbortSignal;
+  /**
+   * r10h (the Meet retry): never send a second invite. A failed record that names an event re-reads that event (no
+   * update, no email); without one, the booking's own event is looked up first (`jansetuBookingId`, e.g. a create
+   * whose answer was lost) and created only when Google has none.
+   */
+  reuseExisting?: boolean;
 }): Promise<IBooking> {
-  const { booking, bookingRepository, userRepository, specialistRepository, slotRepository, signal } = params;
+  const { booking, bookingRepository, userRepository, specialistRepository, slotRepository, signal, reuseExisting } = params;
 
   if (!isInternalMeetApplicable(booking)) return booking;
   if (!hasOAuthMeetConfig()) {
     const virtualMeeting = buildBookingFailureVirtualMeeting(
       booking,
-      'Google Calendar / Meet is not configured'
+      MEET_NOT_CONFIGURED
     );
     return (
-      (await bookingRepository.update({ _id: booking._id }, { virtualMeeting })) || {
+      (await bookingRepository.update({ _id: booking._id }, { virtualMeeting }, FAILURE_WRITE)) || {
         ...booking,
         virtualMeeting,
       }
@@ -508,7 +530,7 @@ export async function syncBookingMeet(params: {
         : 'Cannot generate Google Meet link because slot details are missing';
       const virtualMeeting = buildBookingFailureVirtualMeeting(booking, reason);
       return (
-        (await bookingRepository.update({ _id: booking._id }, { virtualMeeting })) || {
+        (await bookingRepository.update({ _id: booking._id }, { virtualMeeting }, FAILURE_WRITE)) || {
           ...booking,
           virtualMeeting,
         }
@@ -544,13 +566,34 @@ export async function syncBookingMeet(params: {
         requestId: `booking-${booking._id}-${Date.now()}`,
       }),
       ...(assisted ? { guestsCanSeeOtherGuests: false, guestsCanInviteOthers: false } : {}),
+      // r10h: the booking's own mark on its event, so a retry finds an event whose create answer was lost.
+      extendedProperties: { private: { jansetuBookingId: String(booking._id) } },
     };
 
     const accessToken = await getMeetOAuthAccessToken(signal);
-    let event: Record<string, any>;
+    let event: Record<string, any> | null = null;
     let joinUrl: string | undefined;
+    const eventsUrl = `${GOOGLE_CALENDAR_BASE_URL}/calendars/${encodeURIComponent(CONFIG.GOOGLE_CALENDAR_ID!)}/events`;
+    const getJson = async (url: string): Promise<Record<string, any> | null> => {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, ...(signal ? { signal } : {}) });
+      const body = await response.text();
+      if (response.status === 404 || response.status === 410) return null;
+      if (!response.ok) throw new Error(`Google Calendar request failed: ${body}`);
+      return JSON.parse(body);
+    };
+    const live = (e: Record<string, any> | null | undefined) => (e && e.status !== 'cancelled' ? e : null);
 
-    if (booking.virtualMeeting?.calendarEventId) {
+    // r10h (retry): reuse the event Google already holds for this booking — read, never updated, so nobody is emailed.
+    if (reuseExisting && booking.virtualMeeting?.status === 'failed' && booking.virtualMeeting.calendarEventId) {
+      event = live(await getJson(`${eventsUrl}/${encodeURIComponent(booking.virtualMeeting.calendarEventId)}`));
+    } else if (reuseExisting && !booking.virtualMeeting?.calendarEventId) {
+      const found = await getJson(`${eventsUrl}?privateExtendedProperty=${encodeURIComponent(`jansetuBookingId=${String(booking._id)}`)}&maxResults=5`);
+      event = live(((found?.items ?? []) as Record<string, any>[]).find((e) => e.status !== 'cancelled'));
+    }
+
+    if (event) {
+      joinUrl = joinUrlOf(event);
+    } else if (booking.virtualMeeting?.calendarEventId && !(reuseExisting && booking.virtualMeeting?.status === 'failed')) {
       const { conferenceData, ...updatePayload } = eventPayload;
       void conferenceData;
       const response = await fetch(
@@ -573,12 +616,8 @@ export async function syncBookingMeet(params: {
       if (!response.ok) {
         throw new Error(`Google Calendar request failed: ${text}`);
       }
-      event = JSON.parse(text);
-      joinUrl =
-        event.hangoutLink ||
-        event.conferenceData?.entryPoints?.find(
-          (entry: any) => entry.entryPointType === 'video'
-        )?.uri;
+      event = JSON.parse(text) as Record<string, any>;
+      joinUrl = joinUrlOf(event);
     } else {
       const created = await createMeetEvent({
         accessToken,
@@ -591,10 +630,14 @@ export async function syncBookingMeet(params: {
     }
 
     if (!joinUrl) {
-      throw new Error(
-        'Google Calendar event was created, but no Meet join URL was returned'
-      );
+      // r10h: keep the event Google made, so the next attempt reads it (its link may still come) instead of creating
+      // another one and inviting everyone again.
+      logger.error('Google Calendar event has no Meet link yet', { bookingId: booking._id, calendarEventId: event?.id });
+      const virtualMeeting = buildBookingFailureVirtualMeeting(booking,
+        'Google Calendar event was created, but no Meet join URL was returned', event?.id);
+      return (await bookingRepository.update({ _id: booking._id }, { virtualMeeting }, FAILURE_WRITE)) || { ...booking, virtualMeeting };
     }
+    if (!event) throw new Error('Google Calendar returned no event');
 
     const virtualMeeting: IVirtualMeeting = {
       provider: 'google_meet',
@@ -625,7 +668,7 @@ export async function syncBookingMeet(params: {
       error?.message || 'Failed to sync Google Meet event'
     );
     return (
-      (await bookingRepository.update({ _id: booking._id }, { virtualMeeting })) || {
+      (await bookingRepository.update({ _id: booking._id }, { virtualMeeting }, FAILURE_WRITE)) || {
         ...booking,
         virtualMeeting,
       }
