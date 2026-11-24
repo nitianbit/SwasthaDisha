@@ -54,6 +54,8 @@ export type LabDeskInput = Omit<AssistedLabInput, 'partnerId' | 'slotId' | 'coup
   collector?: { memberId?: string; name: string; phone?: string };
   /** Price fence: Σ the lab's catalogue prices (paise) the desk showed. No coupon on desk rows. */
   acceptedTotalMinor: number;
+  /** The desk's own notes (stored on `desk.notes`; r11b took `notes` off the pharmacy create). */
+  notes?: string;
 };
 
 /** The stored key (unique `desk.requestKey`) and the claim scope of a desk member's create at this lab. */

@@ -3654,6 +3654,11 @@ Branch `m0/r11b-phase2a-fixes` at `7d99f2cf` (stage `f5f171c9` + r10h `a18adba7`
 | 4 | Small gaps | The patient's cancel and the patient's accept of a lab's new time are audited (`assisted_audit_events`, actor `customer`, in their transaction); the patient's accept tells the booker ("The patient accepted the new time", key `assisted:lab:<id>:reschedule:<version>:accepted:booker`) — the patient's accept now runs through the booker's accept (one compare-and-set, one transaction). The lab's view of a booker cancellation shows `byKind: 'booker'` without the pharmacy's id (`by`) | 4 |
 | 5 | Dedupe of the patient helpers in `consultations.ts` | **Not done here** (coordinator, 25 Nov): phase 2c is generalising `assisted/patient.ts`; one dedupe round follows after 2c merges | — |
 
+Merge note (`m0/r19-stage-next`): phase 2c made the request content shared with the lab desk (`labRequestContent`), and
+the desk keeps its notes. So the pharmacy hash keeps a `notes` field that is always null (the validator strips the key):
+keys used before r11b without notes still replay; a key used with notes answers 409 `IDEMPOTENCY_KEY_REUSED`, as above.
+The desk's `notes` rule and type moved into its own schema and input (`assisted/validation/labDesk.ts`, `LabDeskInput`).
+
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 
 Design only; nothing here is built. Base: `f5f171c9` (the stage line with round 2a, r11). Rounds 2b, 2c, 2d and 2e are being

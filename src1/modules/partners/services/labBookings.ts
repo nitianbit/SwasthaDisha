@@ -775,7 +775,8 @@ export class LabBookingService {
    * its transaction and the partner that booked it is told — the same accept as the booker's (acceptRescheduleAsBooker).
    */
   async acceptReschedule(userId: string, bookingId: string, version: number): Promise<Record<string, unknown>> {
-    const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId } }, bookingId, version, async (b, s) => {
+    // r14 (L5): a partner's card booking never paid is not the patient's (the one 404, as on every patient read).
+    const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }, bookingId, version, async (b, s) => {
       if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.reschedule_accepted', { version: Number(version) }, s);
     });
     if (isAssisted(updated)) {
