@@ -4615,7 +4615,6 @@ the owner's word.
 - never above the base;
 - 0 with a reason when:
   - the master switch is off (`cuts_off`);
-  - the category is consultation and consultation cuts are off (`consultation_cuts_off`);
   - the booker is a doctor and doctor cuts are off (`doctor_cuts_off`);
   - there is no active rule (`no_rule`).
 
@@ -4661,7 +4660,6 @@ unchanged (`pharmacies/validation/index.ts:29`, `partners/services/index.ts:218`
 
 - **Switches:**
   - `REFERRAL_CUTS_ENABLED` (new master, off): every line snapshots 0 `cuts_off`;
-  - `REFERRAL_CONSULTATION_CUTS_ENABLED` (off, GATE-NMC, Q1);
   - `REFERRAL_DOCTOR_CUTS_ENABLED` (off, owner decision 3).
 - **Indexes** (`assertUniqueIndex`):
   - `referral_rules {bookerKind, bookerId, category}`;
@@ -4683,7 +4681,7 @@ unchanged (`pharmacies/validation/index.ts:29`, `partners/services/index.ts:218`
    - CBC ₹300 at 5% plus a package ₹40 fixed → lab ₹1,045, Sharma ₹55;
    - provider-funded coupon: base ₹400, cut ₹40, doctor ₹360;
    - platform-funded coupon: base ₹500, cut ₹50.
-3. Each switch off → 0 with its reason. A doctor booker is always 0 while doctor cuts are off.
+3. The master switch off → 0 `cuts_off`. A doctor booker is always 0 while doctor cuts are off.
 4. Rule PUT: stale `expectedVersion` → 409; one event row per version. **Race:** two edits at once → one wins.
 5. A snapshot is frozen: an edit after the booking changes nothing stored. Instant snapshots at accept, on the fee.
 6. The referral account opens once under 5 parallel creates (unique index), and only when the cut is > 0.
@@ -4694,7 +4692,7 @@ unchanged (`pharmacies/validation/index.ts:29`, `partners/services/index.ts:218`
 
 - **Admin → pharmacy / lab / doctor setup → "Referral cuts".**
   - Three rows (consultation, lab test, package), each with % or ₹ per line and an optional cap.
-  - The switch state is shown: "Consultation cuts are off until legal advice" and "Doctor cuts are off".
+  - The switch state is shown: "Doctor cuts are off until legal advice".
   - History.
 - **Partner → Finance:** a read-only "Your referral rates" card.
 
@@ -4811,11 +4809,8 @@ since payouts are off).
 - **One withdrawal a week (O2).** A request is refused when the wallet has a `requested` or `paid` withdrawal created in
   the last 7 days (rolling; cancelled, rejected and voided ones don't count; Q5): 409 `WITHDRAWAL_WEEKLY_LIMIT` with
   `details: { nextAllowedAt }`.
-- **Fee (§2.3 C, Q2).**
-  - `feeMinor` = Σ per lot `floor(lot.gatewayFeeMinor × taken / lot.amountMinor)`, with the remainder of the total fee
-    on the last lot.
-  - `transferMinor = gross − fee`.
-  - The fee is a cost Jansetu already paid and is not refunded.
+- **Fee (decided 25 Nov, Q2):** none. Jansetu pays every gateway fee, so `feeMinor = 0` and `transferMinor =
+  grossMinor`. The fields stay on the row so that a later owner decision can change the rule without a migration.
 - **Destination: the home account (§5.4):**
   - lab → its `partner` account;
   - doctor → its `doctor` account;
@@ -4831,7 +4826,7 @@ since payouts are off).
 
 | Route | Request → answer |
 |---|---|
-| `GET …/withdrawable` | `{ enabled, withdrawableNowMinor, availableLater, feeEstimateMinor, nextAllowedAt, destination: { state, masked, detailsVersion } }` |
+| `GET …/withdrawable` | `{ enabled, withdrawableNowMinor, availableLater, nextAllowedAt, destination: { state, masked, detailsVersion } }` |
 | `POST …/withdrawals` | `{ amountMinor (≥ `WALLET_WITHDRAWAL_MIN_MINOR`, default 50,000 = ₹500; Q4), requestKey, detailsVersion }` → 201 (replay 200) `{ withdrawal, wallet, replayed }`; below the minimum → 400 `WITHDRAWAL_BELOW_MINIMUM` |
 | `GET …/withdrawals` | `?state&cursor&limit≤50`; `GET …/withdrawals/:id`; `GET …/withdrawals/by-key/:key`; `POST …/by-key/:key/abandon` |
 | `POST …/withdrawals/:id/cancel` | `{ expectedVersion }` → `{ withdrawal, wallet }` (only while `requested`) |
@@ -4914,7 +4909,7 @@ since payouts are off).
    - at day 7 it is;
    - a backfilled old lot is.
 3. **Weekly:** a second request within 7 days → 409 with `nextAllowedAt`. After a cancel, a new request is allowed.
-4. **Fee:** pro-rata floor, with the remainder on the last lot. `transfer = gross − fee`.
+4. **Fee:** none: `feeMinor = 0`, `transfer = gross` (decided 25 Nov).
 5. **Cancel, reject, paid and void:**
    - **race:** cancel vs paid → one outcome, the money moves once;
    - reject releases once; void restores once;
@@ -4936,7 +4931,7 @@ since payouts are off).
 
 - **Wallet (pharmacy, lab, doctor):**
   - "Card money you can withdraw now ₹x" and "₹y more on <date>";
-  - **Withdraw**: amount, the bank or UPI (masked), "card fee ₹f", "you get ₹t";
+  - **Withdraw**: amount, the bank or UPI (masked), "you get ₹t";
   - a list with states;
   - "Withdrawals are coming soon" while off.
 - **Admin → Withdrawals:**
@@ -4994,8 +4989,8 @@ since payouts are off).
 ### 26.11 Deploy order for the phase
 
 1. **4a** dark: deploy, `sync-indexes`, enter the rules. `REFERRAL_CUTS_ENABLED` stays off.
-2. **4b**: deploy, `sync-indexes`, then `REFERRAL_CUTS_ENABLED=true`. Lab-test and package cuts start; consultation and
-   doctor cuts stay off.
+2. **4b**: deploy, `sync-indexes`, then `REFERRAL_CUTS_ENABLED=true`. The pharmacy and lab cuts the admin has set
+   start, consultations included; doctor cuts stay off.
 3. **4c**: `EARNING_RULE_V2_FOR_ALL=true` after providers are told.
 4. **4d**: deploy, `sync-indexes`, the lot migration. Withdrawals stay off until GATE-RBI.
 5. **4e**: deploy. Payouts stay off until O1.
@@ -5006,7 +5001,7 @@ since payouts are off).
 | # | Assumption (the safer default) | Where |
 |---|---|---|
 | M1 | Six rounds; 4a deploys dark behind a new master switch `REFERRAL_CUTS_ENABLED` and is switched on only with 4b, because a snapshot without 4b's posting would lose the cut | §26.3 |
-| M2 | Lab-test and package cuts of pharmacies and labs are on. Consultation cuts stay behind `REFERRAL_CONSULTATION_CUTS_ENABLED=false` (§2.3 F, GATE-NMC) until legal advice (Q1). Doctor cuts are off | §26.5.5 |
+| M2 | **Decided 25 Nov (Q1):** pharmacy and lab cuts work for every category, consultations included, once `REFERRAL_CUTS_ENABLED` is on and an admin has set the rules. `REFERRAL_CONSULTATION_CUTS_ENABLED` is not built. Doctor cuts stay off (`REFERRAL_DOCTOR_CUTS_ENABLED=false`) | §26.5.5 |
 | M3 | Only `consultation`, `lab_test` (catalogue `test`) and `lab_package` (catalogue `package`) are cut; other catalogue kinds snapshot 0 | §26.5.1 |
 | M4 | A percent rule is 0.01%–50% (1–5,000 bp); a fixed rule ≥ ₹0.01; the cap is per line | §26.5.4 |
 | M5 | The stored `withdrawableMinor` stays "card money"; what is withdrawable now (after the 7-day hold) is computed at read and at request | §26.8.1 |
@@ -5014,12 +5009,12 @@ since payouts are off).
 | M7 | A withdrawal marked paid moves no ledger money (wallet money is not an earning); it is audited on the home account | §26.8.3 |
 | M8 | Setting a receivable off against the referral balance uses the payout switch (it is a payment of the referral) | §26.9 |
 | M9 | Statements and referral rows show the short ref, date and category, never the patient's name | §26.4 |
-| M10 | Card fees on **spent** money stay with Jansetu. Withdrawing unspent card money deducts that money's fee (§2.3 C; Q2) | §26.8.1 |
+| M10 | **Decided 25 Nov (Q2):** Jansetu pays every gateway fee. A withdrawal has no fee deduction: `feeMinor = 0`, `transferMinor = grossMinor` (this replaces §2.3 C) | §26.8.1 |
 | M11 | Every top-up kind flags a chargeback; debiting the wallet is the admin's explicit "Recover" | §26.8.4 |
 | M12 | Lots without `withdrawableAfter` are backfilled `createdAt + 7 days` (older card money is already past the hold) | §26.8.1 |
 | M13 | `provider_coupon_v2` for self bookings uses a top-level `earningSplit` (no `assisted` block), behind `EARNING_RULE_V2_FOR_ALL` | §26.7 |
 | M14 | Rules are snapshotted at create (instant: at accept); a rule edit never changes a stored booking | §26.5.3 |
-| M15 | A minimum withdrawal of ₹500 (`WALLET_WITHDRAWAL_MIN_MINOR`, configurable) until the owner answers Q4 | §26.8.2 |
+| M15 | **Decided 25 Nov (Q4):** a minimum withdrawal of ₹500 (`WALLET_WITHDRAWAL_MIN_MINOR`, configurable) | §26.8.2 |
 
 ### 26.13 Questions for the owner (only the ones that change what is built)
 
@@ -5039,3 +5034,15 @@ since payouts are off).
 5. **"One withdrawal a week": a rolling 7 days, or Monday–Sunday?**
    Recommended: **rolling 7 days** from the last withdrawal that was not cancelled or rejected (simplest to explain:
    "next withdrawal from <date>").
+
+### 26.14 Decided 25 Nov (coordinator, owner asleep; reversible)
+
+The owner asked for decisions in line with their earlier answers. These replace the recommendations in §26.13:
+
+| # | Decision | Built as |
+|---|---|---|
+| Q1 | **Pharmacy and lab consultation cuts work.** Owner, 22 Nov: "Doctor's referral cut OFF until legal advice; pharmacy/lab cuts work". Legal work is not chased now | Behind `REFERRAL_CUTS_ENABLED` (default off); the admin sets rules per partner and category. No separate consultation switch. Doctor cuts stay off. **Open owner item:** the NMC fee-splitting risk of consultation cuts (GATE-NMC) |
+| Q2 | **Jansetu pays gateway fees** (owner decision): no fee deduction on withdrawal | `feeMinor = 0`. **Open owner question:** the cost of a card top-up followed by a withdrawal (about 2% of the amount, paid by Jansetu) |
+| Q3 | Referral earnings cannot fund the wallet while payouts are paused | No route |
+| Q4 | Minimum withdrawal ₹500, configurable | `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000) |
+| Q5 | Rolling 7 days | §26.8.1 |
