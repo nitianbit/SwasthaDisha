@@ -5494,3 +5494,14 @@ for self-bookings; Q5 the phase 6 translator, English and Hindi registered first
 
 **Mutation check.** Each of these, undone alone, makes its check fail: the enqueue's index check (9), the claim's lease
 (4, 5), the stop after 3 failures in a row (7), the sign-in template fallback in `sendSMS` (1).
+
+**Full regression** (`prun.sh … 2` on `7b80c1ca`, on a machine running seven other regressions): 74 entries, 72 passed.
+Neither of the other two is a regression:
+- `r25-phase5a` (checks 4 and 5): the run copied the worktree while the lease mutation above was in it (its copy of
+  `smsNotices/drain.ts` was checked and lacked the lease). The same copy explains `tsc 18` there (the unused import).
+  On the real code: 11 of 11, and `tsc` 17 as before.
+- `o1-otp-limits`: its `Retry-After > 30` check ran within 30 seconds of the top of the hour. Run again: 14 of 14.
+
+The suites that cover the shared changes were also run on the final head, all passing: `r10g-meet-retry`,
+`r10f-card-last`, `r10-phase1b`, `r14-phase2b` (lease and deadline helpers), `q16b-identity`, `q2-invoices` and
+`o1-otp-limits` (the SMS service).
