@@ -3822,8 +3822,26 @@ Doc numbering: r11b's record keeps §24.15 and r19b's §24.16, so this record is
 - Before the alignment, the full regression on the first 3e merge `b32f0007` (`prun.sh … 2`) passed 74 of 75; the one
   failure, `r8-before-production`, was a load flake (503 `AUTH_STATE_UNAVAILABLE`, the 2-second sign-in state read) and
   passes alone (7/7).
-- The full regression on `19c33187` was still running at handover (`/tmp/r21-prun2/SUMMARY`); its result is reported
-  separately.
+- The full regression on `19c33187` (`prun.sh … 2`): 75 of 76 pass; tsc 17. The one failure, `s2-booking-read-scope`,
+  was the same load flake (503 `AUTH_STATE_UNAVAILABLE`) and passes alone (12/12).
+
+#### 24.17.7 Review fixes (r21b, review of `78020e07`)
+
+Merged first: `8b0d5ab8` (r19b, §24.16). Checks: `test/assisted/r21-phase2e.integration.ts` (now 18: two new checks and
+one new assertion in "card"). Each suite alone: `r21-phase2e` 18/18, `r17-phase3e` 25/25, `r11-phase2a` 26/26,
+`r12-phase2c` 27/27, `phase1a` 30/30, `r14-phase2b` 24/24. tsc 17.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (must, patient data) | `POST …/assisted/payments/verify` and `/reconcile` answered the booker view with its prescription (medicines, advice, tests) to a member scoped to another branch, and to a lab whose verification was revoked, while the booking detail route refuses both | `partnerWallets/service.ts` `entityView`: a member outside the booking's branch scope gets `{ _id, status, paymentStatus }` only; otherwise the booker view with `clinical: labAdmissible(<lab>)` (no prescription unless the lab is active and verified). The member's scope is read once with its permission (`memberMay`) |
+| 2 (must) | A clinic (and an unverified lab) could use the lab patient lookup, and a lab create counted and audited the phone before it was refused | `assisted/bookers.ts` `admitLabBooker` (an active, verified lab; 403 `LAB_PARTNER_REQUIRED` / `PARTNER_NOT_VERIFIED`) is split out of `bookerOrigin`. The lookup calls it before counting; the create now runs `bookerOrigin` (admission and branch) before `countPhoneUse` and the `booking.attempted` audit |
+| 3 (must, index rule) | A lab create relied on the `assisted_links` unique key (`linkLabIn` upserts on it) without checking it | `assertAssistedIndexes` checks `{ bookerKind, bookerId, userId }` for a lab payer (503 `INDEXES_OUTDATED`) |
+| 4 | A lab card booking's `lifecycle.paid.by` said `pharmacy_card` | `<payer kind>_card` from the payment record (`lab_card`) |
+| 5 | Two audit-actor helpers | One: `bookerAuditFields` (`assisted/bookers.ts`), used by `auditBookerIn` and the card capture audits (`auditActorOf` is gone) |
+
+**Seen, not changed:** the desk's `labOf` / `deskBranch` (`assisted/labDesk.ts`) and `admitLabBooker` / `bookerOrigin` check
+the same lab and branch rules with different answers (the desk: 404 `PARTNER_NOT_FOUND`, a visit-mode check, its own
+messages). Merging them changes the desk's answers, so it is left for a desk round.
 
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 

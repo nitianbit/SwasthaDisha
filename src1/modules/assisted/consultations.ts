@@ -17,6 +17,7 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
 import { CouponRepository } from '@/modules/coupon/repository';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { claimRequestKey } from '@/modules/requestKeys';
 import { countPairBookingIn } from '@/modules/assisted/limits';
 import { assistedEffects, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
@@ -140,6 +141,8 @@ export async function assertAssistedIndexes(withCoupon: boolean, payerKind: Book
   await assertUniqueIndex(BookingModel, { 'assisted.requestKey': 1 });
   await assertUniqueIndex(BookingModel, { 'assisted.shortRef': 1 });
   await assertBookerWalletIndexes(payerKind);
+  // r21b: a lab's link to the holder is one row per (lab, holder) (`linkLabIn` upserts on it).
+  if (payerKind === 'lab') await assertUniqueIndex(AssistedLinkModel, { bookerKind: 1, bookerId: 1, userId: 1 });
   await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
 }
@@ -221,6 +224,9 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   // is counted or held, the same answer for every number).
   const card = input.paymentMethod === 'razorpay';
   if (card) await assertCardPaymentAvailable();
+  // 2e / r21b: a lab books only while it is an active, verified lab (never a clinic), at a branch of it in the member's
+  // scope — decided before the phone is counted or audited.
+  const origin = await bookerOrigin(booker);
   // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit (the one limit
   // the owner kept) and is audited (a key reused for other content too: it is counted, then refused below).
   if (attempt === 0) {
@@ -232,8 +238,6 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
   // r10g (owner, 23 Nov): no booking limits besides the hourly lookup limit; cancellation and same-pair counts are alerts.
-  // 2e: a lab books only while it is an active, verified lab, at a branch of it in the member's scope.
-  const origin = await bookerOrigin(booker);
 
   // The service: an active, verified doctor's bookable slot in the chosen mode.
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');

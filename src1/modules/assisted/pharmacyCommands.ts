@@ -22,7 +22,8 @@ import { maskName } from '@/modules/assisted/names';
 import { countBookerCancellationIn } from '@/modules/assisted/limits';
 import { countPhoneUse } from '@/modules/assisted/patient';
 import {
-  asBooker, assertBookerOn, auditBookerIn, bookerActorIdOf, bookerBookingsFilter, bookerNoticeUserId, bookerOrigin, bookerRefOf, orgKeyOf, rescheduleKeyScope,
+  admitLabBooker, asBooker, assertBookerOn, auditBookerIn, bookerActorIdOf, bookerBookingsFilter, bookerNoticeUserId, bookerOrigin, bookerRefOf, orgKeyOf,
+  rescheduleKeyScope,
   type BookerActor,
 } from '@/modules/assisted/bookers';
 import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
@@ -47,6 +48,8 @@ export async function lookupPatient(actorIn: PharmacyActor | BookerActor, rawPho
   assertBookerOn(booker.kind);
   const phone = canonicalMobile(rawPhone);
   if (!phone) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
+  // r21b: a lab is admitted (an active, verified lab; never a clinic) before the phone is counted or audited.
+  if (booker.kind === 'lab') await admitLabBooker(booker);
   const user = await countPhoneUse(orgKeyOf(booker), phone, (seen) => auditBookerIn(booker, 'patient.lookup', { detail: seen }, null));
   return { exists: !!user, holderNameMasked: user ? maskName(user.name) : null };
 }

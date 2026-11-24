@@ -62,18 +62,28 @@ export function assertBookerOn(kind: BookerActor['kind']): void {
 }
 
 /**
- * The booker's name and where "nearby" is measured from. A pharmacy: its own address (its admission is the route's
- * `requireOperationalPharmacy`). A lab: an active, verified lab (S5, 403 otherwise; a clinic 403 LAB_PARTNER_REQUIRED) and
- * the member's branch: an active branch of this lab (404 BRANCH_NOT_AVAILABLE) inside the member's scope (403).
+ * r21b: a lab booker's organisation, admitted — an active, verified LAB (S5; a clinic 403 LAB_PARTNER_REQUIRED, an
+ * unverified or inactive lab 403 PARTNER_NOT_VERIFIED). Every lab-booker action runs it before it counts or audits a
+ * phone (the lookup, the create) or reads a doctor; a pharmacy's admission is its route's `requireOperationalPharmacy`.
+ */
+export async function admitLabBooker(b: LabBooker, s?: ClientSession): Promise<Record<string, any>> {
+  const p = OBJECT_ID.test(b.partnerId) ? await PartnerOrgModel.findById(b.partnerId).session(s ?? null).lean() as Record<string, any> | null : null;
+  if (!p || p.kind !== 'lab') throw err(403, 'LAB_PARTNER_REQUIRED', 'Booking doctors for patients is for labs');
+  if (!labAdmissible(p)) throw err(403, 'PARTNER_NOT_VERIFIED', 'Partner verification is required for this operation');
+  return p;
+}
+
+/**
+ * The booker's name and where "nearby" is measured from. A pharmacy: its own address. A lab: admitted
+ * (`admitLabBooker`), and the member's branch: an active branch of this lab (404 BRANCH_NOT_AVAILABLE) inside the
+ * member's scope (403).
  */
 export async function bookerOrigin(b: BookerActor, s?: ClientSession): Promise<{ name: string; pincode?: string; city?: string }> {
   if (b.kind === 'pharmacy') {
     const p = await PharmacyModel.findById(b.pharmacyId).select({ name: 1, city: 1, pincode: 1 }).session(s ?? null).lean() as Record<string, any> | null;
     return { name: p?.name ?? 'Pharmacy', pincode: p?.pincode, city: p?.city };
   }
-  const p = OBJECT_ID.test(b.partnerId) ? await PartnerOrgModel.findById(b.partnerId).session(s ?? null).lean() as Record<string, any> | null : null;
-  if (!p || p.kind !== 'lab') throw err(403, 'LAB_PARTNER_REQUIRED', 'Booking doctors for patients is for labs');
-  if (!labAdmissible(p)) throw err(403, 'PARTNER_NOT_VERIFIED', 'Partner verification is required for this operation');
+  const p = await admitLabBooker(b, s);
   if (!hasGlobalScope(b.actor) && !b.actor.branchIds.map(lower).includes(lower(b.branchId))) {
     throw err(403, 'BRANCH_SCOPE_EXCEEDED', 'Operation not allowed for this branch');
   }
@@ -87,11 +97,15 @@ export const bookedByOf = (b: BookerActor, name: string) => (b.kind === 'pharmac
   ? { kind: 'pharmacy' as const, id: lower(b.pharmacyId), actorKind: 'pharmacy', actorId: lower(b.actorId), name }
   : { kind: 'lab' as const, id: lower(b.partnerId), branchId: lower(b.branchId), actorKind: 'member', actorId: lower(b.memberId), name });
 
+/** The audit's actor and organisation of a booker: a pharmacy, or a lab member for its lab (also from a stored booking). */
+export const bookerAuditFields = (kind: string, actorId: unknown, orgId: unknown) => ({
+  actorKind: (kind === 'pharmacy' ? 'pharmacy' : 'member') as 'pharmacy' | 'member', actorId: lower(actorId),
+  orgKind: kind as BookerRef['kind'], orgId: lower(orgId) });
+
 /** The booker's audit (§6.1), in the action's transaction, ids and codes only: one trail (`assisted_audit_events`) for both kinds. */
 export function auditBookerIn(b: BookerActor, action: AssistedAuditAction, fields: { bookingId?: string; requestKey?: string; detail?: Record<string, unknown> },
   s: ClientSession | null): Promise<void> {
-  const ref = bookerRefOf(b);
-  return auditIn({ actorKind: b.kind === 'pharmacy' ? 'pharmacy' : 'member', actorId: bookerActorIdOf(b), orgKind: ref.kind, orgId: ref.id, action, ...fields }, s);
+  return auditIn({ ...bookerAuditFields(b.kind, bookerActorIdOf(b), bookerRefOf(b).id), action, ...fields }, s);
 }
 
 /** §17.4: the booker's link to the account holder, with consent and the first typed name (pharmacy: S3 link; lab: `assisted_links`). */

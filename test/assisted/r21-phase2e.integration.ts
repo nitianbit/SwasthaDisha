@@ -470,6 +470,7 @@ async function main() {
       const v = (await expect('LO', 'POST', `${WS}/payments/verify`, 200, verify)).json.data;
       assert.equal(v.context, 'assisted_booking');
       assert.equal(v.entity.status, 'confirmed');
+      assert.equal((await BookingModel.findById(r.booking._id).lean() as any).lifecycle.paid.by, 'lab_card', 'r21b: the lab card label');
       assert.equal(v.entity.payment.method, 'razorpay');
       const c = (await expect('LB', 'POST', `${WS}/bookings/${r.booking._id}/cancel`, 200, { refundTo: 'wallet' })).json.data;
       assert.equal(c.refund.method, 'wallet');
@@ -481,6 +482,59 @@ async function main() {
       const row = rows.find((x: any) => x.bookingId === r.booking._id);
       assert.equal(row.payerKind, 'lab');
       assert.equal(row.payerName, 'Metro Labs');
+    });
+
+    await check('r21b: the payment answer shows a booking only in the member\'s branch scope, and its prescription only while the lab is verified', async () => {
+      // A card booking at branch A, with a prescription on the row (written directly: the doctor saves only on paid
+      // bookings), paid at Razorpay; `who` reconciles it.
+      const paidVia = async (who: string, beforeReconcile: () => Promise<void> = async () => undefined) => {
+        const r = (await expect('LB', 'POST', `${WS}/consultations`, 201, consult(await slot(), { paymentMethod: 'razorpay' }))).json.data;
+        await BookingModel.updateOne({ _id: r.booking._id }, { $set: { 'lifecycle.prescriptionUploaded': { at: new Date().toISOString() },
+          prescription: { advice: 'SECRET-ADVICE', medicines: [{ name: 'Secretamol' }], testsAdvised: ['CBC'], prescribedAt: new Date(),
+            prescribedBySpecialistId: D, diagnosis: 'SECRET-DIAGNOSIS' } } });
+        const orderId = r.payment.razorpayOrderId;
+        gateway.payments[orderId] = [{ id: 'pay_r21b_' + oid(), order_id: orderId, amount: 50000, currency: 'INR', status: 'captured', fee: 1180 }];
+        await beforeReconcile();
+        const out = (await expect(who, 'POST', `${WS}/payments/reconcile`, 200, { paymentTransactionId: r.payment.paymentTransactionId })).json.data;
+        assert.equal(out.state, 'paid');
+        return { id: r.booking._id, out };
+      };
+      // A member scoped to another branch settles the payment but sees only its state.
+      const other = await paidVia('LB2');
+      assert.deepEqual(Object.keys(other.out.entity).sort(), ['_id', 'paymentStatus', 'status']);
+      assert.equal(other.out.entity.status, 'confirmed');
+      // In scope and verified: the booker view with its prescription (never the diagnosis).
+      const mine = await paidVia('LB');
+      assert.equal(mine.out.entity.prescription.advice, 'SECRET-ADVICE');
+      assert.equal(JSON.stringify(mine.out).includes('SECRET-DIAGNOSIS'), false);
+      // The lab's verification revoked before the answer: the booking, never its prescription.
+      try {
+        const revoked = await paidVia('LO', async () => { await PartnerModel.updateOne({ _id: L }, { $set: { 'verification.state': 'pending' } }); });
+        assert.equal(revoked.out.entity._id, revoked.id);
+        assert.equal(revoked.out.entity.prescription, undefined);
+        assert.equal(JSON.stringify(revoked.out).includes('SECRET'), false);
+      } finally { await PartnerModel.updateOne({ _id: L }, { $set: { 'verification.state': 'verified' } }); }
+    });
+
+    await check('r21b: a clinic is refused (403 LAB_PARTNER_REQUIRED) on the lookup and the create before any phone is counted or audited; the link index fails closed', async () => {
+      const clinic = await mkLab('B Clinic', '29AABCM1234F1ZR', 'clinic');
+      const audits = () => AssistedAuditEventModel.countDocuments({ orgId: clinic.id });
+      const ws = `/api/v1/partner-workspace/admin/${clinic.id}/workspace/assisted`;
+      await expect('ADMIN', 'POST', `${ws}/patients/lookup`, 403, { phone: PHONE_X }, 'LAB_PARTNER_REQUIRED');
+      await expect('ADMIN', 'POST', `${ws}/consultations`, 403, consult(await slot()), 'LAB_PARTNER_REQUIRED');
+      assert.equal(await audits(), 0, 'nothing counted or audited for a clinic');
+      // An unverified lab: refused the same way (403 PARTNER_NOT_VERIFIED) before counting.
+      await expect('L3', 'POST', `${WS}/patients/lookup`, 403, { phone: PHONE_X }, 'PARTNER_NOT_VERIFIED');
+      // The lab link's unique index missing: a lab create answers 503 INDEXES_OUTDATED and writes nothing.
+      const before = await BookingModel.countDocuments({ 'assisted.bookedBy.kind': 'lab' });
+      const { resetIndexChecks } = await import('@/modules/common/utils/requiredIndex');
+      await AssistedLinkModel.collection.dropIndex('bookerKind_1_bookerId_1_userId_1');
+      resetIndexChecks();
+      try {
+        await expect('LB', 'POST', `${WS}/consultations`, 503, consult(await slot()), 'INDEXES_OUTDATED');
+        assert.equal(await BookingModel.countDocuments({ 'assisted.bookedBy.kind': 'lab' }), before);
+      } finally { await AssistedLinkModel.syncIndexes(); }
+      await book();
     });
 
     // ───────────────────────── Reconciliation ─────────────────────────

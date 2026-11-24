@@ -17,7 +17,7 @@ import {
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { assistedFlags } from '@/modules/assisted/flags';
 import type { AssistedBookingKind } from '@/modules/assisted/types';
-import { refOf, type BookerLike } from '@/modules/assisted/bookers';
+import { bookerAuditFields, refOf, type BookerLike } from '@/modules/assisted/bookers';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
 /**
@@ -131,7 +131,7 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
       return { filter: { _id: id, status: 'pending', paymentStatus: 'pending', 'assisted.funding.state': 'pending' },
         update: { $set: { status: 'confirmed', paymentStatus: 'paid', paymentTransactionId: rid, 'assisted.funding.state': 'captured',
           ...(rec.razorpayPaymentId ? { 'assisted.funding.razorpayPaymentId': rec.razorpayPaymentId } : {}),
-          'lifecycle.paid': { at, by: 'pharmacy_card', amount: amount / 100 }, 'lifecycle.confirmed': { at } } } };
+          'lifecycle.paid': { at, by: `${recordPayerOf(rec).kind}_card`, amount: amount / 100 }, 'lifecycle.confirmed': { at } } } };
     },
     followUp: async (booking) => {
       // Meet (neutral), reminders, the notices to the patient and the doctor.
@@ -171,11 +171,6 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
     },
   },
 };
-
-/** The audit's actor and organisation of a payer's booking (a pharmacy, or a lab member for its lab). */
-const auditActorOf = (payerKind: string, actorId: unknown, payerId: string) => ({
-  actorKind: (payerKind === 'pharmacy' ? 'pharmacy' : 'member') as 'pharmacy' | 'member', actorId: lower(actorId),
-  orgKind: payerKind as 'pharmacy' | 'lab', orgId: lower(payerId) });
 
 function viewOf(kind: AssistedBookingKind, r: IPaymentRecord, b: Row): CardPaymentView {
   return { paymentRequired: true, paymentTransactionId: String(r._id), razorpayOrderId: r.razorpayOrderId,
@@ -279,7 +274,7 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
     // nothing moves again; the follow-up below is resumed and only then is the record processed.
     if (lower(b.paymentTransactionId) === rid && lower(f.paymentRecordId) === rid && f.state !== 'pending' && f.state !== 'not_paid') return 'appliedBefore';
     const applicable = !blocked && k.waiting(b) && f.state === 'pending' && lower(f.paymentRecordId) === rid && amount === f.amountMinor;
-    const audit = { ...auditActorOf(f.payerKind, b.assisted.bookedBy.actorId, f.payerId), bookingId: id };
+    const audit = { ...bookerAuditFields(f.payerKind, b.assisted.bookedBy.actorId, f.payerId), bookingId: id };
     if (applicable) {
       const { filter, update } = k.confirm(id, rid, rec, amount);
       const moved = await Model.updateOne(filter, update, { session: s });
@@ -349,7 +344,7 @@ export async function settleOtherAssistedCaptures(record: IPaymentRecord, captur
         amountMinor: p.amount }, s);
       if (!q.created) return false;
       await Model.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': q.row } }, { session: s });
-      await auditIn({ ...auditActorOf(payer.kind, b?.assisted?.bookedBy?.actorId ?? payerId, payerId), bookingId: id,
+      await auditIn({ ...bookerAuditFields(payer.kind, b?.assisted?.bookedBy?.actorId ?? payerId, payerId), bookingId: id,
         action: 'booking.extra_capture', detail: { ...KINDS[kind].auditDetail, paymentRecordId: lower(record._id), razorpayPaymentId: p.id, amountMinor: p.amount } }, s);
       return true;
     });
