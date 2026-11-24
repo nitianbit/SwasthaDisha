@@ -1,6 +1,7 @@
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { WalletTopupLotModel, type IWalletTopupLot } from '@/modules/pharmacyWallet/model/lots';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 
 /**
  * Top-up lots of every wallet store (§5.3; r13 / round 2d moved them here from `pharmacyWallet/ledger.ts` unchanged, with
@@ -71,3 +72,9 @@ export async function openLotIn(ref: WalletRef, lot: { paymentRecordId: string; 
 export async function lotsOf(ref: WalletRef, limit = 200): Promise<IWalletTopupLot[]> {
   return await WalletTopupLotModel.find(refFilter(ref)).sort({ createdAt: -1 }).limit(limit).lean() as IWalletTopupLot[];
 }
+
+/** A card top-up opens a lot only while `on()` (its kind's switch) and the lot index is built (fail closed = no lot). */
+export const lotsWritableWhen = (on: () => boolean) => async (): Promise<boolean> => {
+  if (!on()) return false;
+  try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
+};

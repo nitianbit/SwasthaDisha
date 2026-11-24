@@ -4483,7 +4483,7 @@ no new store, no copied money code. Pharmacy and lab behaviour is unchanged (the
 | Switch | `assisted/flags.ts` | `ASSISTED_BOOKING_ENABLED_DOCTOR` and `assertDoctorWalletOn` |
 | Reconciliation | `partnerWallets/reconciliation.ts` | Partner wallet invariants already cover doctor wallets (`ref: 'doctor:<id>'`); the uncredited list covers lab and doctor top-ups (`walletKind`, then `partnerId` or `specialistId`; `state: 'paid_no_owner'` for a partner-flow record naming nobody) |
 
-Checks: `test/assisted/r20-phase3a.integration.ts` (14 checks).
+Checks: `test/assisted/r20-phase3a.integration.ts` (14 checks; 15 with the review fix below).
 
 **ASSUMED (r20 build, reversible)**
 
@@ -4541,9 +4541,17 @@ amountMinor, createdAt, state }`.
   older code would credit a CUSTOMER wallet keyed by the doctor's id. Check
   `db.paymentrecords.countDocuments({ 'notes.flow': 'doctor_wallet_recharge', walletCreditedAt: { $exists: false }, status: { $in: ['created', 'paid'] } })` = 0.
 
+**Review of 2d, folded in (r20b, its own commit)**
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The lab wallet routes re-implemented member admission (`labMember`) | The shared partner permission guard (`middleware/auth.ts`) takes `{ verified }`: `requirePartnerPermission` (operational partner, as before) and the new `requirePartnerPermissionUnverified` (an active member of an active partner, verified or not: 2d D5). The lab routes use them, then a lab check (404 `WALLET_NOT_FOUND`). A clinic member without the wallet permission now gets 403 `INSUFFICIENT_PERMISSIONS` before that 404. Doctors keep `requireSpecialist` + `requireEligibleDoctor` |
+| 2 | `lotsWritable` was copied in the pharmacy and partner kinds | One `walletLots.lotsWritableWhen(switch)` for every kind |
+| 3 | The pharmacy admin top-up had no server-side cap (only the web form's ₹2,00,000) | Owner: keep ₹2,00,000. The shared `adminTopup` refuses an amount over ₹2,00,000 (400 `VALIDATION_ERROR`, nothing credited) for every kind, so `POST /api/v1/pharmacy-wallet/topup` (admin) too. The pharmacy's own Razorpay top-up is not an admin top-up and is unchanged. Check: "review of 2d (3)" (15 checks in all) |
+
 **Seen, not changed**
 
 - Before r20 a `wallet_recharge` record whose flow was not the pharmacy's was always credited to the customer wallet of its
   `userId`; r20 refuses partner flows without an owner, but a pharmacy-flow record without `payerPharmacyId` still takes
   the old customer path (pharmacy behaviour kept; the S6 audit lists such records).
-- The 2d "seen" notes stand (the `$type` partial indexes; no server cap on the pharmacy admin top-up).
+- The 2d note on `$type` partial indexes stands (the pharmacy admin top-up cap is now enforced, above).

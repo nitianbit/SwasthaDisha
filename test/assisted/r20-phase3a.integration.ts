@@ -39,7 +39,7 @@ import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@
 import { PharmacyWalletService } from '@/modules/pharmacyWallet/services';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
-import { walletTransaction } from '@/modules/pharmacyWallet/walletCore';
+import { adminTopup, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
 import { BannerService } from '@/modules/banners/services';
 import { BannerRepository } from '@/modules/banners/repository';
 import { PartnerRepository } from '@/modules/partners/repository';
@@ -52,7 +52,7 @@ import { LabBookingService } from '@/modules/partners/services/labBookings';
 import { resetIndexChecks } from '@/modules/common/utils/requiredIndex';
 import { AssistedAlertModel, AssistedAuditEventModel } from '@/modules/assisted/model';
 import { PartnerWalletEntryModel, PartnerWalletModel } from '@/modules/partnerWallets/model';
-import { debitDoctorWalletIn, refundDoctorWalletIn } from '@/modules/partnerWallets/ledger';
+import { debitDoctorWalletIn, partnerStore, refundDoctorWalletIn } from '@/modules/partnerWallets/ledger';
 import SpecialistModel from '@/modules/specialists/model';
 import UserModel from '@/modules/user/model';
 import { WalletModel } from '@/modules/wallet/model';
@@ -475,6 +475,20 @@ async function main() {
       assert.equal(await PartnerWalletEntryModel.countDocuments({}), doctorEntries);
       await expect('D', 'POST', `${ME}/wallet/topups/${String(rec._id)}/check`, 404, undefined, 'PAYMENT_RECORD_NOT_FOUND');
       assert.equal(await customerWallets(), 0);
+    });
+
+    await check('review of 2d (3): every admin top-up is at most ₹2,00,000 on the server — the pharmacy admin route too; the shared function refuses more', async () => {
+      const P2 = oid();
+      await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(P2), name: 'Cap Pharmacy', phone: '9700000399', isActive: true, isVerified: true } as never);
+      const url = '/api/v1/pharmacy-wallet/topup';
+      await expect('ADMIN', 'POST', url, 400, { pharmacyId: P2, amount: 200000.01 }, 'VALIDATION_ERROR', { 'idempotency-key': newKey('cap') });
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P2 }), 0, 'nothing credited');
+      const ok = await expect('ADMIN', 'POST', url, 200, { pharmacyId: P2, amount: 200000 }, undefined, { 'idempotency-key': newKey('cap') });
+      assert.equal(ok.json.data.balancePaise, 20_000_000, 'the cap is inclusive');
+      // The pharmacy's own Razorpay top-up is not an admin top-up: its body schema is unchanged.
+      for (const store of [partnerStore('doctor', D2), partnerStore('lab', L)]) {
+        await assert.rejects(adminTopup(store, { key: newKey('cap'), amountMinor: 20_000_001, adminId: ADMIN }), (e: any) => e.status === 400 && e.code === 'VALIDATION_ERROR');
+      }
     });
   } finally {
     server.close();

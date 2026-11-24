@@ -5,7 +5,7 @@ import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/p
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { assistedFlags } from '@/modules/assisted/flags';
-import { withdrawableOfIn as lotsWithdrawableOfIn } from '@/modules/pharmacyWallet/walletLots';
+import { lotsWritableWhen, withdrawableOfIn as lotsWithdrawableOfIn } from '@/modules/pharmacyWallet/walletLots';
 import { chargeBackLotIn, postMovementIn, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
 import type { IPharmacyWallet, IPharmacyWalletTransaction } from '@/modules/pharmacyWallet/types';
 
@@ -145,10 +145,7 @@ export const pharmacyTopups: TopupKind<IPharmacyWallet, IPharmacyWalletTransacti
   store: (id) => pharmacyStore(id),
   chargeback: 'take',
   /** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
-  async lotsWritable() {
-    if (!assistedFlags.pharmacy()) return false;
-    try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
-  },
+  lotsWritable: lotsWritableWhen(assistedFlags.pharmacy),
   rechargeDescription: 'Pharmacy wallet recharge via Razorpay',
 };
 

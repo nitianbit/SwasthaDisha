@@ -3,10 +3,9 @@ import { Router, type NextFunction, type Response } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { AppError } from '@/modules/common/types';
-import { assertOperationalPartner, requireAdmin, requireSpecialist, type AuthRequest } from '@/modules/middleware/auth';
+import { requireAdmin, requirePartnerPermission, requirePartnerPermissionUnverified, requireSpecialist, type AuthRequest } from '@/modules/middleware/auth';
 import { requireEligibleDoctor } from '@/modules/specialists/eligibility';
 import { DOCTOR, LAB, type PartnerOwner } from '@/modules/partnerWallets/ledger';
-import MemberModel from '@/modules/partners/model/member';
 import PartnerModel from '@/modules/partners/model';
 import type { PartnerPermission } from '@/modules/partners/types';
 import { reconcilePaymentSchema, verifyPaymentSchema } from '@/modules/payment/validation';
@@ -25,23 +24,19 @@ import { adminKeyParamSchema, adminLabTopupSchema, walletTopupSchema, pageQueryS
  */
 const fail = (status: number, code: string, message: string) => new AppError({ status, code, message });
 
+/**
+ * A lab member holding `perm` (owners hold all), through the shared partner guards: `operational` (a new top-up) needs a
+ * verified lab, the rest admit an unverified one (2d D5). The workspace must be a lab's (404 WALLET_NOT_FOUND otherwise).
+ */
+const labOnly = catchAsync(async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  const partner = await PartnerModel.findById(req.user!.partnerId).select('kind').lean();
+  if (partner?.kind !== 'lab') throw fail(404, 'WALLET_NOT_FOUND', 'This workspace has no lab wallet');
+  next();
+});
 const labMember = (perm: PartnerPermission, opts: { operational?: boolean } = {}) =>
-  catchAsync(async (req: AuthRequest, _res: Response, next: NextFunction) => {
-    if (!req.user) throw fail(401, 'UNAUTHORIZED', 'Authentication is required');
-    if (req.user.userType !== 'partner') throw fail(403, 'FORBIDDEN', 'Partner access is required');
-    if (opts.operational) await assertOperationalPartner(req);
-    const member = await MemberModel.findById(req.user.memberId || req.user._id).select('partnerId isActive role permissions').lean();
-    if (!member || member.isActive === false) throw fail(403, 'PARTNER_MEMBER_INACTIVE', 'Partner membership is inactive');
-    const partner = await PartnerModel.findById(member.partnerId).select('kind isActive').lean();
-    if (!partner || partner.isActive === false) throw fail(403, 'PARTNER_INACTIVE', 'Partner is inactive');
-    if (partner.kind !== 'lab') throw fail(404, 'WALLET_NOT_FOUND', 'This workspace has no lab wallet');
-    if (member.role !== 'owner' && !(member.permissions ?? []).includes(perm)) throw fail(403, 'INSUFFICIENT_PERMISSIONS', `Missing permissions: ${perm}`);
-    req.user.memberId = String(member._id);
-    req.user.partnerId = String(member.partnerId).toLowerCase();
-    next();
-  });
+  [opts.operational ? requirePartnerPermission(perm) : requirePartnerPermissionUnverified(perm), labOnly];
 
-const memberOf = (req: AuthRequest): svc.LabMember => ({ partnerId: String(req.user!.partnerId), memberId: String(req.user!.memberId) });
+const memberOf = (req: AuthRequest): svc.LabMember => ({ partnerId: String(req.user!.partnerId).toLowerCase(), memberId: String(req.user!.memberId) });
 const send = (res: Response, data: unknown, extra: Record<string, unknown> = {}) => {
   res.setHeader('Cache-Control', 'private, no-store');
   res.status(200).json({ success: true, data, ...extra });
@@ -52,18 +47,18 @@ const pageOf = (req: AuthRequest) => req.query as { cursor?: string; limit?: num
 /** Mounted at `/api/v1/partner-workspace/assisted` (2e adds its lab-booker routes here). */
 export const labWalletWorkspaceRouter = Router();
 const labOf = (req: AuthRequest) => memberOf(req).partnerId;
-labWalletWorkspaceRouter.get('/wallet', labMember('wallet.view'), catchAsync(async (req: AuthRequest, res) => send(res, await svc.walletOf(LAB, labOf(req)))));
-labWalletWorkspaceRouter.get('/wallet/entries', labMember('wallet.view'), validate(pageQuerySchema, 'query'),
+labWalletWorkspaceRouter.get('/wallet', ...labMember('wallet.view'), catchAsync(async (req: AuthRequest, res) => send(res, await svc.walletOf(LAB, labOf(req)))));
+labWalletWorkspaceRouter.get('/wallet/entries', ...labMember('wallet.view'), validate(pageQuerySchema, 'query'),
   catchAsync(async (req: AuthRequest, res) => listed(res, await svc.entriesOf(LAB, labOf(req), pageOf(req)))));
-labWalletWorkspaceRouter.get('/wallet/topups', labMember('wallet.view'), validate(pageQuerySchema, 'query'),
+labWalletWorkspaceRouter.get('/wallet/topups', ...labMember('wallet.view'), validate(pageQuerySchema, 'query'),
   catchAsync(async (req: AuthRequest, res) => listed(res, await svc.topupsOf(LAB, labOf(req), pageOf(req)))));
-labWalletWorkspaceRouter.post('/wallet/topups', labMember('wallet.manage', { operational: true }), validate(walletTopupSchema, 'body'),
+labWalletWorkspaceRouter.post('/wallet/topups', ...labMember('wallet.manage', { operational: true }), validate(walletTopupSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.createTopup(LAB, labOf(req), memberOf(req).memberId, req.body))));
-labWalletWorkspaceRouter.post('/wallet/topups/:paymentTransactionId/check', labMember('wallet.view'),
+labWalletWorkspaceRouter.post('/wallet/topups/:paymentTransactionId/check', ...labMember('wallet.view'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.checkLabTopup(LAB, memberOf(req), req.params.paymentTransactionId))));
-labWalletWorkspaceRouter.post('/payments/verify', labMember('wallet.manage'), validate(verifyPaymentSchema, 'body'),
+labWalletWorkspaceRouter.post('/payments/verify', ...labMember('wallet.manage'), validate(verifyPaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.verifyLabPayment(LAB, memberOf(req), req.body))));
-labWalletWorkspaceRouter.post('/payments/reconcile', labMember('wallet.manage'), validate(reconcilePaymentSchema, 'body'),
+labWalletWorkspaceRouter.post('/payments/reconcile', ...labMember('wallet.manage'), validate(reconcilePaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.reconcileLabPayment(LAB, memberOf(req), String(req.body.paymentTransactionId)))));
 
 /**

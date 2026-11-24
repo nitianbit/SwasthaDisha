@@ -451,7 +451,11 @@ export const requirePartner = (
   }
 };
 
-export const assertOperationalPartner = async (req: AuthRequest): Promise<void> => {
+/**
+ * The request's member is active and its partner exists and is active; `verified` also requires a verified partner (an
+ * operational partner). r20: the unverified admission serves routes over a partner's own money (2d D5, §19.8 item b).
+ */
+async function assertPartnerMember(req: AuthRequest, verified: boolean): Promise<void> {
   const memberId = req.user?.memberId || req.user?._id;
   if (!memberId) {
     throw new AppError({ status: 403, code: 'PARTNER_MEMBERSHIP_REQUIRED', message: 'Partner membership is required' });
@@ -464,12 +468,14 @@ export const assertOperationalPartner = async (req: AuthRequest): Promise<void> 
   if (!partner || partner.isActive === false) {
     throw new AppError({ status: 403, code: 'PARTNER_INACTIVE', message: 'Partner is inactive' });
   }
-  if ((partner as any).verification?.state !== 'verified') {
+  if (verified && (partner as any).verification?.state !== 'verified') {
     throw new AppError({ status: 403, code: 'PARTNER_NOT_VERIFIED', message: 'Partner verification is required for this operation' });
   }
   req.user!.memberId = String(member._id);
   req.user!.partnerId = String(member.partnerId);
-};
+}
+
+export const assertOperationalPartner = (req: AuthRequest): Promise<void> => assertPartnerMember(req, true);
 
 export const requireOperationalPartner = async (
   req: AuthRequest,
@@ -490,7 +496,7 @@ export const requireOperationalPartner = async (
   }
 };
 
-const partnerPermissionGuard = (mode: 'all' | 'any', perms: PartnerPermission[]) => {
+const partnerPermissionGuard = (mode: 'all' | 'any', perms: PartnerPermission[], opts: { verified: boolean } = { verified: true }) => {
   return async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
@@ -499,7 +505,7 @@ const partnerPermissionGuard = (mode: 'all' | 'any', perms: PartnerPermission[])
       if (req.user.userType !== 'partner') {
         throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner access is required' });
       }
-      await assertOperationalPartner(req);
+      await assertPartnerMember(req, opts.verified);
       const member = await MemberModel.findById(req.user.memberId).select('role permissions').lean();
       if (!member) {
         throw new AppError({ status: 403, code: 'PARTNER_MEMBER_NOT_FOUND', message: 'Member not found' });
@@ -523,6 +529,8 @@ const partnerPermissionGuard = (mode: 'all' | 'any', perms: PartnerPermission[])
 export const requirePartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('all', perms);
 /** At least one of the listed permissions (owners hold all). */
 export const requireAnyPartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('any', perms);
+/** r20: every listed permission, for an active member of an active partner whether verified or not (its own money). */
+export const requirePartnerPermissionUnverified = (...perms: PartnerPermission[]) => partnerPermissionGuard('all', perms, { verified: false });
 
 /**
  * r9 (owner decision): a partner member linked to a doctor (`doctorId`: the owner of a doctor's own practice, or a

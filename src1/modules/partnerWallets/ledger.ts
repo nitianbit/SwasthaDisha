@@ -7,8 +7,8 @@ import SpecialistModel from '@/modules/specialists/model';
 import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import PartnerModel from '@/modules/partners/model';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
-import { postMovementIn, type Posted, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
-import type { LotAllocation } from '@/modules/pharmacyWallet/walletLots';
+import { ADMIN_TOPUP_MAX_MINOR, postMovementIn, type Posted, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { lotsWritableWhen, type LotAllocation } from '@/modules/pharmacyWallet/walletLots';
 import {
   PartnerWalletEntryModel, PartnerWalletModel, type IPartnerWallet, type IPartnerWalletEntry, type PartnerWalletEntryKind, type PartnerWalletOwnerKind,
 } from '@/modules/partnerWallets/model';
@@ -29,7 +29,7 @@ export const PARTNER_WALLET_POLICY = {
   minTopupMinor: 100,
   withdrawalsPerWeek: 1,
   cardHoldDays: 7,
-  adminTopupMaxMinor: 20_000_000,
+  adminTopupMaxMinor: ADMIN_TOPUP_MAX_MINOR,
 } as const;
 
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
@@ -123,10 +123,7 @@ TopupKind<IPartnerWallet, IPartnerWalletEntry> {
     storeFor: (r) => store(String(r[o.payerField])),
     store,
     chargeback: 'flag',
-    async lotsWritable() {
-      if (!o.on()) return false;
-      try { await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 }); return true; } catch { return false; }
-    },
+    lotsWritable: lotsWritableWhen(o.on),
     assertCreditable: assertPartnerWalletIndexes,
     rechargeDescription: o.description,
     cardHoldDays: PARTNER_WALLET_POLICY.cardHoldDays,
