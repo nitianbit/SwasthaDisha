@@ -128,13 +128,13 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     const f = a.funding;
     if (f.amountMinor > 0) {
       // r26: the payer's own wallet entries (a doctor's are in the partner store).
-      const debits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:debit`);
+      const debits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted_lab:${id}:debit`);
       if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
         mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const credits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:refund`);
+    const credits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted_lab:${id}:refund`);
     if (credits.length > 1 || (refunded > 0 && (credits.length !== 1 || Number(credits[0]!.amountPaise) !== refunded)) || (refunded === 0 && credits.length > 0)) {
       mismatches.push({ check: 'lab_refund_posted', ref: id, detail: { refundedMinor: refunded, credits: credits.length } });
     }
@@ -195,7 +195,7 @@ async function instantChecks(scope: { since: Date | null; flagged: string[] }): 
     const id = lower(r._id);
     const f = r.assisted!.funding;
     const held = r.funding?.partnerMinor ?? 0;
-    const entries = (kind: string) => bookerEntriesOf(f.payerKind, `assisted_instant:${id}:${kind}`);
+    const entries = (kind: string) => bookerEntriesOf(f.payerKind, f.payerId, `assisted_instant:${id}:${kind}`);
     const [debits, refunds, returns, cancels] = await Promise.all([entries('debit'), entries('refund'), entries('quote_return'), entries('cancel_refund')]);
     if (held !== f.amountMinor || (f.amountMinor > 0 && (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor
       || lower(debits[0]!.pharmacyId) !== lower(f.payerId)))) {

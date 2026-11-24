@@ -45,12 +45,15 @@ export async function bookerEntryLotsIn(payerKind: BookerKind, entryId: string |
 }
 
 /** The booker-wallet entries posted under one operation key (reconciliation). */
-export async function bookerEntriesOf(payerKind: BookerKind, operationKey: string) {
+export async function bookerEntriesOf(payerKind: BookerKind, payerId: string, operationKey: string) {
+  // r26: a doctor's entries are in the partner store (its `{ walletId, operationKey }` key; read by owner and key).
   if (payerKind === 'doctor') {
-    const rows = await PartnerWalletEntryModel.find({ ownerKind: 'doctor', operationKey }).select({ amountMinor: 1, ownerId: 1 }).lean();
+    const rows = await PartnerWalletEntryModel.find({ ownerKind: 'doctor', ownerId: String(payerId).toLowerCase(), operationKey })
+      .select({ amountMinor: 1, ownerId: 1 }).lean();
     return rows.map((r) => ({ _id: r._id, amountPaise: Math.abs(r.amountMinor), pharmacyId: r.ownerId }));
   }
   if (payerKind !== 'pharmacy') return [];
-  return PharmacyWalletTransactionModel.find({ operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean() as unknown as
+  // The `{ pharmacyId, operationKey }` unique index serves this read.
+  return PharmacyWalletTransactionModel.find({ pharmacyId: payerId, operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean() as unknown as
     Promise<{ _id: unknown; amountPaise: number; pharmacyId: string }[]>;
 }
