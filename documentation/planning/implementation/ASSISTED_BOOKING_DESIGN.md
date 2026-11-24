@@ -3289,3 +3289,96 @@ Patient app: lab booking reads carry `paidBy` and `assisted.{shortRef, bookedBy{
   the patient's wallet): `db.partner_lab_bookings.countDocuments({ source: 'pharmacy_assisted', status: { $nin: ['completed','cancelled','no_show'] } })` must be 0.
 - Merge with r10g: expected to touch `assisted/consultations.ts` and `assisted/limits.ts`, which r11 does not change; r11
   adds one line to `assisted/flags.ts` (the switch) and one action to `assisted/model`.
+
+### 24.12 Round 2c build record: the lab front desk (r12, 2026-11-25)
+
+Branch `m0/r12-phase2c` from `f5f171c9` (round 2a). Local commits only. Built: §24.6 with the owner's answers of 23 Nov, which
+win over §24.6 where they differ: the patient **may cancel a desk booking from the app** until the sample is taken or the visit
+is recorded (no money moves; the desk member is told); **no blocking limits except the hourly phone lookups** (no per-number,
+new-account or cancellation cap); SMS as comments; labs see only typed or masked names. Owner, 25 Nov: no duplicated code —
+the 2a helpers were generalised in one place and reused (see C15).
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Model | `partners/model/labBooking.ts` | `desk` (typed: `memberId, branchId, requestKey, requestHash, arrivedAt?, consent, preferredLanguage, payAtLab, notes?, newAccount`); `settlement.settlementSystem` `'ledger' \| 'lab_desk'`; `paymentDeadline` required unless `lab_desk`; `slot.walkIn` (seat fields required unless a walk-in); `cancellation.reason: 'desk'`; indexes `{desk.requestKey}` unique partial and `{partnerId, source, createdAt:-1}` |
+| Links | `assisted/model/links.ts` (new) | `assisted_links` `{ bookerKind: 'lab'\|'doctor', bookerId, userId, typedName, consent: 'patient_agreed', consentRecordedAt, consentRecordedById }`, unique `{bookerKind, bookerId, userId}`; upserted in the desk transaction with the first typed name, never overwritten |
+| Desk | `assisted/labDesk.ts` (new), `assisted/controller/phase2c.ts`, `assisted/routes/labDesk.ts`, `assisted/validation/labDesk.ts` | lookup; create (walk-in, lab visit on a slot, home collection) in the §24.3 order and ONE transaction; by-key / abandon; desk cancel. Registered inside `registerWorkspaceRoutes`, so members and the admin mirror both get it |
+| Guards (§5.5) | `partners/services/labBookings.ts` | pay-again / wallet / gateway on a desk row → 409 `PAY_AT_LAB` (`retryPayment` and `resume`); the expiry sweep leaves out `settlementSystem: 'lab_desk'`; `postEarning` returns unless `ledger` (so no payout system ever sees a desk row); every cancel of a desk row (patient, desk, lab reject, admin) moves no money, keeps `paymentStatus: 'pending'` and releases the seat once (none for a walk-in); walk-ins: `no-show` 409 `WALK_IN_ARRIVED`, reschedule 409 `WALK_IN_NOT_RESCHEDULABLE`, `visit` at once |
+| Views | `assisted/deskViews.ts` (new), `partners/services/labBookings.ts` | lab view: `source`, `payAtLab`, `desk` without key or hash, `bill`; patient view: `source`, `payAtLab`, `pricing` (the lab's price), `bill`, no `desk`; the workspace list filters by `source` |
+| Bill link (Q2) | `partners/services/invoice.ts`, `partners/model/invoice.ts`, `partners/repository/invoice.ts` | `labBookingId` / `openLabBookingId` (unique partial: one open bill); one link table `BILL_LINKS` drives the appointment and lab booking admission tails, the race answer and the bill lookups; a cancelled bill frees the link; `labBookingId` joins the request hash and the checksum only when set (older bills keep theirs) |
+| Account source | `user/model`, `user/types`, `customerResolver.ts` | `createdSource: 'lab_desk'` |
+| Catalogue read | `partners/routes/index.ts` | `GET /catalogue` also for `bookings.manage` (the desk reads the tests it books) |
+
+Check: `test/assisted/r12-phase2c.integration.ts` (24 checks); the 2a suite (26), Q3 (35) and Q14 (27) pass unchanged. Full regression
+(`prun.sh`, 4 jobs): tsc 17; 3 suites failed in the parallel run — q16a (its raw sweep rows have no `settlement`; fixed by leaving out only
+`lab_desk` rows, then 41/41), q16c (a shared upload folder counted by parallel suites; 31/31 alone) and phase0 (a timing check under load;
+29/29 alone).
+
+**ASSUMED (r12 build, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| C1 | Stored key `lab_desk:<partnerId>:<memberId>:<key>` (not `desk:<memberId>:<key>`); claim scope `lab_desk_create:<partnerId>:<memberId>` | an admin acting for two labs never collides |
+| C2 | A family member chosen **by id** is stored and shown **masked**; typed names (self, a family member by name) as typed | L15: the lab did not type that name |
+| C3 | No new-account count (§24.6.3 `countNewAccountIn`); lookups and every non-replay create count against the hourly lookup limit, audited with ids only | owner, 23 Nov |
+| C4 | A walk-in stores `slot.date` / `startTime` (IST arrival) for display; `slotId` / `endTime` absent; `desk.arrivedAt` = `startsAt` | readers show a time |
+| C5 | Desk cancel writes `cancellation.reason: 'desk'`; a lab reject on a desk row also works and moves no money | the existing steps stay valid |
+| C6 | The patient cancels a desk row any time while `confirmed` (no 2 h window, also after a moved no-show); "not mine" stays for partner-paid rows (a desk row answers 409 `NOT_ASSISTED_BOOKING`) | nothing to refund; the patient can cancel |
+| C7 | The `bill` on views has the appointment bill shape `{ invoiceId, serial, number, state }` | one shape for the web |
+| C8 | Cancelling a desk booking does not cancel its bill (the lab cancels it with its own refund record); a cancelled booking cannot be newly billed | Q10 bill rules stay the lab's |
+| C9 | `PRICE_CHANGED` details reuse the 2a shape `{ priceMinor, listMinor, discountMinor: 0 }` | no new error shape |
+| C10 | No desk catalogue or slot route: the desk reads `GET /catalogue` and `GET /slots`; the desk may take any open seat starting after now (no 60-minute lead) | minimal API |
+| C11 | The desk member who booked is told of a patient cancel in their member inbox (`GET /me/notifications`); nobody when an admin booked | L12 |
+| C12 | An inactive or unverified lab: 403 `PARTNER_NOT_VERIFIED` for an admin acting (members get the admission's `PARTNER_INACTIVE` / `PARTNER_NOT_VERIFIED`) | S5 pattern |
+| C13 | A collector only on a home collection (400 `VALIDATION_ERROR` on a lab visit) | Q11 collector rule |
+| C14 | Patient notice after a desk create: "Booked at <lab> … Pay at the lab." (key `labdesk:<id>:booked:customer`) | §24.6.3 |
+| C15 | Shared, not copied (no behaviour change): `preparePatient` / `writePatientIn` / `countPhoneUse` (`assisted/patient.ts`), `validateLabRequest` / `labRequestContent` (`assisted/labBookings.ts`; 2a's hash is byte-identical), `admitLabItems` / `itemSnapshot` / `branchOffers` (`partners/services/labBookings.ts`), `istTimeHhmm`, `BILL_LINKS`. 2a now checks the payment method after the shared request rules | owner, 25 Nov |
+
+**API for the web** (partner workspace: members at `/api/v1/partner-workspace/…`, admins at
+`/api/v1/partner-workspace/admin/:partnerId/workspace/…`; permission `bookings.manage`; `{ success, data }`, `Cache-Control: private, no-store`)
+
+| Route | Request | `data` |
+|---|---|---|
+| `POST /lab-desk/patients/lookup` | `{ phone }` | `{ exists, holderNameMasked }` |
+| `POST /lab-desk/bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, branchId, visitMode:'lab'\|'home', slotId? (home: required; lab: absent = walk-in now), itemIds[1..20], address? (home only), collector? (home only: {memberId?, name, phone?}), acceptedTotalMinor, notes? }` | 201 (replay 200) `{ booking: <lab view>, patient: { name }, newAccount, replayed }` |
+| `GET /lab-desk/bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state:'used', booking (null once outside the member's branches) } \| { state:'abandoned' } \| { state:'unknown' }` |
+| `POST /lab-desk/bookings/:bookingId/cancel` | `{ reason?, expectedVersion? }` | `{ booking: <lab view>, alreadyCancelled }` |
+| `GET /lab-bookings` (existing) | adds `?source=self\|pharmacy_assisted\|lab_desk` | desk rows carry `bill` |
+| `GET /lab-bookings/:bookingId` (existing) | — | lab view; desk rows: `source:'lab_desk'`, `payAtLab:true`, `desk{memberId,branchId,arrivedAt,preferredLanguage,payAtLab,notes?,consent{method,statementVersion,statementLanguage,at}}`, `slot.walkIn`, `bill:{invoiceId,serial,number,state}\|null` |
+| `POST /invoices` (existing) | adds `labBookingId?` (not with `appointmentId`) | the bill, with `labBookingId` |
+| `GET /catalogue` (existing) | now also for `bookings.manage` | as before |
+| Steps (existing) | `visit`, `collect`, `assign`, `process`, reports, `complete`, `reject` | as before (no money on desk rows) |
+
+Patient app (existing routes): a desk row reads `source:'lab_desk'`, `payAtLab:true`, `pricing`, `bill`; `POST /api/v1/lab-bookings/:id/pay`
+→ 409 `PAY_AT_LAB`; `POST …/cancel` → `{ booking, refunded: 0 }` while `confirmed`.
+
+Errors (create): 400 `CONSENT_REQUIRED`, `REQUEST_KEY_REQUIRED`, `INVALID_PHONE`, `VALIDATION_ERROR`, `ADDRESS_REQUIRED`, `SLOT_REQUIRED`,
+`CATALOGUE_ITEM_NOT_AVAILABLE`, `VISIT_MODE_NOT_SUPPORTED`, `COLLECTOR_NOT_MEMBER`; 403 `LAB_PARTNER_REQUIRED`, `BRANCH_SCOPE_EXCEEDED`,
+`PARTNER_NOT_VERIFIED`; 404 `BRANCH_NOT_AVAILABLE`, `DEPENDENT_NOT_FOUND`; 409 `SLOT_UNAVAILABLE`, `PRICE_CHANGED`
+(`details: { priceMinor, listMinor, discountMinor }`), `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 429 `ASSISTED_LIMIT_REACHED` (lookups);
+503 `ASSISTED_BOOKING_DISABLED`, `INDEXES_OUTDATED`, `CUSTOMER_LINKING_UNAVAILABLE`. Desk cancel: 404 `LAB_BOOKING_NOT_FOUND` (not a desk row
+of this lab in the member's branches); 409 `LAB_BOOKING_CHANGED`, `LAB_BOOKING_NOT_CANCELLABLE`. Bill link: 404 `LAB_BOOKING_NOT_FOUND` (not a
+desk row of this lab, outside scope, or an online row, L10); 400 `LAB_BOOKING_BRANCH_MISMATCH`, `VALIDATION_ERROR`; 409
+`LAB_BOOKING_CUSTOMER_MISMATCH`, `LAB_BOOKING_CANCELLED`, `LAB_BOOKING_ALREADY_BILLED`; 503 `INDEXES_OUTDATED`. Steps: 409 `WALK_IN_ARRIVED`,
+`WALK_IN_NOT_RESCHEDULABLE`.
+
+**Switches and deploy order**
+
+- `LAB_DESK_ENABLED` (new, off unless exactly `"true"`; `assisted/flags.ts`). Off: lookup and create answer 503 `ASSISTED_BOOKING_DISABLED`.
+  Desk cancel, by-key, steps, reports, bills and patient reads and cancels always work.
+- Order: 1. deploy (switch off); 2. `npm run sync-indexes` (new: `partner_lab_bookings {desk.requestKey}` unique partial and
+  `{partnerId, source, createdAt}`; `assisted_links {bookerKind, bookerId, userId}` unique; `partner_invoices {openLabBookingId}` unique partial and
+  `{partnerId, labBookingId, issuedAt}`; until then a desk create, and a bill naming a lab booking, answer 503 `INDEXES_OUTDATED`);
+  3. `LAB_DESK_ENABLED=true`; 4. restart. No migration (fields are optional; the enum and `required` changes only loosen).
+- Rollback: the switch only. Never roll the code back below r12 while a desk row is open (older code requires `paymentDeadline` and treats
+  the row as ledger-settled): `db.partner_lab_bookings.countDocuments({ source: 'lab_desk', status: { $nin: ['completed','cancelled','no_show'] } })`
+  must be 0.
+
+**Seen, not changed**
+
+- Phase 1a `assisted/consultations.ts` and `assisted/pharmacyCommands.ts` still inline the patient steps and the phone count that
+  `preparePatient` / `countPhoneUse` now share (left for the r10g merge, which edits those functions).
+- The Q3 customer create keeps its own test check (database order of lines); only `itemSnapshot` / `branchOffers` are shared with it.
+- The unpaged `listForPartner` and the admin lab list carry no `bill`.

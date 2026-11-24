@@ -1,6 +1,6 @@
 import { Service, Container } from 'typedi';
 import { createHash } from 'crypto';
-import { canonicalJson } from '@/modules/partners/services/invoice';
+import { billsForLabBookings, canonicalJson } from '@/modules/partners/services/invoice';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { fundBookingFromWallet, recordGatewayCapture, refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -18,7 +18,7 @@ import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
 import CatalogueItemModel from '@/modules/partners/model/catalogueItem';
-import { PartnerLabBookingModel, IPartnerLabBooking, LabBookingStatus, ILabBookingSlot } from '@/modules/partners/model/labBooking';
+import { PartnerLabBookingModel, IPartnerLabBooking, LabBookingStatus, ILabBookingSlot, ILabBookingItem } from '@/modules/partners/model/labBooking';
 import type { VisitMode } from '@/modules/partners/model/slot';
 import { PartnerActor, assertBranchInScope, hasGlobalScope, recordPartnerAudit } from '@/modules/partners/services';
 import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/services/settlement';
@@ -28,6 +28,7 @@ import type { AuthRequest } from '@/modules/middleware/auth';
 import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
 import { LAB_NOT_DISPUTED_QUERY, assistedLabCustomerPart, assistedLabPartnerPart } from '@/modules/assisted/labViews';
 import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
 
@@ -54,6 +55,8 @@ const notFound = () => err(404, 'LAB_BOOKING_NOT_FOUND', 'Booking not found');
 /** Q14: a booking rescheduled after a no-show is never refunded. */
 const noShowNotRefundable = () => err(409, 'NO_SHOW_NOT_REFUNDABLE', 'This booking was rescheduled after a no-show and cannot be refunded');
 const changed = () => Object.assign(err(409, 'LAB_BOOKING_CHANGED', 'The booking changed meanwhile; reload and try again'), { retryable: true });
+/** r12 (§5.5): a lab desk booking is paid at the lab; no payment of it ever runs through Jansetu. */
+const payAtLab = () => err(409, 'PAY_AT_LAB', 'This booking is paid at the lab');
 
 export type LabNotifier = (n: { userId: string; type: 'booking_confirmed' | 'booking_cancelled' | 'general'; title: string; message: string;
   bookingId: string; key: string }) => Promise<void>;
@@ -110,15 +113,36 @@ function assertSameRequest(b: IPartnerLabBooking, requestHash: string): IPartner
   return b;
 }
 
+/** Whether a branch offers a visit mode (home collection or a lab visit). */
+export const branchOffers = (b: { services?: { homeCollection?: boolean; inLab?: boolean } } | null | undefined, visitMode: VisitMode): boolean =>
+  !!(visitMode === 'home' ? b?.services?.homeCollection : b?.services?.inLab);
+
+/** The booking's snapshot of a catalogue item (its price, GST and code as booked). */
+export const itemSnapshot = (i: Record<string, any>): ILabBookingItem => ({ catalogItemId: String(i._id), kind: i.kind, name: i.name, code: i.code,
+  priceMinor: i.priceMinor, mrpMinor: i.mrpMinor, gstRate: i.gstRate, sac: i.sac, reportTatHours: i.reportTatHours });
+
+/**
+ * r12: the tests a partner-made booking names (pharmacy 2a, lab desk 2c): this lab's own active items, not disabled by an
+ * admin, each offered for the visit mode; returned in the order the request listed them.
+ */
+export async function admitLabItems(partnerId: string, itemIds: string[], visitMode: VisitMode): Promise<Record<string, any>[]> {
+  const ids = [...new Set((itemIds ?? []).map((x) => String(x).toLowerCase()))];
+  const items = await CatalogueItemModel.find({ _id: { $in: ids }, partnerId: String(partnerId), isActive: true, adminDisabled: { $ne: true } }).lean() as Record<string, any>[];
+  if (items.length !== ids.length) throw err(400, 'CATALOGUE_ITEM_NOT_AVAILABLE', 'A selected test is no longer available');
+  if (items.some((i) => !(i.visitModes ?? []).includes(visitMode))) throw err(400, 'VISIT_MODE_NOT_SUPPORTED', 'A selected test is not offered for this visit type');
+  const byId = new Map(items.map((i) => [String(i._id).toLowerCase(), i]));
+  return ids.map((x) => byId.get(x)!);
+}
+
 /** r11: `booker` = the pharmacy that made and paid an assisted booking (§24.4.4). */
 type Actor = { kind: 'customer'; userId: string } | { kind: 'partner'; actor: PartnerActor } | { kind: 'system' } | { kind: 'booker'; id: string };
 const byOf = (a: Actor) => a.kind === 'customer' ? { by: a.userId, byKind: 'customer' as const }
   : a.kind === 'partner' ? { by: a.actor.memberId, byKind: a.actor.actorKind === 'admin' ? 'admin' as const : 'member' as const }
   : a.kind === 'booker' ? { by: a.id, byKind: 'booker' as const }
   : { by: 'system', byKind: 'system' as const };
-type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner';
-/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it. */
-const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system' };
+type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner' | 'desk';
+/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it. (r12: `desk` rows are never assisted.) */
+const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system', desk: 'desk' };
 const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
 const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
 
@@ -145,14 +169,17 @@ async function withPlaceNames(rows: IPartnerLabBooking[]): Promise<Record<string
   const branches = await BranchModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.branchId)))] } }).select({ name: 1, address: 1, phone: 1 }).lean() as any[];
   const p = new Map(partners.map((x) => [String(x._id), x]));
   const b = new Map(branches.map((x) => [String(x._id), x]));
+  // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills).
+  const bills = await billsForLabBookings(rows.filter((r) => isDeskRow(r)).map((r) => String(r._id)));
   return rows.map((r) => ({ ...customerView(r), lab: { name: p.get(String(r.partnerId))?.name },
-    branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined }));
+    branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined,
+    ...(isDeskRow(r) ? { bill: bills.get(String(r._id).toLowerCase()) ?? null } : {}) }));
 }
 export async function customerViewNamed(b: IPartnerLabBooking): Promise<Record<string, unknown>> { return (await withPlaceNames([b]))[0]!; }
 
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
-  return assistedLabCustomerPart(plainCustomerView(b), b as never);
+  return deskCustomerPart(assistedLabCustomerPart(plainCustomerView(b), b as never), b as never);
 }
 
 function plainCustomerView(b: IPartnerLabBooking): Record<string, unknown> {
@@ -177,14 +204,22 @@ function plainCustomerView(b: IPartnerLabBooking): Record<string, unknown> {
 
 export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, assisted: _a, ...rest } = b as any;
-  return assistedLabPartnerPart({
+  return deskLabPart(assistedLabPartnerPart({
     ...rest,
     report: {
       draftFiles: (b.report?.draftFiles ?? []).map((p) => `/api/static/${p}`),
       releasedFiles: (b.report?.releasedFiles ?? []).map((p) => `/api/static/${p}`),
       releases: b.report?.releases ?? [],
     },
-  }, b as never);
+  }, b as never), b as never);
+}
+
+/** r12 (§24.6.3): the lab views of desk rows carry their bill (`null` while none); other rows are unchanged. */
+export async function withDeskBills(partnerId: string, rows: IPartnerLabBooking[], views: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
+  const desk = rows.filter((r) => isDeskRow(r)).map((r) => String(r._id));
+  if (!desk.length) return views;
+  const bills = await billsForLabBookings(desk, partnerId);
+  return views.map((v, i) => (isDeskRow(rows[i]) ? { ...v, bill: bills.get(String(rows[i]!._id).toLowerCase()) ?? null } : v));
 }
 
 @Service()
@@ -209,8 +244,7 @@ export class LabBookingService {
       throw err(404, 'LAB_NOT_FOUND', 'This lab is not available');
     }
     const branch = await BranchModel.findById(input.branchId).lean();
-    const offered = input.visitMode === 'home' ? branch?.services?.homeCollection : branch?.services?.inLab;
-    if (!branch || String(branch.partnerId) !== String(partner._id) || branch.isActive === false || !offered) {
+    if (!branch || String(branch.partnerId) !== String(partner._id) || branch.isActive === false || !branchOffers(branch, input.visitMode)) {
       throw err(404, 'BRANCH_NOT_AVAILABLE', 'This branch does not offer that visit type');
     }
     if (input.visitMode === 'home' && !input.address) throw err(400, 'ADDRESS_REQUIRED', 'A home collection needs an address');
@@ -245,8 +279,7 @@ export class LabBookingService {
         partnerId: String(partner._id), branchId: String(branch._id), userId, createRequestKey: input.requestKey, createRequestHash: requestHash,
         patient, visitMode: input.visitMode, address: input.visitMode === 'home' ? input.address : undefined,
         slot: { slotId: String(slot._id), date: slot.date, startTime: slot.startTime, endTime: slot.endTime, startsAt: slot.startsAt },
-        items: items.map((i) => ({ catalogItemId: String(i._id), kind: i.kind, name: i.name, code: i.code, priceMinor: i.priceMinor,
-          mrpMinor: i.mrpMinor, gstRate: i.gstRate, sac: i.sac, reportTatHours: i.reportTatHours })),
+        items: items.map(itemSnapshot),
         pricing: { subtotalMinor, couponCode, discountMinor, payableMinor, commissionMinor: 0, currency: 'INR' },
         settlement: { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName, settlementSystem: 'ledger' },
         status: 'pending_payment', statusVersion: 0, paymentStatus: 'pending',
@@ -292,6 +325,8 @@ export class LabBookingService {
    */
   private async resume(booking: IPartnerLabBooking, useWallet: boolean, now = new Date()): Promise<LabBookingPaymentInit> {
     const receipt = (b: IPartnerLabBooking) => ({ booking: customerView(b), paymentRequired: false, walletDeductedAmount: 0 });
+    // r12 (§5.5): no wallet use and no gateway order for a desk row (it is paid at the lab).
+    if (isDeskRow(booking)) throw payAtLab();
     if (booking.status !== 'pending_payment' || booking.paymentStatus !== 'pending') return receipt(booking);
     if (now >= new Date(booking.paymentDeadline)) throw err(409, 'LAB_BOOKING_PAYMENT_EXPIRED', 'The payment window has closed; book again');
     const id = String(booking._id);
@@ -373,6 +408,8 @@ export class LabBookingService {
   /** Pay again within the window (P8): settle every earlier attempt first; reuse the open order or start a new one. */
   async retryPayment(userId: string, bookingId: string, useWallet: boolean, now = new Date()): Promise<LabBookingPaymentInit> {
     const b = await this.ownBooking(userId, bookingId);
+    // r12 (§5.5): pay-again on a desk row: it is paid at the lab.
+    if (isDeskRow(b)) throw payAtLab();
     // r11 (§24.4.4): a partner-paid booking is never paid by the patient.
     if (isAssisted(b)) throw err(409, 'PARTNER_PAID_BOOKING', 'This booking was paid by the partner that booked it');
     return this.resume(b, useWallet, now);
@@ -439,8 +476,9 @@ export class LabBookingService {
 
   /** Scheduler sweep: reconcile each due booking's payments first; back off while the gateway state is unknown. */
   async expireDue(now = new Date(), limit = 100): Promise<{ examined: number; expired: number; deferred: number; failed: number }> {
+    // r12 (§5.5): a desk row (paid at the lab) never expires; it is never pending_payment anyway. Every other row as before.
     const due = await PartnerLabBookingModel.find({
-      status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now },
+      status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now }, 'settlement.settlementSystem': { $ne: 'lab_desk' },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
     }).sort({ paymentDeadline: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1 }).lean();
     let expired = 0; let deferred = 0; let failed = 0;
@@ -482,12 +520,23 @@ export class LabBookingService {
   private async cancelIn(b: IPartnerLabBooking, records: { _id: unknown; userId?: string; status?: string; finalAmount?: number }[],
     c: { reason: CancelReason; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
     const id = String(b._id);
+    const desk = isDeskRow(b);
     const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
-      $set: { status: 'cancelled', paymentStatus: 'refunded', 'lifecycle.cancelledAt': now,
+      // r12 (§5.5): a desk row was never paid through Jansetu: its payment status stays `pending`.
+      $set: { status: 'cancelled', ...(desk ? {} : { paymentStatus: 'refunded' }), 'lifecycle.cancelledAt': now,
         cancellation: { reason: c.reason, note: c.note, ...byOf(c.actor), at: now, ...(c.reason === 'admin_no_show' ? { refund: true } : {}) }, 'reschedule.pending': false },
       $inc: { statusVersion: 1 }, $unset: { expiryNextAt: 1, expiryChecks: 1 },
     }, { session: s });
     if (r.modifiedCount !== 1) throw changed();
+    // r12 (§5.5): a desk row refunds nothing (the lab settles any cash itself); its seat (none for a walk-in) is released once.
+    if (desk) {
+      if (!isWalkIn(b)) await releaseSeat(b.slot.slotId, s);
+      if (c.actor.kind === 'partner') {
+        await recordPartnerAudit(c.actor.actor, c.reason === 'desk' ? 'lab_desk.cancelled' : c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
+          { kind: 'lab_booking', id }, { note: c.note, refunded: 0, payAtLab: true }, s);
+      }
+      return 0;
+    }
     // r11 (§24.4.4): a partner-paid booking refunds the PARTNER (its wallet, exactly once), never the customer wallet.
     if (isAssisted(b) && b.assisted?.funding) {
       const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false }, s);
@@ -522,6 +571,9 @@ export class LabBookingService {
       const b = await PartnerLabBookingModel.findOne({ _id: id, userId: { $eq: userId } }).session(s).lean() as IPartnerLabBooking | null;
       if (!b) throw notFound();
       if (!['pending_payment', 'confirmed'].includes(b.status)) throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
+      // r12 (owner, 23 Nov; L12): a desk row is cancellable while confirmed (before the visit or sample), at any time:
+      // nothing was paid through Jansetu, so there is no window and nothing to refund.
+      if (isDeskRow(b)) return this.cancelIn(b, [], { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
       if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
       const records = await this.fenceRecords(id, s);
       const captured = b.paymentStatus === 'paid' || records.some((r) => r.status === 'paid');
@@ -531,6 +583,13 @@ export class LabBookingService {
       return this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (isDeskRow(after)) {
+      await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: 'Your lab booking was cancelled. Nothing was paid through Jansetu.',
+        bookingId: id, key: `plb:${id}:cancelled` });
+      // L12: the desk member who booked it is told (in-app, no health details). SMS phase 5: none to the lab.
+      await this.tellDeskMember(after, 'Cancelled by the patient', `The patient cancelled the desk booking of ${shownSlot(after)}.`, `labdesk:${id}:cancelled:member`);
+      return { booking: customerView(after), refunded: 0 };
+    }
     if (isAssisted(after)) {
       // r11 (decision 4): the patient cancelled a partner-paid booking; the refund went to the partner, which is told.
       // SMS phase 5: "Lab test Ref <ref> cancelled; the refund goes to <partner>"
@@ -565,6 +624,12 @@ export class LabBookingService {
       return this.cancelIn(b, records, { reason: 'lab_reject', note, actor: { kind: 'partner', actor } }, s, now);
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (isDeskRow(after)) {
+      // r12: a desk row refunds nothing through Jansetu (paid at the lab). SMS phase 5: "The lab cancelled your lab test"
+      await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking', message: `${note}.`,
+        bookingId: id, key: `plb:${id}:cancelled` });
+      return { booking: partnerView(after), refunded };
+    }
     if (isAssisted(after)) {
       // r11 (L8): the partner that paid is refunded in full; the patient is told without the wallet line.
       // SMS phase 5: "The lab could not take lab test Ref <ref>"
@@ -604,7 +669,8 @@ export class LabBookingService {
       // Q16a re-review (F): kept as FORFEITED — the funding record is closed (no money shown as held; a late capture goes
       // back to the wallet) and the amount kept is recorded on the cancellation.
       const wf = b.walletFunding as { total?: number; revision?: number; captures?: { amount: number; state: string }[] } | undefined;
-      const forfeitedMinor = isAssisted(b) && b.assisted?.funding ? Number(b.assisted.funding.amountMinor || 0) : wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter((c) => c.state === 'applied')
+      // r12: a desk row holds no money here (paid at the lab): nothing is forfeited.
+      const forfeitedMinor = isDeskRow(b) ? 0 : isAssisted(b) && b.assisted?.funding ? Number(b.assisted.funding.amountMinor || 0) : wf ? Math.round((Number(wf.total || 0) + (wf.captures ?? []).filter((c) => c.state === 'applied')
         .reduce((a, c) => a + Number(c.amount || 0), 0)) * 100) : Number(b.pricing.payableMinor || 0);
       const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
         $set: { status: 'cancelled', 'lifecycle.cancelledAt': now, 'reschedule.pending': false,
@@ -615,7 +681,7 @@ export class LabBookingService {
       if (r.modifiedCount !== 1) throw changed();
       // r11 (L9): a partner-paid booking keeps the partner's money too (funding `forfeited`, coupon stays used).
       if (isAssisted(b) && b.assisted?.funding) await settleAssistedLabFundingIn(b, { cause: 'admin', keepMoney: true }, s);
-      await releaseSeat(b.slot.slotId, s);
+      if (!isWalkIn(b)) await releaseSeat(b.slot.slotId, s);
       await recordPartnerAudit(actor, 'lab_booking.no_show_cancelled', { kind: 'lab_booking', id }, { note, refunded: 0 }, s);
       return 0;
     });
@@ -641,6 +707,8 @@ export class LabBookingService {
     const after = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be rescheduled`);
+      // r12 (L11): a desk walk-in has arrived and holds no seat; there is no time to move.
+      if (isWalkIn(b)) throw err(409, 'WALK_IN_NOT_RESCHEDULABLE', 'A walk-in has already arrived; it cannot be rescheduled');
       // Q14 review: a booking moved after a no-show was moved once already. An ordinary proposal would let the customer
       // cancel it for a refund, which a moved no-show never gets, so it is refused.
       if ((b.noShows?.length ?? 0) > 0) {
@@ -662,6 +730,7 @@ export class LabBookingService {
     });
     await this.notify({ userId: after.userId, type: 'general', title: 'The lab proposed a new time',
       message: isAssisted(after) ? `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel (the refund goes to ${after.assisted!.bookedBy.name}).`
+        : isDeskRow(after) ? `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel.`
         : `New time: ${after.slot.date} ${after.slot.startTime}. Accept it, or cancel for a full refund.`,
       bookingId: id, key: `plb:${id}:reschedule:${after.reschedule.version}` });
     if (isAssisted(after)) {
@@ -750,6 +819,40 @@ export class LabBookingService {
     return { booking: after, refunded: out.refunded, alreadyCancelled: out.alreadyCancelled };
   }
 
+  /**
+   * r12 (§24.6.2): the lab desk cancels its own desk booking — desk rows of this lab in the actor's branches only (any
+   * other row: the one 404), while `confirmed`; `expectedVersion` fences a stale screen. Nothing is refunded (paid at
+   * the lab); the seat is released (none for a walk-in); audited in the same transaction. A cancelled row answers
+   * `alreadyCancelled`. The bill, if any, is the lab's to cancel (with its own refund record).
+   */
+  async cancelDeskBooking(actor: PartnerActor, bookingId: string, input: { note?: string; expectedVersion?: number }, now = new Date())
+    : Promise<{ booking: Record<string, unknown>; alreadyCancelled: boolean }> {
+    const id = String(bookingId).toLowerCase();
+    const out = await runLedgerTransaction(async (s) => {
+      const b = await this.scopedBooking(actor, id, s);
+      if (!isDeskRow(b)) throw notFound();
+      if (b.status === 'cancelled') return { alreadyCancelled: true };
+      if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
+      this.assertVersion(b, input.expectedVersion);
+      await this.cancelIn(b, [], { reason: 'desk', note: input.note, actor: { kind: 'partner', actor } }, s, now);
+      return { alreadyCancelled: false };
+    });
+    const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    if (!out.alreadyCancelled) {
+      // SMS phase 5: "Your lab test at <lab> on <date time> was cancelled"
+      await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
+        message: `Your lab booking of ${shownSlot(after)} was cancelled by the lab.`, bookingId: id, key: `plb:${id}:cancelled` });
+    }
+    return { booking: (await withDeskBills(actor.partnerId, [after], [partnerView(after)]))[0]!, alreadyCancelled: out.alreadyCancelled };
+  }
+
+  /** r12 (L12): an in-app notice to the desk member who booked a desk row (members only; an admin has no inbox here). */
+  private async tellDeskMember(b: IPartnerLabBooking, title: string, message: string, key: string): Promise<void> {
+    const memberId = b.desk?.memberId;
+    if (!memberId || !Types.ObjectId.isValid(memberId)) return;
+    await this.notify({ userId: memberId, type: 'booking_cancelled', title, message, bookingId: String(b._id), key });
+  }
+
   // ───────────────────────────── Staff transitions (§4 table) ─────────────────────────────
 
   async assignCollector(actor: PartnerActor, bookingId: string, collector: { memberId?: string; name: string; phone?: string }, expectedVersion?: number): Promise<Record<string, unknown>> {
@@ -774,7 +877,7 @@ export class LabBookingService {
    * the money; the lab earns only when the booking is completed. Earnings posted before this rule stay as they are.
    */
   async markNoShow(actor: PartnerActor, bookingId: string, now = new Date(), expectedVersion?: number) {
-    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now, expectedVersion });
+    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now, expectedVersion, notWalkIn: true });
   }
 
   /**
@@ -840,6 +943,8 @@ export class LabBookingService {
 
   /** Earnings only for money actually collected through us (paid bookings), once per booking. */
   private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
+    // r12 (§5.5): a desk row (paid at the lab) never earns through the ledger, so no payout system ever sees it.
+    if (b.settlement?.settlementSystem !== 'ledger') return;
     if (b.paymentStatus !== 'paid') return;
     // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
     const split = b.assisted?.split;
@@ -863,7 +968,7 @@ export class LabBookingService {
 
   private async transition(
     actor: PartnerActor, bookingId: string, command: string, from: LabBookingStatus[], to: LabBookingStatus,
-    set: Record<string, unknown>, guards: { visitMode?: VisitMode; noPendingReschedule?: boolean; slotStarted?: Date; expectedVersion?: number } = {},
+    set: Record<string, unknown>, guards: { visitMode?: VisitMode; noPendingReschedule?: boolean; slotStarted?: Date; expectedVersion?: number; notWalkIn?: boolean } = {},
     sideEffect?: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>
   ): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
@@ -878,6 +983,8 @@ export class LabBookingService {
       if (guards.noPendingReschedule && b.reschedule?.pending) {
         throw err(409, 'RESCHEDULE_PENDING', 'The customer has not answered the new time yet');
       }
+      // r12 (L11): a desk walk-in has arrived; it is never a no-show.
+      if (guards.notWalkIn && isWalkIn(b)) throw err(409, 'WALK_IN_ARRIVED', 'A walk-in has already arrived; it cannot be marked as not present');
       // Q16a re-review (N6): a no-show only once the arrival window (lab visit or home collection) has ENDED.
       if (guards.slotStarted && guards.slotStarted < labSlotEnd(b.slot)) {
         throw err(409, 'SLOT_NOT_STARTED', 'A no-show can be marked only after the slot has ended');
@@ -1113,12 +1220,15 @@ export class LabBookingService {
   }
 
   async getForPartner(actor: PartnerActor, bookingId: string) {
-    return partnerView(await this.scopedBooking(actor, bookingId));
+    const b = await this.scopedBooking(actor, bookingId);
+    return (await withDeskBills(actor.partnerId, [b], [partnerView(b)]))[0]!;
   }
 
   /** Q11: paged by an exact cursor on (slot.startsAt, _id), soonest first, with the total. */
-  async listForPartnerPage(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number; cursor?: string }) {
+  async listForPartnerPage(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number; cursor?: string;
+    /** r12 (§24.6.6): online (`self`, also rows without a source), pharmacy-booked or desk rows. */ source?: 'self' | 'pharmacy_assisted' | 'lab_desk' }) {
     const q: Record<string, unknown> = { partnerId: actor.partnerId };
+    if (f.source) q.source = f.source === 'self' ? { $in: [null, 'self'] } : { $eq: f.source };
     if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
     else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
     if (f.status) q.status = f.status;
@@ -1135,7 +1245,7 @@ export class LabBookingService {
     const rows = await PartnerLabBookingModel.find(page).sort({ 'slot.startsAt': 1, _id: 1 }).limit(limit + 1).lean() as IPartnerLabBooking[];
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
-    return { items: items.map((b) => partnerView(b)), total,
+    return { items: await withDeskBills(actor.partnerId, items, items.map((b) => partnerView(b))), total,
       nextCursor: rows.length > limit && last ? `${new Date(last.slot.startsAt).getTime()}_${String(last._id)}` : null };
   }
 

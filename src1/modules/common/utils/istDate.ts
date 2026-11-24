@@ -17,6 +17,11 @@ export function istDateIso(at?: Date | number): string {
   return new Date(atMs(at) + IST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+/** r12: the IST clock time as HH:mm (e.g. a desk walk-in's arrival). */
+export function istTimeHhmm(at?: Date | number): string {
+  return new Date(atMs(at) + IST_OFFSET_MS).toISOString().slice(11, 16);
+}
+
 /** The IST calendar date as YYYYMMDD. */
 export function istTodayYyyymmdd(at?: Date | number): string {
   return istDateIso(at).replace(/-/g, '');

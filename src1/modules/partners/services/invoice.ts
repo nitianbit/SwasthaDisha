@@ -32,6 +32,8 @@ import SpecialistModel from '@/modules/specialists/model';
 import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
+import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
+import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 
 /** Q10: request-key scope of partner bills (claim/abandon). */
 export const invoiceKeyScope = (partnerId: string) => `partner_invoice_create:${String(partnerId).toLowerCase()}`;
@@ -54,12 +56,24 @@ export interface CreateInvoiceInput {
   doctorId?: string;
   /** Q14: the clinic appointment (booking id) this bill is for. */
   appointmentId?: string;
+  /** r12 (§24.6.3): the lab desk booking this bill is for (not together with appointmentId). */
+  labBookingId?: string;
   items: { catalogItemId?: string; description: string; hsn?: string; sac?: string; qty: number; unitPriceMinor: number; discountMinor?: number; gstRate: GstRate }[];
   idempotencyKey: string;
 }
 
 const invoiceNotFound = () => new AppError({ status: 404, code: 'INVOICE_NOT_FOUND', message: 'Invoice not found' });
-const alreadyBilled = () => new AppError({ status: 409, code: 'APPOINTMENT_ALREADY_BILLED', message: 'This appointment already has a bill; cancel it first to issue a new one' });
+/**
+ * Q14 / r12: what a bill can be linked to — a clinic appointment, or a lab desk booking — with at most one open
+ * (issued or paid) bill each, held by the unique partial index on the `open` field while the bill is not cancelled.
+ */
+const BILL_LINKS = {
+  appointment: { code: 'APPOINTMENT', noun: 'appointment', field: 'appointmentId', open: 'openAppointmentId' },
+  lab_booking: { code: 'LAB_BOOKING', noun: 'lab booking', field: 'labBookingId', open: 'openLabBookingId' },
+} as const;
+type BillLink = keyof typeof BILL_LINKS;
+const alreadyBilled = (k: BillLink) => new AppError({ status: 409, code: `${BILL_LINKS[k].code}_ALREADY_BILLED`,
+  message: `This ${BILL_LINKS[k].noun} already has a bill; cancel it first to issue a new one` });
 /**
  * Q14: what a bill has been paid. Bills paid before Q14 carry no paidMinor: with their events, each pre-Q14 payment
  * counts as the full total; without them, a paid bill counts as fully paid (a cancelled one as 0).
@@ -99,6 +113,29 @@ function fromPreQ14PaymentIndex(error: any): boolean {
 const paymentKeyScope = (invoiceId: string) => `invoice_payment:${String(invoiceId).toLowerCase()}`;
 const lowerId = (v?: unknown) => (v === undefined || v === null ? undefined : String(v).toLowerCase());
 
+/** Q14 / r12: the linked record must take place at the bill's branch. */
+function assertLinkBranch(k: BillLink, at: unknown, billBranchId: string): void {
+  if (String(at) !== String(billBranchId)) {
+    throw new AppError({ status: 400, code: `${BILL_LINKS[k].code}_BRANCH_MISMATCH`, message: `Bill the ${BILL_LINKS[k].noun} from the branch where it takes place` });
+  }
+}
+
+/**
+ * Q14 / r12: the checks every link shares, after the record was admitted. The bill's customer (the account of its phone
+ * number) is the record's account holder (a family member's booking belongs to the account holder; a bill without
+ * that customer cannot name it); the record is not cancelled; no other bill of it is open.
+ */
+async function assertLinkable(k: BillLink, id: string, rec: { userId?: unknown; status?: string }, customerUserId: string | null | undefined,
+  session?: mongoose.ClientSession): Promise<string> {
+  const { code, noun, open } = BILL_LINKS[k];
+  if (!customerUserId || lowerId(customerUserId) !== lowerId(rec.userId)) {
+    throw new AppError({ status: 409, code: `${code}_CUSTOMER_MISMATCH`, message: `Bill the ${noun} to its patient's account: enter the mobile number it was booked with` });
+  }
+  if (rec.status === 'cancelled') throw new AppError({ status: 409, code: `${code}_CANCELLED`, message: `A cancelled ${noun} cannot be billed` });
+  if (await InvoiceModel.exists({ [open]: id }).session(session ?? null)) throw alreadyBilled(k);
+  return id;
+}
+
 /**
  * Q14: the appointment a bill names must be an in-clinic consultation at this partner (its desk clinic, or the clinic of
  * its visit), at a branch in the actor's scope and at the bill's branch, with the bill's doctor (when named), not
@@ -117,20 +154,29 @@ async function admitAppointment(actor: PartnerActor, data: Pick<CreateInvoiceInp
   const at = b.clinicDesk ?? b.clinicVisit;
   if (!at || lowerId(at.partnerId) !== lowerId(actor.partnerId)) throw notFound();
   if (!hasGlobalScope(actor) && !actor.branchIds.map(String).includes(String(at.branchId))) throw notFound();
-  if (String(at.branchId) !== String(data.branchId)) {
-    throw new AppError({ status: 400, code: 'APPOINTMENT_BRANCH_MISMATCH', message: 'Bill the appointment from the branch where it takes place' });
-  }
+  assertLinkBranch('appointment', at.branchId, data.branchId);
   if (data.doctorId && lowerId(data.doctorId) !== lowerId(b.specialistId)) {
     throw new AppError({ status: 400, code: 'APPOINTMENT_DOCTOR_MISMATCH', message: 'The bill names a different doctor than the appointment' });
   }
-  // Q14 review: the bill's customer (the account of its phone number) is the appointment's account holder; a family
-  // member's appointment belongs to the account holder. A bill without that customer cannot name the appointment.
-  if (!customerUserId || lowerId(customerUserId) !== lowerId(b.userId)) {
-    throw new AppError({ status: 409, code: 'APPOINTMENT_CUSTOMER_MISMATCH', message: "Bill the appointment to its patient's account: enter the mobile number it was booked with" });
-  }
-  if (b.status === 'cancelled') throw new AppError({ status: 409, code: 'APPOINTMENT_CANCELLED', message: 'A cancelled appointment cannot be billed' });
-  if (await InvoiceModel.exists({ openAppointmentId: id }).session(session ?? null)) throw alreadyBilled();
-  return id;
+  return assertLinkable('appointment', id, b, customerUserId, session);
+}
+
+/**
+ * r12 (§24.6.3, L10): the lab booking a bill names must be a DESK booking of this lab (paid at the lab; an online,
+ * Jansetu-paid booking is never billed by the lab: the one 404), at a branch in the actor's scope and at the bill's
+ * branch; then the shared checks (customer, not cancelled, no other open bill). The bill's lines are not checked
+ * against the booking's tests (L10).
+ */
+async function admitLabBooking(actor: PartnerActor, data: Pick<CreateInvoiceInput, 'labBookingId' | 'branchId'>,
+  customerUserId: string | null | undefined, session?: mongoose.ClientSession): Promise<string> {
+  const id = lowerId(data.labBookingId)!;
+  const notFound = () => new AppError({ status: 404, code: 'LAB_BOOKING_NOT_FOUND', message: 'Lab booking not found' });
+  if (!/^[0-9a-f]{24}$/.test(id)) throw notFound();
+  const b = await PartnerLabBookingModel.findById(id).session(session ?? null).lean() as IPartnerLabBooking | null;
+  if (!b || b.settlement?.settlementSystem !== 'lab_desk' || lowerId(b.partnerId) !== lowerId(actor.partnerId)) throw notFound();
+  if (!hasGlobalScope(actor) && !actor.branchIds.map(String).includes(String(b.branchId))) throw notFound();
+  assertLinkBranch('lab_booking', b.branchId, data.branchId);
+  return assertLinkable('lab_booking', id, b, customerUserId, session);
 }
 
 /**
@@ -155,21 +201,26 @@ async function existingCustomerId(rawPhone?: string): Promise<string | null> {
   return u ? String(u._id) : null;
 }
 
-/** Q14: the open bill of each appointment, else its latest cancelled one (for the clinic appointment rows). */
-export async function billsForAppointments(partnerId: string, appointmentIds: string[]) {
-  const ids = [...new Set(appointmentIds.map((a) => String(a).toLowerCase()))];
+/** Q14 / r12: the open bill of each linked record, else its latest cancelled one (`partnerId` omitted: the patient's own reads). */
+async function billsOf(k: BillLink, ids0: string[], partnerId?: string) {
+  const field = BILL_LINKS[k].field;
+  const ids = [...new Set(ids0.map((a) => String(a).toLowerCase()))];
   const out = new Map<string, { invoiceId: string; serial: string; number: number; state: InvoiceLifecycleState }>();
   if (!ids.length) return out;
-  const rows = await InvoiceModel.find({ partnerId, appointmentId: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
-    .select({ appointmentId: 1, serial: 1, number: 1, lifecycleState: 1 }).lean() as unknown as IInvoice[];
+  const rows = await InvoiceModel.find({ ...(partnerId ? { partnerId } : {}), [field]: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
+    .select({ [field]: 1, serial: 1, number: 1, lifecycleState: 1 }).lean() as unknown as IInvoice[];
   for (const r of rows) {
-    const k = String(r.appointmentId);
-    const cur = out.get(k);
+    const key = String(r[field]);
+    const cur = out.get(key);
     if (cur && (cur.state !== 'cancelled' || r.lifecycleState === 'cancelled')) continue;
-    out.set(k, { invoiceId: String(r._id), serial: r.serial, number: r.number, state: r.lifecycleState });
+    out.set(key, { invoiceId: String(r._id), serial: r.serial, number: r.number, state: r.lifecycleState });
   }
   return out;
 }
+/** Q14: for the clinic appointment rows. */
+export const billsForAppointments = (partnerId: string, appointmentIds: string[]) => billsOf('appointment', appointmentIds, partnerId);
+/** r12 (§24.6.3): for the lab and patient views of lab desk rows. */
+export const billsForLabBookings = (labBookingIds: string[], partnerId?: string) => billsOf('lab_booking', labBookingIds, partnerId);
 
 /** Stable JSON (moved to common in Q15; re-exported for existing importers). */
 export { canonicalJson } from '@/modules/common/utils/canonicalJson';
@@ -179,12 +230,13 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Every field of the issued document (identity, parties, lines, totals, provenance). */
 export function invoiceChecksum(inv: Pick<IInvoice, 'partnerId' | 'branchId' | 'number' | 'financialYear' | 'serial' | 'documentKind'
-  | 'issuedAt' | 'supplier' | 'customer' | 'doctorId' | 'appointmentId' | 'items' | 'totals' | 'createdBy' | 'idempotencyKey' | 'requestHash'>): string {
+  | 'issuedAt' | 'supplier' | 'customer' | 'doctorId' | 'appointmentId' | 'labBookingId' | 'items' | 'totals' | 'createdBy' | 'idempotencyKey' | 'requestHash'>): string {
   return sha256(canonicalJson({
     v: 1,
     partnerId: String(inv.partnerId), branchId: String(inv.branchId), number: inv.number, financialYear: inv.financialYear,
     serial: inv.serial, documentKind: inv.documentKind, issuedAt: new Date(inv.issuedAt), supplier: inv.supplier,
-    customer: inv.customer, doctorId: inv.doctorId, appointmentId: inv.appointmentId, items: inv.items, totals: inv.totals, createdBy: inv.createdBy,
+    // r12: labBookingId only when set (canonicalJson drops absent keys, so bills issued before keep their checksum).
+    customer: inv.customer, doctorId: inv.doctorId, appointmentId: inv.appointmentId, labBookingId: inv.labBookingId, items: inv.items, totals: inv.totals, createdBy: inv.createdBy,
     idempotencyKey: inv.idempotencyKey, requestHash: inv.requestHash,
   }));
 }
@@ -326,6 +378,8 @@ export class InvoiceService {
       doctorId: data.doctorId, items: data.items,
       // Q14: the appointment is part of the request identity (absent = as before, so older keys keep their hash).
       appointmentId: lowerId(data.appointmentId),
+      // r12: the lab desk booking likewise (absent = as before).
+      labBookingId: lowerId(data.labBookingId),
     }));
     const replay = await this.replayed(actor, data.idempotencyKey, requestHash);
     if (replay) return withDue(replay);
@@ -355,7 +409,15 @@ export class InvoiceService {
 
     // Q14: refused early here (the customer looked up, never created, so a refused bill leaves no account behind);
     // admitted again inside the transaction with the resolved customer.
+    if (data.appointmentId && data.labBookingId) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'A bill is for an appointment or a lab booking, not both' });
+    }
     if (data.appointmentId) await admitAppointment(actor, data, await existingCustomerId(data.customer.phone));
+    // r12 (§24.6.3): a lab desk booking is billed at most once at a time (fail closed until sync-indexes built the index).
+    if (data.labBookingId) {
+      await assertUniqueIndex(InvoiceModel, { openLabBookingId: 1 });
+      await admitLabBooking(actor, data, await existingCustomerId(data.customer.phone));
+    }
 
     const catalogueIds = [...new Set(data.items.map((i) => i.catalogItemId).filter(Boolean).map(String))];
     const catalogue = new Map<string, { name: string }>();
@@ -409,6 +471,7 @@ export class InvoiceService {
         // Q10: the key is claimed with the bill, so a reloaded client's abandon and this create cannot both win.
         await claimRequestKey(invoiceKeyScope(actor.partnerId), data.idempotencyKey, session);
         const appointmentId = data.appointmentId ? await admitAppointment(actor, data, resolved?._id, session) : undefined;
+        const labBookingId = data.labBookingId ? await admitLabBooking(actor, data, resolved?._id, session) : undefined;
         const issuedAt = new Date();
         const fy = financialYearOf(issuedAt);
         const seq = await this.invoiceCounterRepository.nextSequence(actor.partnerId, fy, session);
@@ -424,6 +487,7 @@ export class InvoiceService {
           customer,
           doctorId: data.doctorId,
           ...(appointmentId ? { appointmentId, openAppointmentId: appointmentId } : {}),
+          ...(labBookingId ? { labBookingId, openLabBookingId: labBookingId } : {}),
           items: lines,
           totals,
           lifecycleState: 'issued',
@@ -435,16 +499,18 @@ export class InvoiceService {
         doc.checksum = invoiceChecksum(doc as IInvoice);
         invoice = await this.invoiceRepository.save(doc, { session });
         await recordPartnerAudit(actor, 'invoice.create', { kind: 'invoice', id: String(invoice._id) },
-          { serial: doc.serial, totalMinor: totals.totalMinor, ...(appointmentId ? { appointmentId } : {}) }, session);
+          { serial: doc.serial, totalMinor: totals.totalMinor, ...(appointmentId ? { appointmentId } : {}), ...(labBookingId ? { labBookingId } : {}) }, session);
       });
     } catch (error: any) {
       // A racing identical request may have committed first (key, or the appointment's open bill): answer with its bill.
-      const billedRace = error?.code === 'APPOINTMENT_ALREADY_BILLED' || (error?.code === 11000 && error?.keyPattern?.openAppointmentId);
+      // (r12: the lab booking's open bill likewise.)
+      const billedRace = (Object.keys(BILL_LINKS) as BillLink[]).find((k) => error?.code === `${BILL_LINKS[k].code}_ALREADY_BILLED`
+        || (error?.code === 11000 && error?.keyPattern?.[BILL_LINKS[k].open]));
       if ((error?.code === 11000 && error?.keyPattern?.idempotencyKey) || billedRace) {
         const again = await this.replayed(actor, data.idempotencyKey, requestHash);
         if (again) return withDue(again);
       }
-      if (billedRace) throw alreadyBilled();
+      if (billedRace) throw alreadyBilled(billedRace);
       throw error;
     } finally {
       await session.endSession();
