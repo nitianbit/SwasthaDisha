@@ -12,6 +12,7 @@ import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { permanentMeetFailure, syncBookingMeet } from '@/modules/meet/service';
 import { raiseAlertIn } from '@/modules/assisted/limits';
 import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
+import { freeLease, withDeadline } from '@/modules/common/utils/lease';
 
 /**
  * r10g (M1 of the r10f review): a paid call/video consultation whose Meet link was never made (missing) or whose last
@@ -90,9 +91,7 @@ const defaultSync: Sync = (booking, signal) => syncBookingMeet({ booking, bookin
   specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository(), signal, reuseExisting: true });
 
 async function bounded(sync: Sync, b: IBooking): Promise<void> {
-  const signal = AbortSignal.timeout(bound());
-  const gaveUp = new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(new Error('Meet call timed out')), { once: true }));
-  await Promise.race([sync(b, signal), gaveUp]);
+  await withDeadline(bound(), (signal) => sync(b, signal), () => new Error('Meet call timed out'));
 }
 
 /** One run: every due candidate, each claimed (lease) before its one bounded attempt. */
@@ -111,7 +110,7 @@ export async function retryMissingMeets(now: Date = new Date(), opts: { limit?: 
     if (row.specialistId && await doctorExistsIneligible(row.specialistId)) continue;
     const claimed = (await BookingModel.collection.updateOne({ _id, status: 'confirmed', paymentStatus: 'paid',
       // The lease is judged on the wall clock (never the run's `now`, which a caller may set ahead).
-      $and: [NO_LINK, { $or: [{ 'meetRetry.leaseUntil': { $exists: false } }, { 'meetRetry.leaseUntil': { $lte: new Date() } }] },
+      $and: [NO_LINK, freeLease('meetRetry.leaseUntil'),
         { $or: [{ 'meetRetry.nextAt': { $exists: false } }, { 'meetRetry.nextAt': { $lte: now } }] }] },
     { $set: { 'meetRetry.leaseUntil': new Date(Date.now() + LEASE_MS) } })).modifiedCount === 1;
     if (!claimed) continue;

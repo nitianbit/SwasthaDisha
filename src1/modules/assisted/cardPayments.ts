@@ -16,6 +16,7 @@ import {
 } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { assistedFlags } from '@/modules/assisted/flags';
+import { withDeadline } from '@/modules/common/utils/lease';
 import type { AssistedBookingKind } from '@/modules/assisted/types';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
@@ -91,11 +92,8 @@ const meetTimeoutMs = () => {
   return Math.min(Number.isSafeInteger(v) && v > 0 ? v : 60_000, FOLLOW_UP_LEASE_MS / 2);
 };
 async function boundedMeet(fx: ReturnType<typeof assistedEffects>, booking: IBooking): Promise<IBooking> {
-  const signal = AbortSignal.timeout(meetTimeoutMs());
-  const gaveUp = new Promise<never>((_, reject) => {
-    signal.addEventListener('abort', () => reject(Object.assign(new Error('Meet call timed out'), { code: 'MEET_TIMEOUT' })), { once: true });
-  });
-  return Promise.race([fx.meet(booking, { signal }), gaveUp]);
+  return withDeadline(meetTimeoutMs(), (signal) => fx.meet(booking, { signal }),
+    () => Object.assign(new Error('Meet call timed out'), { code: 'MEET_TIMEOUT' }));
 }
 
 /** r14: what differs between a consultation and a lab booking paid by card; everything else is one code path. */

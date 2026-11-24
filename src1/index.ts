@@ -19,6 +19,7 @@ import { runBookingPaymentTimeoutScheduler } from '@/modules/bookings/services/b
 import { runPartnerLabSchedulers } from '@/modules/partners/services/labSchedulers';
 import { runAssistedSchedulers } from '@/modules/assisted/schedulers';
 import { runMeetRetryScheduler } from '@/modules/meet/retry';
+import { runSmsNoticeScheduler } from '@/modules/smsNotices/drain';
 import { runDoctorSchedulers } from '@/modules/doctors/services/schedulers';
 import { checkSettlementCutoverConfig } from '@/modules/partners/services/cutover';
 import { runLowStockAlertScheduler } from '@/modules/pharmacyInventory/lowStockScheduler';
@@ -96,6 +97,8 @@ connectDB()
     runPartnerLabSchedulers();
     runAssistedSchedulers();
     runMeetRetryScheduler();
+    // Phase 5a (§27.5.3): the SMS notice drain (sends nothing while SMS_NOTICES_ENABLED is off).
+    runSmsNoticeScheduler();
     runDoctorSchedulers();
     runLowStockAlertScheduler();
     logger.info('Pharmacy order payment-timeout scheduler started');
