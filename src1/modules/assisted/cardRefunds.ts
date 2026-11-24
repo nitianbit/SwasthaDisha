@@ -5,7 +5,7 @@ import BookingModel from '@/modules/bookings/model';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import PharmacyModel from '@/modules/pharmacies/model';
 import PaymentRecordModel from '@/modules/payment/model';
-import { ASSISTED_CARD_CONTEXTS, type IPaymentRecord } from '@/modules/payment/types';
+import { ASSISTED_CARD_CONTEXTS, type AssistedCardContext, type IPaymentRecord } from '@/modules/payment/types';
 import PartnerOrgModel from '@/modules/partners/model';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { RazorpayRefundGateway, type GatewayRefund, type RefundGateway } from '@/modules/pharmacyOrders/prescriptionRefund';
@@ -47,14 +47,24 @@ const lower = (v: unknown) => String(v ?? '').toLowerCase();
 export const recordPaiseOf = (r: Pick<IPaymentRecord, 'finalAmountPaise' | 'finalAmount'>) =>
   Number.isSafeInteger(r.finalAmountPaise) ? Number(r.finalAmountPaise) : Math.round(Number(r.finalAmount || 0) * 100);
 
-/** r14: the booking kind of an assisted card payment context (null for any other context). */
+/**
+ * r14b: what is keyed by an assisted booking's kind, in one table — its collection, the context of its card payments and
+ * the reference type of its pharmacy-wallet movements (as its wallet debit and refund write it). A missing kind is a
+ * consultation (card refund rows from before r14).
+ */
+const BOOKING_KINDS: Record<AssistedBookingKind, { model: () => Model<any>; cardContext: AssistedCardContext; walletReference: string }> = {
+  booking: { model: () => BookingModel as unknown as Model<any>, cardContext: 'assisted_booking', walletReference: 'assisted_booking' },
+  lab_booking: { model: () => PartnerLabBookingModel as unknown as Model<any>, cardContext: 'assisted_lab_booking', walletReference: 'assisted_lab_booking' },
+};
+const kindRow = (kind?: string | null) => BOOKING_KINDS[kind === 'lab_booking' ? 'lab_booking' : 'booking'];
+/** The context of a booking kind's card payments. */
+export const cardContextOf = (kind: AssistedBookingKind): AssistedCardContext => BOOKING_KINDS[kind].cardContext;
+/** The booking kind of an assisted card payment context (null for any other context). */
 export const cardKindOf = (context: unknown): AssistedBookingKind | null =>
-  (context === 'assisted_lab_booking' ? 'lab_booking' : context === 'assisted_booking' ? 'booking' : null);
-/** r14: the collection of an assisted booking of this kind (a missing kind is a consultation, as on rows from before r14). */
-export const bookingModelOf = (kind?: string | null): Model<any> =>
-  (kind === 'lab_booking' ? PartnerLabBookingModel : BookingModel) as unknown as Model<any>;
-/** The pharmacy-wallet reference type of a booking kind's wallet movements (as its wallet debit and refund write it). */
-const walletReferenceOf = (kind?: string | null) => (kind === 'lab_booking' ? 'assisted_lab_booking' : 'assisted_booking');
+  (Object.keys(BOOKING_KINDS) as AssistedBookingKind[]).find((k) => BOOKING_KINDS[k].cardContext === context) ?? null;
+/** The collection of an assisted booking of this kind. */
+export const bookingModelOf = (kind?: string | null): Model<any> => kindRow(kind).model();
+const walletReferenceOf = (kind?: string | null) => kindRow(kind).walletReference;
 
 let gateway: RefundGateway | null = null;
 /** Tests replace the gateway; production uses Razorpay (keys from CONFIG). */

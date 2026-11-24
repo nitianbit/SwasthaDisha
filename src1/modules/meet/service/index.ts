@@ -258,6 +258,12 @@ export async function createMeetEvent({
   };
 }
 
+/** r10i: the instant of a Calendar date-time (Google answers with an offset; ours are India wall-clock without one). */
+function instantOf(dateTime: unknown): number {
+  const s = String(dateTime ?? '');
+  return Date.parse(/(Z|[+-]\d{2}:\d{2})$/.test(s) ? s : `${s}+05:30`);
+}
+
 /** The Meet join link of a Calendar event (its hangout link, else its video entry point). */
 function joinUrlOf(event: Record<string, any>): string | undefined {
   return event.hangoutLink || event.conferenceData?.entryPoints?.find((entry: any) => entry.entryPointType === 'video')?.uri;
@@ -349,7 +355,8 @@ function isInternalMeetApplicable(booking: IBooking): boolean {
   );
 }
 
-function hasOAuthMeetConfig(): boolean {
+/** r10i: exported for the Meet retry (no configuration: nothing is attempted, an alert is raised once a day). */
+export function hasOAuthMeetConfig(): boolean {
   return Boolean(
     CONFIG.GOOGLE_OAUTH_CLIENT_ID &&
       CONFIG.GOOGLE_OAUTH_CLIENT_SECRET &&
@@ -439,9 +446,9 @@ function buildBookingFailureVirtualMeeting(
 }
 
 /** r10h: Meet failures no retry can fix (the retry stops and alerts at most once). Matches the messages above. */
-export function permanentMeetFailure(error?: string | null): 'meet_not_configured' | 'patient_email_missing' | 'doctor_email_missing' | 'slot_missing' | null {
+export function permanentMeetFailure(error?: string | null): 'patient_email_missing' | 'doctor_email_missing' | 'slot_missing' | null {
+  // r10i (H5): "not configured" is NOT permanent — the retry waits for the configuration (see meet/retry.ts).
   const e = String(error ?? '');
-  if (e === MEET_NOT_CONFIGURED) return 'meet_not_configured';
   if (e.endsWith('because patient email is missing')) return 'patient_email_missing';
   if (e.endsWith('because specialist email is missing')) return 'doctor_email_missing';
   if (e.endsWith('because slot details are missing')) return 'slot_missing';
@@ -587,6 +594,22 @@ export async function syncBookingMeet(params: {
       return JSON.parse(body);
     };
     const live = (e: Record<string, any> | null | undefined) => (e && e.status !== 'cancelled' ? e : null);
+    /** Updates the event to this booking's current appointment and text; Google emails the attendees (sendUpdates=all). */
+    const patchEvent = async (eventId: string): Promise<Record<string, any>> => {
+      const { conferenceData, ...updatePayload } = eventPayload;
+      void conferenceData;
+      const response = await fetch(`${eventsUrl}/${encodeURIComponent(eventId)}?conferenceDataVersion=1&sendUpdates=all`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+        ...(signal ? { signal } : {}),
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(`Google Calendar request failed: ${text}`);
+      }
+      return JSON.parse(text) as Record<string, any>;
+    };
 
     // r10h (retry): reuse the event Google already holds for this booking — read, never updated, so nobody is emailed.
     if (reuseExisting && booking.virtualMeeting?.status === 'failed' && booking.virtualMeeting.calendarEventId) {
@@ -597,31 +620,12 @@ export async function syncBookingMeet(params: {
     }
 
     if (event) {
+      // r10i (H3): a reused event still at another time (a reschedule whose update failed) is moved to the booking's
+      // current appointment — then telling the attendees is right.
+      if (instantOf(event.start?.dateTime) !== instantOf(startDateTime)) event = await patchEvent(String(event.id));
       joinUrl = joinUrlOf(event);
     } else if (booking.virtualMeeting?.calendarEventId && !(reuseExisting && booking.virtualMeeting?.status === 'failed')) {
-      const { conferenceData, ...updatePayload } = eventPayload;
-      void conferenceData;
-      const response = await fetch(
-        `${GOOGLE_CALENDAR_BASE_URL}/calendars/${encodeURIComponent(
-          CONFIG.GOOGLE_CALENDAR_ID!
-        )}/events/${encodeURIComponent(
-          booking.virtualMeeting.calendarEventId
-        )}?conferenceDataVersion=1&sendUpdates=all`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatePayload),
-          ...(signal ? { signal } : {}),
-        }
-      );
-      const text = await response.text();
-      if (!response.ok) {
-        throw new Error(`Google Calendar request failed: ${text}`);
-      }
-      event = JSON.parse(text) as Record<string, any>;
+      event = await patchEvent(booking.virtualMeeting.calendarEventId);
       joinUrl = joinUrlOf(event);
     } else {
       const created = await createMeetEvent({

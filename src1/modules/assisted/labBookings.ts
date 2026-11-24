@@ -32,7 +32,7 @@ import { ASSISTED_KEY, newShortRef, type PharmacyActor } from '@/modules/assiste
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
-  applyPatientPlanIn, cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, planAssistedPatient, redeemCouponIn, spreadByPrice,
+  cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 import type { AssistedBlock } from '@/modules/assisted/types';
@@ -81,7 +81,6 @@ export interface AssistedLabInput {
   couponCode?: string;
   /** Price fence (§6.3): what the pharmacy pays, after the coupon, in paise. */
   acceptedPriceMinor: number;
-  notes?: string;
   paymentMethod: 'wallet' | 'razorpay';
 }
 
@@ -93,9 +92,12 @@ const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: c
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
 const uniqueIds = (ids: string[]) => [...new Set((ids ?? []).map(lower))].sort();
 
-/** The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. */
+/**
+ * The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. r11b: only the
+ * desk takes notes; a pharmacy request has none (`notes: null`, as 2a hashed it, so earlier keys still replay).
+ */
 export function labRequestContent(input: Pick<AssistedLabInput, 'phone' | 'patient' | 'holderName' | 'branchId' | 'visitMode' | 'itemIds' | 'address'
-  | 'preferredLanguage' | 'notes'> & { slotId?: string }) {
+  | 'preferredLanguage'> & { slotId?: string; notes?: string }) {
   return {
     phone: canonicalMobile(input.phone) ?? input.phone,
     patient: patientIdentity(input.patient),
@@ -148,7 +150,7 @@ function validate(input: AssistedLabInput): void {
   }
 }
 
-/** §24.1 item 12 (S5 for labs): moved to assisted/bookers.ts (2e), re-exported for its callers. */
+/** §24.1 item 12 (S5 for labs): moved to assisted/labViews.ts (2e), re-exported for its callers. */
 export { labAdmissible };
 
 /**
@@ -316,8 +318,9 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
 
   // The patient (review 4 of 1a: no create is an existence test): every refusable step runs BEFORE any account is
   // opened and answers the same for a known and an unknown number; a new number's account opens only in the transaction.
-  const pp = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
-  const { customer, dependentId, newDependent, holderTyped } = pp;
+  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const customer = { _id: pp.userId, created: pp.created };
+  const { dependentId, newDependent, holderTyped } = pp;
   // The names rule (§24.3): the stored patient name is the family member's or the TYPED holder name, never the account name.
   const patientName = pp.patientName;
 
@@ -368,7 +371,7 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
       const again = await replayOf(storedKey, hash, s);
       if (again) return { booking: again, replayed: true };
       await claimRequestKey(labKeyScope(actor), input.requestKey, s);
-      await applyPatientPlanIn(pp, input.preferredLanguage, s);
+      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
       await linkPharmacyCustomerIn(actor, customer._id, holderTyped, s);
       // P10, alert only: the same pharmacy–lab pair at N bookings a day.
       await countPairBookingIn('pharmacy', pharmacyId, `lab:${lower(partner!._id)}`, s);

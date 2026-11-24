@@ -263,8 +263,8 @@ export async function stuckMoney(now: Date = new Date()) {
     // Phase 1b: card refunds pending over 24 h, failed or held for review (the operator queue), and late captures.
     refundRowsPending: await cardRefundQueue({}, now) as Row[],
     lateCaptures: (await AssistedCardRefundModel.find({ cause: { $in: ['late_capture', 'extra_capture'] } }).sort({ createdAt: -1 }).limit(LIST_MAX).lean())
-      .map((r) => ({ refundId: String(r._id), bookingId: r.bookingId, paymentRecordId: r.paymentRecordId, cause: r.cause, amountMinor: r.amountMinor, state: r.state,
-        createdAt: r.createdAt })) as Row[],
+      .map((r) => ({ refundId: String(r._id), bookingId: r.bookingId, bookingKind: r.bookingKind ?? 'booking', paymentRecordId: r.paymentRecordId, cause: r.cause,
+        amountMinor: r.amountMinor, state: r.state, createdAt: r.createdAt })) as Row[],
     // r10b: card refunds still pending at Razorpay after ASSISTED_CARD_REFUND_STUCK_DAYS (default 7), and card disputes
     // recorded on assisted booking payments (C4: flagged only, an admin decides).
     cardRefundsPendingOverDays: await cardRefundsStuckPending(now) as Row[],

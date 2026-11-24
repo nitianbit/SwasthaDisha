@@ -10,6 +10,7 @@ import PartnerMemberModel from '@/modules/partners/model/member';
 import PartnerOrgModel from '@/modules/partners/model';
 import { hasPrescription, isOperationalPharmacy, rxWindowOpenFor } from '@/modules/assisted/rxAccess';
 import { bookerReportWindowOpen, labAdmissible } from '@/modules/assisted/labViews';
+import { notDisputed } from '@/modules/assisted/views';
 import { dispensingHashOf, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
@@ -187,9 +188,12 @@ async function partnerMemberMayRead(r: Reader, b: { partnerId?: unknown; branchI
 
 async function canReadPartnerLabReport(r: Reader, bookingId: string, released: boolean): Promise<boolean> {
   if (!isValidObjectId(bookingId)) return false;
-  const b = await PartnerLabBookingModel.findById(bookingId).select({ userId: 1, partnerId: 1, branchId: 1, 'assisted.bookedBy': 1, 'report.releases': 1, status: 1 }).lean();
+  const b = await PartnerLabBookingModel.findById(bookingId).select({ userId: 1, partnerId: 1, branchId: 1, 'assisted.bookedBy': 1,
+    'assisted.identity.disputed': 1, 'report.releases': 1, status: 1 }).lean();
   if (!b) return false;
-  if (released && r.userType === 'user') return id(b.userId) === id(r._id);
+  // r11b: while the holder's "this isn't mine" report is open, the holder does not read the report (the booker and the
+  // lab keep their access); a dismissed report gives it back, a move gives it to the new holder.
+  if (released && r.userType === 'user') return id(b.userId) === id(r._id) && notDisputed(b as never);
   // r11 (§24.4.5, owner 23 Nov): the pharmacy that booked an assisted lab test reads its RELEASED report (never a draft)
   // while operational, for 90 days from the first release. Any other pharmacy: the uniform 404.
   if (r.userType === 'pharmacy') {

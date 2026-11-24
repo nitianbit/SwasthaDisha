@@ -12,7 +12,7 @@ import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { BOOKING_PAYMENT_WINDOW_MS } from '@/modules/bookings/holds';
 import PartnerOrgModel from '@/modules/partners/model';
 import {
-  bookingModelOf, cardKindOf, kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf, recordPayerOf,
+  bookingModelOf, cardContextOf, cardKindOf, kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf, recordPayerOf,
 } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { assistedFlags } from '@/modules/assisted/flags';
@@ -120,7 +120,7 @@ interface CardKind {
 
 const KINDS: Record<AssistedBookingKind, CardKind> = {
   booking: {
-    context: 'assisted_booking',
+    context: cardContextOf('booking'),
     waiting: (b) => b.status === 'pending' && b.paymentStatus === 'pending',
     payBy: (b) => new Date(new Date(b.createdAt ?? Date.now()).getTime() + BOOKING_PAYMENT_WINDOW_MS).toISOString(),
     providerBlocked: async (b) => !!b.specialistId && await doctorExistsIneligible(b.specialistId),
@@ -147,7 +147,7 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
   // r14 (§24.5): a pharmacy's lab booking — `pending_payment` until paid, 30 minutes to its `paymentDeadline`, S5 = an
   // active, verified lab (§24.1 item 12); confirming bumps `statusVersion` (every lab step is fenced on it).
   lab_booking: {
-    context: 'assisted_lab_booking',
+    context: cardContextOf('lab_booking'),
     waiting: (b) => b.status === 'pending_payment' && b.paymentStatus === 'pending',
     payBy: (b) => new Date(b.paymentDeadline).toISOString(),
     providerBlocked: async (b) => {
@@ -183,15 +183,26 @@ function viewOf(kind: AssistedBookingKind, r: IPaymentRecord, b: Row): CardPayme
     amount: Number(r.finalAmount), amountMinor: recordPaiseOf(r), currency: r.currency, payBy: KINDS[kind].payBy(b) };
 }
 
+/** The card funding of a booking still waiting for its card payment, else null. */
+const waitingFunding = (k: CardKind, b: Row | null | undefined) => {
+  const f = b?.assisted?.funding;
+  return f && f.method === 'razorpay' && f.state === 'pending' && k.waiting(b!) && f.paymentRecordId ? f : null;
+};
+
 /**
  * The open Razorpay order of a pending card booking: the stored record, or (first time, or after a failed order call)
  * a new order saved under the pre-chosen record id — two racing callers save one record (the loser's order is never
  * shown, so it can never be paid). null when the booking is not waiting for its card payment.
  */
-export async function openCardOrderOf(kind: AssistedBookingKind, b: Row, opts: { create: boolean } = { create: true }): Promise<CardPaymentView | null> {
+export async function openCardOrderOf(kind: AssistedBookingKind, given: Row, opts: { create: boolean } = { create: true }): Promise<CardPaymentView | null> {
   const k = KINDS[kind];
-  const f = b.assisted?.funding;
-  if (!f || f.method !== 'razorpay' || f.state !== 'pending' || !k.waiting(b) || !f.paymentRecordId) return null;
+  if (!waitingFunding(k, given)) return null;
+  // r14b: the caller's copy can be stale (a replay racing the expiry or a cancel), so the booking is read again before an
+  // order is shown or made: a row no longer waiting never answers with a payable order (a capture landing anyway on an
+  // order shown just before is a late capture, returned to the card).
+  const b = await bookingModelOf(kind).findById(given._id).lean() as Row | null;
+  const f = waitingFunding(k, b);
+  if (!b || !f) return null;
   const stored = await PaymentRecordModel.findById(f.paymentRecordId).lean() as unknown as IPaymentRecord | null;
   if (stored) return stored.status === 'created' ? viewOf(kind, stored, b) : null;
   if (!opts.create) return null;
@@ -219,8 +230,9 @@ export const openCardOrder = (b: IBooking, opts?: { create: boolean }) => openCa
 /**
  * r10c / r10d (r14: both kinds): the `payment` field of the booker's view of each of ITS OWN assisted bookings — the
  * method and the funding state; for a card booking the record to resume (`paymentTransactionId`) and, while it waits
- * for its payment, `payBy` and the open order (`razorpayOrderId` / `razorpayKeyId`, null when none is open yet: replay
- * the create), so "pay now" works from any device. Read only. Never in a patient's, doctor's or lab's view.
+ * for its payment, `payBy` and the open order (`razorpayOrderId` / `razorpayKeyId`, r14b: `amountMinor` / `currency`;
+ * null when none is open yet: replay the create), so "pay now" works from any device. Read only. Never in a patient's,
+ * doctor's or lab's view.
  */
 export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], bookerLike: BookerLike): Promise<Map<string, Row>> {
   const k = KINDS[kind];
@@ -234,7 +246,9 @@ export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], boo
     const order = waiting ? await openCardOrderOf(kind, b, { create: false }).catch(() => null) : null;
     out.set(String(b._id), { method: card ? 'razorpay' : 'wallet', state: f.state, payBy: waiting ? k.payBy(b) : null,
       ...(card ? { paymentTransactionId: f.paymentRecordId ?? null } : {}),
-      ...(waiting ? { razorpayOrderId: order?.razorpayOrderId ?? null, razorpayKeyId: order?.razorpayKeyId ?? null } : {}) });
+      // r14b: with the amount and currency, so "Pay now" can open Checkout from the booking page alone (null when no order is open).
+      ...(waiting ? { razorpayOrderId: order?.razorpayOrderId ?? null, razorpayKeyId: order?.razorpayKeyId ?? null,
+        amountMinor: order?.amountMinor ?? null, currency: order?.currency ?? null } : {}) });
   }
   return out;
 }

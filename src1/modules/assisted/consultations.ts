@@ -28,7 +28,7 @@ import {
 } from '@/modules/assisted/bookers';
 import { assertBookerWalletIndexes, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import {
-  applyPatientPlanIn, cleanName, countPhoneUse, patientIdentity, planAssistedPatient, redeemCouponIn, type AssistedPatientInput,
+  cleanName, countPhoneUse, patientIdentity, preparePatient, redeemCouponIn, writePatientIn, type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 
 /**
@@ -251,8 +251,9 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   // The patient (review 4: no create is an existence test). Every step that can refuse runs BEFORE any account is
   // counted or opened, and gives the same answer for a known and an unknown number; the account of a new number is
   // opened only inside the booking transaction (a refused or failed booking leaves no account behind).
-  const plan = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
-  const { customer, dependentId, holderTyped } = plan;
+  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const customer = { _id: pp.userId, created: pp.created };
+  const { dependentId, holderTyped } = pp;
 
   const coupon = await assistedCouponFor(input.couponCode, { userId: customer._id, dependentId, doctorId: String(slot.specialistId), listMinor });
   const discountMinor = coupon?.discountMinor ?? 0;
@@ -306,7 +307,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
         : { created: { at, by: payer.id }, paid: { at, by: `${payer.kind}_wallet`, amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
       await claimRequestKey(consultKeyScope(booker), input.requestKey, s);
-      await applyPatientPlanIn(plan, input.preferredLanguage, s);
+      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
       await linkBookerIn(booker, customer._id, holderTyped, s);
       await countPairBookingIn(payer.kind, payer.id, lower(slot.specialistId), s);
       if (coupon) {
@@ -320,7 +321,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
       await auditBookerIn(booker, 'booking.created', { bookingId: String(b._id), requestKey: input.requestKey,
         detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: customer.created,
           ...(booker.kind === 'lab' ? { branchId: lower(booker.branchId) } : {}),
-          ...(dependentId ? { dependentId, dependentCreated: !!plan.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
+          ...(dependentId ? { dependentId, dependentCreated: !!pp.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
     });
   } catch (e) {
     // A racing identical request may have committed first: answer with its receipt.

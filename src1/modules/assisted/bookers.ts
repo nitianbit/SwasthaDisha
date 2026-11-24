@@ -7,7 +7,7 @@ import { hasGlobalScope, type PartnerActor } from '@/modules/partners/services';
 import { assistedFlags, disabled } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import type { AssistedAuditAction } from '@/modules/assisted/model';
-import { linkAssistedIn, linkPharmacyCustomerIn } from '@/modules/assisted/patient';
+import { linkLabIn, linkPharmacyCustomerIn } from '@/modules/assisted/patient';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labAdmissible } from '@/modules/assisted/labViews';
 
@@ -97,7 +97,7 @@ export function auditBookerIn(b: BookerActor, action: AssistedAuditAction, field
 /** §17.4: the booker's link to the account holder, with consent and the first typed name (pharmacy: S3 link; lab: `assisted_links`). */
 export function linkBookerIn(b: BookerActor, userId: string, typedName: string, s: ClientSession): Promise<void> {
   if (b.kind === 'pharmacy') return linkPharmacyCustomerIn(b, userId, typedName, s);
-  return linkAssistedIn({ bookerKind: 'lab', bookerId: b.partnerId, actorId: b.memberId }, userId, typedName, new Date(), s);
+  return linkLabIn({ partnerId: b.partnerId, userId, typedName, recordedById: lower(b.memberId), at: new Date() }, s);
 }
 
 /** Who reads a booker notice: the pharmacy (one account), or the lab member who booked (partner notices are per member). */

@@ -9,7 +9,7 @@ import { undoCouponUsageIn } from '@/modules/coupon/usage';
 import { sweepFailure } from '@/modules/common/utils/sweepFailure';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentService, registerPaymentContextHandler } from '@/modules/payment/services';
-import type { IPaymentRecord } from '@/modules/payment/types';
+import type { IPaymentRecord, PaymentContext } from '@/modules/payment/types';
 import { CouponService } from '@/modules/coupon/services';
 import { WalletRepository } from '@/modules/wallet/repository';
 import UserModel from '@/modules/user/model';
@@ -28,8 +28,8 @@ import type { AuthRequest } from '@/modules/middleware/auth';
 import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
 import { LAB_NOT_DISPUTED_QUERY, LAB_UNPAID_CARD_QUERY, assistedLabCustomerPart, assistedLabPartnerPart, isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
-import { kickCardRefunds } from '@/modules/assisted/cardRefunds';
-import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
+import { auditIn, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 import { bookerNoticeUserId } from '@/modules/assisted/bookers';
 
@@ -70,7 +70,7 @@ export const defaultLabNotifier: LabNotifier = async (n) => {
     const { NotificationService } = await import('@/modules/notification/services');
     await Container.get(NotificationService).create({
       userId: n.userId, type: n.type, title: n.title, message: n.message,
-      referenceType: 'partner_lab_booking', referenceId: n.bookingId, idempotencyKey: n.key, data: { bookingId: n.bookingId },
+      referenceType: 'partner_lab_booking', referenceId: n.bookingId, idempotencyKey: n.key, data: { bookingId: n.bookingId, bookingKind: 'lab_booking' },
     });
   } catch (e) {
     console.error('lab booking notification failed', (e as Error)?.message);
@@ -144,12 +144,12 @@ const byOf = (a: Actor) => a.kind === 'customer' ? { by: a.userId, byKind: 'cust
   : a.kind === 'booker' ? { by: a.id, byKind: 'booker' as const }
   : { by: 'system', byKind: 'system' as const };
 type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner' | 'desk';
-/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it. (r12: `desk` rows are never assisted.) */
-const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system', desk: 'desk' };
+/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it (a desk cancel is never of an assisted row). */
+const ASSISTED_CAUSE: Record<Exclude<CancelReason, 'desk'>, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system' };
 const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
 const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
 /** r14: the payment context of a row's gateway payments — a partner's card payment of an assisted row, else the customer's. */
-const payContextOf = (b: IPartnerLabBooking) => (isAssisted(b) ? 'assisted_lab_booking' as const : 'lab_booking' as const);
+const payContextOf = (b: IPartnerLabBooking) => (isAssisted(b) ? cardContextOf('lab_booking') : 'lab_booking' as const);
 /** r14: the booker notice's money line, by how this cancellation refunded the partner (card/UPI or wallet). */
 const bookerMoney = (b: IPartnerLabBooking) => bookerMoneyLine(cancellationRowOf(b.assisted?.funding));
 
@@ -161,6 +161,14 @@ async function tellBooker(b: IPartnerLabBooking, n: Omit<AssistedNotice, 'audien
   if (!b.assisted?.bookedBy?.id) return;
   await sendAssistedNotices([{ ...n, audience: 'booker', userId: bookerNoticeUserId(b.assisted.bookedBy), bookingId: String(b._id),
     data: { bookingKind: 'lab_booking', shortRef: b.assisted.shortRef, ...(n.data ?? {}) } }]);
+}
+
+/** r11b: the patient's own step on an assisted lab booking, audited in its transaction (ids and codes only). */
+async function auditPatientIn(b: IPartnerLabBooking, userId: string, action: 'booking.cancelled' | 'booking.reschedule_accepted',
+  detail: Record<string, unknown>, s: ClientSession): Promise<void> {
+  const by = b.assisted!.bookedBy;
+  await auditIn({ actorKind: 'customer', actorId: String(userId).toLowerCase(), orgKind: by.kind, orgId: String(by.id).toLowerCase(), action,
+    bookingId: String(b._id).toLowerCase(), detail: { kind: 'lab_booking', ...detail } }, s);
 }
 
 /** The D1 reader for a workspace actor (members are `partner` uploaders; admins have authority over every file). */
@@ -176,8 +184,9 @@ async function withPlaceNames(rows: IPartnerLabBooking[]): Promise<Record<string
   const branches = await BranchModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.branchId)))] } }).select({ name: 1, address: 1, phone: 1 }).lean() as any[];
   const p = new Map(partners.map((x) => [String(x._id), x]));
   const b = new Map(branches.map((x) => [String(x._id), x]));
-  // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills).
-  const bills = await billsForLabBookings(rows.filter((r) => isDeskRow(r)).map((r) => String(r._id)));
+  // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills); read through the partners' bill index.
+  const desk = rows.filter((r) => isDeskRow(r));
+  const bills = await billsForLabBookings(desk.map((r) => String(r._id)), [...new Set(desk.map((r) => String(r.partnerId)))]);
   return rows.map((r) => ({ ...customerView(r), lab: { name: p.get(String(r.partnerId))?.name },
     branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined,
     ...(isDeskRow(r) ? { bill: bills.get(String(r._id).toLowerCase()) ?? null } : {}) }));
@@ -213,6 +222,9 @@ export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, assisted: _a, ...rest } = b as any;
   return deskLabPart(assistedLabPartnerPart({
     ...rest,
+    // r11b: a booker's cancellation records the pharmacy's id in `by`; the lab sees `byKind: 'booker'` (and the booker's
+    // name in the assisted part), never that id.
+    ...(rest.cancellation?.byKind === 'booker' ? { cancellation: (({ by: _by, ...c }) => c)(rest.cancellation) } : {}),
     report: {
       draftFiles: (b.report?.draftFiles ?? []).map((p) => `/api/static/${p}`),
       releasedFiles: (b.report?.releasedFiles ?? []).map((p) => `/api/static/${p}`),
@@ -515,7 +527,7 @@ export class LabBookingService {
   // ───────────────────────────── Cancellation (customer, lab, timeout) ─────────────────────────────
 
   /** Writes every unsettled payment record of the booking first: a capture committing earlier is seen, a later one waits. */
-  private async fenceRecords(id: string, s: ClientSession, context: 'lab_booking' | 'assisted_lab_booking' = 'lab_booking') {
+  private async fenceRecords(id: string, s: ClientSession, context: PaymentContext = 'lab_booking') {
     await PaymentRecordModel.collection.updateMany({ context, contextId: id, status: { $nin: ['paid', 'refunded'] } },
       { $set: { updatedAt: new Date() } }, { session: s });
     return PaymentRecordModel.find({ context, contextId: id }).session(s).lean() as unknown as Promise<
@@ -549,7 +561,8 @@ export class LabBookingService {
     // r11 (§24.4.4): a partner-paid booking refunds the PARTNER (its wallet, exactly once), never the customer wallet.
     // r14: a card-paid one goes back by its card refund row (to the card; the wallet only on the booker's own choice).
     if (isAssisted(b) && b.assisted?.funding) {
-      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false, refundTo: c.refundTo }, s);
+      // A desk row (the only one cancelled with `desk`) returned above.
+      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason as Exclude<CancelReason, 'desk'>], keepMoney: false, refundTo: c.refundTo }, s);
       await releaseSeat(b.slot.slotId, s);
       if (c.actor.kind === 'partner') {
         await recordPartnerAudit(c.actor.actor, c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
@@ -590,7 +603,9 @@ export class LabBookingService {
       if (captured && !b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - LAB_CANCEL_CUTOFF_MS) {
         throw err(409, 'CANCELLATION_WINDOW_CLOSED', 'Bookings can be cancelled up to 2 hours before the slot');
       }
-      return this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
+      const back = await this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
+      if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.cancelled', { cause: 'patient' }, s);
+      return back;
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     if (isDeskRow(after)) {
@@ -756,26 +771,27 @@ export class LabBookingService {
     return partnerView(after);
   }
 
+  /**
+   * The patient accepts the lab's proposed new time. r11b: on an assisted (partner-paid) booking the accept is audited in
+   * its transaction and the partner that booked it is told — the same accept as the booker's (acceptRescheduleAsBooker).
+   */
   async acceptReschedule(userId: string, bookingId: string, version: number): Promise<Record<string, unknown>> {
-    const id = String(bookingId).toLowerCase();
-    if (!Types.ObjectId.isValid(id)) throw notFound();
-    const updated = await PartnerLabBookingModel.findOneAndUpdate(
-      { _id: id, userId: { $eq: userId }, status: 'confirmed', 'reschedule.pending': true, 'reschedule.version': version },
-      { $set: { 'reschedule.pending': false }, $inc: { statusVersion: 1 } },
-      { new: true }
-    ).lean();
-    if (!updated) {
-      const b = await this.ownBooking(userId, id);
-      if (!b.reschedule?.pending) throw err(409, 'NO_PENDING_RESCHEDULE', 'There is no new time to accept');
-      throw err(409, 'RESCHEDULE_CHANGED', 'The lab changed the time again; review the latest proposal');
+    // r14 (L5): a partner's card booking never paid is not the patient's (the one 404, as on every patient read).
+    const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }, bookingId, version, async (b, s) => {
+      if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.reschedule_accepted', { version: Number(version) }, s);
+    });
+    if (isAssisted(updated)) {
+      await tellBooker(updated, { type: 'general', title: 'The patient accepted the new time',
+        message: `The patient accepted the new time for lab booking Ref ${updated.assisted!.shortRef}: ${shownSlot(updated)}.`,
+        key: `assisted:lab:${updated._id}:reschedule:${version}:accepted:booker` });
     }
-    return customerView(updated as IPartnerLabBooking);
+    return customerView(updated);
   }
 
   /**
    * r11 (owner, 23 Nov; L7): the partner that booked and paid an assisted booking accepts the lab's proposed new time
-   * for the patient — its own rows only (`bookerFilter`), the same compare-and-set as the patient's, audited in the same
-   * transaction (`inTx`). Any other booking is the one 404.
+   * for the patient — its own rows only (`bookerFilter`), audited in the same transaction (`inTx`). Any other booking is
+   * the one 404. r11b: the patient's accept is this same accept, with the patient's own-row filter.
    */
   async acceptRescheduleAsBooker(bookerFilter: Record<string, unknown>, bookingId: string, version: number,
     inTx: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>): Promise<IPartnerLabBooking> {
@@ -963,7 +979,7 @@ export class LabBookingService {
   /** Earnings only for money actually collected through us (paid bookings), once per booking. */
   private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
     // r12 (§5.5): a desk row (paid at the lab) never earns through the ledger, so no payout system ever sees it.
-    if (b.settlement?.settlementSystem !== 'ledger') return;
+    if (isDeskRow(b)) return;
     if (b.paymentStatus !== 'paid') return;
     // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
     const split = b.assisted?.split;

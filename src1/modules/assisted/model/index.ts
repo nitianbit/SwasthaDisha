@@ -213,7 +213,5 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
 cardRefundSchema.index({ paymentRecordId: 1 });
 cardRefundSchema.index({ captureKey: 1 }, { unique: true, partialFilterExpression: { captureKey: { $type: 'string' } } });
 cardRefundSchema.index({ bookingId: 1 });
-// r14 (§24.5.4): a booking's rows by its kind (consultation or lab booking).
-cardRefundSchema.index({ bookingKind: 1, bookingId: 1 });
 cardRefundSchema.index({ state: 1, updatedAt: 1 });
 export const AssistedCardRefundModel: Model<IAssistedCardRefund> = model<IAssistedCardRefund>('AssistedCardRefund', cardRefundSchema, 'assisted_card_refunds');

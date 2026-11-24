@@ -23,7 +23,7 @@ import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { ASSISTED_KEY, assistedCouponFor, newShortRef, type PharmacyActor } from '@/modules/assisted/consultations';
 import {
-  applyPatientPlanIn, cleanName, linkPharmacyCustomerIn, patientIdentity, planAssistedPatient, redeemCouponIn, type AssistedPatientInput,
+  cleanName, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, writePatientIn, type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
 
@@ -153,8 +153,8 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
   const specialization = input.specialization.trim();
   const doctorId = doctorIdOf(input.target);
   const { quotedAmountMinor } = await svc.quote({ specialization, mode: input.mode, doctorId }, now);
-  const plan = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
-  const coupon = await assistedCouponFor(input.couponCode, { userId: plan.customer._id, dependentId: plan.dependentId, doctorId, listMinor: quotedAmountMinor });
+  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const coupon = await assistedCouponFor(input.couponCode, { userId: pp.userId, dependentId: pp.dependentId, doctorId, listMinor: quotedAmountMinor });
   const discountMinor = coupon?.discountMinor ?? 0;
   const payMinor = quotedAmountMinor - discountMinor;
   if (input.acceptedQuoteMinor !== quotedAmountMinor || input.acceptedPayableMinor !== payMinor) {
@@ -175,7 +175,7 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
       at: now, actorId: lower(actor.actorId) },
     preferredLanguage: input.preferredLanguage,
-    identity: { attested: true, newAccount: plan.customer.created },
+    identity: { attested: true, newAccount: pp.created },
     join: { on: input.join.on, ...(input.join.phone ? { phone: canonicalMobile(input.join.phone)! } : {}), linkVersion: 1 },
     funding: { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'held',
       ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
@@ -192,16 +192,16 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
       const again = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).session(s).lean() as IInstantRequest | null;
       if (again) return again;
       await claimRequestKey(instantKeyScope(actor), input.requestKey, s);
-      await applyPatientPlanIn(plan, input.preferredLanguage, s);
-      await linkPharmacyCustomerIn(actor, plan.customer._id, plan.holderTyped, s);
+      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
+      await linkPharmacyCustomerIn(actor, pp.userId, pp.holderTyped, s);
       if (coupon) {
-        await redeemCouponIn(coupon, { bookingKind: 'instant_request', payerKind: 'pharmacy', bookingId: requestId, patientUserId: plan.customer._id,
-          dependentId: plan.dependentId, payerId: pharmacyId }, s);
+        await redeemCouponIn(coupon, { bookingKind: 'instant_request', payerKind: 'pharmacy', bookingId: requestId, patientUserId: pp.userId,
+          dependentId: pp.dependentId, payerId: pharmacyId }, s);
       }
       // §25.8.1: paid from the start (never `pending_payment`); the held funding is coupon + the partner's money.
       const [created] = await InstantRequestModel.create([{
-        _id: requestId, userId: plan.customer._id, createRequestKey: storedKey, createRequestHash: hash,
-        patient: plan.dependentId ? { kind: 'dependent', dependentId: plan.dependentId, name: plan.patientName } : { kind: 'self', name: plan.patientName },
+        _id: requestId, userId: pp.userId, createRequestKey: storedKey, createRequestHash: hash,
+        patient: pp.dependentId ? { kind: 'dependent', dependentId: pp.dependentId, name: pp.patientName } : { kind: 'self', name: pp.patientName },
         specialization, mode: input.mode, target, quotedAmountMinor, ...(coupon ? { couponCode: coupon.code } : {}),
         ...(couponDoctorIds ? { couponDoctorIds } : {}), ...(couponTerms ? { couponTerms } : {}), discountMinor,
         statusVersion: 1, paymentStatus: 'paid', paymentDeadline: now, source: 'pharmacy_assisted', assisted,
@@ -215,7 +215,7 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
       await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.created',
         bookingId: requestId, requestKey: input.requestKey,
         detail: { kind: 'instant_request', specialization, mode: input.mode, ...(doctorId ? { doctorId } : {}), amountMinor: payMinor, method: 'wallet',
-          accountCreated: plan.customer.created, ...(plan.dependentId ? { dependentId: plan.dependentId, dependentCreated: !!plan.newDependent } : {}),
+          accountCreated: pp.created, ...(pp.dependentId ? { dependentId: pp.dependentId, dependentCreated: !!pp.newDependent } : {}),
           ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
       return created!.toObject() as IInstantRequest;
     });

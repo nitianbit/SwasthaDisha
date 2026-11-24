@@ -6,7 +6,8 @@
  * the visit (and its race); walk-ins are never no-shows or rescheduled; scope (another lab, another branch: 404); names
  * (typed or masked only); request keys (replay, other content 409, abandoned, by-key); the Q2 bill link (at most one
  * open bill, its race, cancel frees it, wrong customer, online rows); the switch; the index 503; the admin mirror; the
- * report to the patient; and an online customer lab booking unchanged. Real routes over HTTP (configureRoutes) on
+ * report to the patient; r12b: the holder's "not mine", the admin dismiss and the admin move of a desk row (before and
+ * after its report; no money moves; the lab's link follows); and an online customer lab booking unchanged. Real routes over HTTP (configureRoutes) on
  * MongoDB; notices are captured.
  *
  * Every check runs even when an earlier one fails (the run exits 1 if any failed).
@@ -92,7 +93,8 @@ Container.set(InvoiceService, new InvoiceService(new InvoiceRepository(), new In
   new PartnerRepository(), new BranchRepository(), new CatalogueItemRepository(), sms));
 Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
 Container.set(BannerService, new BannerService(new BannerRepository()));
-setAssistedNotifier(async () => undefined);
+const assistedNotices: { audience: string; userId: string; key: string }[] = [];
+setAssistedNotifier(async (n) => { assistedNotices.push({ audience: n.audience, userId: n.userId, key: n.key }); });
 
 let passed = 0;
 const failed: string[] = [];
@@ -126,6 +128,7 @@ async function main() {
   process.env.LAB_DESK_ENABLED = 'true';
   process.env.ASSISTED_BOOKING_ENABLED_PHARMACY = 'true';
   process.env.ASSISTED_LAB_BOOKING_ENABLED_PHARMACY = 'true';
+  process.env.ASSISTED_ADMIN_TOOLS_ENABLED = 'true';
 
   try {
     // ── Labs: a verified lab (two branches, a desk member on branch A only), a second lab, an unverified lab, a clinic ──
@@ -574,6 +577,62 @@ async function main() {
       assert.ok(labNotices.some((n) => n.userId === X && n.key === `plb:${id}:report:${path}`));
       await expect('PATH', 'POST', `${WS}/lab-bookings/${id}/complete`, 200, {});
       assert.equal(await LedgerEntryModel.countDocuments({ source: 'partner_lab_booking', sourceId: id }), 0);
+    });
+
+    // ───────────────────────── r12b: "not mine" and the admin move on desk rows ─────────────────────────
+    await check('r12b: "not mine" on a desk row hides it from the holder and queues it (bookedBy: the lab); a dismiss puts it back', async () => {
+      const d = await book(order({ slotId: await slot() }));
+      const id = d.booking._id;
+      await expect('Y', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 404, {}, 'LAB_BOOKING_NOT_FOUND');
+      await expect('X', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 200, { note: 'not me' });
+      await expect('X', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 409, {}, 'ALREADY_REPORTED');
+      assert.ok(!(await expect('X', 'GET', '/api/v1/lab-bookings?limit=100', 200)).json.data.some((x: any) => x._id === id), 'left out of the list');
+      assert.equal((await expect('X', 'GET', `/api/v1/lab-bookings/${id}`, 200)).json.data.disputed.state, 'open');
+      assert.equal((await stored(id)).desk.identity.disputed.state, 'open');
+      assert.ok(assistedNotices.some((n) => n.key === `assisted:lab:${id}:not_mine:booker` && n.userId === String(deskMember._id)));
+      const items = (await expect('ADMIN', 'GET', '/api/v1/admin/assisted/review-items?state=open', 200)).json.data;
+      const item = items.find((i: any) => i.bookingId === id);
+      assert.equal(item.bookingKind, 'lab_booking');
+      assert.deepEqual(item.booking.bookedBy, { kind: 'lab', id: L.toLowerCase(), name: null });
+      assert.equal(item.booking.shortRef, id.slice(-8).toUpperCase());
+      await expect('ADMIN', 'POST', `/api/v1/admin/assisted/review-items/${item._id}/dismiss`, 200, { reason: 'checked with the lab' });
+      assert.equal((await stored(id)).desk.identity.disputed.state, 'dismissed');
+      assert.ok((await expect('X', 'GET', '/api/v1/lab-bookings?limit=100', 200)).json.data.some((x: any) => x._id === id), 'back in the list');
+    });
+
+    await check('r12b: the admin move of a desk row after its report: the right holder gets it and its report, the old one 404; the lab link follows; once per key; no money', async () => {
+      const id = walk.booking._id;
+      const before = await stored(id);
+      assert.equal(before.status, 'completed');
+      const path = before.report.releasedFiles[0];
+      const read = async (who: string) => (await fetch(`${base}/api/static/${path}`, { headers: { authorization: `Bearer ${tokens[who]}` } })).status;
+      assert.equal(await read('X'), 200); assert.equal(await read('Y'), 404);
+      const ledger0 = await LedgerEntryModel.countDocuments({});
+      const wy = await wallet(Y);
+      await expect('X', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 200, {});
+      const mv = { toPhone: '9600000402', holderName: 'Bikash T', reason: 'wrong number typed at the desk', requestKey: newKey() };
+      const m = (await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${id}/move`, 200, mv)).json.data;
+      assert.equal(m.replayed, false); assert.equal(m.booking.userId, Y); assert.equal(m.booking.disputed.state, 'moved');
+      assert.equal((await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${id}/move`, 200, mv)).json.data.replayed, true);
+      await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${id}/move`, 409, { ...mv, reason: 'other' }, 'IDEMPOTENCY_KEY_REUSED');
+      const b = await stored(id);
+      assert.equal(b.userId, Y); assert.equal(b.patient.name, 'Bikash T'); assert.equal(b.patient.kind, 'self');
+      assert.equal(b.status, 'completed'); assert.equal(b.paymentStatus, 'pending'); assert.equal(b.assisted, undefined);
+      assert.equal(b.desk.moves.length, 1); assert.equal(b.desk.moves[0].fromUserId, X);
+      await expect('X', 'GET', `/api/v1/lab-bookings/${id}`, 404, undefined, 'LAB_BOOKING_NOT_FOUND');
+      assert.equal((await expect('Y', 'GET', `/api/v1/lab-bookings/${id}`, 200)).json.data.payAtLab, true);
+      assert.equal(await read('Y'), 200, 'the right holder reads the released report');
+      assert.equal(await read('X'), 404, 'the old holder no longer does');
+      const link = await AssistedLinkModel.findOne({ bookerKind: 'lab', bookerId: L.toLowerCase(), userId: Y }).lean() as any;
+      assert.equal(link.typedName, 'Bikash T');
+      assert.ok(await AssistedLinkModel.exists({ bookerKind: 'lab', bookerId: L.toLowerCase(), userId: X }), 'X keeps the link: other desk rows of this lab name X');
+      assert.equal(await LedgerEntryModel.countDocuments({}), ledger0, 'no money moves');
+      assert.equal(await wallet(Y), wy);
+      assert.equal((await expect('OWN', 'GET', `${WS}/lab-bookings/${id}`, 200)).json.data.userId, Y, 'the lab still sees its booking');
+      assert.ok(assistedNotices.some((n) => n.audience === 'customer' && n.userId === Y && n.key === `assisted:lab:${id}:moved_to:${Y}`));
+      // A customer's own online booking is still not reportable or movable.
+      const online = (await PartnerLabBookingModel.findOne({ userId: Y, 'settlement.settlementSystem': 'ledger', assisted: { $exists: false } }).lean() as any);
+      if (online) await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${online._id}/move`, 409, { ...mv, requestKey: newKey() }, 'NOT_ASSISTED_BOOKING');
     });
 
     // ───────────────────────── Online customer bookings unchanged ─────────────────────────
