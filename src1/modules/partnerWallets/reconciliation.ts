@@ -1,11 +1,12 @@
 import PaymentRecordModel from '@/modules/payment/model';
 import { withdrawableOfIn } from '@/modules/pharmacyWallet/walletLots';
 import { PartnerWalletEntryModel, PartnerWalletModel } from '@/modules/partnerWallets/model';
-import { labTopups } from '@/modules/partnerWallets/ledger';
+import { PARTNER_TOPUP_FLOWS, topupKindOf } from '@/modules/partnerWallets/topupKinds';
 
 /**
- * r13 (§24.7.4): the daily reconciliation's checks of the partner store (reported, never fixed): balance = Σ entries,
- * withdrawable = Σ eligible lots ≤ balance, a receivable only while frozen; and paid lab top-ups never credited.
+ * r13 (§24.7.4), r20 (§25.4.3): the daily reconciliation's checks of the partner store, lab and doctor wallets alike
+ * (reported, never fixed): balance = Σ entries, withdrawable = Σ eligible lots ≤ balance, a receivable only while frozen;
+ * and paid lab and doctor top-ups never credited.
  */
 type Mismatch = { check: string; ref: string; detail: Record<string, unknown> };
 const LIST_MAX = 200;
@@ -27,12 +28,17 @@ export async function partnerWalletInvariants(): Promise<{ checked: number; mism
 }
 
 /**
- * Paid lab top-ups with no wallet credit. Every lab credit claims its record (`walletCreditedAt`) in the credit's own
- * transaction, so a paid record without the claim was never credited (every lab top-up is swept, so none is unchecked).
+ * Paid lab and doctor top-ups with no wallet credit. Every partner-store credit claims its record (`walletCreditedAt`) in
+ * the credit's own transaction, so a paid record without the claim was never credited (every such top-up is swept, so none
+ * is unchecked). Each row names its owner as the admin answers do (`partnerId` for a lab, `specialistId` for a doctor).
  */
-export async function uncreditedLabTopups(): Promise<Record<string, unknown>[]> {
-  const rows = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': labTopups.flow, status: 'paid', walletCreditedAt: { $exists: false } })
-    .select({ payerPartnerId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 }).limit(LIST_MAX).lean() as Record<string, any>[];
-  return rows.map((r) => ({ paymentTransactionId: String(r._id), walletKind: 'lab', partnerId: String(r.payerPartnerId).toLowerCase(),
-    amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: 'paid_not_credited' }));
+export async function uncreditedPartnerTopups(): Promise<Record<string, unknown>[]> {
+  const rows = await PaymentRecordModel.find({ context: 'wallet_recharge', 'notes.flow': { $in: PARTNER_TOPUP_FLOWS }, status: 'paid', walletCreditedAt: { $exists: false } })
+    .select({ context: 1, notes: 1, payerPartnerId: 1, payerSpecialistId: 1, baseAmount: 1, baseAmountPaise: 1, createdAt: 1 }).sort({ createdAt: 1 })
+    .limit(LIST_MAX).lean() as Record<string, any>[];
+  return rows.map((r) => {
+    const kind = topupKindOf(r);
+    return { paymentTransactionId: String(r._id), walletKind: kind?.kind ?? String(r.notes?.flow), ...(kind ? { [kind.ownerField]: kind.ownerOf(r) } : {}),
+      amountMinor: r.baseAmountPaise ?? Math.round(Number(r.baseAmount) * 100), createdAt: r.createdAt, state: kind ? 'paid_not_credited' : 'paid_no_owner' };
+  });
 }

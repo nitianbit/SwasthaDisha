@@ -64,6 +64,11 @@ export const assistedFlags = {
   referralDoctorCuts: () => on('REFERRAL_DOCTOR_CUTS_ENABLED'),
   /** r24 (O1): payouts from `*_referral` accounts are refused (409 REFERRAL_PAYOUTS_DISABLED) until the CA answers. */
   referralPayouts: () => on('REFERRAL_PAYOUTS_ENABLED'),
+  /**
+   * r20 (§25.4.5): doctor wallets — new doctor top-ups, and lots on their credits. Off: a new top-up answers 503
+   * ASSISTED_BOOKING_DISABLED; verify, reconcile, the check, the sweep and the admin tools run.
+   */
+  doctor: () => on('ASSISTED_BOOKING_ENABLED_DOCTOR'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -113,4 +118,9 @@ export function assertLabDeskOn(): void {
 /** r13: lab wallet top-ups (§24.7.4). */
 export function assertLabWalletOn(): void {
   if (!assistedFlags.lab()) throw disabled('Lab wallet top-up');
+}
+
+/** r20: doctor wallet top-ups (§25.4.5). */
+export function assertDoctorWalletOn(): void {
+  if (!assistedFlags.doctor()) throw disabled('Doctor wallet top-up');
 }

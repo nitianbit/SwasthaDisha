@@ -18,6 +18,8 @@ export interface IPaymentRecord {
   /** r13 (§24.7.2): a partner-paid record (a lab top-up): the paying partner and member. */
   payerPartnerId?: string;
   payerMemberId?: string;
+  /** r20 (§25.4.1): a doctor-paid record (a doctor top-up): the paying doctor. */
+  payerSpecialistId?: string;
   /** r13: a keyed order (a lab top-up): the scoped request key and its content hash (exactly one order per key). */
   requestKey?: string;
   requestHash?: string;
@@ -69,6 +71,8 @@ export interface CreatePaymentOrderRequest {
   /** r13: a lab top-up's paying partner and member, and its scoped request key with the content hash. */
   payerPartnerId?: string;
   payerMemberId?: string;
+  /** r20: a doctor top-up's paying doctor. */
+  payerSpecialistId?: string;
   requestKey?: string;
   requestHash?: string;
   context: PaymentContext;

@@ -41,6 +41,9 @@ export interface ILabDeskBlock {
   notes?: string;
   /** The booking opened the patient's account (the desk's receipt says `newAccount`; its replay says it again). */
   newAccount?: boolean;
+  /** r12b: the holder's "not mine" and the admin moves, as on the `assisted` block (§17.5); no money moves. */
+  identity?: { disputed?: { state: 'open' | 'dismissed' | 'moved'; at: Date; resolvedAt?: Date } };
+  moves?: { at: Date; by: string; fromUserId: string; toUserId: string; requestKey: string; requestHash: string }[];
 }
 
 /** r11 (§24.4.1): who made the booking. Rows written before r11 have no `source`; readers derive `self`. */
@@ -161,6 +164,8 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
         payAtLab: { type: Boolean, required: true },
         notes: { type: String, trim: true },
         newAccount: { type: Boolean },
+        identity: { type: Schema.Types.Mixed },
+        moves: { type: [Schema.Types.Mixed], default: undefined },
       }, { _id: false }),
       default: undefined,
     },
@@ -290,9 +295,9 @@ labBookingSchema.index({ status: 1, paymentStatus: 1, paymentDeadline: 1, expiry
 labBookingSchema.index({ 'assisted.requestKey': 1 }, { unique: true, partialFilterExpression: { 'assisted.requestKey': { $type: 'string' } } });
 labBookingSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
 labBookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1, _id: -1 });
-// r12 (§24.6.1): one desk row per desk request key; a lab's rows by source.
+// r12 (§24.6.1): one desk row per desk request key; r12b: the workspace list by source, in its own order (slot start, id).
 labBookingSchema.index({ 'desk.requestKey': 1 }, { unique: true, partialFilterExpression: { 'desk.requestKey': { $type: 'string' } } });
-labBookingSchema.index({ partnerId: 1, source: 1, createdAt: -1 });
+labBookingSchema.index({ partnerId: 1, source: 1, 'slot.startsAt': 1, _id: 1 });
 
 /** The model name is load-bearing: D1 file grants resolve `mongoose.models['PartnerLabBooking']`. */
 export const PartnerLabBookingModel: Model<IPartnerLabBooking> = model<IPartnerLabBooking>(

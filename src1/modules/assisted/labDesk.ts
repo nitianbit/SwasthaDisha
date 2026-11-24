@@ -13,7 +13,7 @@ import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
 import { PartnerLabBookingModel, type IPartnerLabBooking, type ILabDeskBlock } from '@/modules/partners/model/labBooking';
 import type { VisitMode } from '@/modules/partners/model/slot';
-import { type PartnerActor, hasGlobalScope, recordPartnerAudit } from '@/modules/partners/services';
+import { type PartnerActor, assertBranchInScope, hasGlobalScope, recordPartnerAudit } from '@/modules/partners/services';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { takeSeat } from '@/modules/partners/services/slots';
 import { LabBookingService, admitLabItems, branchOffers, itemSnapshot, partnerView, withDeskBills } from '@/modules/partners/services/labBookings';
@@ -22,7 +22,7 @@ import { maskName } from '@/modules/assisted/names';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { labAdmissible, labRequestContent, validateLabRequest, type AssistedLabInput } from '@/modules/assisted/labBookings';
-import { cleanName, countPhoneUse, preparePatient, writePatientIn } from '@/modules/assisted/patient';
+import { cleanName, countPhoneUse, linkLabIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
 
 /**
  * Assisted booking round 2c (ASSISTED_BOOKING_DESIGN.md §24.6, §5.5, §7.5): the LAB FRONT DESK books the lab's own tests
@@ -54,6 +54,8 @@ export type LabDeskInput = Omit<AssistedLabInput, 'partnerId' | 'slotId' | 'coup
   collector?: { memberId?: string; name: string; phone?: string };
   /** Price fence: Σ the lab's catalogue prices (paise) the desk showed. No coupon on desk rows. */
   acceptedTotalMinor: number;
+  /** The desk's own notes (stored on `desk.notes`; r11b took `notes` off the pharmacy create). */
+  notes?: string;
 };
 
 /** The stored key (unique `desk.requestKey`) and the claim scope of a desk member's create at this lab. */
@@ -103,14 +105,13 @@ async function deskBranch(actor: PartnerActor, branchId: string, visitMode: Visi
   const unavailable = () => err(404, 'BRANCH_NOT_AVAILABLE', 'This branch does not offer that visit type');
   const b = OBJECT_ID.test(String(branchId)) ? await BranchModel.findById(branchId).session(s ?? null).lean() as Record<string, any> | null : null;
   if (!b || lower(b.partnerId) !== lower(actor.partnerId)) throw unavailable();
-  if (!hasGlobalScope(actor) && !actor.branchIds.map(String).includes(String(b._id))) {
-    throw err(403, 'BRANCH_SCOPE_EXCEEDED', 'Operation not allowed for this branch');
-  }
+  assertBranchInScope(actor, String(b._id));
   if (b.isActive === false || !branchOffers(b, visitMode)) throw unavailable();
   return b;
 }
 
-const inScope = (actor: PartnerActor, b: { branchId?: unknown }) => hasGlobalScope(actor) || actor.branchIds.map(String).includes(String(b.branchId));
+/** A row the member may see: at a branch in scope (the boolean form of `assertBranchInScope`). */
+const inScope = (actor: PartnerActor, b: { branchId?: unknown }) => hasGlobalScope(actor) || actor.branchIds.includes(String(b.branchId));
 
 /** The lab view of desk rows, with their bill. */
 async function deskViews(actor: PartnerActor, rows: IPartnerLabBooking[]) {
@@ -128,18 +129,6 @@ async function replayOf(actor: PartnerActor, storedKey: string, hash: string, s?
   // A receipt is shown only while the booking is at a branch in this member's scope.
   if (!inScope(actor, prior)) throw notFound();
   return prior;
-}
-
-/** §17.4 for labs: the lab's link to the account holder, with consent and the FIRST typed name (never overwritten). */
-async function linkLabIn(actor: PartnerActor, userId: string, typedName: string, now: Date, s: ClientSession): Promise<void> {
-  const key = { bookerKind: 'lab' as const, bookerId: lower(actor.partnerId), userId: lower(userId) };
-  // Upsert: concurrent first bookings of one patient conflict inside their transactions and are retried, never duplicated.
-  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: now, consentRecordedById: lower(actor.memberId),
-    ...(typedName ? { typedName } : {}) } }, { upsert: true, session: s });
-  if (typedName) {
-    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
-      { $set: { typedName } }, { session: s });
-  }
 }
 
 // ───────────────────────────── Lookup ─────────────────────────────
@@ -220,7 +209,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
       await labOf(actor, { eligible: true }, s);
       await deskBranch(actor, String(branch._id), input.visitMode, s);
       await writePatientIn(pp, { preferredLanguage: input.preferredLanguage, createdSource: 'lab_desk' }, s);
-      await linkLabIn(actor, pp.userId, pp.holderTyped, now, s);
+      await linkLabIn({ partnerId, userId: pp.userId, typedName: pp.holderTyped, recordedById: lower(actor.memberId), at: now }, s);
       // The desk may book a slot starting now (the 60-minute lead is for online bookings); a walk-in takes no seat (L11).
       const seat = walkIn ? null
         : await takeSeat(String(input.slotId), { partnerId, branchId: String(branch._id), visitMode: input.visitMode, minStart: now }, s);

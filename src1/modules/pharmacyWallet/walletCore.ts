@@ -71,8 +71,12 @@ export interface WalletStore<W = any, E = any> {
  * for card disputes: recorded and flagged only).
  */
 export interface TopupKind<W = any, E = any> {
-  readonly kind: 'pharmacy' | 'lab';
+  readonly kind: 'pharmacy' | 'lab' | 'doctor';
   readonly flow: string;
+  /** The payment record field naming the owner (`payerPharmacyId`, `payerPartnerId`, `payerSpecialistId`). */
+  readonly payerField: string;
+  /** How admin answers name the owner (`pharmacyId`, `partnerId`, `specialistId`). */
+  readonly ownerField: string;
   isTopup(r: Record<string, any> | null | undefined): boolean;
   /** The wallet owner of a top-up record, lower-cased. */
   ownerOf(r: Record<string, any>): string;
@@ -81,6 +85,8 @@ export interface TopupKind<W = any, E = any> {
   readonly chargeback: 'take' | 'flag';
   /** A captured top-up opens a lot only while its switch is on and the lot index is built (otherwise non-withdrawable). */
   lotsWritable(): Promise<boolean>;
+  /** Fail closed before a credit (503 INDEXES_OUTDATED) when the store's exactly-once indexes are missing. */
+  assertCreditable?(): Promise<void>;
   readonly rechargeDescription: string;
   /** O2: card money is withdrawable this many days after payment (stored on the lot); absent = not recorded. */
   readonly cardHoldDays?: number;
@@ -437,6 +443,9 @@ Promise<{ wallet: W; entryId: string | null }> {
   return { wallet: posted.wallet, entryId: posted.replayed ? null : String((posted.entry as { _id?: unknown })._id) };
 }
 
+/** Owner decision (review of 2d): an admin top-up is at most ₹2,00,000, for every wallet kind (the web form's cap). */
+export const ADMIN_TOPUP_MAX_MINOR = 20_000_000;
+
 /**
  * Admin manual credit (review of fb4063c7, 4): one credit per Idempotency-Key — the same key and content answers the
  * wallet again (nothing more is credited); the same key with another amount or note is 409 IDEMPOTENCY_KEY_REUSED
@@ -445,6 +454,9 @@ Promise<{ wallet: W; entryId: string | null }> {
  */
 export async function adminTopup<W, E>(store: WalletStore<W, E>, t: { key: string; amountMinor: number; notes?: string; adminId?: string },
   audit?: (posted: Posted<W, E>, s: ClientSession) => Promise<void>): Promise<W> {
+  if (!Number.isSafeInteger(t.amountMinor) || t.amountMinor < 1 || t.amountMinor > ADMIN_TOPUP_MAX_MINOR) {
+    throw err(400, 'VALIDATION_ERROR', 'An admin top-up is at least ₹0.01 and at most ₹2,00,000');
+  }
   const notes = t.notes ?? null;
   const requestHash = requestHashOf({ kind: 'admin_topup', amountPaise: t.amountMinor, notes });
   const reused = () => err(409, 'IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different top-up');

@@ -13,6 +13,7 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import { LAB_UNPAID_CARD_QUERY } from '@/modules/assisted/labViews';
+import { InvoiceModel } from '@/modules/partners/model/invoice';
 import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -20,9 +21,13 @@ import { claimRequestKey } from '@/modules/requestKeys';
 import { inTransaction } from '@/modules/partners/services';
 import { resolveCustomerByPhone } from '@/modules/partners/services/customerResolver';
 import { AssistedAuditEventModel, AssistedReviewItemModel } from '@/modules/assisted/model';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices } from '@/modules/assisted/support';
+import { isDeskRow } from '@/modules/assisted/deskViews';
+import { linkLabIn } from '@/modules/assisted/patient';
+import PartnerAuditEventModel from '@/modules/partners/model/audit';
 
 /**
  * Assisted booking phase 1a (§17.5, P8): the account holder's "this isn't mine" and the admin's review queue, dismiss
@@ -66,8 +71,28 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
 }
 
 /**
- * r11 (§24.4.4): POST /lab-bookings/:id/not-mine — the holder flags an assisted LAB booking; it leaves their lab list
- * and is queued for admins (`bookingKind: 'lab_booking'`). Any other booking of theirs or anyone's: the one 404.
+ * r12b: who made a partner-made lab row, and where its identity review lives: `assisted` (a pharmacy booked and paid it)
+ * or `desk` (the lab desk booked it, paid at the lab: no money ever moves with a review or a move). `notifyId` is who
+ * hears about it (the pharmacy; the desk member who booked, none when an admin did). Null: a customer's own booking.
+ */
+function labOrigin(b: IPartnerLabBooking) {
+  if (b.assisted) {
+    const a = b.assisted;
+    return { root: 'assisted' as const, org: { kind: a.bookedBy.kind, id: a.bookedBy.id }, name: a.bookedBy.name as string | null, notifyId: a.bookedBy.id as string | null,
+      ref: a.shortRef, disputed: a.identity?.disputed, moves: a.moves ?? [], preferredLanguage: a.preferredLanguage };
+  }
+  if (isDeskRow(b) && b.desk) {
+    const d = b.desk;
+    return { root: 'desk' as const, org: { kind: 'lab' as const, id: lower(b.partnerId) }, name: null, notifyId: Types.ObjectId.isValid(d.memberId) ? d.memberId : null,
+      ref: String(b._id).slice(-8).toUpperCase(), disputed: d.identity?.disputed, moves: d.moves ?? [], preferredLanguage: d.preferredLanguage };
+  }
+  return null;
+}
+
+/**
+ * r11 (§24.4.4): POST /lab-bookings/:id/not-mine — the holder flags a partner-made LAB booking (r12b: a lab desk row too);
+ * it leaves their lab list and is queued for admins (`bookingKind: 'lab_booking'`). Any other booking of theirs or
+ * anyone's: the one 404.
  */
 export async function reportLabNotMine(userId: string, bookingId: string, note?: string) {
   assertAdminToolsOn();
@@ -79,22 +104,25 @@ export async function reportLabNotMine(userId: string, bookingId: string, note?:
     // r14 (L5): a partner's card booking never paid is not the holder's yet (the one 404).
     const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: String(userId) }, $nor: [LAB_UNPAID_CARD_QUERY] }).session(s).lean() as IPartnerLabBooking | null;
     if (!b) throw missing();
-    if (!b.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only a booking made for you by a partner can be reported here');
-    if (b.assisted.identity?.disputed) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
+    const o = labOrigin(b);
+    if (!o) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only a booking made for you by a partner can be reported here');
+    if (o.disputed) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
     const at = new Date();
-    const r = await PartnerLabBookingModel.updateOne({ _id: b._id, userId: { $eq: String(userId) }, 'assisted.identity.disputed': { $exists: false } },
-      { $set: { 'assisted.identity.disputed': { state: 'open', at } } }, { session: s });
+    const r = await PartnerLabBookingModel.updateOne({ _id: b._id, userId: { $eq: String(userId) }, [`${o.root}.identity.disputed`]: { $exists: false } },
+      { $set: { [`${o.root}.identity.disputed`]: { state: 'open', at } } }, { session: s });
     if (r.modifiedCount !== 1) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');
     const [item] = await AssistedReviewItemModel.create([{ kind: 'not_mine', bookingKind: 'lab_booking', bookingId: lower(b._id), reportedBy: lower(userId),
       ...(text ? { note: text } : {}), state: 'open', at }], { session: s });
-    await auditIn({ actorKind: 'customer', actorId: lower(userId), orgKind: b.assisted.bookedBy.kind, orgId: b.assisted.bookedBy.id, action: 'booking.not_mine',
+    await auditIn({ actorKind: 'customer', actorId: lower(userId), orgKind: o.org.kind, orgId: o.org.id, action: 'booking.not_mine',
       bookingId: lower(b._id), detail: { kind: 'lab_booking', reviewItemId: String(item!._id) } }, s);
-    return { booking: b, itemId: String(item!._id) };
+    return { booking: b, itemId: String(item!._id), o };
   });
-  const a = out.booking.assisted!;
-  await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Reported as not mine',
-    message: `The account holder reported lab booking Ref ${a.shortRef} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
-    key: `assisted:lab:${out.booking._id}:not_mine:booker`, data: { bookingKind: 'lab_booking' } }]);
+  const { o } = out;
+  if (o.notifyId) {
+    await sendAssistedNotices([{ audience: 'booker', userId: o.notifyId, type: 'general', title: 'Reported as not mine',
+      message: `The account holder reported lab booking Ref ${o.ref} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
+      key: `assisted:lab:${out.booking._id}:not_mine:booker`, data: { bookingKind: 'lab_booking' } }]);
+  }
   return { reported: true, reviewItemId: out.itemId };
 }
 
@@ -108,16 +136,17 @@ export async function listReviewItems(q: { state?: string; limit?: number }) {
       'assisted.identity': 1, updatedAt: 1 }).lean() as unknown as IBooking[];
   const labRows = await PartnerLabBookingModel.find({ _id: { $in: idsOf('lab_booking') } })
     .select({ status: 1, slot: 1, userId: 1, patient: 1, partnerId: 1, branchId: 1, 'assisted.shortRef': 1, 'assisted.bookedBy': 1,
-      'assisted.identity': 1, statusVersion: 1, updatedAt: 1 }).lean() as unknown as IPartnerLabBooking[];
+      'assisted.identity': 1, 'settlement.settlementSystem': 1, 'desk.memberId': 1, 'desk.identity': 1, statusVersion: 1, updatedAt: 1 }).lean() as unknown as IPartnerLabBooking[];
   const byId = new Map(bookings.map((b) => [lower(b._id), b]));
   const labById = new Map(labRows.map((b) => [lower(b._id), b]));
   return items.map((i) => {
     if (i.bookingKind === 'lab_booking') {
       const l = labById.get(lower(i.bookingId));
+      const o = l ? labOrigin(l) : null;
       return { ...i, booking: l ? { _id: String(l._id), kind: 'lab_booking', status: l.status, slotDate: l.slot?.date, slotTime: l.slot?.startTime, userId: l.userId,
-        dependentId: l.patient?.dependentId ?? null, partnerId: l.partnerId, branchId: l.branchId, shortRef: l.assisted?.shortRef,
-        bookedBy: l.assisted?.bookedBy ? { kind: l.assisted.bookedBy.kind, id: l.assisted.bookedBy.id, name: l.assisted.bookedBy.name } : null,
-        disputed: l.assisted?.identity?.disputed ?? null, statusVersion: l.statusVersion, updatedAt: l.updatedAt } : null };
+        dependentId: l.patient?.dependentId ?? null, partnerId: l.partnerId, branchId: l.branchId, shortRef: o?.ref,
+        bookedBy: o ? { kind: o.org.kind, id: o.org.id, name: o.name } : null,
+        disputed: o?.disputed ?? null, statusVersion: l.statusVersion, updatedAt: l.updatedAt } : null };
     }
     const b = byId.get(lower(i.bookingId));
     return { ...i, booking: b ? { _id: String(b._id), status: b.status, bookingDate: b.bookingDate, bookingTime: b.bookingTime, userId: b.userId,
@@ -140,12 +169,16 @@ export async function dismissReviewItem(adminId: string, itemId: string, reason?
       const exists = await AssistedReviewItemModel.exists({ _id: itemId }).session(s);
       throw exists ? err(409, 'REVIEW_ITEM_CLOSED', 'This item was already resolved') : err(404, 'REVIEW_ITEM_NOT_FOUND', 'Review item not found');
     }
-    // r11: a lab row's item names its collection.
-    const M = (item.bookingKind === 'lab_booking' ? PartnerLabBookingModel : BookingModel) as unknown as typeof BookingModel;
-    await M.updateOne({ _id: item.bookingId, 'assisted.identity.disputed.state': 'open' },
-      { $set: { 'assisted.identity.disputed.state': 'dismissed', 'assisted.identity.disputed.resolvedAt': at } }, { session: s });
-    const b = await M.findById(item.bookingId).select({ 'assisted.bookedBy': 1 }).session(s).lean() as IBooking | null;
-    await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: b?.assisted?.bookedBy.kind ?? 'pharmacy', orgId: b?.assisted?.bookedBy.id ?? '-',
+    // r11: a lab row's item names its collection; r12b: a desk row keeps its review on its desk block.
+    const lab = item.bookingKind === 'lab_booking';
+    const M = (lab ? PartnerLabBookingModel : BookingModel) as unknown as typeof BookingModel;
+    const b = await M.findById(item.bookingId).session(s).lean() as IBooking | null;
+    const o = lab && b ? labOrigin(b as unknown as IPartnerLabBooking) : null;
+    const root = o?.root ?? 'assisted';
+    await M.updateOne({ _id: item.bookingId, [`${root}.identity.disputed.state`]: 'open' },
+      { $set: { [`${root}.identity.disputed.state`]: 'dismissed', [`${root}.identity.disputed.resolvedAt`]: at } }, { session: s });
+    const org = o?.org ?? { kind: b?.assisted?.bookedBy.kind ?? 'pharmacy', id: b?.assisted?.bookedBy.id ?? '-' };
+    await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: org.kind, orgId: org.id,
       action: 'review.dismissed', bookingId: item.bookingId, detail: { reviewItemId: String(item._id) } }, s);
     return item;
   });
@@ -357,16 +390,19 @@ async function deactivateBookingDependentIn(bookingId: string, dependentId: stri
  * transaction the `userId`, the patient snapshot (family member or the holder), the redemption, the booker's link and
  * `disputed: moved`; exactly once per (admin, request key) with a content hash; `expectedUpdatedAt` fences a stale view.
  * The patient name stays the typed one (or the family member's): the lab and the booker never see an account name.
+ * r12b: a lab DESK row moves the same way (its review and moves on the desk block, the lab's `assisted_links` row
+ * follows); it has no money or redemption, and its bills (immutable documents) stay with the customer they name.
  */
 async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, input: MoveInput, hash: string) {
   const bookingId = lower(b0._id);
   const replay = (b: IPartnerLabBooking) => {
-    const prior = (b.assisted?.moves ?? []).find((m) => m.requestKey === `${adminId}:${input.requestKey}`);
+    const prior = (labOrigin(b)?.moves ?? []).find((m) => m.requestKey === `${adminId}:${input.requestKey}`);
     if (!prior) return null;
     if ((prior as { requestHash?: string }).requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different move');
     return b;
   };
-  if (!b0.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only partner-made bookings are moved with this tool');
+  const o0 = labOrigin(b0);
+  if (!o0) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only partner-made bookings are moved with this tool');
   const prior = replay(b0);
   if (prior) return { booking: labMoveView(prior), replayed: true };
   if (await RequestKeyModel.exists({ scope: `assisted_move:${adminId}`, key: input.requestKey, state: 'abandoned' })) {
@@ -385,7 +421,7 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
     else {
       dependentId = new Types.ObjectId().toHexString();
       newDependent = { _id: dependentId, userId: target._id, name, relationship: input.asFamily.relation, isActive: true,
-        ...(b0.assisted.preferredLanguage ? { preferredLanguage: b0.assisted.preferredLanguage } : {}),
+        ...(o0.preferredLanguage ? { preferredLanguage: o0.preferredLanguage } : {}),
         ...(input.asFamily.gender ? { gender: input.asFamily.gender } : {}),
         ...(input.asFamily.dateOfBirth ? { dateOfBirth: input.asFamily.dateOfBirth.replace(/-/g, '') } : {}) };
     }
@@ -398,33 +434,38 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
   try {
     moved = await inTransaction(async (s) => {
       const b = await PartnerLabBookingModel.findById(bookingId).session(s).lean() as IPartnerLabBooking | null;
-      if (!b?.assisted) throw notFound();
+      const o = b ? labOrigin(b) : null;
+      if (!b || !o) throw notFound();
       const again = replay(b);
       if (again) return again;
       assertBookingVersion(b as never, input.expectedUpdatedAt ?? null);
+      // r19b: a desk row's open bill names the old account (bills are immutable): the bill is cancelled first.
+      if (o.root === 'desk' && await InvoiceModel.exists({ openLabBookingId: bookingId }).session(s)) {
+        throw err(409, 'LAB_BOOKING_BILLED_CANCEL_FIRST', 'This lab booking has an open bill in the old account\'s name; cancel the bill first, then move the booking');
+      }
       await claimRequestKey(`assisted_move:${adminId}`, input.requestKey, s);
       if (newDependent) await DependentModel.create([newDependent], { session: s });
       const fromUserId = lower(b.userId);
       const at = new Date();
-      const a = b.assisted;
       // The patient snapshot: the family member's name, else the typed holder name (the admin's, else the old snapshot's).
       const snapshotName = dependentId
         ? cleanName((await DependentModel.findById(dependentId).select({ name: 1 }).session(s).lean() as { name?: string } | null)?.name) || b.patient.name
         : holderName || (b.patient.kind === 'self' ? b.patient.name : '') || 'Patient';
       const r = await PartnerLabBookingModel.updateOne({ _id: b._id, userId: b.userId, updatedAt: b.updatedAt }, {
         $set: { userId: target._id, patient: { kind: dependentId ? 'dependent' : 'self', ...(dependentId ? { dependentId } : {}), name: snapshotName },
-          'assisted.identity.disputed': { state: 'moved', at: a.identity?.disputed?.at ?? at, resolvedAt: at } },
-        $push: { 'assisted.moves': { at, by: adminId, fromUserId, toUserId: target._id, requestKey: `${adminId}:${input.requestKey}`, requestHash: hash } },
+          [`${o.root}.identity.disputed`]: { state: 'moved', at: o.disputed?.at ?? at, resolvedAt: at } },
+        $push: { [`${o.root}.moves`]: { at, by: adminId, fromUserId, toUserId: target._id, requestKey: `${adminId}:${input.requestKey}`, requestHash: hash } },
       }, { session: s });
       if (r.modifiedCount !== 1) throw Object.assign(err(409, 'BOOKING_CHANGED', 'The booking changed; reload and try again'), { retryable: true });
       const oldDep = b.patient?.dependentId ? lower(b.patient.dependentId) : '';
       const familyDeactivated = oldDep && oldDep !== lower(dependentId) ? await deactivateLabDependentIn(bookingId, oldDep, s) : false;
-      if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, bookingId, fromUserId, target._id, holderName, s);
+      if (o.root === 'assisted' && o.org.kind === 'pharmacy') await moveBookerLinkIn(o.org.id, bookingId, fromUserId, target._id, holderName, s);
+      if (o.root === 'desk') await moveLabLinkIn(o.org.id, bookingId, fromUserId, target._id, holderName, at, s);
       await CouponRedemptionModel.updateMany({ bookingKind: 'lab_booking', bookingId },
         dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
       await AssistedReviewItemModel.updateOne({ bookingKind: 'lab_booking', bookingId, state: 'open' },
         { $set: { state: 'moved', resolvedAt: at, resolvedBy: adminId, resolution: String(input.reason).trim().slice(0, 500) } }, { session: s });
-      await auditIn({ actorKind: 'admin', actorId: adminId, orgKind: a.bookedBy.kind, orgId: a.bookedBy.id, action: 'booking.moved', bookingId,
+      await auditIn({ actorKind: 'admin', actorId: adminId, orgKind: o.org.kind, orgId: o.org.id, action: 'booking.moved', bookingId,
         requestKey: input.requestKey, detail: { kind: 'lab_booking', fromUserId, toUserId: target._id, ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}),
           familyDeactivated, reason: String(input.reason).trim().slice(0, 500) } }, s);
       return { ...(await PartnerLabBookingModel.findById(bookingId).session(s).lean() as IPartnerLabBooking), __fromUserId: fromUserId };
@@ -438,15 +479,17 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
   const fromUserId = moved.__fromUserId;
   const { __fromUserId: _f, ...clean } = moved;
   if (!fromUserId) return { booking: labMoveView(clean), replayed: true };
-  const ref = clean.assisted!.shortRef;
+  const o = labOrigin(clean)!;
   await sendAssistedNotices([
     { audience: 'customer', userId: fromUserId, type: 'general', title: 'A booking was moved off your account',
-      message: `Lab booking Ref ${ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}` },
+      message: `Lab booking Ref ${o.ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}`,
+      data: { bookingKind: 'lab_booking' } },
     { audience: 'customer', userId: target._id, type: 'general', title: 'A booking was added to your account',
-      message: `Lab booking Ref ${ref} made by ${clean.assisted!.bookedBy.name} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}` },
-    { audience: 'booker', userId: clean.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
-      message: `Lab booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
-      key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } },
+      message: `Lab booking Ref ${o.ref}${o.name ? ` made by ${o.name}` : ''} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}`,
+      data: { bookingKind: 'lab_booking' } },
+    ...(o.notifyId ? [{ audience: 'booker' as const, userId: o.notifyId, type: 'general' as const, title: 'Booking moved to another account',
+      message: `Lab booking Ref ${o.ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
+      key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } }] : []),
   ]);
   return { booking: labMoveView(clean), replayed: false };
 }
@@ -455,7 +498,9 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
 async function deactivateLabDependentIn(bookingId: string, dependentId: string, s: import('mongoose').ClientSession): Promise<boolean> {
   if (!Types.ObjectId.isValid(dependentId)) return false;
   const created = await AssistedAuditEventModel.exists({ bookingId: { $in: [lower(bookingId), bookingId] }, action: { $in: ['booking.created', 'booking.moved'] },
-    'detail.dependentId': dependentId, 'detail.dependentCreated': true }).session(s);
+    'detail.dependentId': dependentId, 'detail.dependentCreated': true }).session(s)
+    // r12b: a lab desk create is audited in the partner's trail.
+    || await PartnerAuditEventModel.exists({ targetId: lower(bookingId), action: 'lab_desk.booked', 'detail.dependentId': dependentId, 'detail.dependentCreated': true }).session(s);
   if (!created) return false;
   const spellings = [dependentId, dependentId.toUpperCase()];
   const used = await BookingModel.exists({ dependentId: { $in: spellings } }).session(s)
@@ -467,8 +512,20 @@ async function deactivateLabDependentIn(bookingId: string, dependentId: string, 
 }
 
 function labMoveView(b: IPartnerLabBooking) {
+  const o = labOrigin(b);
   return { _id: String(b._id), kind: 'lab_booking', userId: b.userId, dependentId: b.patient?.dependentId ?? null, status: b.status, slot: b.slot,
-    shortRef: b.assisted?.shortRef, disputed: b.assisted?.identity?.disputed ?? null, statusVersion: b.statusVersion, updatedAt: b.updatedAt };
+    shortRef: o?.ref, disputed: o?.disputed ?? null, statusVersion: b.statusVersion, updatedAt: b.updatedAt };
+}
+
+/** r12b: the lab's link follows a desk booking: the target link is ensured; the old one goes when no other desk row of this lab names that holder. */
+async function moveLabLinkIn(partnerId: string, bookingId: string, fromUserId: string, toUserId: string, holderName: string, at: Date,
+  s: import('mongoose').ClientSession): Promise<void> {
+  const old = await AssistedLinkModel.findOne({ bookerKind: 'lab', bookerId: partnerId, userId: fromUserId }).session(s).lean();
+  await linkLabIn({ partnerId, userId: toUserId, typedName: holderName || old?.typedName || '', recordedById: 'admin_move', at }, s);
+  if (!old || fromUserId === toUserId) return;
+  if (!(await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, partnerId, 'desk.memberId': { $exists: true }, userId: { $eq: fromUserId } }).session(s))) {
+    await AssistedLinkModel.deleteOne({ _id: old._id }, { session: s });
+  }
 }
 
 function moveView(b: IBooking) {
