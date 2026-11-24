@@ -19,7 +19,6 @@ import { ReferralRuleEventModel, ReferralRuleModel, type IReferralRule } from '@
  */
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
-export const REFERRAL_CATEGORIES: ReferralCategory[] = ['consultation', 'lab_test', 'lab_package'];
 const ACCOUNT_KIND: Record<BookerKind, ReferralOwnerKind> = { pharmacy: 'pharmacy_referral', lab: 'lab_referral', doctor: 'doctor_referral' };
 
 /** §26.5.1: a lab catalogue item's referral category (tests and packages only; other kinds are not cut). */
@@ -60,18 +59,25 @@ export async function snapshotCuts(booker: { kind: BookerKind; id: string; name:
   if (!cutsOn) return { lines: lines.map(() => null), totalCutMinor: 0, referral: null };
   const doctorCutsOn = assistedFlags.referralDoctorCuts();
   const bookerId = lower(booker.id);
-  const rules = cutsOn && (booker.kind !== 'doctor' || doctorCutsOn)
+  const rules = booker.kind !== 'doctor' || doctorCutsOn
     ? await ReferralRuleModel.find({ bookerKind: booker.kind, bookerId, isActive: true }).session(s ?? null).lean() as IReferralRule[] : [];
   const byCategory = new Map(rules.map((r) => [r.category, r]));
   const snapshots = lines.map((l) => cutFor(l.baseMinor, l.category ? byCategory.get(l.category) ?? null : null,
     { category: l.category, bookerKind: booker.kind, cutsOn, doctorCutsOn }));
   const totalCutMinor = snapshots.reduce((a, x) => a + x.cutMinor, 0);
   if (!(totalCutMinor > 0)) return { lines: snapshots, totalCutMinor: 0, referral: null };
-  await assertUniqueIndex(SettlementAccountModel, { ownerKind: 1, ownerId: 1 });
   const ownerKind = ACCOUNT_KIND[booker.kind];
   const account = await ensureSettlementAccount(ownerKind, bookerId, booker.name || 'Partner', s);
   return { lines: snapshots, totalCutMinor,
     referral: { accountId: String(account._id), ownerKind, bookerKind: booker.kind, bookerId, cutMinor: totalCutMinor } };
+}
+
+/**
+ * The referral account a nonzero cut opens relies on `settlement_accounts {ownerKind, ownerId}` (unique). Each create
+ * checks it with its other indexes, before any lookup is counted or audited (503 INDEXES_OUTDATED); off: not needed.
+ */
+export async function assertReferralIndexes(): Promise<void> {
+  if (assistedFlags.referralCuts()) await assertUniqueIndex(SettlementAccountModel, { ownerKind: 1, ownerId: 1 });
 }
 
 /**

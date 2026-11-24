@@ -31,7 +31,7 @@ import {
 } from '@/modules/assisted/patient';
 
 export type { AssistedPatientInput } from '@/modules/assisted/patient';
-import { snapshotCuts } from '@/modules/referralCuts/service';
+import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -139,6 +139,7 @@ export async function assertAssistedIndexes(withCoupon: boolean): Promise<void> 
   await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, operationKey: 1 });
   await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
+  await assertReferralIndexes();
 }
 
 function validate(input: AssistedConsultInput): void {

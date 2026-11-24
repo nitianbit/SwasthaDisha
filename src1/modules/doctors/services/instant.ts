@@ -33,7 +33,7 @@ import { reverseRedemptionIn } from '@/modules/assisted/refunds';
 import { sendAssistedNotices } from '@/modules/assisted/support';
 import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
-import { snapshotCuts } from '@/modules/referralCuts/service';
+import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 
 export const OFFER_MS = 5 * 60_000;
 export const INACTIVITY_MS = 30 * 60_000;
@@ -580,6 +580,7 @@ export class InstantConsultService {
     if (await InstantRequestModel.exists({ _id: id, 'assisted.requestKey': { $type: 'string' } })) {
       await assertUniqueIndex(BookingModel, { 'assisted.shortRef': 1 });
       await assertUniqueIndex(BookingModel, { 'assisted.requestKey': 1 });
+      await assertReferralIndexes(); // the instant cut is snapshotted at accept
     }
     let out: { request: IInstantRequest; booking: IBooking };
     try {

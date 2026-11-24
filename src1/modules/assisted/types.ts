@@ -80,8 +80,9 @@ export interface InstantAssistedBlock extends Omit<AssistedBlock, 'funding' | 's
   primaryConcern?: string;
 }
 
-/** r24 (§26.5.1): the referral categories a rule can cut. */
-export type ReferralCategory = 'consultation' | 'lab_test' | 'lab_package';
+/** r24 (§26.5.1): the referral categories a rule can cut — the one list the model, the validation and the types use. */
+export const REFERRAL_CATEGORIES = ['consultation', 'lab_test', 'lab_package'] as const;
+export type ReferralCategory = typeof REFERRAL_CATEGORIES[number];
 
 /**
  * r24 (§26.5.2): the cut snapshotted on a consultation (`split.referral`) or a lab line (`lines[].referral`) at create

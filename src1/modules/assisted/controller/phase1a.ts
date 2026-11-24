@@ -26,7 +26,7 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import { cardRefundById, cardRefundQueue, cardRefundToWallet, markCardRefundFailed, recheckCardRefund, recordCardChargeback } from '@/modules/assisted/cardRefunds';
 
 /** Assisted booking phase 1a controllers (§17.6). Answers are `{ success, data }`; nothing here is cached. */
-const actorOf = (req: AuthRequest): PharmacyActor => ({ pharmacyId: String(req.user?.pharmacyId || req.user?._id || ''), actorId: String(req.user?._id || '') });
+export const actorOf = (req: AuthRequest): PharmacyActor => ({ pharmacyId: String(req.user?.pharmacyId || req.user?._id || ''), actorId: String(req.user?._id || '') });
 const send = (res: Response, data: unknown, status = 200) => {
   res.setHeader('Cache-Control', 'private, no-store');
   res.status(status).json({ success: true, data });

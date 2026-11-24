@@ -11,6 +11,7 @@ import { recommendationLookupSchema } from '@/modules/testRecommendations/valida
 import * as instant from '@/modules/assisted/controller/phase3e';
 import * as referral from '@/modules/referralCuts/controller';
 import * as rv from '@/modules/referralCuts/validation';
+import { statementQuerySchema } from '@/modules/partners/validation/finance';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -60,7 +61,7 @@ pharmacyAssistedRouter.post('/instant/requests/:id/refund', validate(v.idParamSc
 // Phase 4a/4b (§26.5.4, §26.6.2): the pharmacy's referral rates (read-only) and what its cuts earned.
 pharmacyAssistedRouter.get('/referral-rules', catchAsync(referral.pharmacyRules));
 pharmacyAssistedRouter.get('/referral', catchAsync(referral.pharmacyReferral));
-pharmacyAssistedRouter.get('/referral/statement', validate(rv.statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferralStatement));
+pharmacyAssistedRouter.get('/referral/statement', validate(statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferralStatement));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);

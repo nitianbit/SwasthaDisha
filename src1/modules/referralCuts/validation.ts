@@ -1,9 +1,10 @@
 import Joi from 'joi';
+import { objectId } from '@/modules/partners/validation/finance';
+import { REFERRAL_CATEGORIES } from '@/modules/assisted/types';
 
-const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
+/** Phase 4a (§26.5.4): referral rule routes. The statement query is the finance one (`partners/validation/finance.ts`). */
 const bookerKind = Joi.string().valid('pharmacy', 'lab', 'doctor');
-const category = Joi.string().valid('consultation', 'lab_test', 'lab_package');
-const calendarDay = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/);
+const category = Joi.string().valid(...REFERRAL_CATEGORIES);
 
 export const rulesQuerySchema = Joi.object({ bookerKind: bookerKind.required(), bookerId: objectId.required() });
 export const ruleParamSchema = Joi.object({ bookerKind: bookerKind.required(), bookerId: objectId.required(), category: category.required() });
@@ -16,4 +17,3 @@ export const ruleBodySchema = Joi.object({
   expectedVersion: Joi.number().integer().min(0).required(),
   reason: Joi.string().trim().min(1).max(500).required(),
 });
-export const statementQuerySchema = Joi.object({ before: Joi.string().max(60), limit: Joi.number().integer().min(1).max(200), from: calendarDay, to: calendarDay });

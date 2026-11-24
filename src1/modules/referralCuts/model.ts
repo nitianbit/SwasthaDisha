@@ -1,5 +1,5 @@
 import { Schema, model, Model } from 'mongoose';
-import type { BookerKind, ReferralCategory } from '@/modules/assisted/types';
+import { REFERRAL_CATEGORIES, type BookerKind, type ReferralCategory } from '@/modules/assisted/types';
 
 /**
  * r24 (§26.5.1): a booking partner's referral cut for one category — a percent of the line base (basis points) or a
@@ -25,7 +25,7 @@ export interface IReferralRule {
 const ruleSchema = new Schema<IReferralRule>({
   bookerKind: { type: String, required: true, enum: ['pharmacy', 'lab', 'doctor'] },
   bookerId: { type: String, required: true },
-  category: { type: String, required: true, enum: ['consultation', 'lab_test', 'lab_package'] },
+  category: { type: String, required: true, enum: [...REFERRAL_CATEGORIES] },
   basis: { type: String, required: true, enum: ['percent', 'fixed'] },
   percentBasisPoints: { type: Number, min: 1, max: 5000 },
   fixedMinor: { type: Number, min: 1 },

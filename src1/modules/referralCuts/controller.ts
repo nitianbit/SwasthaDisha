@@ -3,13 +3,14 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { assertAdminToolsOn, assistedFlags } from '@/modules/assisted/flags';
 import { financeSummary, findOwnerAccount, statementPage } from '@/modules/partners/services/finance';
 import { listRules, putRule, ruleEvents } from '@/modules/referralCuts/service';
+import { actorOf } from '@/modules/assisted/controller/phase1a';
 
 /** Phase 4a/4b (§26.5.4, §26.6.2): referral rules (admin writes, partner reads) and the pharmacy's referral account. */
 const send = (res: Response, data: unknown, extra: Record<string, unknown> = {}) => {
   res.setHeader('Cache-Control', 'private, no-store');
   res.status(200).json({ success: true, data, ...extra });
 };
-const pharmacyIdOf = (req: AuthRequest) => String(req.user?.pharmacyId || req.user?._id || '').toLowerCase();
+const pharmacyIdOf = (req: AuthRequest) => actorOf(req).pharmacyId.toLowerCase();
 
 export const adminRules = async (req: AuthRequest, res: Response) =>
   send(res, await listRules(req.query.bookerKind as never, String(req.query.bookerId), true));

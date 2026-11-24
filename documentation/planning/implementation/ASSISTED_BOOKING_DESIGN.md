@@ -5182,7 +5182,7 @@ unchanged (`pharmacies/validation/index.ts:29`, `partners/services/index.ts:218`
 #### 26.5.5 Switches, indexes, deploy
 
 - **Switches:**
-  - `REFERRAL_CUTS_ENABLED` (new master, off): every line snapshots 0 `cuts_off`;
+  - `REFERRAL_CUTS_ENABLED` (new master, off): nothing is snapshotted (cut 0; the row is stored exactly as before phase 4, M20);
   - `REFERRAL_DOCTOR_CUTS_ENABLED` (off, owner decision 3).
 - **Indexes** (`assertUniqueIndex`):
   - `referral_rules {bookerKind, bookerId, category}`;

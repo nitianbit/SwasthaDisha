@@ -36,7 +36,7 @@ import {
   cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput,
 } from '@/modules/assisted/patient';
-import { labCategoryOf, snapshotCuts } from '@/modules/referralCuts/service';
+import { assertReferralIndexes, labCategoryOf, snapshotCuts } from '@/modules/referralCuts/service';
 import type { AssistedBlock } from '@/modules/assisted/types';
 
 /**
@@ -128,6 +128,7 @@ export async function assertAssistedLabIndexes(withCoupon: boolean): Promise<voi
   await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, operationKey: 1 });
   await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
+  await assertReferralIndexes();
 }
 
 /**

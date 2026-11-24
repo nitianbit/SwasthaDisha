@@ -56,8 +56,8 @@ export const assistedFlags = {
    */
   instant: () => on('ASSISTED_INSTANT_ENABLED'),
   /**
-   * r24 (§26.5.5): referral cuts. Off: every new booking snapshots a cut of 0 (`cuts_off`); bookings already made keep
-   * their snapshot, and completion still posts it. Switch on only with the 4b posting deployed.
+   * r24 (§26.5.5): referral cuts. Off: nothing is snapshotted (cut 0, the row stored exactly as before phase 4, M20);
+   * bookings already made keep their snapshot, and completion still posts it.
    */
   referralCuts: () => on('REFERRAL_CUTS_ENABLED'),
   /** r24 (owner, 22 Nov): a doctor booker's cut stays 0 (`doctor_cuts_off`) until legal advice. */
