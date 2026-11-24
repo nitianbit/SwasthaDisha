@@ -3672,6 +3672,15 @@ the desk keeps its notes. So the pharmacy hash keeps a `notes` field that is alw
 keys used before r11b without notes still replay; a key used with notes answers 409 `IDEMPOTENCY_KEY_REUSED`, as above.
 The desk's `notes` rule and type moved into its own schema and input (`assisted/validation/labDesk.ts`, `LabDeskInput`).
 
+### 24.16 Patient data on lab desk rows (r19b, 2026-11-25)
+
+On `m0/r19-stage-next` before the stage push. Check: the r19b check of `test/assisted/r12-phase2c.integration.ts`.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (patient data) | The holder of a DESK row with an open "this isn't mine" (r12b) could still read its released report files: the report access looked at the `assisted` block only | `file/access.ts` `canReadPartnerLabReport` also selects `desk.identity.disputed`; the holder reads only while neither block has an open report (`labNotDisputed`, the row form of `LAB_NOT_DISPUTED_QUERY`). The lab keeps its access; a dismissal gives it back |
+| 2 (patient data) | A desk row moved to another account showed the new holder the bill made out to the old one | The admin move of a desk row is refused while it has an OPEN bill: 409 `LAB_BOOKING_BILLED_CANCEL_FIRST` ("cancel the bill first"). The patient's lab-booking views show `bill` only when the bill's `customer.userId` is the reader (otherwise `bill: null`); the lab's views are unchanged |
+
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 
 Design only; nothing here is built. Base: `f5f171c9` (the stage line with round 2a, r11). Rounds 2b, 2c, 2d and 2e are being
