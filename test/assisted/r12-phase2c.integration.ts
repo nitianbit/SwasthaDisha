@@ -635,6 +635,39 @@ async function main() {
       if (online) await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${online._id}/move`, 409, { ...mv, requestKey: newKey() }, 'NOT_ASSISTED_BOOKING');
     });
 
+    // ───────────────────────── r19b: patient data on desk rows ─────────────────────────
+    await check('r19b: an open "not mine" on a desk row stops the holder reading its report (the lab keeps it; a dismiss gives it back); a billed desk row is not moved until its bill is cancelled; the new holder never sees the old account\'s bill', async () => {
+      const d = await book(order({ slotId: await slot() }));
+      const id = d.booking._id;
+      await expect('PATH', 'POST', `${WS}/lab-bookings/${id}/visit`, 200, {});
+      await expect('PATH', 'POST', `${WS}/lab-bookings/${id}/process`, 200, {});
+      const fd = new FormData();
+      fd.append('files', new Blob([pdf], { type: 'application/pdf' }), 'report.pdf');
+      const up = await fetch(`${base}${WS}/lab-bookings/${id}/reports`, { method: 'POST', headers: { authorization: `Bearer ${tokens.PATH}` }, body: fd });
+      const path = String(((await up.json()) as any).data.report.draftFiles[0]).replace(/^\/api\/static\//, '');
+      await expect('PATH', 'POST', `${WS}/lab-bookings/${id}/reports/release`, 200, { file: `/api/static/${path}` });
+      const read = async (who: string) => (await fetch(`${base}/api/static/${path}`, { headers: { authorization: `Bearer ${tokens[who]}` } })).status;
+      assert.equal(await read('X'), 200);
+      await expect('X', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 200, {});
+      assert.equal(await read('X'), 404, 'the holder does not read the report while the report is open');
+      assert.equal(await read('PATH'), 200, 'the lab keeps its access');
+      const item = (await expect('ADMIN', 'GET', '/api/v1/admin/assisted/review-items?state=open', 200)).json.data.find((i: any) => i.bookingId === id);
+      await expect('ADMIN', 'POST', `/api/v1/admin/assisted/review-items/${item._id}/dismiss`, 200, { reason: 'checked with the lab' });
+      assert.equal(await read('X'), 200, 'a dismissal gives it back');
+      // The bill names X: the row is not moved while it is open.
+      const inv = (await expect('OWN', 'POST', `${WS}/invoices`, 201, bill(id))).json.data;
+      assert.equal((await expect('X', 'GET', `/api/v1/lab-bookings/${id}`, 200)).json.data.bill.invoiceId, String(inv._id));
+      const mv = { toPhone: '9600000402', holderName: 'Bikash T', reason: 'wrong number typed at the desk', requestKey: newKey() };
+      await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${id}/move`, 409, mv, 'LAB_BOOKING_BILLED_CANCEL_FIRST');
+      assert.equal((await stored(id)).userId, X, 'not moved');
+      await expect('OWN', 'POST', `${WS}/invoices/${inv._id}/cancel`, 200, { reason: 'wrong account' });
+      await expect('ADMIN', 'POST', `/api/v1/admin/assisted-bookings/${id}/move`, 200, { ...mv, requestKey: newKey() });
+      const yv = (await expect('Y', 'GET', `/api/v1/lab-bookings/${id}`, 200)).json.data;
+      assert.equal(yv.bill, null, 'the cancelled bill in X\'s name is not shown to the new holder');
+      assert.ok(!JSON.stringify((await expect('Y', 'GET', '/api/v1/lab-bookings?limit=100', 200)).json.data.find((x: any) => x._id === id)).includes(String(inv._id)));
+      assert.equal((await expect('OWN', 'GET', `${WS}/lab-bookings/${id}`, 200)).json.data.bill.invoiceId, String(inv._id), 'the lab still sees its bill');
+    });
+
     // ───────────────────────── Online customer bookings unchanged ─────────────────────────
     await check('an online customer lab booking behaves as before: wallet-paid, ledger settlement, no desk fields; its cancel refunds the wallet; completion earns', async () => {
       const mk = async () => {
