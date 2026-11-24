@@ -201,13 +201,13 @@ async function existingCustomerId(rawPhone?: string): Promise<string | null> {
   return u ? String(u._id) : null;
 }
 
-/** Q14 / r12: the open bill of each linked record, else its latest cancelled one (`partnerId` omitted: the patient's own reads). */
-async function billsOf(k: BillLink, ids0: string[], partnerId?: string) {
+/** Q14 / r12: the open bill of each linked record, else its latest cancelled one (of one partner, or of the rows' partners). */
+async function billsOf(k: BillLink, ids0: string[], partnerId: string | string[]) {
   const field = BILL_LINKS[k].field;
   const ids = [...new Set(ids0.map((a) => String(a).toLowerCase()))];
   const out = new Map<string, { invoiceId: string; serial: string; number: number; state: InvoiceLifecycleState }>();
   if (!ids.length) return out;
-  const rows = await InvoiceModel.find({ ...(partnerId ? { partnerId } : {}), [field]: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
+  const rows = await InvoiceModel.find({ partnerId: Array.isArray(partnerId) ? { $in: partnerId } : partnerId, [field]: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
     .select({ [field]: 1, serial: 1, number: 1, lifecycleState: 1 }).lean() as unknown as IInvoice[];
   for (const r of rows) {
     const key = String(r[field]);
@@ -220,7 +220,7 @@ async function billsOf(k: BillLink, ids0: string[], partnerId?: string) {
 /** Q14: for the clinic appointment rows. */
 export const billsForAppointments = (partnerId: string, appointmentIds: string[]) => billsOf('appointment', appointmentIds, partnerId);
 /** r12 (§24.6.3): for the lab and patient views of lab desk rows. */
-export const billsForLabBookings = (labBookingIds: string[], partnerId?: string) => billsOf('lab_booking', labBookingIds, partnerId);
+export const billsForLabBookings = (labBookingIds: string[], partnerId: string | string[]) => billsOf('lab_booking', labBookingIds, partnerId);
 
 /** Stable JSON (moved to common in Q15; re-exported for existing importers). */
 export { canonicalJson } from '@/modules/common/utils/canonicalJson';

@@ -3302,7 +3302,7 @@ the 2a helpers were generalised in one place and reused (see C15).
 
 | Area | Where | What |
 |---|---|---|
-| Model | `partners/model/labBooking.ts` | `desk` (typed: `memberId, branchId, requestKey, requestHash, arrivedAt?, consent, preferredLanguage, payAtLab, notes?, newAccount`); `settlement.settlementSystem` `'ledger' \| 'lab_desk'`; `paymentDeadline` required unless `lab_desk`; `slot.walkIn` (seat fields required unless a walk-in); `cancellation.reason: 'desk'`; indexes `{desk.requestKey}` unique partial and `{partnerId, source, createdAt:-1}` |
+| Model | `partners/model/labBooking.ts` | `desk` (typed: `memberId, branchId, requestKey, requestHash, arrivedAt?, consent, preferredLanguage, payAtLab, notes?, newAccount`); `settlement.settlementSystem` `'ledger' \| 'lab_desk'`; `paymentDeadline` required unless `lab_desk`; `slot.walkIn` (seat fields required unless a walk-in); `cancellation.reason: 'desk'`; indexes `{desk.requestKey}` unique partial and (r12b) `{partnerId, source, slot.startsAt, _id}` |
 | Links | `assisted/model/links.ts` (new) | `assisted_links` `{ bookerKind: 'lab'\|'doctor', bookerId, userId, typedName, consent: 'patient_agreed', consentRecordedAt, consentRecordedById }`, unique `{bookerKind, bookerId, userId}`; upserted in the desk transaction with the first typed name, never overwritten |
 | Desk | `assisted/labDesk.ts` (new), `assisted/controller/phase2c.ts`, `assisted/routes/labDesk.ts`, `assisted/validation/labDesk.ts` | lookup; create (walk-in, lab visit on a slot, home collection) in the §24.3 order and ONE transaction; by-key / abandon; desk cancel. Registered inside `registerWorkspaceRoutes`, so members and the admin mirror both get it |
 | Guards (§5.5) | `partners/services/labBookings.ts` | pay-again / wallet / gateway on a desk row → 409 `PAY_AT_LAB` (`retryPayment` and `resume`); the expiry sweep leaves out `settlementSystem: 'lab_desk'`; `postEarning` returns unless `ledger` (so no payout system ever sees a desk row); every cancel of a desk row (patient, desk, lab reject, admin) moves no money, keeps `paymentStatus: 'pending'` and releases the seat once (none for a walk-in); walk-ins: `no-show` 409 `WALK_IN_ARRIVED`, reschedule 409 `WALK_IN_NOT_RESCHEDULABLE`, `visit` at once |
@@ -3325,7 +3325,7 @@ Check: `test/assisted/r12-phase2c.integration.ts` (24 checks); the 2a suite (26)
 | C3 | No new-account count (§24.6.3 `countNewAccountIn`); lookups and every non-replay create count against the hourly lookup limit, audited with ids only | owner, 23 Nov |
 | C4 | A walk-in stores `slot.date` / `startTime` (IST arrival) for display; `slotId` / `endTime` absent; `desk.arrivedAt` = `startsAt` | readers show a time |
 | C5 | Desk cancel writes `cancellation.reason: 'desk'`; a lab reject on a desk row also works and moves no money | the existing steps stay valid |
-| C6 | The patient cancels a desk row any time while `confirmed` (no 2 h window, also after a moved no-show); "not mine" stays for partner-paid rows (a desk row answers 409 `NOT_ASSISTED_BOOKING`) | nothing to refund; the patient can cancel |
+| C6 | The patient cancels a desk row any time while `confirmed` (no 2 h window, also after a moved no-show). **r12b (overnight, as the owner's 2a decision):** the holder's "not mine", the admin dismiss and the admin move work on desk rows too, before or after the report — the review and the moves live on `desk.identity.disputed` / `desk.moves`; the lab's `assisted_links` row follows the move; the desk member who booked is told; no money moves; bills stay with the customer they name; the Ref of a desk row is the last 8 characters of its id | a desk booking under a mistyped phone can be corrected |
 | C7 | The `bill` on views has the appointment bill shape `{ invoiceId, serial, number, state }` | one shape for the web |
 | C8 | Cancelling a desk booking does not cancel its bill (the lab cancels it with its own refund record); a cancelled booking cannot be newly billed | Q10 bill rules stay the lab's |
 | C9 | `PRICE_CHANGED` details reuse the 2a shape `{ priceMinor, listMinor, discountMinor: 0 }` | no new error shape |
@@ -3369,12 +3369,25 @@ desk row of this lab, outside scope, or an online row, L10); 400 `LAB_BOOKING_BR
 - `LAB_DESK_ENABLED` (new, off unless exactly `"true"`; `assisted/flags.ts`). Off: lookup and create answer 503 `ASSISTED_BOOKING_DISABLED`.
   Desk cancel, by-key, steps, reports, bills and patient reads and cancels always work.
 - Order: 1. deploy (switch off); 2. `npm run sync-indexes` (new: `partner_lab_bookings {desk.requestKey}` unique partial and
-  `{partnerId, source, createdAt}`; `assisted_links {bookerKind, bookerId, userId}` unique; `partner_invoices {openLabBookingId}` unique partial and
+  `{partnerId, source, slot.startsAt, _id}`; `assisted_links {bookerKind, bookerId, userId}` unique; `partner_invoices {openLabBookingId}` unique partial and
   `{partnerId, labBookingId, issuedAt}`; until then a desk create, and a bill naming a lab booking, answer 503 `INDEXES_OUTDATED`);
   3. `LAB_DESK_ENABLED=true`; 4. restart. No migration (fields are optional; the enum and `required` changes only loosen).
 - Rollback: the switch only. Never roll the code back below r12 while a desk row is open (older code requires `paymentDeadline` and treats
   the row as ledger-settled): `db.partner_lab_bookings.countDocuments({ source: 'lab_desk', status: { $nin: ['completed','cancelled','no_show'] } })`
   must be 0.
+
+**r12b (review of `e304dabe`)**
+
+- "Not mine", dismiss and the admin move for desk rows (C6). One accessor in `assisted/review.ts` (`labOrigin`) names where a lab row's review
+  lives (`assisted` or `desk`) and who hears about it; the lab link helper `linkLabIn` moved to `assisted/patient.ts` and serves the desk
+  create and the move. Routes unchanged: `POST /api/v1/lab-bookings/:id/not-mine`, the admin review queue / dismiss and
+  `POST /api/v1/admin/assisted-bookings/:id/move` now accept desk rows (behind `ASSISTED_ADMIN_TOOLS_ENABLED`, as before). Patient app: a desk
+  row shows `disputed { state, at }` while reported; it leaves the list while `open`.
+- The patient's lab list reads desk bills through the partners' bill index (`partnerId: { $in }`), not a scan of every bill.
+- `postEarning` uses `isDeskRow`; the unused `ASSISTED_CAUSE.desk` is gone; the desk branch admission uses `assertBranchInScope`.
+- The list index is `{partnerId, source, slot.startsAt, _id}` (the workspace list's own order). Deploy: `sync-indexes` drops the r12
+  `{partnerId, source, createdAt}` index and builds this one.
+- Check: the r12 suite has 26 checks.
 
 **Seen, not changed**
 

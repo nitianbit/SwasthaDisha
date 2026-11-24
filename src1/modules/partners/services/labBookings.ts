@@ -143,8 +143,8 @@ const byOf = (a: Actor) => a.kind === 'customer' ? { by: a.userId, byKind: 'cust
   : a.kind === 'booker' ? { by: a.id, byKind: 'booker' as const }
   : { by: 'system', byKind: 'system' as const };
 type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner' | 'desk';
-/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it. (r12: `desk` rows are never assisted.) */
-const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system', desk: 'desk' };
+/** r11: the refund row's cause of an assisted lab cancellation, by who cancelled it (a desk cancel is never of an assisted row). */
+const ASSISTED_CAUSE: Record<Exclude<CancelReason, 'desk'>, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system' };
 const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
 const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
 /** r14: the payment context of a row's gateway payments — a partner's card payment of an assisted row, else the customer's. */
@@ -175,8 +175,9 @@ async function withPlaceNames(rows: IPartnerLabBooking[]): Promise<Record<string
   const branches = await BranchModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.branchId)))] } }).select({ name: 1, address: 1, phone: 1 }).lean() as any[];
   const p = new Map(partners.map((x) => [String(x._id), x]));
   const b = new Map(branches.map((x) => [String(x._id), x]));
-  // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills).
-  const bills = await billsForLabBookings(rows.filter((r) => isDeskRow(r)).map((r) => String(r._id)));
+  // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills); read through the partners' bill index.
+  const desk = rows.filter((r) => isDeskRow(r));
+  const bills = await billsForLabBookings(desk.map((r) => String(r._id)), [...new Set(desk.map((r) => String(r.partnerId)))]);
   return rows.map((r) => ({ ...customerView(r), lab: { name: p.get(String(r.partnerId))?.name },
     branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined,
     ...(isDeskRow(r) ? { bill: bills.get(String(r._id).toLowerCase()) ?? null } : {}) }));
@@ -548,7 +549,8 @@ export class LabBookingService {
     // r11 (§24.4.4): a partner-paid booking refunds the PARTNER (its wallet, exactly once), never the customer wallet.
     // r14: a card-paid one goes back by its card refund row (to the card; the wallet only on the booker's own choice).
     if (isAssisted(b) && b.assisted?.funding) {
-      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false, refundTo: c.refundTo }, s);
+      // A desk row (the only one cancelled with `desk`) returned above.
+      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason as Exclude<CancelReason, 'desk'>], keepMoney: false, refundTo: c.refundTo }, s);
       await releaseSeat(b.slot.slotId, s);
       if (c.actor.kind === 'partner') {
         await recordPartnerAudit(c.actor.actor, c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
@@ -962,7 +964,7 @@ export class LabBookingService {
   /** Earnings only for money actually collected through us (paid bookings), once per booking. */
   private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
     // r12 (§5.5): a desk row (paid at the lab) never earns through the ledger, so no payout system ever sees it.
-    if (b.settlement?.settlementSystem !== 'ledger') return;
+    if (isDeskRow(b)) return;
     if (b.paymentStatus !== 'paid') return;
     // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
     const split = b.assisted?.split;

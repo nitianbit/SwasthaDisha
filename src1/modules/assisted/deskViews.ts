@@ -29,9 +29,10 @@ export function deskLabPart(view: Row, b: Row): Row {
   };
 }
 
-/** The patient's view of a desk row (§24.6.3): "pay at the lab", the lab's price as information; no desk internals. */
+/** The patient's view of a desk row (§24.6.3): "pay at the lab", the lab's price as information, a "not mine" review; no desk internals. */
 export function deskCustomerPart(view: Row, b: Row): Row {
   const { desk: _d, ...rest } = view;
   if (!isDeskRow(b)) return rest;
-  return { ...rest, source: 'lab_desk', payAtLab: true };
+  const disputed = b.desk?.identity?.disputed;
+  return { ...rest, source: 'lab_desk', payAtLab: true, ...(disputed ? { disputed: { state: disputed.state, at: disputed.at } } : {}) };
 }
