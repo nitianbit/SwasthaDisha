@@ -3746,6 +3746,14 @@ patient plan; the merge keeps one of each:
 
 The two §25.12 records (3d on the stage line, 3e on its branch) are now §25.12 (3d) and §25.13 (3e).
 
+#### 24.15.6 Checks after the merge
+
+- On the merged tree: `r21-phase2e` 16/16 and `r17-phase3e` 24/24. After `aa3016ed` (the lab create reuses
+  `newShortRef`, 3e's other "seen, not changed" copy): `r11-phase2a` 26/26.
+- Full regression on the merge `b32f0007` (`prun.sh … 2`): 74 of 75 pass; tsc 17 (unchanged).
+- The one failure, `r8-before-production`, was a load flake (one slots read got 503 `AUTH_STATE_UNAVAILABLE`, the
+  2-second sign-in state read). It passes alone (7/7).
+
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 
 Design only; nothing here is built. Base: `f5f171c9` (the stage line with round 2a, r11). Rounds 2b, 2c, 2d and 2e are being
