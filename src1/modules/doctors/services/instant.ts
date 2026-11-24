@@ -31,7 +31,7 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { bookerEntryLotsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { reverseRedemptionIn } from '@/modules/assisted/refunds';
 import { sendAssistedNotices } from '@/modules/assisted/support';
-import { IDENTITY_NOTE } from '@/modules/assisted/views';
+import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
 import { snapshotCuts } from '@/modules/referralCuts/service';
 
@@ -174,6 +174,12 @@ export function requestView(r: IInstantRequest): Record<string, unknown> {
 
 /** r17: a partner-paid request is driven by its booker; the patient's commands answer this (§25.8.4). */
 const partnerPaid = () => err(409, 'PARTNER_PAID_BOOKING', 'This consultation was booked and paid by a partner; ask them to change it');
+
+/**
+ * r17b (review, D8): the booking the doctor's accept answers with. A partner's booking is shown as every non-booker
+ * sees it (`assistedPublicView`): no price, no partner money, keys, consent actor or split; `paidBy` instead.
+ */
+const doctorBookingView = (b: IBooking): IBooking => (b.assisted ? assistedPublicView(b) : b);
 
 const istParts = (at: Date) => {
   const ist = new Date(at.getTime() + 330 * 60_000).toISOString();
@@ -566,7 +572,7 @@ export class InstantConsultService {
       const r = await InstantRequestModel.findById(id).lean() as IInstantRequest | null;
       if (!r || r.acceptedBy !== String(doctorId) || !r.bookingId) return null;
       const booking = await BookingModel.findOne({ _id: r.bookingId, specialistId: String(doctorId) }).lean() as IBooking | null;
-      return booking ? { request: requestView(r), booking, replayed: true } : null;
+      return booking ? { request: requestView(r), booking: doctorBookingView(booking), replayed: true } : null;
     };
     const prior = await replay();
     if (prior) return prior;
@@ -585,7 +591,7 @@ export class InstantConsultService {
       throw e;
     }
     await this.afterAccept(out.request, out.booking, now);
-    return { request: requestView(out.request), booking: out.booking, replayed: false };
+    return { request: requestView(out.request), booking: doctorBookingView(out.booking), replayed: false };
   }
 
   private async acceptIn(doctorId: string, id: string, now: Date): Promise<{ request: IInstantRequest; booking: IBooking }> {
@@ -810,8 +816,11 @@ export class InstantConsultService {
     if (!out.skipped) {
       const a = out.request.assisted;
       if (a) {
-        await this.notify({ userId: out.request.userId, userType: 'user', title: 'Consultation request closed',
-          message: `No doctor joined this time. ${a.bookedBy.name} was refunded.`, key: `instant:${id}:refunded`, data: { requestId: id } });
+        // r17b: the booker cancelled it at the counter, so the patient hears nothing from us about it.
+        if (reason !== 'booker') {
+          await this.notify({ userId: out.request.userId, userType: 'user', title: 'Consultation request closed',
+            message: `No doctor joined this time. ${a.bookedBy.name} was refunded.`, key: `instant:${id}:refunded`, data: { requestId: id } });
+        }
         await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Instant consultation refunded',
           message: `Ref ${a.shortRef}: ₹${out.refunded.toFixed(2)} is back in your wallet.`, bookingId: id, key: `assisted_instant:${id}:refunded:booker`,
           data: { requestId: id, shortRef: a.shortRef } }]);

@@ -263,7 +263,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
         ? (await PharmacyOrderModel.updateMany({ 'prescriptionFromBooking.bookingId': { $in: [lower(b._id), String(b._id)] },
           customerId: new Types.ObjectId(fromUserId) }, { $set: { customerId: new Types.ObjectId(target._id) } }, { session: s })).modifiedCount : 0;
       const familyDeactivated = b.dependentId && lower(b.dependentId) !== lower(dependentId)
-        ? await deactivateBookingDependentIn(String(b._id), lower(b.dependentId), s) : false;
+        ? await deactivateBookingDependentIn(String(b._id), lower(b.dependentId), s, b.bookingKind === 'instant' ? b.instantRequestId : undefined) : false;
       if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, String(b._id), fromUserId, target._id, cleanName(input.holderName), s);
       await CouponRedemptionModel.updateMany({ bookingKind: 'booking', bookingId: lower(b._id) },
         dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
@@ -333,16 +333,20 @@ async function moveBookerLinkIn(pharmacyId: string, bookingId: string, fromUserI
  * The family member this booking created (audited at create or at an earlier move), deactivated on the old account when
  * no other booking, lab booking or instant request names it (pharmacy orders carry no family member). A family member that existed before the booking is never touched.
  */
-async function deactivateBookingDependentIn(bookingId: string, dependentId: string, s: import('mongoose').ClientSession): Promise<boolean> {
+async function deactivateBookingDependentIn(bookingId: string, dependentId: string, s: import('mongoose').ClientSession,
+  instantRequestId?: string): Promise<boolean> {
   if (!Types.ObjectId.isValid(dependentId)) return false;
-  const created = await AssistedAuditEventModel.exists({ bookingId: { $in: [lower(bookingId), bookingId] }, action: { $in: ['booking.created', 'booking.moved'] },
+  // r17b: an instant booking's family member was created (and audited) with its request, keyed by the request id.
+  const auditIds = [lower(bookingId), bookingId, ...(instantRequestId ? [lower(instantRequestId)] : [])];
+  const created = await AssistedAuditEventModel.exists({ bookingId: { $in: auditIds }, action: { $in: ['booking.created', 'booking.moved'] },
     'detail.dependentId': dependentId, 'detail.dependentCreated': true }).session(s);
   if (!created) return false;
   // Pharmacy orders carry no family member; other bookings, partner-lab bookings and instant requests may.
   const spellings = [dependentId, dependentId.toUpperCase()];
   const used = await BookingModel.exists({ _id: { $ne: bookingId }, dependentId: { $in: spellings } }).session(s)
     || await PartnerLabBookingModel.exists({ 'patient.dependentId': { $in: spellings } }).session(s)
-    || await InstantRequestModel.exists({ 'patient.dependentId': { $in: spellings } }).session(s);
+    // r17b: the moved booking's own request still names the family member (it moves after this check): not a use.
+    || await InstantRequestModel.exists({ ...(instantRequestId ? { _id: { $ne: instantRequestId } } : {}), 'patient.dependentId': { $in: spellings } }).session(s);
   if (used) return false;
   const r = await DependentModel.updateOne({ _id: dependentId, isActive: true }, { $set: { isActive: false } }, { session: s });
   return r.modifiedCount === 1;

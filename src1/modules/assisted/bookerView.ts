@@ -121,7 +121,8 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end;
     // r17: an instant consultation from its acceptance to the end of the doctor's held interval.
-    const heldEnd = b.bookingKind === 'instant' ? held.get(String(b._id).toLowerCase()) : undefined;
+    // r17b: only while the consultation is still on (a cancelled or completed one has no "Join call").
+    const heldEnd = b.bookingKind === 'instant' && b.status === 'confirmed' ? held.get(String(b._id).toLowerCase()) : undefined;
     const interval = b.bookingKind === 'instant'
       ? (heldEnd && b.createdAt ? { start: new Date(b.createdAt), end: heldEnd } : null)
       : appointmentIntervalOf(b, slotOf(b));
