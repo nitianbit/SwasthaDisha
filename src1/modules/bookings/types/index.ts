@@ -187,7 +187,9 @@ export interface IBooking {
   /** r10g: the Meet retry of a paid call/video booking left without a link (meet/retry.ts). */
   meetRetry?: { attempts?: number; nextAt?: Date; leaseUntil?: Date; alertedAt?: Date; doneAt?: Date;
     /** r10h: a failure no retry fixes (`closedReason`); and the appointment (`<date> <time>`) at which it was found ended. */
-    closed?: 'permanent'; closedReason?: string; endedFor?: string };
+    closed?: 'permanent'; closedReason?: string; endedFor?: string;
+    /** r10i: the appointment the permanent close was decided on (a move to another slot brings the booking back). */
+    closedFor?: string };
   virtualMeeting?: IVirtualMeeting;
   
   createdAt?: Date;
