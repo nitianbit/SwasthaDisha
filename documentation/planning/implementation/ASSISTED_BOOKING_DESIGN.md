@@ -3253,7 +3253,7 @@ Check: `test/assisted/r11-phase2a.integration.ts` (26 checks).
 | `GET /api/v1/pharmacy-assisted/labs` | `?visitMode=lab\|home&limit≤100` | `[{ partnerId, name, nearby: 'pincode'\|'city'\|null, branches: [{ branchId, name, address, phone, homeCollection, inLab }] }]` |
 | `GET …/labs/:partnerId/catalogue` | `?visitMode` | `[{ itemId, kind, name, code, description, preparation, sampleType, includes, price, priceMinor, mrpMinor, visitModes, reportTatHours }]`; unknown/unverified lab 404 `LAB_NOT_FOUND` |
 | `GET …/labs/branches/:branchId/slots` | `?visitMode (required)&from=YYYY-MM-DD&days≤14` | `[{ slotId, date, startTime, endTime, seatsLeft }]` (≥ 60 min ahead); 404 `BRANCH_NOT_AVAILABLE` |
-| `POST …/lab-bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, partnerId, branchId, visitMode, slotId, itemIds[1..20], address? (home only: {line1,line2?,city,state?,pincode(6 digits),landmark?}), couponCode?, acceptedPriceMinor, notes?, paymentMethod:'wallet' }` | 201 (replay 200) `{ booking: <booker lab view>, funding: { method:'wallet', amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode }, newAccount, replayed }` |
+| `POST …/lab-bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, partnerId, branchId, visitMode, slotId, itemIds[1..20], address? (home only: {line1,line2?,city,state?,pincode(6 digits),landmark?}), couponCode?, acceptedPriceMinor, paymentMethod:'wallet' }` (r11b: no `notes` — it was never stored or shown; a `notes` key is ignored and is not part of the request hash) | 201 (replay 200) `{ booking: <booker lab view>, funding: { method:'wallet', amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode }, newAccount, replayed }` |
 | `GET …/lab-bookings` | `?status&from&to (slot date)&cursor&limit≤50` | `[booker lab view]`, top-level `pagination: { total, nextCursor }` (newest first; cursor `<ms>_<id>`) |
 | `GET …/lab-bookings/:id` | — | booker lab view; any other booking 404 `LAB_BOOKING_NOT_FOUND` |
 | `GET …/lab-bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state:'used', booking } \| { state:'abandoned' } \| { state:'unknown' }` |
@@ -3289,3 +3289,16 @@ Patient app: lab booking reads carry `paidBy` and `assisted.{shortRef, bookedBy{
   the patient's wallet): `db.partner_lab_bookings.countDocuments({ source: 'pharmacy_assisted', status: { $nin: ['completed','cancelled','no_show'] } })` must be 0.
 - Merge with r10g: expected to touch `assisted/consultations.ts` and `assisted/limits.ts`, which r11 does not change; r11
   adds one line to `assisted/flags.ts` (the switch) and one action to `assisted/model`.
+
+### 24.15 Round 2a leftovers (r11b, 2026-11-25)
+
+Branch `m0/r11b-phase2a-fixes` at `7d99f2cf` (stage `f5f171c9` + r10h `a18adba7`). Local commits only. Checks:
+`test/assisted/r11b-phase2a-fixes.integration.ts` (4 checks; all fail on `7d99f2cf`).
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 | `notes` on the lab create was validated and hashed but never stored or shown (the web sends none) | Dropped from the lab create's validation (an unknown key is stripped) and from its request hash (§24.11 updated). A key used before this change with `notes` in its hash answers 409 `IDEMPOTENCY_KEY_REUSED` on a replay — only a replay within minutes of a deploy could meet it | 1 |
+| 2 (patient data) | During an open "this isn't mine" report the account holder could still read the lab report files | `file/access.ts` `canReadPartnerLabReport`: the holder reads a released report only while no report is open (the existing `notDisputed` rule); the booking partner and the lab keep their access; a dismissal gives it back, a move gives it to the new holder | 2 |
+| 3 | Some lab-booking notices had no `data.bookingKind` | The lab notifier (`defaultLabNotifier`, every customer notice of a lab booking) and the patients' moved-off / moved-to notices carry `data.bookingKind: 'lab_booking'` (`tellBooker` already did) | 3 |
+| 4 | Small gaps | The patient's cancel and the patient's accept of a lab's new time are audited (`assisted_audit_events`, actor `customer`, in their transaction); the patient's accept tells the booker ("The patient accepted the new time", key `assisted:lab:<id>:reschedule:<version>:accepted:booker`) — the patient's accept now runs through the booker's accept (one compare-and-set, one transaction). The lab's view of a booker cancellation shows `byKind: 'booker'` without the pharmacy's id (`by`) | 4 |
+| 5 | Dedupe of the patient helpers in `consultations.ts` | **Not done here** (coordinator, 25 Nov): phase 2c is generalising `assisted/patient.ts`; one dedupe round follows after 2c merges | — |

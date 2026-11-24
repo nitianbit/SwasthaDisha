@@ -76,7 +76,6 @@ export interface AssistedLabInput {
   couponCode?: string;
   /** Price fence (§6.3): what the pharmacy pays, after the coupon, in paise. */
   acceptedPriceMinor: number;
-  notes?: string;
   paymentMethod: 'wallet' | 'razorpay';
 }
 
@@ -104,7 +103,6 @@ export function assistedLabRequestHash(input: AssistedLabInput): string {
       itemIds: uniqueIds(input.itemIds), address: cleanAddress(input.address) },
     couponCode: input.couponCode ? input.couponCode.trim().toUpperCase() : null,
     preferredLanguage: input.preferredLanguage,
-    notes: input.notes?.trim() || null,
     acceptedPriceMinor: input.acceptedPriceMinor,
   });
 }

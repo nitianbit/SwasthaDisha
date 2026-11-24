@@ -123,7 +123,7 @@ export const labBookingSchema = Joi.object({
   }), // required for home, refused for lab visits: the service answers 400 ADDRESS_REQUIRED / VALIDATION_ERROR
   couponCode: Joi.string().trim().max(50),
   acceptedPriceMinor: Joi.number().integer().min(0).required(),
-  notes: Joi.string().trim().max(2000),
+  // r11b: no `notes` (never stored or shown; an unknown key is stripped by the validator).
   // Card / UPI for lab bookings is round 2b: the service answers 400 PAYMENT_METHOD_UNAVAILABLE for 'razorpay'.
   paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
 });
