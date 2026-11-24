@@ -4892,3 +4892,140 @@ formatted (`ABCD-EFGH`) after saving. It is absent when no code could be made: t
 | 3 | Less code; a stale 404 | The `withdrawn` write at a save without tests is gone (R3 already retires a code the prescription no longer carries; with a failing PDF that write made a still-printed code answer 404). `withdrawn` left the status enum (never written; nothing stored yet) |
 
 Checks: `test/assisted/r16-phase3d.integration.ts` (15 checks).
+
+### 25.13 Round 3e build record (r17, 2026-11-25)
+
+Branch `m0/r17-phase3e` from `55c7eefc` (stage `f5f171c9` + r10g + the phase 3 spec). Local commits only. Built §25.8 for
+**pharmacy** bookers on the existing pharmacy wallet. Labs join after 2d + 2e: every booker-wallet movement goes through
+`postBookerMovementIn`, so a lab payer is one route in that dispatcher. Owner decisions followed (not reopened):
+- wallet only (DR18);
+- video or call only (DR19);
+- DR20: the quote difference and refunds after acceptance come back as money that cannot be withdrawn, while a full refund
+  before acceptance restores the lots;
+- no blocking limit except the hourly lookups;
+- cut 0;
+- SMS as comments only;
+- verified, active doctors only.
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Model | `doctors/model/instant.ts` | `source`, `assisted` (Mixed, `InstantAssistedBlock`), `MoneySplit.partnerMinor` (funding, allocated, returned, refunded), `refundReason: 'booker'`; indexes `{assisted.requestKey}` and `{assisted.shortRef}` unique partial, `{assisted.bookedBy.kind, assisted.bookedBy.id, createdAt:-1, _id:-1}` |
+| Types | `assisted/types.ts` | `InstantAssistedBlock` (the request's block: funding `{method:'wallet', payerKind, payerId, amountMinor, state: held→allocated\|refunded, walletEntryId, refunds[]}`, `couponFundedBy`, `primaryConcern`); `InstantFundingPointer` + `isInstantFunding` |
+| Payer seam | `assisted/bookerWallet.ts` (new) | `postBookerMovementIn({ payerKind, payerId, … })`: pharmacy → `postPharmacyMovementIn`; lab / doctor → 501 `PAYER_NOT_SUPPORTED` until 2d. 2e replaces this file with its dispatcher of the same name |
+| Engine | `doctors/services/instant.ts` | generalised, not copied. Unchanged for customer requests; for partner requests: <ul><li>`allocateFunding`: coupon → wallet → partner → gateway (a customer split keeps its former shape);</li><li>accept: quote difference to the booker wallet (`assisted_instant:<id>:quote_return`), the redemption follows the coupon on the fee (or is reversed), booking with `source`, `assisted` (funding = `{ instantRequestId }`, split), `earningRule: 'provider_coupon_v2'`, `settlementSystem: 'ledger'`, `pharmacyId`, `contactNo`, `primaryConcern`;</li><li>refund before acceptance (booker or the inactivity sweep): `assisted_instant:<id>:refund`, lots restored, redemption reversed;</li><li>doctor / admin cancel after acceptance: `assisted_instant:<id>:cancel_refund` = allocated − refunded partner money, redemption reversed, join link version + 1;</li><li>the patient's pay / re-offer / refund / activity → 409 `PARTNER_PAID_BOOKING`; the patient's reads drop all money and keys and add `paidBy`;</li><li>doctor offers show `source`, `bookedBy.name` and the identity note.</li></ul> Shared pieces are public: `couponTermsOf`, `holdPatch(…, partnerMinor)`, `offerTargets`, `notifyOffer`, `reofferOwned`, `activityOwned`, `refundAsBooker` |
+| Create, reads, commands | `assisted/instant.ts` (new) | §25.3 patient order, then ONE transaction: key claim, account / family member, pharmacy link, redemption, the request inserted `offered` / `held` (`paymentStatus: 'paid'`, `paymentDeadline` = create time), the debit `assisted_instant:<id>:debit`, the audit. After the commit, the offers go out. Also: booker view, list (cursor), detail, by-key, abandon, re-offer, activity, refund; discovery (specialities, doctors nearest first, quote) |
+| Shared patient plan | `assisted/patient.ts`, `assisted/consultations.ts` | `planAssistedPatient` / `applyPatientPlanIn` (refusable steps before anything opens; the account and family member inside the transaction). The 1a consultation create now uses `patient.ts` (its private copies are deleted; r10g is merged). `assistedCouponFor` (was the private `couponFor`) is shared with the instant create |
+| Booker view | `assisted/bookerView.ts` | an instant booking shows `instantRequestId` (its money is on the request) and no `payment`; its Join call runs from acceptance to the end of the doctor's held interval (extensions included) |
+| Admin move | `assisted/review.ts` | moving an instant booking also moves its request's `userId`, `patient` and the `instant_request` redemption in the same transaction. "Not mine" already works on the booking |
+| Reconciliation | `assisted/reconciliation.ts` | `instantChecks` (one debit = held partner money by the payer; refunded-before-accept = one refund of that; accepted = `quote_return` equal to `returned.partnerMinor`, `cancel_refund` ≤ allocated, no "before acceptance" refund; split sums; one earning on completion, none on a no-show); stuck list `instantOfferedPastRefund` (offered > 1 h past `inactivityRefundAt`) |
+| Errors | `middleware/errorHandler.ts` | `QUOTE_CHANGED` may carry `details: { quotedAmountMinor, discountMinor }` (the same allow-list as `PRICE_CHANGED`) |
+| Audit | `assisted/model/index.ts` | new action `instant.reoffered`; create, refund and cancel reuse `booking.attempted` / `booking.created` / `booking.cancelled` with `detail.kind: 'instant_request'` |
+
+**ASSUMED while building (reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| E1 | `postBookerMovementIn` lives in `assisted/bookerWallet.ts` with the pharmacy route only (lab / doctor 501) | §24.7.1 names this file for 2e; nothing in 3e can create a lab- or doctor-paid row yet |
+| E2 | The booking stores `assisted.funding = { instantRequestId }` (§25.8.1), but the TypeScript type of `AssistedBlock.funding` stays `AssistedFunding`; `isInstantFunding` guards the reader that can meet it (booker view) | A union type touches about 90 sites in files other rounds are editing. Every booking money path filters on `funding.method` / `funding.state`, and the generic cancel, reschedule and admin close already refuse `bookingKind: 'instant'` |
+| E3 | The booking copies the request's whole `assisted` block (key, hash, short ref, consent, join), minus funding / coupon funder / concern | One short ref for the booker; the bookings' unique `assisted.*` indexes are asserted at accept |
+| E4 | `primaryConcern` is kept in the request's `assisted` block and put on the booking at accept (for the doctor) | The request schema has no concern field; the doctor reads the booking |
+| E5 | The patient's notices carry no money: accept "<partner> booked an instant consultation; a doctor is joining"; refund before accept "No doctor joined this time. <partner> was refunded."; cancel "<reason>." The booker gets accept (Ref, join now), refund and cancel notices with the amount | The patient never paid |
+| E6 | Re-offer and refund need `expectedStatusVersion` (the booker screen's version); a stale one is 409 `INSTANT_REQUEST_CHANGED` | §25.8.5 fences |
+| E7 | The re-offer audit is written after its single-document compare-and-set (best effort); the refund audit is in the refund transaction | Re-offer moves no money and has no transaction of its own |
+| E8 | Doctors list `nearby`: `'pincode'` (doctor profile pincode = the pharmacy's), else `'city'`, else `null`; sorted by that, then fee | §25.8.3 |
+| E9 | The patient's `activity` keeps its former answer (409 `REQUEST_NOT_OPEN`) for ids that are not its own, and answers `PARTNER_PAID_BOOKING` only on its own partner-paid request | The customer suites stay unchanged |
+| E10 | Every credit back to the booker is recorded on the request at `assisted.funding.refunds[]` (`kind`: `quote_return` \| `refund` \| `cancel_refund`, the wallet entry id) | The booker view sums them; reconciliation compares them with the wallet |
+
+**API for the web** (pharmacy token, `/api/v1/pharmacy-assisted/instant`; answers `{ success, data }`)
+
+| Route | Request → answer |
+|---|---|
+| `GET /specialities` | `?mode=video\|call` → `[{ specialization, onlineNow }]` |
+| `GET /doctors` | `?speciality&mode` → `[{ doctorId, name, specialization, modes, instantFeeMinor, nearby: 'pincode'\|'city'\|null }]` (eligible, online, not busy) |
+| `GET /quote` | `?speciality&mode&doctorId?` → `{ quotedAmountMinor, doctors }` |
+| `POST /requests` | `{ requestKey, phone, patient, holderName?, consent, preferredLanguage, specialization, mode, target: {kind:'any'}\|{kind:'specific', doctorId}, join: { on, phone? }, couponCode?, acceptedQuoteMinor, acceptedPayableMinor, primaryConcern?, paymentMethod: 'wallet' }` → 201 (replay 200) `{ request: <view>, funding: { method, amountMinor, state, walletEntryId }, newAccount, replayed }` |
+| `GET /requests` | `?status=offered\|accepted\|refunded&cursor&limit≤50` → `[<view>]`, `pagination: { total, nextCursor }` |
+| `GET /requests/:id` | `<view>` (own only, else 404 `INSTANT_REQUEST_NOT_FOUND`) |
+| `GET /requests/by-key/:key` | `{ state: 'used', request }` \| `{ state: 'abandoned' }` \| `{ state: 'unknown' }` |
+| `POST /requests/by-key/:key/abandon` | `{ state: 'abandoned' }`, or the `used` answer |
+| `POST /requests/:id/reoffer` | `{ target, expectedStatusVersion }` → `<view>` |
+| `POST /requests/:id/activity` | → `<view>` (the inactivity refund moves 30 minutes out) |
+| `POST /requests/:id/refund` | `{ expectedStatusVersion }` → `{ refundedMinor, request }` |
+
+`<view>` = `{ _id, status, statusVersion, mode, specialization, target, offerGeneration, offerExpiresAt, inactivityRefundAt,
+offeredCount, acceptedDoctorName, bookingId, patientName, holder, assisted: { shortRef, join: { on }, preferredLanguage,
+disputed? }, money: { quotedAmountMinor, discountMinor, paidMinor, returnedMinor, refundedMinor }, createdAt, updatedAt }`.
+
+The accepted booking appears in `GET /pharmacy-bookings`, with `instantRequestId` and the Join call link while the call
+is on (`join.on: 'partner_device'`).
+
+The doctor's `GET` offers add `source`, `bookedBy.name` and `identityNote`. The patient's `/api/v1/instant/requests*`
+answers add `paidBy` and drop the money.
+
+**Errors**
+- 400: `CONSENT_REQUIRED`, `PAYMENT_METHOD_UNAVAILABLE` (card), `VALIDATION_ERROR` (including chat), `DOCTOR_REQUIRED`,
+  `INVALID_PHONE`, `REQUEST_KEY_REQUIRED`, `INVALID_COUPON`, `COUPON_NOT_FOR_ASSISTED`.
+- 404: `INSTANT_REQUEST_NOT_FOUND`, `DEPENDENT_NOT_FOUND`.
+- 409:
+  - doctors: `NO_DOCTOR_ONLINE`, `DOCTOR_NOT_ONLINE`;
+  - price: `QUOTE_CHANGED` (`details: { quotedAmountMinor, discountMinor }`);
+  - wallet: `INSUFFICIENT_BALANCE`, `WALLET_FROZEN`, `WALLET_INACTIVE`, `WALLET_RECEIVABLE`;
+  - coupon: `COUPON_EXHAUSTED`;
+  - keys: `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`;
+  - request state: `REQUEST_NOT_OPEN`, `REQUEST_NOT_REFUNDABLE`, `INSTANT_REQUEST_CHANGED`;
+  - the patient's commands on a partner-paid request: `PARTNER_PAID_BOOKING`.
+- 429 `ASSISTED_LIMIT_REACHED` (lookups).
+- 503: `ASSISTED_BOOKING_DISABLED`, `INDEXES_OUTDATED`, `CUSTOMER_LINKING_UNAVAILABLE`.
+
+**Switches, deploy, rollback**
+- `ASSISTED_INSTANT_ENABLED` (new) and `ASSISTED_BOOKING_ENABLED_PHARMACY`.
+  - Either off: the speciality, doctor and quote reads and new requests answer 503.
+  - Re-offer, activity, refund, accept, cancel, reads and the sweeps always run.
+- No migration. Order:
+  1. deploy;
+  2. `npm run sync-indexes` (the three new `instant_requests` indexes);
+  3. `ASSISTED_INSTANT_ENABLED=true`;
+  4. restart.
+- Rollback with the switch. Never roll back the code while a partner request is `offered` or its booking is `confirmed`.
+  Both of these must be 0:
+  - `db.instant_requests.countDocuments({ 'assisted.bookedBy.kind': { $exists: true }, status: 'offered' })`;
+  - `db.bookings.countDocuments({ bookingKind: 'instant', source: { $in: ['pharmacy_assisted','lab_assisted'] }, status: 'confirmed' })`.
+
+**Tests:** `test/assisted/r17-phase3e.integration.ts` (24 checks). Covered:
+- switch;
+- index 503;
+- validation;
+- discovery;
+- create: one debit, offers to eligible doctors only, link, no patient-wallet movement;
+- keys: replay, other content, by-key, abandoned;
+- 5-way create race;
+- over-balance race;
+- accept: booking shape, quote return once;
+- percentage coupon recomputed on the fee;
+- two-doctor accept race;
+- accept against booker refund, and against the inactivity sweep;
+- activity and inactivity refund with lots restored;
+- stale and racing booker refunds;
+- re-offer;
+- doctor vs admin cancel race: refund once, redemption reversed, link dies;
+- the patient's commands refused and reads without money;
+- refunds to frozen and inactive wallets;
+- unverified doctor: no offer, accept 403;
+- earnings once, no-show nothing;
+- scope 404 and paging;
+- family member and the doctor's offer card;
+- reconciliation clean, tampered row flagged, stuck list;
+- `allocateFunding` shapes.
+
+The customer suites (Q4b, Q13, Q16a) run unchanged in the full regression.
+
+**Seen, not changed**
+- `assisted/labBookings.ts` still has its own copy of the patient plan and of `newShortRef`. Unify it with
+  `planAssistedPatient` once 3b and 3d, which edit that file, are merged.
+- `assisted/labRefunds.ts:37` credits pharmacy payers only (§25.5). It must move to `postBookerMovementIn` in 2e/3b.
+- "This isn't mine" works on the accepted instant booking. A request no doctor has accepted yet cannot be reported:
+  there is no booking. It is refunded within 30 minutes of the booker leaving the screen.
+- The booker's weekly cancellation rate counts bookings only. Refunding a request before any doctor accepts it is not
+  counted as a cancellation.

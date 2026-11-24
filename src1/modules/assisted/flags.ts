@@ -49,6 +49,12 @@ export const assistedFlags = {
    * the loads answer 503 RECOMMENDATIONS_DISABLED. Codes already printed stay on their prescriptions.
    */
   recommendations: () => on('TEST_RECOMMENDATIONS_ENABLED'),
+  /**
+   * r17 (§25.8.5): partner instant "Consult now" — the speciality, doctor and quote reads and new requests. Needs the
+   * booker's own switch too (ASSISTED_BOOKING_ENABLED_PHARMACY). Re-offer, activity, refund, accept, cancel, reads and
+   * the sweeps always run.
+   */
+  instant: () => on('ASSISTED_INSTANT_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -78,6 +84,11 @@ export function assertPharmacyAssistedOn(): void {
 
 export function assertAdminToolsOn(): void {
   if (!assistedFlags.adminTools()) throw disabled('This assisted-booking tool');
+}
+
+/** r17: both switches must be on for the pharmacy "Consult now" reads and new requests. */
+export function assertPharmacyInstantOn(): void {
+  if (!assistedFlags.pharmacy() || !assistedFlags.instant()) throw disabled('Consult now for patients');
 }
 
 /** r11: both switches must be on for the pharmacy lab-booking reads and new bookings. */
