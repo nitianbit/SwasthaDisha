@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
@@ -29,7 +28,7 @@ import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labDebitKey } from '@/modules/assisted/labRefunds';
 import { bookerNames } from '@/modules/assisted/names';
 import { bookerReportWindowOpen, labSourceOf } from '@/modules/assisted/labViews';
-import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultations';
+import { ASSISTED_KEY, newShortRef, type PharmacyActor } from '@/modules/assisted/consultations';
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
@@ -89,12 +88,6 @@ export interface AssistedLabInput {
 /** The stored key (unique `assisted.requestKey` on `partner_lab_bookings`) and the claim scope of a pharmacy's lab create. */
 export const storedLabKey = (a: PharmacyActor, key: string) => `assisted_lab:pharmacy:${lower(a.pharmacyId)}:${lower(a.actorId)}:${key}`;
 export const labKeyScope = (a: PharmacyActor) => `assisted_lab_create:${lower(a.pharmacyId)}:${lower(a.actorId)}`;
-
-/** §5.1: 8 characters, RFC 4648 base32 (upper case, no padding). */
-function newShortRef(): string {
-  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  return Array.from(randomBytes(8)).map((b) => ALPHABET[b & 31]).join('');
-}
 
 const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: cleanName(x.line2) || null, city: cleanName(x.city),
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
