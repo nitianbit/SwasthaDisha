@@ -16,6 +16,8 @@ import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialis
 import { requireEligibleDoctorUnlessCancel, restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
 import { takeVerificationFence, fenceAndRecordVerification } from '@/modules/specialists/verification';
 import { adminCloseSchema, adminCloseHandler, adminCloseAuditHandler } from '@/modules/bookings/adminClose';
+import { doctorRecommendation } from '@/modules/testRecommendations/controller';
+import { recommendationParamSchema, recommendationQuerySchema } from '@/modules/testRecommendations/validation';
 import {
   createSpecialistSchema,
   updateSpecialistSchema,
@@ -213,6 +215,10 @@ specialistRouter.post(
   catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.createMyAppointmentPrescription)
 );
+
+// Phase 3d (§25.7.4): a recommendation by its printed code and the patient's mobile number (a walk-in patient).
+specialistRouter.get('/me/assisted/recommendations/:code', requireSpecialist, validate(recommendationParamSchema, 'params'),
+  validate(recommendationQuerySchema, 'query'), catchAsync(requireEligibleDoctor), catchAsync(doctorRecommendation));
 
 specialistRouter.get(
   '/me/patients/:userId/history',

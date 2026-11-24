@@ -24,7 +24,9 @@ import {
   ISpecialist,
   UpdateSpecialistRequest,
 } from '@/modules/specialists/types';
-import { ageFromDob, escapeHtml, formatDisplayDate, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { ageFromDob, escapeHtml, formatDisplayDate, recommendationBoxHtml, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { recommendTestsAtSave } from '@/modules/testRecommendations/service';
+import { formatRecommendationCode } from '@/modules/testRecommendations/code';
 import { ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
 import logger from '@/services/logger';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
@@ -352,6 +354,9 @@ export class SpecialistPortalService {
       });
     }
 
+    // Phase 3d (§25.7.3): the recommended tests get their code before the PDF that prints it (best effort: null when
+    // none could be made; the prescription is saved either way).
+    const recommendationCode = await recommendTestsAtSave(booking, body.testsAdvised || []);
     const pdfUrl = await this.generatePrescriptionPdf({
       booking,
       patient,
@@ -360,10 +365,11 @@ export class SpecialistPortalService {
       medicines: body.medicines || [],
       testsAdvised: body.testsAdvised || [],
       advice: body.advice,
+      recommendationCode,
     });
 
-    // A new prescription never keeps the previous one's dispensing copy (assisted booking phase 0).
-    const { dispensingCopy: _previousCopy, ...previous } = booking.prescription || {};
+    // A new prescription never keeps the previous one's dispensing copy (assisted booking phase 0) nor its code.
+    const { dispensingCopy: _previousCopy, recommendationCode: _previousCode, ...previous } = booking.prescription || {};
     const prescription: IBookingPrescription = {
       ...previous,
       fileUrls: [pdfUrl],
@@ -372,6 +378,7 @@ export class SpecialistPortalService {
       advice: body.advice,
       medicines: body.medicines || [],
       testsAdvised: body.testsAdvised || [],
+      ...(recommendationCode ? { recommendationCode } : {}),
       prescribedAt: new Date().toISOString(),
       prescribedBySpecialistId: specialistId,
       prescribedBySpecialistName: specialist.name,
@@ -489,6 +496,7 @@ export class SpecialistPortalService {
     medicines: IBookingPrescriptionMedicine[];
     testsAdvised: string[];
     advice: string;
+    recommendationCode?: string | null;
   }): Promise<string> {
     const bookingId = String(input.booking._id);
     try {
@@ -512,6 +520,7 @@ export class SpecialistPortalService {
     medicines: IBookingPrescriptionMedicine[];
     testsAdvised: string[];
     advice: string;
+    recommendationCode?: string | null;
   }): string {
     const patientName = this.escapeHtml(input.patient.name || 'Patient');
     const specialistName = this.escapeHtml(input.specialist.name || 'Specialist');
@@ -629,6 +638,7 @@ export class SpecialistPortalService {
       <div class="section">
         <h2>Tests Advised</h2>
         <div class="tags">${testsHtml}</div>
+        ${input.recommendationCode ? recommendationBoxHtml(formatRecommendationCode(input.recommendationCode)) : ''}
       </div>
       <div class="section">
         <h2>Doctor's Advice / Follow-up</h2>

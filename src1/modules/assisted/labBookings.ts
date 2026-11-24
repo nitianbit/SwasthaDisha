@@ -136,7 +136,7 @@ function validate(input: AssistedLabInput): void {
 }
 
 /** §24.1 item 12: a lab takes assisted bookings only while it is an active, verified lab (the S5 pattern for providers). */
-const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
+export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
 
 /**
  * §24.4.3 step 10, L24: lab coupons follow the diagnostics rules (against the PATIENT) plus the assisted rules — never a

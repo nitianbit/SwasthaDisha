@@ -4340,3 +4340,132 @@ It is an alert only. The places:
 | 2 | "Consult now" is paid from the wallet only | §25.8 as written (DR18) |
 | 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays |
 | 4 | A doctor books lab tests for patients of its own consultations AND for walk-ins by phone | §25.5.3 as written (DR6) |
+
+### 25.12 Round 3d build record: test recommendations (r16, 2026-11-25)
+
+Branch `m0/r16-phase3d` from `3edeceaf` (the r15 spec with the 25 Nov decisions). Local commits only. Check:
+`test/assisted/r16-phase3d.integration.ts` (14 checks over HTTP with the real routers). Every check fails on `3edeceaf`,
+where the `testRecommendations` module does not exist.
+
+A mutation run on the built code, one break at a time:
+- dropping the phone match fails "one 404" alone;
+- always hashing the code fails "dispensing copy hash" alone;
+- keeping the previous code on a re-save fails "re-save" (and the later checks that build on its state).
+
+**Full regression** (`prun.sh`, 4 jobs), tsc 17 (unchanged): 68 of 69 suites pass.
+- `test/pharmacy-inventory/q16c-pharmacy.integration.ts` failed one spreadsheet-import check (N2) on 503
+  `AUTH_STATE_UNAVAILABLE`: the sign-in state read has a 2-second limit (`auth/tokenVersion.ts:43`), and other agents'
+  regressions were running at the same time (load average about 28).
+- Run alone, it passes 31 of 31. 3d touches none of its code.
+
+Built: the 3d core that does not depend on 3b. **Linking lab bookings to a recommendation (§25.7.5, DR16, DR17) is not
+built.** It needs 2b, 2c and 3b, which are not merged; the seam is described below.
+
+#### 25.12.1 What was built
+
+| Part | Where | What |
+|---|---|---|
+| The code | `testRecommendations/code.ts` | `newRecommendationCode` (7 Crockford base32 characters from `crypto.randomInt` + a Luhn mod 32 check), `normalizeRecommendationCode` (upper case; spaces and hyphens removed; I and L read as 1, O as 0; shape and check), `formatRecommendationCode` (`ABCD-EFGH`) |
+| The model | `testRecommendations/model/index.ts` | `test_recommendations { code, consultationId, specialistId, items: [{ index, name }], status, bookings: [], version }`; unique `{code}` and `{consultationId}` |
+| Made at the save | `testRecommendations/service.ts` `recommendTestsAtSave`, called by `createAppointmentPrescription` (`specialistPortal/services/index.ts:359`) before the PDF | One per consultation, upserted. The code stays the same across re-saves; the items come from `testsAdvised` (kept filled, unchanged). An empty list → `withdrawn`. Best effort (DR12): switched off, a missing unique index or any error → null (logged), and the prescription is saved without a code |
+| On the prescription | `bookings/model`, `bookings/types` | `prescription.recommendationCode` (server-written). A new save never keeps the previous one's code |
+| The PDF box | `specialistPortal/pdf.ts:67` `recommendationBoxHtml` | One box shared by both documents: "Jansetu", "Recommended tests code: ABCD-EFGH", "Show this code and your mobile number at a Jansetu pharmacy or lab to book these tests." On the full PDF under Tests Advised (`specialistPortal/services/index.ts:641`; the header stays "MyEwaCare", DR13) and on the dispensing copy (`assisted/dispensingCopy.ts:106`) |
+| Dispensing copy hash | `assisted/dispensingCopy.ts` `dispensingHashOf` | Includes `recommendationCode` only when present, so copies made before 3d stay current (DR14) |
+| Booker view | `assisted/bookerView.ts` `PRESCRIPTION_FIELDS` | Adds `recommendationCode`. Customer and doctor reads already carry the whole prescription |
+| Loading | `loadRecommendation` (service) + three thin handlers (`testRecommendations/controller.ts`) | By the code AND the mobile number of the consultation's account. Test names only. Counted with the existing `hitLookup` against the caller's organisation (`pharmacy:<id>`, `doctor:<id>`, `lab:<partnerId>`) and audited, ids only: `assisted_audit_events` action `recommendation.lookup` for pharmacies and doctors, `PartnerAuditEvent` action `lab_desk.recommendation_lookup` for labs |
+| Switch | `assisted/flags.ts:41` | `TEST_RECOMMENDATIONS_ENABLED` |
+| Lab check | `assisted/labBookings.ts` | `labAdmissible` is exported (the identical change is in r12's working tree), so the lab route reuses it |
+
+**The recommending doctor and the report.** No code change: no file-access rule names a recommender. The suite pins it:
+a pharmacy books a lab test for the patient and the lab releases the report; the pharmacy and the patient read it, while
+the recommending doctor and another doctor get 404.
+
+#### 25.12.2 Choices made while building (ASSUMED r16, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| R1 | No new `testsRecommended` input. The items are the `testsAdvised` names (cleaned: trimmed, inner spaces collapsed, empties dropped) | The owner asked for a minimal API. Notes or catalogue codes per test can be added later |
+| R2 | The person (account and family member) is **not stored** on the recommendation; it is read from the consultation | An admin move of the booking (§17.5) then moves the recommendation with it; nothing goes stale |
+| R3 | A code loads only while the consultation's doctor-saved prescription (`hasPrescription`) still carries it | A re-save without tests, a re-save while switched off, or an admin clear (S5) makes the old code unloadable without any extra write |
+| R4 | The patient list `GET /lab-bookings/recommendations` (§25.7.4) is not built | It serves only "Book" in the app, which is linking. The patient sees the code on the prescription (booking reads) and on the PDF |
+| R5 | A malformed code or phone answers 400 without counting a lookup. Every well-formed load counts, found or not | Malformed input reads nothing and reveals nothing; a well-formed load is a phone lookup |
+| R6 | Any operational pharmacy, any verified lab with the desk permission, or any eligible doctor may load; the code and phone together are the key | D2: the patient hands both to whoever books |
+| R7 | The Luhn mod 32 check misses one error: the swap of neighbouring `0` and `Z` | The mod-N form of decimal Luhn's 09 ↔ 90 blind spot. Every single wrong character is caught |
+| R8 | Lab route inside the partner workspace (members, and admins acting as owner), `bookings.manage`. A non-lab → 403 `LAB_PARTNER_REQUIRED`; an unverified or suspended lab → 403 `PARTNER_NOT_VERIFIED` | The same codes as r12's desk |
+| R9 | Switched off, a save neither makes nor withdraws a recommendation | The new prescription has no code, so R3 already makes the old one unloadable |
+| R10 | The recommendation is upserted before the PDF. If the PDF then fails (500), the recommendation stays without a prescription carrying it | Harmless (R3: not loadable). The next save reuses it, with the same code |
+
+#### 25.12.3 The seam for linking (the next round, after 2b, 2c and 3b)
+
+- **Model.** `test_recommendations.bookings[]` (`{ labBookingId, itemIndexes, byKind, at, cancelled? }`) and the
+  statuses `partly_booked` / `booked` exist. Nothing writes them yet.
+- **Status at a re-save.** `recommendTestsAtSave` sets `status: 'open'` at every save, marked in the code. The linking
+  round recomputes it from `bookings` instead.
+- **Still to add:**
+  - `PartnerLabBooking.recommendationId` (DR17);
+  - `recommendation?: { code, itemIndexes }` on the four lab creates, with the same-person check;
+  - the push in the booking transaction;
+  - unlinking on cancel and expiry (`partners/services/labBookings.ts:482`, `:418`).
+- **The load answer** (`code`, `items[].index`) is what a booker sends back when it links.
+
+#### 25.12.4 API for the web
+
+Each of the three load routes answers `{ success, data }` with `Cache-Control: private, no-store`:
+
+| Who | Route | Guard |
+|---|---|---|
+| Pharmacy | `GET /api/v1/pharmacy-assisted/recommendations/:code?phone=` | operational, verified pharmacy |
+| Lab desk | `GET /api/v1/partner-workspace/lab-desk/recommendations/:code?phone=` (admins: `/api/v1/partner-workspace/admin/:partnerId/workspace/lab-desk/recommendations/:code?phone=`) | member with `bookings.manage`, at a verified lab |
+| Doctor | `GET /api/v1/specialists/me/assisted/recommendations/:code?phone=` | verified, active doctor |
+
+- **`:code`** as printed (`ABCD-EFGH`); lower case, spaces and hyphens are fine. **`phone`**: the patient's 10-digit
+  mobile number.
+- **200:** `data: { code: 'ABCDEFGH', status: 'open', items: [{ index: 0, name: 'CBC' }, { index: 1, name: 'Lipid profile' }] }`.
+  Nothing else: no doctor, patient or diagnosis. Show the names; keep `code` and the indexes for booking (linking comes
+  later).
+- **Errors:**
+  - 400 `VALIDATION_ERROR` (no `phone`; a code longer than 20 characters);
+  - 400 `INVALID_CODE` ("This code is not valid; check it on the prescription": a typo, caught by the check character);
+  - 400 `INVALID_PHONE`;
+  - 403: pharmacy admission codes, `INSUFFICIENT_PERMISSIONS`, `LAB_PARTNER_REQUIRED`, `PARTNER_NOT_VERIFIED`,
+    `SPECIALIST_NOT_VERIFIED`;
+  - 404 `RECOMMENDATION_NOT_FOUND` (the one answer for an unknown code, a wrong phone, or a code no longer on the
+    prescription);
+  - 429 `ASSISTED_LIMIT_REACHED` `limit: 'lookups'` (shared with the patient lookup, 120 an hour per organisation);
+  - 503 `RECOMMENDATIONS_DISABLED`.
+
+**Doctor's prescription save** (`POST /api/v1/specialists/me/appointments/:id/prescription`): unchanged body. When
+`testsAdvised` is not empty and the switch is on, the answer's `prescription.recommendationCode` holds the code. Show it
+formatted (`ABCD-EFGH`) after saving. It is absent when no code could be made: the prescription is saved anyway.
+
+**Readers of a prescription:**
+- `prescription.recommendationCode` is in the patient's booking reads, the doctor's appointment reads, and the pharmacy
+  booker view (`GET /api/v1/pharmacy-bookings[/:id]`).
+- The full PDF and the dispensing copy print it in a Jansetu box.
+
+#### 25.12.5 Switch, indexes, deploy, rollback
+
+- **Switch.** `TEST_RECOMMENDATIONS_ENABLED`, off unless exactly `"true"`. Off: saves make no code (the PDF is as before),
+  and loads answer 503. Stored codes stay on their prescriptions and PDFs.
+- **Indexes.** `npm run sync-indexes` builds the new collection `test_recommendations` (`code_1` unique,
+  `consultationId_1` unique). Before it has run, a save makes no code (best effort, logged). Nothing else depends on it.
+- **Migration:** none. Older prescriptions get no code.
+- **Order:**
+  1. deploy;
+  2. `npm run sync-indexes`;
+  3. `TEST_RECOMMENDATIONS_ENABLED=true`;
+  4. restart.
+- **Rollback:** the switch. Rolling the code back is safe: no money is involved, and older code ignores
+  `prescription.recommendationCode`.
+
+#### 25.12.6 Seen, not changed
+
+- **The full prescription PDF header** still says "MyEwaCare" (`specialistPortal/services/index.ts:605`). Owner question
+  Q3, to ask in the morning.
+- **`testsAdvised` has no limit on count or length** (`specialistPortal/validation/index.ts:126-128`). A very long list
+  makes a long PDF and a long recommendation. Unchanged (no new limit).
+- **r12's working tree** has `labOf` and `countPhoneUse` helpers (`assisted/labDesk.ts`, `assisted/patient.ts`). Once
+  r12 is merged, the lab route's three-line kind and eligibility check and its lookup-plus-audit can use them.
+- **The admin booking edit** (`PUT /api/v1/bookings/:id`, `updateBookingSchema` with its `prescription` part,
+  `bookings/validation/index.ts:109-137`) does not know `recommendationCode`, and it leaves the recommendation's items as
+  they were. A code the edited prescription no longer carries is not loadable (R3). Unchanged (S4 admin path).

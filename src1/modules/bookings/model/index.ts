@@ -120,6 +120,11 @@ const prescriptionSchema = new Schema<IBookingPrescription>(
       type: String,
       trim: true,
     },
+    // Phase 3d (§25.7.3): the code of the doctor's recommended tests printed on this prescription (server-written).
+    recommendationCode: {
+      type: String,
+      trim: true,
+    },
     // Assisted booking phase 0 (D15): the server-made dispensing copy (no diagnosis). Only `url` is ever answered: the
     // hash of the content it shows and its time are internal (select: false; the assisted module selects them).
     dispensingCopy: {

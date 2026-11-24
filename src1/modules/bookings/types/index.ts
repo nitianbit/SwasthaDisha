@@ -47,6 +47,8 @@ export interface IBookingPrescription {
   prescribedAt?: string;
   prescribedBySpecialistId?: string;
   prescribedBySpecialistName?: string;
+  /** Phase 3d (§25.7.3): the code of the doctor's recommended tests printed on this prescription (server-written). */
+  recommendationCode?: string;
   /** Assisted booking phase 0 (D15): the dispensing copy (no diagnosis) and the hash of the content it shows. */
   dispensingCopy?: { url?: string; hash?: string; at?: Date };
 }

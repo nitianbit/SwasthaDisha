@@ -73,6 +73,8 @@ import * as labV from '@/modules/partners/validation/labBooking';
 import Joi from 'joi';
 import { notMineSchema } from '@/modules/assisted/validation';
 import { labNotMine } from '@/modules/assisted/controller/phase2a';
+import { labDeskRecommendation } from '@/modules/testRecommendations/controller';
+import { recommendationParamSchema, recommendationQuerySchema } from '@/modules/testRecommendations/validation';
 
 /** Q9: page/limit for customer lists. */
 const customerPageQuerySchema = Joi.object({ page: Joi.number().integer().min(1).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
@@ -210,6 +212,9 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
 
   const LAB_READERS: PartnerPermission[] = ['bookings.view', 'bookings.manage', 'reports.upload', 'reports.release'];
   const id = validate(labV.labBookingIdParamSchema, 'params');
+  // Phase 3d (§25.7.4): the lab desk loads a doctor's recommended tests by the printed code and the patient's mobile number.
+  r.get('/lab-desk/recommendations/:code', ...guard('bookings.manage'), validate(recommendationParamSchema, 'params'),
+    validate(recommendationQuerySchema, 'query'), catchAsync(labDeskRecommendation));
   r.get('/lab-bookings', ...guard.any(...LAB_READERS), validate(labV.partnerLabBookingQuerySchema, 'query'), catchAsync(lab.listLabBookings));
   r.get('/lab-bookings/:bookingId', ...guard.any(...LAB_READERS), id, catchAsync(lab.getLabBooking));
   r.post('/lab-bookings/:bookingId/assign', ...guard('bookings.manage'), id, validate(labV.assignCollectorSchema, 'body'), catchAsync(lab.assignCollector));

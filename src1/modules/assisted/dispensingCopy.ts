@@ -4,7 +4,8 @@ import SpecialistModel from '@/modules/specialists/model';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
 import { canonicalJson } from '@/modules/common/utils/canonicalJson';
-import { ageFromDob, bookingPdfExists, escapeHtml, formatDisplayDate, removeBookingPdf, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { ageFromDob, bookingPdfExists, escapeHtml, formatDisplayDate, recommendationBoxHtml, removeBookingPdf, writeBookingPdf } from '@/modules/specialistPortal/pdf';
+import { formatRecommendationCode } from '@/modules/testRecommendations/code';
 import { bookerPatientNames, maskName } from '@/modules/assisted/names';
 import { hasPrescription } from '@/modules/assisted/rxAccess';
 import { Job } from '@/modules/queue/model';
@@ -37,6 +38,8 @@ export function dispensingHashOf(b: Row): string {
   return createHash('sha256').update(canonicalJson({
     v: 1, specialistId: b.specialistId, medicines: p.medicines ?? [], advice: p.advice ?? '', testsAdvised: p.testsAdvised ?? [],
     prescribedAt: p.prescribedAt ?? '', prescribedBy: p.prescribedBySpecialistName ?? '',
+    // Phase 3d (DR14): only when the prescription has a code, so the copies of older prescriptions stay current.
+    ...(p.recommendationCode ? { recommendationCode: p.recommendationCode } : {}),
   })).digest('hex');
 }
 
@@ -100,6 +103,7 @@ export function buildDispensingHtml(input: { booking: Row; doctorName: string; r
   <p>${advice}</p>
   <h2>Tests advised</h2>
   ${testsHtml}
+  ${p.recommendationCode ? recommendationBoxHtml(formatRecommendationCode(String(p.recommendationCode))) : ''}
   <div class="footer">Issued by Jansetu for dispensing only. The full prescription is with the patient and the doctor.</div>
 </body>
 </html>`;

@@ -33,6 +33,12 @@ export const assistedFlags = {
    * always work.
    */
   pharmacyLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_PHARMACY'),
+  /**
+   * Phase 3d (§25.7.6): a doctor's recommended tests get a code at the prescription save (printed on the PDF), and
+   * pharmacies, lab desks and doctors load them by code and phone. Off: no new code is made (the PDF is as before) and
+   * the loads answer 503 RECOMMENDATIONS_DISABLED. Codes already printed stay on their prescriptions.
+   */
+  recommendations: () => on('TEST_RECOMMENDATIONS_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {

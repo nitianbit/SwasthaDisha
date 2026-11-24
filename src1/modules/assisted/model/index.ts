@@ -18,7 +18,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   /** r10e: a second capture on an order whose booking was already paid (or closed) by another payment: refunded. */
   'booking.extra_capture',
   /** r11: the booker accepted a lab's proposed new time for the patient (§24.4.4, L7). */
-  'booking.reschedule_accepted'] as const;
+  'booking.reschedule_accepted',
+  /** Phase 3d: a pharmacy or doctor loaded a doctor's recommended tests by code and phone (§25.7.4). */
+  'recommendation.lookup'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {

@@ -16,7 +16,9 @@ const TOP_LEVEL = ['_id', 'bookingType', 'bookingKind', 'userId', 'dependentId',
   'primaryConcern', 'consultationMode', 'serviceMode', 'clinicVisit', 'slotId', 'bookingDate', 'bookingTime', 'contactNo', 'status',
   'paymentStatus', 'price', 'originalPrice', 'cancellationReason', 'cancelledAt', 'cancellationCause', 'createdAt', 'updatedAt'] as const;
 // Review finding 9: not `message` (the doctor's free text may be clinical; the copy withholds it too).
-const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'prescribedAt', 'prescribedBySpecialistName'] as const;
+// Phase 3d: `recommendationCode`, so the booker can book the recommended tests (§25.7.3).
+const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'recommendationCode', 'prescribedAt',
+  'prescribedBySpecialistName'] as const;
 const LIFECYCLE_EVENTS = ['created', 'confirmed', 'completed', 'cancelled'] as const;
 const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
 /** The booking payment window (bookings/holds.ts BOOKING_PAYMENT_WINDOW_MS; not imported, to keep this view free of the writers). */

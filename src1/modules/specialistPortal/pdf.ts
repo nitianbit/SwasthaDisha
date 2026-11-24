@@ -59,6 +59,19 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Phase 3d (§25.7.3, DR13, DR14): the box printed under "Tests advised" on the prescription PDF and on its dispensing
+ * copy: the Jansetu brand and the recommended-tests code (`formatted`, e.g. `ABCD-EFGH`). Inline styles, so it reads the
+ * same in both documents.
+ */
+export function recommendationBoxHtml(formatted: string): string {
+  return `<div style="margin:12px 0 4px;padding:10px 12px;border:2px solid #0f766e;border-radius:8px;color:#134e4a;">
+  <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">Jansetu</div>
+  <div style="font-size:15px;margin-top:4px;">Recommended tests code: <strong style="font-size:18px;letter-spacing:0.08em;">${escapeHtml(formatted)}</strong></div>
+  <div style="font-size:12px;margin-top:4px;">Show this code and your mobile number at a Jansetu pharmacy or lab to book these tests.</div>
+</div>`;
+}
+
 /** YYYYMMDD → "November 22, 2026" (the value itself when it does not parse). */
 export function formatDisplayDate(date: string): string {
   if (!date || date.length !== 8) return date || 'N/A';
