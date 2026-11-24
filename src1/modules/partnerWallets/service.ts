@@ -4,7 +4,7 @@ import { AppError } from '@/modules/common/types';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
-import { assertAdminToolsOn, assertLabWalletOn } from '@/modules/assisted/flags';
+import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentService } from '@/modules/payment/services';
@@ -12,11 +12,13 @@ import type { IPaymentRecord, VerifyPaymentRequest } from '@/modules/payment/typ
 import { adminTopup, checkTopup, setFrozenIn, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
 import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
 import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
-import { assertPartnerWalletIndexes, LAB_WALLET_POLICY, labOrNotFound, labStore, labTopups } from '@/modules/partnerWallets/ledger';
+import { assertPartnerWalletIndexes, PARTNER_WALLET_POLICY, partnerStore, type PartnerOwner } from '@/modules/partnerWallets/ledger';
+import { doctorIsEligible } from '@/modules/specialists/eligibility';
 
 /**
- * r13 (round 2d, §24.7.3): the lab wallet's reads and commands, for the lab workspace (members) and the admin tools.
- * Money moves only through the shared wallet rules (`walletCore.ts`); answers are integer paise.
+ * r13 (round 2d, §24.7.3) and r20 (round 3a, §25.4.2): the partner wallets' reads and commands — the lab workspace
+ * (members), the doctor app (the doctor) and the admin tools — for any owner (`LAB`, `DOCTOR`). Money moves only through
+ * the shared wallet rules (`walletCore.ts`); answers are integer paise.
  */
 export interface LabMember { partnerId: string; memberId: string }
 
@@ -27,11 +29,11 @@ const recordNotFound = () => err(404, 'PAYMENT_RECORD_NOT_FOUND', 'Payment recor
 const PENDING_WINDOW_MS = 30 * 60_000;
 
 // ── Views ──
-export function labWalletView(w: IPartnerWallet | null | undefined) {
+export function walletView(w: IPartnerWallet | null | undefined) {
   return { balanceMinor: w?.balanceMinor ?? 0, withdrawableMinor: w?.withdrawableMinor ?? 0, receivableMinor: w?.receivableMinor ?? 0,
     frozen: w?.frozen === true, isActive: w ? w.isActive !== false : true, updatedAt: w?.updatedAt ?? null };
 }
-const adminWalletView = (w: IPartnerWallet | null) => ({ ...labWalletView(w), exists: !!w, frozenReason: w?.frozenReason ?? null,
+const adminWalletView = (w: IPartnerWallet | null) => ({ ...walletView(w), exists: !!w, frozenReason: w?.frozenReason ?? null,
   frozenAt: w?.frozenAt ?? null, version: w?.version ?? 0, createdAt: w?.createdAt ?? null });
 const entryView = (e: IPartnerWalletEntry) => ({ _id: String(e._id), kind: e.kind, amountMinor: e.amountMinor, balanceAfterMinor: e.balanceAfterMinor,
   description: e.description, referenceType: e.referenceType, referenceId: e.referenceId, at: e.at });
@@ -61,29 +63,29 @@ function after(field: string, cursor?: string): Record<string, unknown> {
   return { $or: [{ [field]: { $lt: at } }, { [field]: at, _id: { $lt: id } }] };
 }
 
-// ── Reads (members with wallet.view; admins) ──
-export async function walletOf(partnerId: string) {
-  return labWalletView(await labStore(partnerId).findIn(null));
+// ── Reads (members with wallet.view, the doctor, admins) ──
+export async function walletOf(owner: PartnerOwner, ownerId: string) {
+  return walletView(await partnerStore(owner.kind, ownerId).findIn(null));
 }
 
-export async function entriesOf(partnerId: string, q: { cursor?: string; limit?: number }, admin = false) {
+export async function entriesOf(owner: PartnerOwner, ownerId: string, q: { cursor?: string; limit?: number }, admin = false) {
   const limit = Math.min(50, Math.max(1, Number(q.limit ?? 20)));
-  const rows = await PartnerWalletEntryModel.find({ ownerKind: 'lab', ownerId: lower(partnerId), ...after('at', q.cursor) })
+  const rows = await PartnerWalletEntryModel.find({ ownerKind: owner.kind, ownerId: lower(ownerId), ...after('at', q.cursor) })
     .sort({ at: -1, _id: -1 }).limit(limit + 1).lean() as IPartnerWalletEntry[];
   const { items, nextCursor } = page(rows, limit, (e) => e.at);
   return { items: items.map(admin ? adminEntryView : entryView), nextCursor };
 }
 
-/** The lab's card top-ups, newest first (a lost answer: find it and press "Check"). */
-export async function topupsOf(partnerId: string, q: { cursor?: string; limit?: number }) {
+/** The owner's card top-ups, newest first (a lost answer: find it and press "Check"). */
+export async function topupsOf(owner: PartnerOwner, ownerId: string, q: { cursor?: string; limit?: number }) {
   const limit = Math.min(50, Math.max(1, Number(q.limit ?? 20)));
-  const rows = await PaymentRecordModel.find({ payerPartnerId: lower(partnerId), context: 'wallet_recharge', 'notes.flow': labTopups.flow, ...after('createdAt', q.cursor) })
-    .sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as unknown as IPaymentRecord[];
+  const rows = await PaymentRecordModel.find({ [owner.topups.payerField]: lower(ownerId), context: 'wallet_recharge', 'notes.flow': owner.topups.flow,
+    ...after('createdAt', q.cursor) }).sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as unknown as IPaymentRecord[];
   const { items, nextCursor } = page(rows, limit, (r) => r.createdAt);
   return { items: items.map(topupView), nextCursor };
 }
 
-// ── Top-up by card (members with wallet.manage, operational lab, switch on) ──
+// ── Top-up by card (lab members with wallet.manage of an operational lab; an eligible doctor; the owner's switch on) ──
 function razorpayKeyId(): string {
   try {
     return (payments() as unknown as { getRazorpayCredentials(): { keyId: string } }).getRazorpayCredentials().keyId;
@@ -95,18 +97,20 @@ const orderView = (r: IPaymentRecord, replayed: boolean) => ({ paymentTransactio
   razorpayKeyId: razorpayKeyId(), amountMinor: recordPaise(r), currency: r.currency, state: topupState(r), replayed });
 
 /**
- * POST /partner-workspace/assisted/wallet/topups { amountMinor, requestKey } — one Razorpay order per request key (scope
- * `wallet_topup:lab:<partnerId>:<memberId>`, content hash of the amount): the same key and amount answers the same order
- * (`replayed`), another amount 409 IDEMPOTENCY_KEY_REUSED. O2: the balance, the lab's unpaid top-ups of the last 30
- * minutes and this one may not pass ₹50,000 (409 WALLET_LIMIT_REACHED); a paid top-up is always credited.
+ * POST …/wallet/topups { amountMinor, requestKey } — one Razorpay order per request key (scope: the owner's
+ * `topupOrder`, e.g. `wallet_topup:lab:<partnerId>:<memberId>` or `wallet_topup:doctor:<specialistId>`; content hash of
+ * the amount): the same key and amount answers the same order (`replayed`), another amount 409 IDEMPOTENCY_KEY_REUSED.
+ * O2: the balance, the owner's unpaid top-ups of the last 30 minutes and this one may not pass ₹50,000 (409
+ * WALLET_LIMIT_REACHED); a paid top-up is always credited.
  */
-export async function createLabTopup(m: LabMember, body: { amountMinor: number; requestKey: string }) {
-  assertLabWalletOn();
+export async function createTopup(owner: PartnerOwner, ownerIdIn: string, actorId: string, body: { amountMinor: number; requestKey: string }) {
+  owner.assertOn();
   await assertPartnerWalletIndexes();
   await assertUniqueIndex(PaymentRecordModel, { requestKey: 1 });
-  const partnerId = lower(m.partnerId);
-  const requestKey = `wallet_topup:lab:${partnerId}:${lower(m.memberId)}:${body.requestKey}`;
-  const requestHash = requestHashOf({ kind: 'lab_wallet_topup', amountMinor: body.amountMinor });
+  const ownerId = lower(ownerIdIn);
+  const order = owner.topupOrder(ownerId, actorId);
+  const requestKey = `${order.scope}:${body.requestKey}`;
+  const requestHash = requestHashOf({ kind: `${owner.kind}_wallet_topup`, amountMinor: body.amountMinor });
   const replay = async () => {
     const r = await PaymentRecordModel.findOne({ requestKey: { $eq: requestKey } }).lean() as unknown as IPaymentRecord | null;
     if (!r) return null;
@@ -115,20 +119,19 @@ export async function createLabTopup(m: LabMember, body: { amountMinor: number; 
   };
   const prior = await replay();
   if (prior) return prior;
-  const balanceMinor = (await labStore(partnerId).findIn(null))?.balanceMinor ?? 0;
-  const pending = await PaymentRecordModel.find({ payerPartnerId: partnerId, context: 'wallet_recharge', 'notes.flow': labTopups.flow, status: 'created',
+  const balanceMinor = (await partnerStore(owner.kind, ownerId).findIn(null))?.balanceMinor ?? 0;
+  const pending = await PaymentRecordModel.find({ [owner.topups.payerField]: ownerId, context: 'wallet_recharge', 'notes.flow': owner.topups.flow, status: 'created',
     createdAt: { $gte: new Date(Date.now() - PENDING_WINDOW_MS) } }).select({ finalAmount: 1, finalAmountPaise: 1 }).lean() as unknown as IPaymentRecord[];
   const pendingMinor = pending.reduce((a, r) => a + recordPaise(r), 0);
-  const max = LAB_WALLET_POLICY.maxBalanceMinor;
+  const max = PARTNER_WALLET_POLICY.maxBalanceMinor;
   if (balanceMinor + pendingMinor + body.amountMinor > max) {
-    throw Object.assign(err(409, 'WALLET_LIMIT_REACHED', `A lab wallet holds at most ₹${(max / 100).toLocaleString('en-IN')}`),
+    throw Object.assign(err(409, 'WALLET_LIMIT_REACHED', `A ${owner.kind} wallet holds at most ₹${(max / 100).toLocaleString('en-IN')}`),
       { details: { maxBalanceMinor: max, balanceMinor, pendingMinor, allowedMinor: Math.max(0, max - balanceMinor - pendingMinor) } });
   }
   razorpayKeyId();
   try {
-    const out = await payments().createOrder({ userId: m.memberId, payerUserId: m.memberId, payerPartnerId: partnerId, payerMemberId: m.memberId,
-      requestKey, requestHash, context: 'wallet_recharge', contextId: `lab_${partnerId}_${Date.now()}`,
-      baseAmount: body.amountMinor / 100, finalAmount: body.amountMinor / 100, notes: { flow: labTopups.flow, partnerId } });
+    const out = await payments().createOrder({ ...order.fields, requestKey, requestHash, context: 'wallet_recharge',
+      baseAmount: body.amountMinor / 100, finalAmount: body.amountMinor / 100 } as Parameters<PaymentService['createOrder']>[0]);
     return orderView(out.paymentRecord, false);
   } catch (e) {
     // A twin with the same key saved its record first: that order is the answer (this one is never shown or paid).
@@ -141,84 +144,105 @@ export async function createLabTopup(m: LabMember, body: { amountMinor: number; 
 }
 
 /** The lab's own top-up record, or the one 404 (another lab's, a pharmacy's, a customer's, a booking's). */
-async function ownTopup(partnerId: string, paymentTransactionId: string): Promise<void> {
+async function ownTopup(owner: PartnerOwner, ownerId: string, paymentTransactionId: string): Promise<void> {
   const r = /^[0-9a-fA-F]{24}$/.test(String(paymentTransactionId ?? ''))
     ? await PaymentRecordModel.findById(paymentTransactionId).lean() as Record<string, unknown> | null : null;
-  if (!r || !labTopups.isTopup(r) || labTopups.ownerOf(r) !== lower(partnerId)) throw recordNotFound();
+  if (!r || !owner.topups.isTopup(r) || owner.topups.ownerOf(r) !== lower(ownerId)) throw recordNotFound();
 }
 
-const requester = (m: LabMember) => ({ userId: m.memberId, requesterUserType: 'partner', requesterPartnerId: lower(m.partnerId) });
+const memberRequester = (m: LabMember) => ({ userId: m.memberId, requesterUserType: 'partner', requesterPartnerId: lower(m.partnerId) });
 
-/** POST …/topups/:id/check — any active member with wallet.view, operational or not (§19.8 item b): its own money. */
-export async function checkLabTopup(m: LabMember, paymentTransactionId: string) {
-  const out = await checkTopup(labTopups, m.partnerId, paymentTransactionId, (r) => payments().reconcilePaymentAndProcess({ ...r, ...requester(m), userId: r.userId }));
-  return { state: out.state, wallet: labWalletView(out.wallet) };
-}
-
-/** POST …/payments/verify — after Checkout (members with wallet.manage). */
-export async function verifyLabPayment(m: LabMember, body: Omit<VerifyPaymentRequest, 'userId'>) {
-  await ownTopup(m.partnerId, body.paymentTransactionId);
-  const out = await payments().verifyPaymentAndProcess({ ...body, ...requester(m) } as VerifyPaymentRequest);
-  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: labWalletView(out.entity as IPartnerWallet) };
-}
-
-/** POST …/payments/reconcile — a lost answer or a closed Checkout: Razorpay's own record of the order decides. */
-export async function reconcileLabPayment(m: LabMember, paymentTransactionId: string) {
-  await ownTopup(m.partnerId, paymentTransactionId);
-  const out = await payments().reconcilePaymentAndProcess({ paymentTransactionId, ...requester(m) });
-  if (out.state !== 'paid') return out;
-  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: labWalletView(out.entity as IPartnerWallet) };
-}
-
-// ── Admin ──
-export async function adminWallet(partnerId: string) {
-  await labOrNotFound(partnerId);
-  return adminWalletView(await labStore(partnerId).findIn(null));
-}
-export async function adminEntries(partnerId: string, q: { cursor?: string; limit?: number }) {
-  await labOrNotFound(partnerId);
-  return entriesOf(partnerId, q, true);
-}
-export async function adminLots(partnerId: string) {
-  await labOrNotFound(partnerId);
-  return lotsOf({ kind: 'lab', id: partnerId });
+/** POST …/topups/:id/check (lab) — any active member with wallet.view, operational or not (§19.8 item b): its own money. */
+export async function checkLabTopup(owner: PartnerOwner, m: LabMember, paymentTransactionId: string) {
+  const out = await checkTopup(owner.topups, m.partnerId, paymentTransactionId,
+    (r) => payments().reconcilePaymentAndProcess({ ...r, ...memberRequester(m), userId: r.userId }));
+  return { state: out.state, wallet: walletView(out.wallet) };
 }
 
 /**
- * POST /admin/labs/:partnerId/wallet/topup (admin tools switch; L20): the shared admin top-up — one credit per
+ * POST /specialists/me/assisted/wallet/topups/:id/check — the doctor's own top-up, whether or not it is eligible (DR3: a
+ * paid top-up is always credited); the wallet only for an eligible doctor.
+ */
+export async function checkDoctorTopup(owner: PartnerOwner, specialistId: string, paymentTransactionId: string) {
+  const out = await checkTopup(owner.topups, specialistId, paymentTransactionId,
+    (r) => payments().reconcilePaymentAndProcess({ ...r, userId: lower(specialistId), requesterUserType: 'specialist' }));
+  return { state: out.state, ...(await doctorIsEligible(specialistId) ? { wallet: walletView(out.wallet) } : {}) };
+}
+
+/**
+ * The `entity` of a `/payments/verify` or `/reconcile` answer for a doctor top-up (§25.4.2): the wallet view, or only
+ * the state for a doctor no longer eligible.
+ */
+export async function doctorTopupEntity(owner: PartnerOwner, record: IPaymentRecord) {
+  const ownerId = owner.topups.ownerOf(record as unknown as Record<string, unknown>);
+  if (!(await doctorIsEligible(ownerId))) return { state: record.walletCreditedAt ? 'credited' : 'unpaid' };
+  return walletView(await partnerStore(owner.kind, ownerId).findIn(null));
+}
+
+/** POST …/payments/verify (lab) — after Checkout (members with wallet.manage). */
+export async function verifyLabPayment(owner: PartnerOwner, m: LabMember, body: Omit<VerifyPaymentRequest, 'userId'>) {
+  await ownTopup(owner, m.partnerId, body.paymentTransactionId);
+  const out = await payments().verifyPaymentAndProcess({ ...body, ...memberRequester(m) } as VerifyPaymentRequest);
+  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: walletView(out.entity as IPartnerWallet) };
+}
+
+/** POST …/payments/reconcile (lab) — a lost answer or a closed Checkout: Razorpay's own record of the order decides. */
+export async function reconcileLabPayment(owner: PartnerOwner, m: LabMember, paymentTransactionId: string) {
+  await ownTopup(owner, m.partnerId, paymentTransactionId);
+  const out = await payments().reconcilePaymentAndProcess({ paymentTransactionId, ...memberRequester(m) });
+  if (out.state !== 'paid') return out;
+  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: walletView(out.entity as IPartnerWallet) };
+}
+
+// ── Admin (any owner; writes behind the admin tools switch) ──
+export async function adminWallet(owner: PartnerOwner, ownerId: string) {
+  await owner.assertExists(ownerId);
+  return adminWalletView(await partnerStore(owner.kind, ownerId).findIn(null));
+}
+export async function adminEntries(owner: PartnerOwner, ownerId: string, q: { cursor?: string; limit?: number }) {
+  await owner.assertExists(ownerId);
+  return entriesOf(owner, ownerId, q, true);
+}
+export async function adminLots(owner: PartnerOwner, ownerId: string) {
+  await owner.assertExists(ownerId);
+  return lotsOf({ kind: owner.kind, id: ownerId });
+}
+
+/**
+ * POST /admin/{labs|doctors}/:id/wallet/topup (admin tools switch; L20): the shared admin top-up — one credit per
  * Idempotency-Key with the content hash, never withdrawable, posts whatever the wallet state — audited
  * `wallet.admin_topup` in the credit's transaction.
  */
-export async function adminLabTopup(adminId: string, partnerId: string, key: string, body: { amountMinor: number; notes?: string }) {
+export async function adminWalletTopup(owner: PartnerOwner, adminId: string, ownerId: string, key: string, body: { amountMinor: number; notes?: string }) {
   assertAdminToolsOn();
-  await labOrNotFound(partnerId);
+  await owner.assertExists(ownerId);
   await assertPartnerWalletIndexes();
-  const store = labStore(partnerId);
+  const store = partnerStore(owner.kind, ownerId);
   await store.ensure();
   const wallet = await adminTopup(store, { key, amountMinor: body.amountMinor, notes: body.notes, adminId }, (posted, s) =>
-    auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: 'lab', orgId: lower(partnerId), action: 'wallet.admin_topup', requestKey: key,
+    auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: owner.kind, orgId: lower(ownerId), action: 'wallet.admin_topup', requestKey: key,
       detail: { amountMinor: body.amountMinor, entryId: String(posted.entry._id) } }, s));
   return adminWalletView(wallet);
 }
 
-/** GET /admin/labs/:partnerId/wallet/topups/by-key/:key — did the admin top-up with this key credit this lab? */
-export async function adminLabTopupByKey(partnerId: string, key: string) {
-  await labOrNotFound(partnerId);
-  const store = labStore(partnerId);
+/** GET /admin/{labs|doctors}/:id/wallet/topups/by-key/:key — did the admin top-up with this key credit this wallet? */
+export async function adminWalletTopupByKey(owner: PartnerOwner, ownerId: string, key: string) {
+  await owner.assertExists(ownerId);
+  const store = partnerStore(owner.kind, ownerId);
   const row = await store.adminTopupByKey(key);
   if (!row) return { state: 'not_found' as const };
   return { state: 'credited' as const, entry: adminEntryView(row), wallet: adminWalletView(await store.findIn(null)) };
 }
 
-/** PUT /admin/labs/:partnerId/wallet/freeze { frozen, reason } — audited; a frozen wallet refuses spending, credits still post. */
-export async function adminLabFreeze(adminId: string, partnerId: string, frozen: boolean, reason: string) {
+/** PUT /admin/{labs|doctors}/:id/wallet/freeze { frozen, reason } — audited; a frozen wallet refuses spending, credits still post. */
+export async function adminWalletFreeze(owner: PartnerOwner, adminId: string, ownerId: string, frozen: boolean, reason: string) {
   assertAdminToolsOn();
-  await labOrNotFound(partnerId);
-  const store = labStore(partnerId);
+  await owner.assertExists(ownerId);
+  const store = partnerStore(owner.kind, ownerId);
   await store.ensure();
   const wallet = await walletTransaction(async (s) => {
     const updated = await setFrozenIn(store, frozen, reason, s);
-    await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: 'lab', orgId: lower(partnerId), action: frozen ? 'wallet.frozen' : 'wallet.unfrozen',
+    await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: owner.kind, orgId: lower(ownerId), action: frozen ? 'wallet.frozen' : 'wallet.unfrozen',
       detail: { reason } }, s);
     return updated;
   });
