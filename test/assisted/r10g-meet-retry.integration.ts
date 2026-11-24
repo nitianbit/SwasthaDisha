@@ -7,6 +7,12 @@
  *  3. Repeated failure: back-off, and ONE alert after 3 failed attempts.
  *  4. A booking with an active link, or one confirmed under 15 minutes ago, is never touched.
  *  5. Stuck money lists upcoming paid call / video bookings with no working link.
+ * r10h (review of r10g; each fails on 4d2b53a9):
+ *  6. an event created without a link, or whose create answer was lost, is reused: exactly ONE event over all retries;
+ *  7. S5: no Google call for a booking whose doctor is not verified and active;
+ *  8. 120 ended rows do not starve an upcoming booking (retry and stuck money);
+ *  9. failures no retry can fix stop after one attempt, with at most one alert (none for a customer without email);
+ * 10. a failed attempt never changes the booking's updatedAt; 11. attempts go back to 0 on success.
  *
  * Run (throwaway DB only; the script clears its database):
  *   MONGODB_URL='mongodb://127.0.0.1:27917/assisted_r10g_meet_retry_check?directConnection=true' JWT_SECRET_KEY=local-integration-only \
@@ -36,9 +42,19 @@ async function check(name: string, fn: () => Promise<void>) {
   try { await fn(); passed++; console.log('ok -', name); } catch (e) { failed.push(name); console.error('FAIL -', name, '\n  ', (e as Error).message.split('\n').slice(0, 3).join(' | ')); }
 }
 
-/** Google stand-in on global fetch: the token endpoint and calendar event create / update. */
-const google = { up: true, creates: 0, patches: 0, slow: 0 };
+/**
+ * Google stand-in on global fetch: the token endpoint, and calendar events — create (POST), update (PATCH), read (GET by
+ * id) and list by the booking's private property. `withoutLink`: events have no Meet link yet (GET shows it once off);
+ * `loseAnswer`: a create lands at Google but its answer is lost (503).
+ */
+const google = { up: true, creates: 0, patches: 0, reads: 0, lists: 0, slow: 0, withoutLink: false, loseAnswer: false,
+  events: new Map<string, { id: string; bookingId?: string; start?: unknown; end?: unknown }>() };
+const calls = () => google.creates + google.patches + google.reads + google.lists;
+/** Events Google holds for one booking (the retry runs over every due booking, so totals mix bookings). */
+const eventsOf = (bookingId: string) => [...google.events.values()].filter((e) => e.bookingId === bookingId).length;
 const realFetch = globalThis.fetch;
+const shown = (e: { id: string; start?: unknown; end?: unknown }) => ({ id: e.id, status: 'confirmed', start: e.start, end: e.end,
+  ...(google.withoutLink ? {} : { hangoutLink: `https://meet.google.com/abc-${e.id.slice(-4)}-xyz`, conferenceData: { conferenceId: 'abc-defg-hij' } }) });
 globalThis.fetch = (async (input: any, init?: any) => {
   const url = String(input?.url ?? input);
   if (url.startsWith('https://oauth2.googleapis.com/token')) {
@@ -47,11 +63,26 @@ globalThis.fetch = (async (input: any, init?: any) => {
   if (url.startsWith('https://www.googleapis.com/calendar/v3/')) {
     if (google.slow) await new Promise((r) => setTimeout(r, google.slow));
     if (!google.up) return new Response(JSON.stringify({ error: 'backendError' }), { status: 503 });
+    const method = String(init?.method ?? 'GET').toUpperCase();
+    const u = new URL(url);
+    const id = decodeURIComponent(u.pathname.split('/events/')[1] ?? '');
+    if (method === 'GET' && !id) {
+      google.lists += 1;
+      const wanted = String(u.searchParams.get('privateExtendedProperty') ?? '').replace('jansetuBookingId=', '');
+      return new Response(JSON.stringify({ items: [...google.events.values()].filter((e) => e.bookingId === wanted).map(shown) }), { status: 200 });
+    }
+    if (method === 'GET') {
+      google.reads += 1;
+      const e = google.events.get(id);
+      return e ? new Response(JSON.stringify(shown(e)), { status: 200 }) : new Response('{"error":"notFound"}', { status: 404 });
+    }
     const body = JSON.parse(String(init?.body ?? '{}'));
-    if (init?.method === 'PATCH') google.patches += 1; else google.creates += 1;
-    const id = 'evt_' + oid();
-    return new Response(JSON.stringify({ id, hangoutLink: `https://meet.google.com/abc-${id.slice(-4)}-xyz`, start: body.start, end: body.end,
-      conferenceData: { conferenceId: 'abc-defg-hij' } }), { status: 200 });
+    if (method === 'PATCH') { google.patches += 1; return new Response(JSON.stringify(shown(google.events.get(id) ?? { id })), { status: 200 }); }
+    google.creates += 1;
+    const e = { id: 'evt' + oid(), bookingId: body.extendedProperties?.private?.jansetuBookingId, start: body.start, end: body.end };
+    google.events.set(e.id, e);
+    if (google.loseAnswer) return new Response('{"error":"backendError"}', { status: 503 });
+    return new Response(JSON.stringify(shown(e)), { status: 200 });
   }
   return realFetch(input, init);
 }) as typeof fetch;
@@ -163,6 +194,106 @@ async function main() {
       const row = (stuck.upcomingMeetsMissing ?? []).find((r: any) => r.bookingId === id);
       assert.ok(row, 'listed');
       assert.deepEqual([row.meetStatus, row.assisted], ['failed', false]);
+    });
+    // ───────────────────────── r10h ─────────────────────────
+    await check('6 (r10h): an event created without a link (and one whose create answer was lost) is reused: exactly ONE event over all retries', async () => {
+      // (a) Created without a link; the link comes later.
+      const a = await booking(null);
+      const patches0 = google.patches;
+      google.withoutLink = true;
+      let at = Date.now();
+      const step = async () => { await retry(new Date(at)); const b = await read(a); at = Math.max(at, new Date(b.meetRetry?.nextAt ?? at).getTime()) + 1000; return b; };
+      let b = await step();
+      assert.equal(b.virtualMeeting.status, 'failed');
+      assert.ok(b.virtualMeeting.calendarEventId, 'the event made is kept');
+      for (let i = 0; i < 4; i++) b = await step();
+      google.withoutLink = false;
+      b = await step();
+      assert.equal(b.virtualMeeting.status, 'active');
+      assert.equal(eventsOf(a), 1, 'one event');
+      assert.equal(google.patches - patches0, 0, 'never updated (no new emails)');
+      // (b) The create landed at Google but its answer was lost: the next retry finds the booking's own event.
+      const c = await booking(null);
+      google.loseAnswer = true;
+      await retry(new Date());
+      google.loseAnswer = false;
+      assert.equal((await read(c)).virtualMeeting.status, 'failed');
+      await retry(new Date(Date.now() + 6 * 60_000));
+      assert.equal((await read(c)).virtualMeeting.status, 'active');
+      assert.equal(eventsOf(c), 1, 'found, not created again');
+    });
+
+    await check('7 (r10h): S5 — a booking whose doctor is not verified and active gets no Google call at all', async () => {
+      const id = await booking(failedVm);
+      await SpecialistModel.updateOne({ _id: D }, { $set: { isVerified: false } });
+      try {
+        const calls0 = calls();
+        await retry(new Date());
+        assert.equal(calls() - calls0, 0);
+        assert.equal((await read(id)).meetRetry, undefined, 'not even claimed');
+      } finally { await SpecialistModel.updateOne({ _id: D }, { $set: { isVerified: true } }); }
+      await retry(new Date());
+      assert.equal((await read(id)).virtualMeeting.status, 'active', 'retried once the doctor is eligible again');
+    });
+
+    await check('8 (r10h): 120 ended rows do not starve an upcoming booking (the retry and stuck money)', async () => {
+      const today = istParts(new Date()).date;
+      const rows = Array.from({ length: 120 }, () => ({ _id: new Types.ObjectId(), bookingType: 'consultation', bookingKind: 'instant', userId: X, specialistId: D,
+        bookingDate: today, bookingTime: '00:00', consultationMode: 'video', status: 'confirmed', paymentStatus: 'paid', price: 500,
+        createdAt: new Date(Date.now() - 3 * 60 * MIN), updatedAt: new Date(), virtualMeeting: failedVm }));
+      await BookingModel.collection.insertMany(rows as never);
+      const up = await booking(failedVm);
+      const { upcomingMeetsMissing } = await import('@/modules/meet/retry');
+      assert.ok((await upcomingMeetsMissing(new Date(), 1)).some((r: any) => r.bookingId === up), 'stuck money finds it');
+      await retry(new Date());
+      assert.equal((await read(up)).virtualMeeting.status, 'active', 'attempted on the first run');
+      assert.equal(await BookingModel.countDocuments({ _id: { $in: rows.map((r) => r._id) }, 'meetRetry.endedFor': `${today} 00:00` }), 120, 'ended rows leave the set');
+      // A booking moved to another (upcoming) slot comes back.
+      const moved = String(rows[0]!._id); const at = new Date(Date.now() + 3 * 60 * MIN); const p2 = istParts(at);
+      await BookingModel.collection.updateOne({ _id: rows[0]!._id }, { $set: { bookingKind: 'scheduled', bookingDate: p2.date, bookingTime: p2.time } });
+      assert.ok((await upcomingMeetsMissing(new Date(), 50)).some((r: any) => r.bookingId === moved), 'back in the set after a move');
+    });
+
+    await check('9 (r10h): failures no retry can fix stop after one attempt; one alert at most (none for a customer without email)', async () => {
+      const NOEMAIL = oid();
+      await UserModel.collection.insertOne({ _id: new Types.ObjectId(NOEMAIL), userType: 'user', phone: '9600009002', name: 'Phone Only' } as never);
+      const customer = await booking(null, { userId: NOEMAIL });
+      const D2 = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(D2), name: 'Dr No Mail', isActive: true, isVerified: true } as never);
+      const assisted = await booking(null, { specialistId: D2, pharmacyId: P, assisted: { bookedBy: { kind: 'pharmacy', id: P, name: 'Rten Medicals', actorKind: 'pharmacy', actorId: P },
+        join: { on: 'partner_device', linkVersion: 1 }, shortRef: 'ABCD2346', funding: { method: 'wallet', state: 'captured', payerId: P } } });
+      const calls0 = calls();
+      for (let i = 0; i < 3; i++) await retry(new Date(Date.now() + i * 3 * 60 * MIN));
+      const c = await read(customer); const a = await read(assisted);
+      assert.deepEqual([c.meetRetry.closed, c.meetRetry.closedReason, c.meetRetry.attempts], ['permanent', 'patient_email_missing', 1]);
+      assert.deepEqual([a.meetRetry.closed, a.meetRetry.closedReason, a.meetRetry.attempts], ['permanent', 'doctor_email_missing', 1]);
+      assert.equal(calls() - calls0, 0, 'no Google call for either');
+      assert.equal(await AssistedAlertModel.countDocuments({ kind: 'meet_link_missing', 'detail.bookingId': customer }), 0, 'phone-only customer: no alert');
+      assert.equal(await AssistedAlertModel.countDocuments({ kind: 'meet_link_missing', 'detail.bookingId': assisted }), 1, 'one alert');
+      // Meet not configured: one alert a day for every booking.
+      const cal = (CONFIG as any).GOOGLE_CALENDAR_ID;
+      (CONFIG as any).GOOGLE_CALENDAR_ID = '';
+      try {
+        await booking(null); await booking(null);
+        await retry(new Date());
+      } finally { (CONFIG as any).GOOGLE_CALENDAR_ID = cal; }
+      assert.equal(await AssistedAlertModel.countDocuments({ kind: 'meet_link_missing', 'detail.permanent': 'meet_not_configured' }), 1);
+    });
+
+    await check('10–11 (r10h): a failed attempt never changes updatedAt; attempts go back to 0 on success', async () => {
+      const id = await booking(failedVm);
+      const before = (await read(id)).updatedAt;
+      google.up = false;
+      await retry(new Date());
+      await retry(new Date(Date.now() + 6 * 60_000));
+      google.up = true;
+      const failedOnce = await read(id);
+      assert.equal(failedOnce.meetRetry.attempts, 2);
+      assert.equal(new Date(failedOnce.updatedAt).getTime(), new Date(before).getTime(), 'updatedAt unchanged');
+      await retry(new Date(Date.now() + 30 * 60_000));
+      const ok = await read(id);
+      assert.equal(ok.virtualMeeting.status, 'active');
+      assert.equal(ok.meetRetry.attempts, 0);
     });
   } finally {
     globalThis.fetch = realFetch;
