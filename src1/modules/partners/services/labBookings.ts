@@ -29,7 +29,7 @@ import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
 import { LAB_NOT_DISPUTED_QUERY, LAB_UNPAID_CARD_QUERY, assistedLabCustomerPart, assistedLabPartnerPart, isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
 import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
-import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { auditIn, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
@@ -69,7 +69,7 @@ export const defaultLabNotifier: LabNotifier = async (n) => {
     const { NotificationService } = await import('@/modules/notification/services');
     await Container.get(NotificationService).create({
       userId: n.userId, type: n.type, title: n.title, message: n.message,
-      referenceType: 'partner_lab_booking', referenceId: n.bookingId, idempotencyKey: n.key, data: { bookingId: n.bookingId },
+      referenceType: 'partner_lab_booking', referenceId: n.bookingId, idempotencyKey: n.key, data: { bookingId: n.bookingId, bookingKind: 'lab_booking' },
     });
   } catch (e) {
     console.error('lab booking notification failed', (e as Error)?.message);
@@ -162,6 +162,14 @@ async function tellBooker(b: IPartnerLabBooking, n: Omit<AssistedNotice, 'audien
     data: { bookingKind: 'lab_booking', shortRef: b.assisted.shortRef, ...(n.data ?? {}) } }]);
 }
 
+/** r11b: the patient's own step on an assisted lab booking, audited in its transaction (ids and codes only). */
+async function auditPatientIn(b: IPartnerLabBooking, userId: string, action: 'booking.cancelled' | 'booking.reschedule_accepted',
+  detail: Record<string, unknown>, s: ClientSession): Promise<void> {
+  const by = b.assisted!.bookedBy;
+  await auditIn({ actorKind: 'customer', actorId: String(userId).toLowerCase(), orgKind: by.kind, orgId: String(by.id).toLowerCase(), action,
+    bookingId: String(b._id).toLowerCase(), detail: { kind: 'lab_booking', ...detail } }, s);
+}
+
 /** The D1 reader for a workspace actor (members are `partner` uploaders; admins have authority over every file). */
 export function readerOf(actor: PartnerActor): NonNullable<AuthRequest['user']> {
   return actor.actorKind === 'admin'
@@ -213,6 +221,9 @@ export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, assisted: _a, ...rest } = b as any;
   return deskLabPart(assistedLabPartnerPart({
     ...rest,
+    // r11b: a booker's cancellation records the pharmacy's id in `by`; the lab sees `byKind: 'booker'` (and the booker's
+    // name in the assisted part), never that id.
+    ...(rest.cancellation?.byKind === 'booker' ? { cancellation: (({ by: _by, ...c }) => c)(rest.cancellation) } : {}),
     report: {
       draftFiles: (b.report?.draftFiles ?? []).map((p) => `/api/static/${p}`),
       releasedFiles: (b.report?.releasedFiles ?? []).map((p) => `/api/static/${p}`),
@@ -591,7 +602,9 @@ export class LabBookingService {
       if (captured && !b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - LAB_CANCEL_CUTOFF_MS) {
         throw err(409, 'CANCELLATION_WINDOW_CLOSED', 'Bookings can be cancelled up to 2 hours before the slot');
       }
-      return this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
+      const back = await this.cancelIn(b, records, { reason: 'customer', note, actor: { kind: 'customer', userId } }, s, now);
+      if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.cancelled', { cause: 'patient' }, s);
+      return back;
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     if (isDeskRow(after)) {
@@ -757,26 +770,26 @@ export class LabBookingService {
     return partnerView(after);
   }
 
+  /**
+   * The patient accepts the lab's proposed new time. r11b: on an assisted (partner-paid) booking the accept is audited in
+   * its transaction and the partner that booked it is told — the same accept as the booker's (acceptRescheduleAsBooker).
+   */
   async acceptReschedule(userId: string, bookingId: string, version: number): Promise<Record<string, unknown>> {
-    const id = String(bookingId).toLowerCase();
-    if (!Types.ObjectId.isValid(id)) throw notFound();
-    const updated = await PartnerLabBookingModel.findOneAndUpdate(
-      { _id: id, userId: { $eq: userId }, status: 'confirmed', 'reschedule.pending': true, 'reschedule.version': version },
-      { $set: { 'reschedule.pending': false }, $inc: { statusVersion: 1 } },
-      { new: true }
-    ).lean();
-    if (!updated) {
-      const b = await this.ownBooking(userId, id);
-      if (!b.reschedule?.pending) throw err(409, 'NO_PENDING_RESCHEDULE', 'There is no new time to accept');
-      throw err(409, 'RESCHEDULE_CHANGED', 'The lab changed the time again; review the latest proposal');
+    const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId } }, bookingId, version, async (b, s) => {
+      if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.reschedule_accepted', { version: Number(version) }, s);
+    });
+    if (isAssisted(updated)) {
+      await tellBooker(updated, { type: 'general', title: 'The patient accepted the new time',
+        message: `The patient accepted the new time for lab booking Ref ${updated.assisted!.shortRef}: ${shownSlot(updated)}.`,
+        key: `assisted:lab:${updated._id}:reschedule:${version}:accepted:booker` });
     }
-    return customerView(updated as IPartnerLabBooking);
+    return customerView(updated);
   }
 
   /**
    * r11 (owner, 23 Nov; L7): the partner that booked and paid an assisted booking accepts the lab's proposed new time
-   * for the patient — its own rows only (`bookerFilter`), the same compare-and-set as the patient's, audited in the same
-   * transaction (`inTx`). Any other booking is the one 404.
+   * for the patient — its own rows only (`bookerFilter`), audited in the same transaction (`inTx`). Any other booking is
+   * the one 404. r11b: the patient's accept is this same accept, with the patient's own-row filter.
    */
   async acceptRescheduleAsBooker(bookerFilter: Record<string, unknown>, bookingId: string, version: number,
     inTx: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>): Promise<IPartnerLabBooking> {

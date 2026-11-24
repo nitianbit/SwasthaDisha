@@ -81,7 +81,6 @@ export interface AssistedLabInput {
   couponCode?: string;
   /** Price fence (§6.3): what the pharmacy pays, after the coupon, in paise. */
   acceptedPriceMinor: number;
-  notes?: string;
   paymentMethod: 'wallet' | 'razorpay';
 }
 
@@ -99,9 +98,12 @@ const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: c
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
 const uniqueIds = (ids: string[]) => [...new Set((ids ?? []).map(lower))].sort();
 
-/** The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. */
+/**
+ * The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. r11b: only the
+ * desk takes notes; a pharmacy request has none (`notes: null`, as 2a hashed it, so earlier keys still replay).
+ */
 export function labRequestContent(input: Pick<AssistedLabInput, 'phone' | 'patient' | 'holderName' | 'branchId' | 'visitMode' | 'itemIds' | 'address'
-  | 'preferredLanguage' | 'notes'> & { slotId?: string }) {
+  | 'preferredLanguage'> & { slotId?: string; notes?: string }) {
   return {
     phone: canonicalMobile(input.phone) ?? input.phone,
     patient: patientIdentity(input.patient),

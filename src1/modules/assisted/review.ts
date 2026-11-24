@@ -460,9 +460,11 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
   const o = labOrigin(clean)!;
   await sendAssistedNotices([
     { audience: 'customer', userId: fromUserId, type: 'general', title: 'A booking was moved off your account',
-      message: `Lab booking Ref ${o.ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}` },
+      message: `Lab booking Ref ${o.ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}`,
+      data: { bookingKind: 'lab_booking' } },
     { audience: 'customer', userId: target._id, type: 'general', title: 'A booking was added to your account',
-      message: `Lab booking Ref ${o.ref}${o.name ? ` made by ${o.name}` : ''} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}` },
+      message: `Lab booking Ref ${o.ref}${o.name ? ` made by ${o.name}` : ''} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}`,
+      data: { bookingKind: 'lab_booking' } },
     ...(o.notifyId ? [{ audience: 'booker' as const, userId: o.notifyId, type: 'general' as const, title: 'Booking moved to another account',
       message: `Lab booking Ref ${o.ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
       key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } }] : []),
