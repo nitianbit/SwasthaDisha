@@ -71,7 +71,7 @@ interface RazorpayOrderResponse {
 
 import { assistedFlags } from '@/modules/assisted/flags';
 import { creditTopupIn, topupClosedCompensated, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
-import { topupKindOf } from '@/modules/partnerWallets/topupKinds';
+import { isOwnerlessPartnerTopup, PARTNER_TOPUP_FLOWS, topupKindOf } from '@/modules/partnerWallets/topupKinds';
 
 const rechargeSweepFrom = () => assistedFlags.rechargeSweepFrom();
 
@@ -661,6 +661,7 @@ export class PaymentService {
       payerPharmacyId: data.payerPharmacyId,
       // r13 (§24.7.2): a partner-paid order (a lab top-up) names the paying partner and member, and its request key.
       ...(data.payerPartnerId ? { payerPartnerId: data.payerPartnerId, payerMemberId: data.payerMemberId } : {}),
+      ...(data.payerSpecialistId ? { payerSpecialistId: data.payerSpecialistId } : {}),
       ...(data.requestKey ? { requestKey: data.requestKey, requestHash: data.requestHash } : {}),
       context: data.context,
       contextId: data.contextId,
@@ -802,7 +803,15 @@ export class PaymentService {
     const partnerCanVerify = !belongsToRequester && data.requesterUserType === 'partner' && !!data.requesterPartnerId
       && topupKind?.kind === 'lab' && topupKind.ownerOf(paymentRecord) === String(data.requesterPartnerId).toLowerCase();
 
-    if (!belongsToRequester && !pharmacyCanVerify && !partnerCanVerify) {
+    // r20 (§25.4.3): a doctor top-up is verified only by its doctor (`payerSpecialistId`) or an admin; the internal sweep
+    // and the doctor's check (as the payer) are unchanged.
+    const doctorRule = topupKind?.kind === 'doctor' && data.requesterUserType !== undefined;
+    const admitted = doctorRule
+      ? data.requesterUserType === 'admin'
+        || (data.requesterUserType === 'specialist' && String(data.userId).toLowerCase() === topupKind!.ownerOf(paymentRecord))
+      : belongsToRequester || pharmacyCanVerify || partnerCanVerify;
+
+    if (!admitted) {
       throw new AppError({
         status: 404,
         code: 'PAYMENT_RECORD_NOT_FOUND',
@@ -1159,8 +1168,8 @@ export class PaymentService {
     }
 
     const topupKind = topupKindOf(paymentRecord);
-    if (topupKind) {
-      const wallet = await topupKind.storeFor(paymentRecord as unknown as Record<string, unknown>).findIn(null);
+    if (topupKind || isOwnerlessPartnerTopup(paymentRecord)) {
+      const wallet = topupKind ? await topupKind.storeFor(paymentRecord as unknown as Record<string, unknown>).findIn(null) : null;
       return {
         context: 'wallet_recharge',
         paymentRecord,
@@ -1618,6 +1627,7 @@ export class PaymentService {
    */
   private async ensureTopupCredit(paymentRecord: IPaymentRecord, kind: TopupKind): Promise<unknown> {
     const store = kind.storeFor(paymentRecord as unknown as Record<string, unknown>);
+    await kind.assertCreditable?.();
     await store.ensure();
     const lots = await kind.lotsWritable();
     try {
@@ -1843,7 +1853,11 @@ export class PaymentService {
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
-    // r13: a lab top-up must never reach the customer wallet (its payer is a partner member, not a customer).
+    // r13, r20 (DR5): a lab or doctor top-up never reaches the customer wallet (its payer is not a customer); one that
+    // names no owner is refused (the record stays paid and uncredited, listed for an admin), never credited elsewhere.
+    if (isOwnerlessPartnerTopup(paymentRecord)) {
+      throw new AppError({ status: 409, code: 'TOPUP_OWNER_MISSING', message: 'This top-up names no wallet; contact Jansetu support' });
+    }
     const topupKind = topupKindOf(paymentRecord);
     const wallet = topupKind
       ? await this.ensureTopupCredit(paymentRecord, topupKind)
@@ -1979,8 +1993,8 @@ export class PaymentService {
           // Phase 1b: assisted card payments (a capture is applied once, or refunded to its source when the booking closed).
           { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking'] } },
           ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
-          // r13: lab top-ups always join (every one is new; none predates the sweep).
-          { context: 'wallet_recharge', 'notes.flow': 'lab_wallet_recharge' },
+          // r13, r20: lab and doctor top-ups always join (every one is new; none predates the sweep).
+          { context: 'wallet_recharge', 'notes.flow': { $in: PARTNER_TOPUP_FLOWS } },
         ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
     let unsettled = 0;

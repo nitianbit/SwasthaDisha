@@ -71,8 +71,12 @@ export interface WalletStore<W = any, E = any> {
  * for card disputes: recorded and flagged only).
  */
 export interface TopupKind<W = any, E = any> {
-  readonly kind: 'pharmacy' | 'lab';
+  readonly kind: 'pharmacy' | 'lab' | 'doctor';
   readonly flow: string;
+  /** The payment record field naming the owner (`payerPharmacyId`, `payerPartnerId`, `payerSpecialistId`). */
+  readonly payerField: string;
+  /** How admin answers name the owner (`pharmacyId`, `partnerId`, `specialistId`). */
+  readonly ownerField: string;
   isTopup(r: Record<string, any> | null | undefined): boolean;
   /** The wallet owner of a top-up record, lower-cased. */
   ownerOf(r: Record<string, any>): string;
@@ -81,6 +85,8 @@ export interface TopupKind<W = any, E = any> {
   readonly chargeback: 'take' | 'flag';
   /** A captured top-up opens a lot only while its switch is on and the lot index is built (otherwise non-withdrawable). */
   lotsWritable(): Promise<boolean>;
+  /** Fail closed before a credit (503 INDEXES_OUTDATED) when the store's exactly-once indexes are missing. */
+  assertCreditable?(): Promise<void>;
   readonly rechargeDescription: string;
   /** O2: card money is withdrawable this many days after payment (stored on the lot); absent = not recorded. */
   readonly cardHoldDays?: number;

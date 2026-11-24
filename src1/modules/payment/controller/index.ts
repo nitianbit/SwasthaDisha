@@ -2,7 +2,9 @@ import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PaymentService } from '@/modules/payment/services';
-import { VerifyPaymentRequest } from '@/modules/payment/types';
+import { IPaymentRecord, VerifyPaymentRequest } from '@/modules/payment/types';
+import { DOCTOR } from '@/modules/partnerWallets/ledger';
+import { doctorTopupEntity } from '@/modules/partnerWallets/service';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { bookerView } from '@/modules/assisted/bookerView';
 import { isOperationalPharmacy } from '@/modules/assisted/rxAccess';
@@ -13,7 +15,11 @@ import { isOperationalPharmacy } from '@/modules/assisted/rxAccess';
  * the 90-day window), never the raw booking. Customers keep the customer view and admins the booking as before.
  */
 async function forRequester<T extends object>(req: AuthRequest, result: T): Promise<T> {
-  const r = result as { context?: unknown; entity?: unknown };
+  const r = result as { context?: unknown; entity?: unknown; paymentRecord?: IPaymentRecord };
+  // r20 (§25.4.2): a doctor top-up answers the doctor wallet view (only its state for a doctor no longer eligible).
+  if (r?.context === 'wallet_recharge' && r.paymentRecord && DOCTOR.topups.isTopup(r.paymentRecord as unknown as Record<string, unknown>)) {
+    return { ...result, entity: await doctorTopupEntity(DOCTOR, r.paymentRecord) };
+  }
   // Phase 1b: an assisted card payment (only its paying pharmacy can verify it) answers the booker view too; anyone else
   // gets the booking's id and states only.
   if (r?.context === 'assisted_booking' && req.user?.userType !== 'pharmacy') {

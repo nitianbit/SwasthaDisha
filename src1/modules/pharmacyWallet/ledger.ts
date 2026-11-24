@@ -137,6 +137,8 @@ export const adminTopupByKeyLookups = (pharmacyId: string, key: string) => [
 export const pharmacyTopups: TopupKind<IPharmacyWallet, IPharmacyWalletTransaction> = {
   kind: 'pharmacy',
   flow: 'pharmacy_wallet_recharge',
+  payerField: 'payerPharmacyId',
+  ownerField: 'pharmacyId',
   isTopup: (r) => !!r && r.context === 'wallet_recharge' && !!r.payerPharmacyId && (r.notes as { flow?: unknown } | undefined)?.flow === 'pharmacy_wallet_recharge',
   ownerOf: (r) => String(r.payerPharmacyId).toLowerCase(),
   storeFor: (r) => pharmacyStore(String(r.payerPharmacyId)),
