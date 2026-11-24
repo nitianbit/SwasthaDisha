@@ -64,7 +64,6 @@ export function gatewayRequest(p: { to: string; text: string; templateId?: strin
 
 @Service()
 export class SMSService {
-
   buildSMSContent(
     type: SMSType,
     payload: BuildSMSContentPayload = {}
