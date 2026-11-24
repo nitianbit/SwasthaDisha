@@ -5213,3 +5213,14 @@ The released report file is readable by the booking doctor at `report.releases[]
 - `assisted/refunds.ts` (consultations) still credits only pharmacy payers; 2e changes it for labs, and a doctor never pays
   a consultation in phase 3 (no path).
 - The admin move of a doctor-made lab row does not move its `assisted_links` row yet (F6).
+
+**r26b: review fixes (review of `fe2f1c58`; money correct, nothing must-fix)**
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `doctorLab.ts` guarded the shared `/specialists/me/assisted` mount with a path-less `use`, so routes mounted after it (3a's top-up check for an ineligible doctor, E8; 3d's recommendation lookup) and unknown paths got 403 | The guards sit on each 3b route; check "the 3b guards sit on its own routes" |
+| 2 | An unpaid customer booking (`pending`, not paid) opened a treating window | `treatingWindowOf` keeps it closed; a pay-at-clinic booking (confirmed, unpaid) still opens one |
+| 3 | Tests | The pharmacy refund check seeds a card lot (restored exactly); a race beyond the doctor's balance; the admin no-show cancel forfeits (and refunds the doctor when asked) |
+| 4 | The lab list's `source` filter refused `doctor_assisted` | Allowed (`partners/validation/labBooking.ts`) |
+
+Checks: `test/assisted/r26-phase3b.integration.ts` (14 checks).

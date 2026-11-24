@@ -402,14 +402,72 @@ async function main() {
     });
 
     await check('the pharmacy\'s lab refunds are unchanged by the dispatcher: one refund to the pharmacy wallet, lots restored', async () => {
+      // r26b: with a card lot, so the refund must restore exactly what the debit took from it.
+      const lotRecord = oid();
+      await runLedgerTransaction((s) => postPharmacyMovementIn({ pharmacyId: P, kind: 'credit', amountPaise: 60000, operationKey: `lot-seed:${oid()}`,
+        referenceType: 'wallet_recharge', referenceId: lotRecord, description: 'card top-up', lot: { paymentRecordId: lotRecord, gatewayFeeMinor: 100 } }, s));
+      const { WalletTopupLotModel } = await import('@/modules/pharmacyWallet/model/lots');
+      const lotBefore = (await WalletTopupLotModel.find({ 'walletRef.kind': 'pharmacy', 'walletRef.id': P, closed: false }).lean()).reduce((a, l) => a + l.remainingMinor, 0);
       const s1 = await slot();
       const d = await book('P', order(s1));
+      const debit = await PharmacyWalletTransactionModel.findOne({ operationKey: `assisted_lab:${d.booking._id}:debit` }).lean() as any;
+      assert.ok(debit.lotAllocations?.length, 'the debit took card money');
       const before = await balance(P);
       await expect('P', 'POST', `${PA}/lab-bookings/${d.booking._id}/cancel`, 200, {});
       assert.equal(await balance(P), before + 50000);
       const rows = await refundsOf(d.booking._id);
       assert.equal(rows.length, 1); assert.equal((rows[0] as any).transactionType, 'refund_credit'); assert.equal((rows[0] as any).signedAmountPaise, 50000);
+      assert.deepEqual((rows[0] as any).lotAllocations.map((x: any) => [x.lotId, x.amountPaise]), debit.lotAllocations.map((x: any) => [x.lotId, x.amountPaise]));
+      assert.equal((await WalletTopupLotModel.find({ 'walletRef.kind': 'pharmacy', 'walletRef.id': P, closed: false }).lean()).reduce((a, l) => a + l.remainingMinor, 0),
+        lotBefore, 'the lots are restored');
       assert.equal((await doctorRefunds(d.booking._id)).length, 0);
+    });
+
+    await check('r26b: race beyond the balance — two creates of a doctor that can pay one: one 201, one 409 INSUFFICIENT_BALANCE; never below zero', async () => {
+      const D3 = oid();
+      await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(D3), name: 'Dr Three', email: 'three@doc.test', specialization: 'General Physician',
+        consultationFee: 500, isActive: true, isVerified: true } as never);
+      await seedDoctor(D3, 70000);
+      tokens.D3 = sign({ _id: D3, specialistId: D3, userType: 'specialist' });
+      const rs = await Promise.all(['9600000391', '9600000392'].map(async (phone) => call('D3', 'POST', `${ME}/lab-bookings`,
+        order(await slot(), { phone, patient: { relation: 'self', name: 'Race Patient' } }))));
+      assert.deepEqual(rs.map((r) => r.status).sort(), [201, 409], rs.map((r) => r.text.slice(0, 120)).join(' | '));
+      assert.equal(rs.find((r) => r.status === 409)!.json.code, 'INSUFFICIENT_BALANCE');
+      assert.equal(await dbal(D3), 20000);
+    });
+
+    await check('r26b: an admin cancel of a moved no-show without refund forfeits the doctor\'s money; with refund it goes back to the doctor', async () => {
+      const mk = async () => {
+        const id = (await expect('D', 'POST', `${ME}/lab-bookings`, 201, fromVisit(await slot(), visitNow))).json.data.booking._id;
+        await PartnerLabBookingModel.updateOne({ _id: id }, { $set: { 'slot.startsAt': new Date(Date.now() - 3 * 3_600_000), 'slot.startTime': '00:00', 'slot.endTime': '00:30' } });
+        await expect('LAB', 'POST', `${WS}/lab-bookings/${id}/no-show`, 200, {});
+        await expect('LAB', 'POST', `${WS}/lab-bookings/${id}/reschedule-no-show`, 200, { slotId: await slot(50), requestKey: newKey() });
+        return id;
+      };
+      const kept = await mk();
+      const before = await dbal();
+      await expect('ADMIN', 'POST', `/api/v1/partner-workspace/admin/lab-bookings/${kept}/cancel-no-show`, 200, { reason: 'lab closed', refund: false });
+      const k = await stored(kept);
+      assert.equal(k.status, 'cancelled'); assert.equal(k.assisted.funding.state, 'forfeited');
+      assert.equal(await dbal(), before, 'forfeited: nothing back');
+      assert.equal((await doctorRefunds(kept)).length, 0);
+      const back = await mk();
+      const beforeBack = await dbal();
+      await expect('ADMIN', 'POST', `/api/v1/partner-workspace/admin/lab-bookings/${back}/cancel-no-show`, 200, { reason: 'lab closed', refund: true });
+      assert.equal(await dbal(), beforeBack + 50000);
+    });
+
+    await check('r26b: the 3b guards sit on its own routes — an ineligible doctor still reaches the wallet top-up check and the shared mount\'s other paths', async () => {
+      await expect('DU', 'POST', `${ME}/wallet/topups/${oid()}/check`, 404, undefined, 'PAYMENT_RECORD_NOT_FOUND');
+      const unknown = await call('DU', 'GET', `${ME}/no-such-route`);
+      assert.equal(unknown.status, 404, unknown.text);
+      await expect('DU', 'GET', `${ME}/lab-bookings`, 403, undefined, 'SPECIALIST_NOT_VERIFIED');
+      // An unpaid customer booking (still pending) opens no treating window.
+      const pending = await consultation(D, new Date(Date.now() - 20 * MIN), { status: 'pending', paymentStatus: 'pending' });
+      await expect('D', 'POST', `${ME}/lab-bookings`, 409, fromVisit(await slot(), pending), 'TREATING_WINDOW_CLOSED');
+      // A pay-at-clinic booking, confirmed and not yet paid, does.
+      const atClinic = await consultation(D, new Date(Date.now() - 20 * MIN), { status: 'confirmed', paymentStatus: 'pending', settlementSystem: 'clinic' });
+      await expect('D', 'POST', `${ME}/lab-bookings`, 201, fromVisit(await slot(), atClinic));
     });
 
     // ───────────────────────── Scope, reports, reconciliation ─────────────────────────
