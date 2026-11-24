@@ -98,6 +98,8 @@ export interface AssistedSplit {
 
 export interface AssistedBlock {
   bookedBy: { kind: BookerKind; id: string; branchId?: string; actorKind: string; actorId: string; name: string };
+  /** r26 (§25.5.1): the doctor's own consultation the patient was taken from (a doctor's lab booking). */
+  fromBookingId?: string;
   consent: { method: 'partner_attested'; statementVersion: string; statementLanguage: string; at: Date; actorId: string };
   preferredLanguage: string;
   identity: { attested: true; newAccount: boolean; disputed?: { at: Date; state: 'open' | 'moved' | 'dismissed'; resolvedAt?: Date } };

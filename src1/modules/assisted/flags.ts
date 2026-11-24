@@ -60,6 +60,11 @@ export const assistedFlags = {
    * ASSISTED_BOOKING_DISABLED; verify, reconcile, the check, the sweep and the admin tools run.
    */
   doctor: () => on('ASSISTED_BOOKING_ENABLED_DOCTOR'),
+  /**
+   * r26 (§25.5.7): doctor → lab test bookings (the lookup, the lab reads and new bookings). Needs
+   * ASSISTED_BOOKING_ENABLED_DOCTOR too. Reads, by-key, cancel, accept, refunds and report access always work.
+   */
+  doctorLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_DOCTOR'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -114,4 +119,9 @@ export function assertLabWalletOn(): void {
 /** r20: doctor wallet top-ups (§25.4.5). */
 export function assertDoctorWalletOn(): void {
   if (!assistedFlags.doctor()) throw disabled('Doctor wallet top-up');
+}
+
+/** r26: both switches must be on for the doctor's lookup, lab reads and new lab bookings. */
+export function assertDoctorLabOn(): void {
+  if (!assistedFlags.doctor() || !assistedFlags.doctorLab()) throw disabled('Lab test booking for patients');
 }

@@ -44,6 +44,7 @@ import pharmacyCustomerRouter from '@/modules/pharmacyCustomers/routes';
 import pharmacyOrderRouter from '@/modules/pharmacyOrders/routes';
 import pharmacyBookingRouter from '@/modules/assisted/routes';
 import { adminAssistedRouter, pharmacyAssistedRouter } from '@/modules/assisted/routes/phase1a';
+import { doctorLabRouter } from '@/modules/assisted/routes/doctorLab';
 import { adminDoctorWalletRouter, adminLabWalletRouter, doctorWalletRouter, labWalletWorkspaceRouter } from '@/modules/partnerWallets/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
@@ -79,6 +80,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/dependents', authenticate, denyRoles('partner'), dependentRouter);
   // r20 (§25.4.2): the doctor's own wallet (before /specialists/:id).
   app.use('/api/v1/specialists/me/assisted', authenticate, denyRoles('partner'), doctorWalletRouter);
+  // r26 (§25.5.4): a doctor books lab tests for its patients (paid from the doctor wallet).
+  app.use('/api/v1/specialists/me/assisted', authenticate, denyRoles('partner'), doctorLabRouter);
   app.use('/api/v1/specialists', authenticate, denyRoles('partner'), specialistRouter);
   app.use('/api/v1/bookings', authenticate, denyRoles('partner'), bookingRouter);
   app.use('/api/v1/meet', meetRouter);

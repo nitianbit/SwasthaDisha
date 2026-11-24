@@ -1,3 +1,4 @@
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { Types } from 'mongoose';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
@@ -84,11 +85,35 @@ export async function bookerPatientNames(rows: Row[], pharmacyId: string): Promi
   return (await bookerNames(rows, pharmacyId)).patients;
 }
 
-/** bookerPatientNames, plus each row's account holder as this pharmacy sees it (name rule above, its own link id). */
-export async function bookerNames(rows: Row[], pharmacyId: string)
+/**
+ * The account holder as a LAB or DOCTOR booker sees it (§24.3, L15, DR7): the name typed on its own `assisted_links` row,
+ * else the account name masked; never the real account name. `linkId` is that row's id.
+ */
+export async function linkFacingHolders(userIds: unknown[], booker: { kind: 'lab' | 'doctor'; id: string }): Promise<Map<string, FacingHolder>> {
+  const wanted = [...new Set(userIds.map((u) => String(u ?? '')).filter((u) => Types.ObjectId.isValid(u) && u.length === 24))];
+  const out = new Map<string, FacingHolder>();
+  if (!wanted.length) return out;
+  const [users, links] = await Promise.all([
+    UserModel.find({ _id: { $in: wanted } }).select({ name: 1 }).lean() as unknown as Promise<Row[]>,
+    AssistedLinkModel.find({ bookerKind: booker.kind, bookerId: key(booker.id), userId: { $in: wanted.map(key) } }).lean() as unknown as Promise<Row[]>,
+  ]);
+  const linkBy = new Map(links.map((l) => [key(l.userId), l]));
+  for (const u of users) {
+    const link = linkBy.get(key(u._id));
+    const typed = typeof link?.typedName === 'string' && link.typedName.trim() ? link.typedName.trim() : null;
+    out.set(key(u._id), { name: typed ?? maskName(u.name), linkId: link ? String(link._id) : null, typedName: typed });
+  }
+  return out;
+}
+
+/**
+ * bookerPatientNames, plus each row's account holder as this booker sees it (its own link id): a pharmacy by the rule
+ * above; r26: a lab or doctor by `linkFacingHolders`.
+ */
+export async function bookerNames(rows: Row[], pharmacyId: string, kind: 'pharmacy' | 'lab' | 'doctor' = 'pharmacy')
   : Promise<{ patients: Map<string, string | null>; holders: Map<string, FacingHolder> }> {
   const [holderRows, deps] = await Promise.all([
-    pharmacyFacingHolders(ids(rows, 'userId'), pharmacyId),
+    kind === 'pharmacy' ? pharmacyFacingHolders(ids(rows, 'userId'), pharmacyId) : linkFacingHolders(ids(rows, 'userId'), { kind, id: pharmacyId }),
     DependentModel.find({ _id: { $in: ids(rows, 'dependentId') } }).select({ name: 1, userId: 1 }).lean() as unknown as Promise<Row[]>,
   ]);
   const depBy = new Map(deps.map((d) => [key(d._id), d]));

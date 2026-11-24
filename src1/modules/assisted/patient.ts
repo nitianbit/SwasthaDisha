@@ -1,3 +1,4 @@
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -61,6 +62,22 @@ export async function openOrPrepareAccountIn(a: { phone: string; newUserId: stri
   if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
   await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: a.createdSource ?? 'assisted_booking', otpVerified: false,
     ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
+}
+
+/**
+ * §17.4 for labs and doctors (r12; r26 shared): the booker's `assisted_links` row to the account holder, with consent and
+ * the FIRST typed name (never overwritten). Upsert: concurrent first bookings of one patient conflict inside their
+ * transactions and are retried, never duplicated.
+ */
+export async function linkAssistedIn(booker: { kind: 'lab' | 'doctor'; id: string; actorId: string }, userId: string, typedName: string, now: Date,
+  s: ClientSession): Promise<void> {
+  const key = { bookerKind: booker.kind, bookerId: lower(booker.id), userId: lower(userId) };
+  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: now, consentRecordedById: lower(booker.actorId),
+    ...(typedName ? { typedName } : {}) } }, { upsert: true, session: s });
+  if (typedName) {
+    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
+      { $set: { typedName } }, { session: s });
+  }
 }
 
 /** §17.4 / S3: the pharmacy's link to the account holder, with consent and the first typed name. */

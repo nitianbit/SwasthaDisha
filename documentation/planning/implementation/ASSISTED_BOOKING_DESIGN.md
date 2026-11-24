@@ -5077,3 +5077,69 @@ amountMinor, createdAt, state }`.
   `userId`; r20 refuses partner flows without an owner, but a pharmacy-flow record without `payerPharmacyId` still takes
   the old customer path (pharmacy behaviour kept; the S6 audit lists such records).
 - The 2d note on `$type` partial indexes stands (the pharmacy admin top-up cap is now enforced, above).
+
+### 25.15 Round 3b build record: a doctor books a lab test, paid from the doctor wallet (r26, 2026-11-25)
+
+Branch `m0/r26-phase3b` from `f7f57ad2` (r19-stage-next with 3e) with `m0/r20-phase3a` (3a + the 2d review fixes) merged.
+Local commits only. Built §25.5 with DR6–DR9 and the §25.11 decisions. No copies: the 2a create, reads, by-key, cancel
+and accept are now one implementation with a booker (`LabBooker`: a pharmacy or a doctor); the pharmacy's keys, scopes,
+answers and money are byte-identical (the 2a/2b suites are the check).
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Booker | `assisted/labBookings.ts` | `LabBooker = { kind: 'pharmacy', pharmacyId, actorId } \| { kind: 'doctor', specialistId }`; `createAssistedLabBooking`, `listLabsFor`, `labCatalogueFor`, `branchSlotsFor`, `listLabBookingsFor`, `getLabBookingFor`, `findLabByKeyFor`, `abandonLabByKeyFor`, `cancelLabFor`, `acceptLabRescheduleFor`, `lookupPatientFor`; the pharmacy names (`createPharmacyLabBooking` …) are one-line wrappers. Doctor key `assisted_lab:doctor:<sid>:<sid>:<key>`, scope `assisted_lab_create:doctor:<sid>`, org key `doctor:<sid>` |
+| Patient sources | same, `assisted/treating.ts` (new) | `fromBookingId` + `typedName`: the doctor's own consultation (not an unpaid card booking, no open "not mine", inside its treating window: `treatingWindowOf`, §25.9.1), no lookup counted; or a walk-in by phone as 2a (counted, masked, the account opens in the transaction). Exactly one source (400) |
+| Create | same | `source: 'doctor_assisted'`, `assisted.bookedBy = { kind: 'doctor', id, actorKind: 'doctor', actorId, name: 'Dr <name>' }`, `assisted.fromBookingId`, funding `payerKind: 'doctor'`; the `assisted_links` row (first typed name); pair alert, coupon redemption and audit as the doctor; the lab then the doctor re-read in the transaction (403 `SPECIALIST_NOT_VERIFIED`); the debit through `postBookerMovementIn`; cut 0, `referral: null`. Card is refused (400 `PAYMENT_METHOD_UNAVAILABLE`, 3c) |
+| Money dispatcher | `assisted/bookerWallet.ts` | `postBookerMovementIn` gains the doctor case (`debitDoctorWalletIn` / `refundDoctorWalletIn`, 3a), signature unchanged (2e adds the lab case beside it); `bookerEntryLotsIn` and `bookerEntriesOf` read the doctor's partner-store entries |
+| **Refund bug** | `assisted/labRefunds.ts` | Every wallet-funded lab refund goes through `postBookerMovementIn` (the debit's lots restored). A doctor-paid row used to be marked refunded with no credit; pharmacy refunds are unchanged |
+| Report access | `file/access.ts` | `canReadPartnerLabReport`: the doctor that BOOKED reads the released report for 90 days from the first release while verified and active; a recommending-only doctor, another doctor and pharmacies get the uniform 404 |
+| Names | `assisted/names.ts`, `assisted/patient.ts` | `linkFacingHolders` (typed name on the booker's `assisted_links` row, else masked; never the account name); `bookerNames` takes the booker kind. `linkAssistedIn` is the one link writer (the lab desk's `linkLabIn` now calls it) |
+| Reconciliation | `assisted/reconciliation.ts` | `labBookingChecks` reads the payer's own entries (`bookerEntriesOf`): doctor rows reconcile |
+| Routes, switch | `assisted/routes/doctorLab.ts` (new), `assisted/validation`, `assisted/flags.ts`, `src1/routes/index.ts` | Below. `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR` (+ `assertDoctorLabOn`) |
+
+Checks: `test/assisted/r26-phase3b.integration.ts` (11 checks).
+
+**ASSUMED (r26, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| F1 | `typedName` names the holder for a consultation of the holder (the link's typed name); for a family member's consultation the family member's own name is the patient name and the link gets no typed name | names rule (2a B7) |
+| F2 | An open "not mine" report on the source consultation answers 404 `BOOKING_NOT_FOUND` (like a missing booking) | one answer |
+| F3 | The treating window is the pure §25.9.1 helper; 3f will reuse it for history and files | spec |
+| F4 | The doctor's view shows no `payment` block (wallet only in 3b); `holder` is `{ linkId, name, typedName }` | §25.5.2 |
+| F5 | Doctor routes need an eligible doctor for every call (reads included); refunds and report reads re-check eligibility themselves | S5, DR3 |
+| F6 | Not built in 3b: the admin move of doctor rows' `assisted_links` (§25.5.2 last row) — the admin move keeps its pharmacy-only link step; card (3c) | time; flagged for the next round |
+
+**API for the web** (specialist token, verified and active; `{ success, data }`, `Cache-Control: private, no-store`; paise)
+
+| Route | Request | `data` |
+|---|---|---|
+| `POST /api/v1/specialists/me/assisted/patients/lookup` | `{ phone }` | `{ exists, holderNameMasked }` (counted, 120/h) |
+| `GET …/me/assisted/labs` | `?visitMode&limit` | as §24.11, `nearby` from the doctor's pincode, then city |
+| `GET …/labs/:partnerId/catalogue`, `GET …/labs/branches/:branchId/slots` | as §24.11 | as §24.11 |
+| `POST …/me/assisted/lab-bookings` | 2a's body (§24.11) with ONE patient source: `{ fromBookingId, typedName }` or `{ phone, patient, holderName? }`; `paymentMethod: 'wallet'` | 201 (replay 200) `{ booking: <booker lab view>, funding: { method: 'wallet', amountMinor, state, walletEntryId }, split, newAccount, replayed }` |
+| `GET …/me/assisted/lab-bookings`, `GET …/lab-bookings/:id` | `?status&from&to&cursor&limit≤50` | the booker lab view (§24.11) with `holder: { linkId, name, typedName }`; only this doctor's rows (else 404 `LAB_BOOKING_NOT_FOUND`) |
+| `GET …/lab-bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state: 'used', booking } \| { state: 'abandoned' } \| { state: 'unknown' }` |
+| `POST …/lab-bookings/:id/cancel` | `{ reason?, expectedVersion? }` | `{ booking, refundedMinor, alreadyCancelled }` (1 h before the slot, or while a lab reschedule is unanswered; refund to the doctor wallet) |
+| `POST …/lab-bookings/:id/accept-reschedule` | `{ version }` | the view |
+
+Errors: 2a's (§24.11), plus 403 `SPECIALIST_NOT_VERIFIED`; 404 `BOOKING_NOT_FOUND` (`fromBookingId`); 409 `TREATING_WINDOW_CLOSED`;
+400 `PAYMENT_METHOD_UNAVAILABLE` (card). The patient app and the lab workspace show "Booked by Dr <name>" (`bookedBy.name`).
+The released report file is readable by the booking doctor at `report.releases[].file` while it is listed.
+
+**Switches and deploy order**
+
+- `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR` (new, off unless exactly `"true"`; needs `ASSISTED_BOOKING_ENABLED_DOCTOR`). Off: the
+  lookup, the lab reads and new bookings answer 503. Reads, by-key, cancel, accept, refunds and report access always work.
+- Order: 1. deploy (switches off); 2. `npm run sync-indexes` (the 2c/2d/3a indexes); 3. both switches on; 4. restart. No migration.
+- Rollback: the switch. Never roll the code back below r26 while a `doctor_assisted` row is open (older code refunds nobody):
+  `db.partner_lab_bookings.countDocuments({ source: 'doctor_assisted', status: { $nin: ['completed','cancelled','no_show'] } })` = 0.
+- Merge with 2e (`m0/r21-phase2e`): `assisted/bookerWallet.ts` keeps its signature; 3b adds only the doctor branches.
+
+**Seen, not changed**
+
+- `assisted/refunds.ts` (consultations) still credits only pharmacy payers; 2e changes it for labs, and a doctor never pays
+  a consultation in phase 3 (no path).
+- The admin move of a doctor-made lab row does not move its `assisted_links` row yet (F6).
