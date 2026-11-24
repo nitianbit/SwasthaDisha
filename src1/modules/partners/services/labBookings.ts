@@ -178,20 +178,21 @@ export function readerOf(actor: PartnerActor): NonNullable<AuthRequest['user']> 
     : { _id: actor.memberId, memberId: actor.memberId, partnerId: actor.partnerId, userType: 'partner' };
 }
 
-/** Q9: the lab's and branch's names for customer views (looked up in one batch). */
-async function withPlaceNames(rows: IPartnerLabBooking[]): Promise<Record<string, unknown>[]> {
+/** Q9: the lab's and branch's names for customer views (looked up in one batch); `readerId` = the patient reading. */
+async function withPlaceNames(rows: IPartnerLabBooking[], readerId: string): Promise<Record<string, unknown>[]> {
   const partners = await PartnerOrgModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.partnerId)))] } }).select({ name: 1 }).lean() as any[];
   const branches = await BranchModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.branchId)))] } }).select({ name: 1, address: 1, phone: 1 }).lean() as any[];
   const p = new Map(partners.map((x) => [String(x._id), x]));
   const b = new Map(branches.map((x) => [String(x._id), x]));
   // r12 (§24.6.3): a desk row shows its bill (the patient reads it under /bills); read through the partners' bill index.
+  // r19b: only a bill made out to the reader (a desk row moved to another account keeps its bill in the old name).
   const desk = rows.filter((r) => isDeskRow(r));
-  const bills = await billsForLabBookings(desk.map((r) => String(r._id)), [...new Set(desk.map((r) => String(r.partnerId)))]);
+  const bills = await billsForLabBookings(desk.map((r) => String(r._id)), [...new Set(desk.map((r) => String(r.partnerId)))], readerId);
   return rows.map((r) => ({ ...customerView(r), lab: { name: p.get(String(r.partnerId))?.name },
     branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined,
     ...(isDeskRow(r) ? { bill: bills.get(String(r._id).toLowerCase()) ?? null } : {}) }));
 }
-export async function customerViewNamed(b: IPartnerLabBooking): Promise<Record<string, unknown>> { return (await withPlaceNames([b]))[0]!; }
+export async function customerViewNamed(b: IPartnerLabBooking, readerId: string): Promise<Record<string, unknown>> { return (await withPlaceNames([b], readerId))[0]!; }
 
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
@@ -1231,7 +1232,7 @@ export class LabBookingService {
   }
 
   async getForCustomer(userId: string, bookingId: string) {
-    return customerViewNamed(await this.ownBooking(userId, bookingId));
+    return customerViewNamed(await this.ownBooking(userId, bookingId), userId);
   }
 
   /** Q9: paged, newest first, each with the lab's and branch's names (and the branch's address/phone). */
@@ -1245,7 +1246,7 @@ export class LabBookingService {
       PartnerLabBookingModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
       PartnerLabBookingModel.countDocuments(q),
     ]);
-    const named = await withPlaceNames(rows as IPartnerLabBooking[]);
+    const named = await withPlaceNames(rows as IPartnerLabBooking[], userId);
     return { items: named, page: pg, limit: lim, total, totalPages: Math.max(1, Math.ceil(total / lim)) };
   }
 

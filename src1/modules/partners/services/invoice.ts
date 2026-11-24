@@ -201,13 +201,17 @@ async function existingCustomerId(rawPhone?: string): Promise<string | null> {
   return u ? String(u._id) : null;
 }
 
-/** Q14 / r12: the open bill of each linked record, else its latest cancelled one (of one partner, or of the rows' partners). */
-async function billsOf(k: BillLink, ids0: string[], partnerId: string | string[]) {
+/**
+ * Q14 / r12: the open bill of each linked record, else its latest cancelled one (of one partner, or of the rows' partners).
+ * r19b: with `customerUserId`, only bills naming that customer (a patient never sees a bill made out to another account).
+ */
+async function billsOf(k: BillLink, ids0: string[], partnerId: string | string[], customerUserId?: string) {
   const field = BILL_LINKS[k].field;
   const ids = [...new Set(ids0.map((a) => String(a).toLowerCase()))];
   const out = new Map<string, { invoiceId: string; serial: string; number: number; state: InvoiceLifecycleState }>();
   if (!ids.length) return out;
-  const rows = await InvoiceModel.find({ partnerId: Array.isArray(partnerId) ? { $in: partnerId } : partnerId, [field]: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
+  const rows = await InvoiceModel.find({ partnerId: Array.isArray(partnerId) ? { $in: partnerId } : partnerId, [field]: { $in: ids },
+    ...(customerUserId !== undefined ? { 'customer.userId': { $eq: String(customerUserId) } } : {}) }).sort({ issuedAt: -1, _id: -1 })
     .select({ [field]: 1, serial: 1, number: 1, lifecycleState: 1 }).lean() as unknown as IInvoice[];
   for (const r of rows) {
     const key = String(r[field]);
@@ -219,8 +223,9 @@ async function billsOf(k: BillLink, ids0: string[], partnerId: string | string[]
 }
 /** Q14: for the clinic appointment rows. */
 export const billsForAppointments = (partnerId: string, appointmentIds: string[]) => billsOf('appointment', appointmentIds, partnerId);
-/** r12 (§24.6.3): for the lab and patient views of lab desk rows. */
-export const billsForLabBookings = (labBookingIds: string[], partnerId: string | string[]) => billsOf('lab_booking', labBookingIds, partnerId);
+/** r12 (§24.6.3): for the lab and patient views of lab desk rows (r19b: the patient's, only bills naming the reader). */
+export const billsForLabBookings = (labBookingIds: string[], partnerId: string | string[], customerUserId?: string) =>
+  billsOf('lab_booking', labBookingIds, partnerId, customerUserId);
 
 /** Stable JSON (moved to common in Q15; re-exported for existing importers). */
 export { canonicalJson } from '@/modules/common/utils/canonicalJson';

@@ -3672,10 +3672,19 @@ the desk keeps its notes. So the pharmacy hash keeps a `notes` field that is alw
 keys used before r11b without notes still replay; a key used with notes answers 409 `IDEMPOTENCY_KEY_REUSED`, as above.
 The desk's `notes` rule and type moved into its own schema and input (`assisted/validation/labDesk.ts`, `LabDeskInput`).
 
-### 24.16 Round 2e build record: a lab books a doctor consultation (r21, 2026-11-25)
+### 24.16 Patient data on lab desk rows (r19b, 2026-11-25)
+
+On `m0/r19-stage-next` before the stage push. Check: the r19b check of `test/assisted/r12-phase2c.integration.ts`.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (patient data) | The holder of a DESK row with an open "this isn't mine" (r12b) could still read its released report files: the report access looked at the `assisted` block only | `file/access.ts` `canReadPartnerLabReport` also selects `desk.identity.disputed`; the holder reads only while neither block has an open report (`labNotDisputed`, the row form of `LAB_NOT_DISPUTED_QUERY`). The lab keeps its access; a dismissal gives it back |
+| 2 (patient data) | A desk row moved to another account showed the new holder the bill made out to the old one | The admin move of a desk row is refused while it has an OPEN bill: 409 `LAB_BOOKING_BILLED_CANCEL_FIRST` ("cancel the bill first"). The patient's lab-booking views show `bill` only when the bill's `customer.userId` is the reader (otherwise `bill: null`); the lab's views are unchanged |
+
+### 24.17 Round 2e build record: a lab books a doctor consultation (r21, 2026-11-25)
 
 Branch `m0/r21-phase2e` from `b0b9589c` (the stage line `m0/r19-stage-next`: r10h with r10g, 2c, 2b, 2d and 3d), then
-aligned with the stage line (§24.16.5): `m0/r19-stage-next` at `037bd9fb`, the stage merge of round 3e `f7f57ad2` and
+aligned with the stage line (§24.17.5): `m0/r19-stage-next` at `037bd9fb`, the stage merge of round 3e `f7f57ad2` and
 r17b `bea93b02`. Local commits only. Built §24.8 under the owner's rules of
 25 Nov:
 - **no duplicated code:** the pharmacy consultation booking is generalised over a booker, not copied;
@@ -3694,7 +3703,7 @@ A mutation run, one break at a time:
 - no lab case in the copy rule fails "dispensing copy";
 - the payment service not admitting the paying lab fails "card".
 
-#### 24.16.1 What was built
+#### 24.17.1 What was built
 
 | Area | Where | What |
 |---|---|---|
@@ -3707,10 +3716,10 @@ A mutation run, one break at a time:
 | Card payments | `assisted/cardPayments.ts`, `payment/services` | The order names the payer by kind (`payerPartnerId` + `payerMemberId` for a lab). The capture checks the payer by kind (`recordPayerOf`). Late and extra captures queue rows for the right payer. `bookerPayments` serves any booker. The payment service lets the paying lab verify an assisted card record (`payerPartnerId`) |
 | Verify and reconcile | `partnerWallets/routes.ts`, `partnerWallets/service.ts` | 2d's `POST /partner-workspace/assisted/payments/verify` and `/reconcile` also settle a consultation card payment of this lab. The guard admits `wallet.manage` or `assisted.book`, and the service checks the one the record needs. A top-up answers the wallet; a booking answers the lab's booker view |
 | Prescription (decision G) | `file/access.ts`, `assisted/dispensingCopy.ts`, `specialistPortal/services` | The doctor's save makes the dispensing copy for a lab-made consultation too (`bookerOfBooking`), naming the patient by the lab's names rule. `canReadDispensingCopy` case `partner`: a member of the booking lab holding `assisted.book` with the booking's branch in scope, while the lab is active and verified, only the current copy, within 90 days of the consultation. The full PDF, documents and report: never (`canReadBooking` admits no partner) |
-| Elsewhere | `meet/service`, `assisted/review.ts`, `assisted/reconciliation.ts`, `assisted/labViews.ts`, `partners/services/labBookings.ts`, `partners/types` | Meet invites the lab's `contact.email` when the lab's device joins. The admin move carries the lab's link (`moveLabLinkIn`). Every booker notice goes to `bookerNoticeUserId`. Reconciliation reads the payer's own store. `labAdmissible` moved to the pure `labViews.ts` (re-exported from `labBookings.ts` for its callers). The link helper is shared by the desk and 2e (r12b's `linkLabIn`, §24.16.5). New permission `assisted.book` |
+| Elsewhere | `meet/service`, `assisted/review.ts`, `assisted/reconciliation.ts`, `assisted/labViews.ts`, `partners/services/labBookings.ts`, `partners/types` | Meet invites the lab's `contact.email` when the lab's device joins. The admin move carries the lab's link (`moveLabLinkIn`). Every booker notice goes to `bookerNoticeUserId`. Reconciliation reads the payer's own store. `labAdmissible` moved to the pure `labViews.ts` (re-exported from `labBookings.ts` for its callers). The link helper is shared by the desk and 2e (r12b's `linkLabIn`, §24.17.5). New permission `assisted.book` |
 | Routes | `assisted/routes/labBooker.ts` (new), `assisted/controller/phase2e.ts` (new), `partners/routes/index.ts`, `assisted/validation` | Registered inside the partner workspace like the desk (members, and admins acting as owner). Lab bodies add `branchId` (`labConsultationSchema`, `labDoctorQuerySchema`, `labDoctorSlotsQuerySchema`); the pharmacy schemas are unchanged |
 
-#### 24.16.2 Choices made while building (ASSUMED r21, reversible)
+#### 24.17.2 Choices made while building (ASSUMED r21, reversible)
 
 | # | Choice | Why |
 |---|---|---|
@@ -3726,7 +3735,7 @@ A mutation run, one break at a time:
 | F10 | The request hash adds `branchId` only when present | 1a hashes and keys stay byte-identical |
 | F11 | Card money returned to a lab's wallet opens no lot (not withdrawable), as for pharmacies (C3) | C3 |
 
-#### 24.16.3 API for the web
+#### 24.17.3 API for the web
 
 Lab workspace (partner member token holding `assisted.book`; the lab must be active and verified; `{ success, data }`,
 `Cache-Control: private, no-store`; money in paise). The same bodies and answers as the pharmacy routes of §19.3,
@@ -3764,7 +3773,7 @@ The dispensing copy opens through `/api/static/…` with the member's token.
 **Admin:** card refund rows and stuck-money card chargebacks add `payerKind`, `payerId` and `payerName` (pharmacy rows
 keep `pharmacyId` / `pharmacyName`).
 
-#### 24.16.4 Switches, indexes, deploy, rollback
+#### 24.17.4 Switches, indexes, deploy, rollback
 
 - **Switches.**
   - `ASSISTED_BOOKING_ENABLED_LAB` (2d's lab switch, off unless exactly `"true"`) now also gates the lab's lookup, doctor
@@ -3787,7 +3796,7 @@ keep `pharmacyId` / `pharmacyName`).
 
   Check: `db.bookings.countDocuments({ source: 'lab_assisted', status: { $in: ['pending', 'confirmed'] } })` = 0.
 
-#### 24.16.5 Alignment with the stage line and round 3e
+#### 24.17.5 Alignment with the stage line and round 3e
 
 Merged, in order: `m0/r17-phase3e` (`b32f0007`, first, then superseded where it differs), `m0/r19-stage-next` at
 `037bd9fb` (r14b, r16b, r11b, r12b, r10i), `f7f57ad2` (the stage merge of round 3e, which push 2 and 3b build on) and
@@ -3803,10 +3812,10 @@ Merged, in order: `m0/r17-phase3e` (`b32f0007`, first, then superseded where it 
 | Wallet refund of lab bookings | 2e's `refundWalletFundingIn` (any payer kind) | 3e's "`labRefunds.ts` credits pharmacies only" is settled |
 | Everything else | Both sides: 3e's instant routes, switch, audit action, reconciliation and error details; r16b's POST recommendation lookup; r12b's notice recipients of lab rows (`labOrigin`) | — |
 
-Doc numbering: r11b's record keeps §24.15, so this record is §24.16; r16b's §25.12.7 stays in the 3d record (§25.12) and
+Doc numbering: r11b's record keeps §24.15 and r19b's §24.16, so this record is §24.17; r16b's §25.12.7 stays in the 3d record (§25.12) and
 3e's record is §25.13.
 
-#### 24.16.6 Checks after the alignment
+#### 24.17.6 Checks after the alignment
 
 - On `19c33187` (after all three merges), each suite alone on its own database: `r21-phase2e` 16/16, `r17-phase3e`
   25/25, `r11-phase2a` 26/26, `r12-phase2c` 26/26, `phase1a` 30/30. tsc 17 (unchanged).
