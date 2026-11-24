@@ -348,7 +348,7 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   const cut = await snapshotCuts({ kind: 'pharmacy', id: pharmacyId, name: pharmacy?.name ?? 'Pharmacy' },
     ordered.map((i, n) => ({ category: labCategoryOf(i.kind), baseMinor: lineBases[n]! })));
   const lines = ordered.map((i, n) => ({ catalogItemId: String(i._id), listMinor: Number(i.priceMinor || 0), discountMinor: lineDiscounts[n]!,
-    baseMinor: lineBases[n]!, cutMinor: cut.lines[n]!.cutMinor, category: cut.lines[n]!.category, referral: cut.lines[n]! }));
+    baseMinor: lineBases[n]!, cutMinor: cut.lines[n]?.cutMinor ?? 0, ...(cut.lines[n] ? { category: cut.lines[n]!.category, referral: cut.lines[n]! } : {}) }));
   const account = await ensureSettlementAccount('partner', String(partner!._id), partner!.legalName || partner!.name);
   const now = clock();
   const bookingId = new Types.ObjectId().toHexString();

@@ -243,7 +243,7 @@ async function main() {
       const off = await stored((await consult('P'))._id);
       assert.equal(off.assisted.split.cutMinor, 0);
       assert.equal(off.assisted.split.providerMinor, 50000);
-      assert.equal(off.assisted.split.referral.disabledReason, 'cuts_off');
+      assert.equal(off.assisted.split.referral, undefined, 'switch off: stored exactly as before phase 4 (no snapshot)');
       assert.equal(off.assisted.referral, null);
       assert.equal(await SettlementAccountModel.countDocuments({ ownerKind: 'pharmacy_referral' }), 0);
       cutsOn(true);
@@ -351,7 +351,7 @@ async function main() {
       const lines = [{ category: labCategoryOf('test'), baseMinor: 30000 }, { category: labCategoryOf('package'), baseMinor: 80000 },
         { category: labCategoryOf('procedure'), baseMinor: 10000 }];
       const snap = await snapshotCuts({ kind: 'pharmacy', id: P, name: 'Sharma Medicals' }, lines);
-      assert.deepEqual(snap.lines.map((l) => l.cutMinor), [1500, 4000, 0]);
+      assert.deepEqual(snap.lines.map((l) => l!.cutMinor), [1500, 4000, 0]);
       assert.equal(snap.lines[2]!.disabledReason, 'category_not_cut');
       assert.equal(snap.totalCutMinor, 5500);
       // The §8.1 example: the lab earns 1 100 − 15 − 40 = ₹1 045 on the two lines; Sharma ₹55.

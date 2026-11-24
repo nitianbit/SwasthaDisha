@@ -51,10 +51,13 @@ export function cutFor(baseMinor: number, rule: RuleTerms | null, ctx: { categor
 /**
  * §26.5.3: the cut of each line of a new booking for this booker, and — when the total is above 0 — the booker's
  * `*_referral` account it will be credited to (opened idempotently now; an unused empty account is harmless).
+ * While the master switch is off nothing is snapshotted (`lines` are null): a booking is stored exactly as before
+ * phase 4 (cut 0, no snapshot), so the dark deploy changes no row (ASSUMED M20).
  */
 export async function snapshotCuts(booker: { kind: BookerKind; id: string; name: string }, lines: { category: ReferralCategory | null; baseMinor: number }[],
-  s?: ClientSession): Promise<{ lines: ReferralSnapshot[]; totalCutMinor: number; referral: AssistedReferral | null }> {
+  s?: ClientSession): Promise<{ lines: (ReferralSnapshot | null)[]; totalCutMinor: number; referral: AssistedReferral | null }> {
   const cutsOn = assistedFlags.referralCuts();
+  if (!cutsOn) return { lines: lines.map(() => null), totalCutMinor: 0, referral: null };
   const doctorCutsOn = assistedFlags.referralDoctorCuts();
   const bookerId = lower(booker.id);
   const rules = cutsOn && (booker.kind !== 'doctor' || doctorCutsOn)

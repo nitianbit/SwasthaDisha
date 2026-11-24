@@ -275,7 +275,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       : { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
         ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
     split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor,
-      cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2', referral: cut.lines[0]! },
+      cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2', ...(cut.lines[0] ? { referral: cut.lines[0] } : {}) },
     referral: cut.referral,
     shortRef,
     requestKey: storedKey,

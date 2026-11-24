@@ -5621,6 +5621,7 @@ bookers (M17).
 | M17 | Lab and doctor read routes for rules and referral accounts are not built until 2e / 3b put them on this line | Minimal API; no booker of those kinds exists here yet |
 | M18 | Rules are read and the referral account is opened before the create transaction (as the lab create does for its settlement account). The instant snapshot runs inside the accept transaction | A rule edit racing a create gives one consistent version, which the snapshot records (`ruleVersion`). An unused empty referral account is harmless |
 | M19 | The referral payout refusal (§26.9) ships now | Referral accounts with balances appear in the admin payout list from 4b |
+| M20 | While `REFERRAL_CUTS_ENABLED` is off nothing is snapshotted (no `split.referral`, no line category): a booking is stored exactly as before phase 4. With the switch on, a zero cut still records its reason (`no_rule`, `doctor_cuts_off`, `category_not_cut`) | The dark deploy changes no row, and the 1a, 2a and 3e suites stay byte-for-byte |
 
 **Tests:** `test/assisted/r24-phase4ab.integration.ts`, 15 checks:
 - rules: create, change, stale 409, bad terms 400, unknown booker 404, tools switch 503, history;

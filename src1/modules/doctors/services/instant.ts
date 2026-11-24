@@ -202,7 +202,7 @@ function instantBookingAssisted(a: InstantAssistedBlock, requestId: string, feeM
   return { ...rest, funding: { instantRequestId: requestId }, referral: cut.referral,
     split: { listMinor: feeMinor, ...(couponCode && couponMinor > 0 ? { couponCode, couponFundedBy: couponFundedBy ?? 'provider' } : {}),
       discountMinor: couponMinor, baseMinor, cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2' as const,
-      referral: cut.lines[0]! } };
+      ...(cut.lines[0] ? { referral: cut.lines[0] } : {}) } };
 }
 
 /** §8.3: the earning base of an instant fee — after a provider-funded coupon, the fee itself for a platform-funded one. */
