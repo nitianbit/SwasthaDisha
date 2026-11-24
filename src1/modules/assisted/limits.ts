@@ -11,7 +11,8 @@ import { assistedLimits } from '@/modules/assisted/flags';
  * phone number and per booker, on Mongo counters shared by every instance (the O1 pattern). Day windows are India
  * calendar days. A hit answers 429 ASSISTED_LIMIT_REACHED with `limit` naming the limit.
  */
-export type LimitName = 'lookups' | 'new_accounts' | 'bookings_per_phone' | 'booker_cancellations' | 'pending_card_bookings';
+/** r10g: the lookup limit is the only one left (owner, 23 Nov). */
+export type LimitName = 'lookups';
 
 export class AssistedLimitError extends AppError {
   limit: LimitName;
@@ -24,13 +25,8 @@ export class AssistedLimitError extends AppError {
 }
 
 function limitMessage(limit: LimitName): string {
-  switch (limit) {
-    case 'lookups': return 'Too many patient lookups this hour; try again later';
-    case 'new_accounts': return 'Too many new patient accounts today; try again tomorrow';
-    case 'bookings_per_phone': return 'This mobile number has reached today\'s limit of assisted bookings';
-    case 'pending_card_bookings': return 'Too many card bookings are waiting for payment; complete or cancel one first';
-    default: return 'Too many cancellations today; new assisted bookings are paused until tomorrow';
-  }
+  void limit;
+  return 'Too many patient lookups this hour; try again later';
 }
 
 const keyMaterial = () => createHash('sha256').update(`${CONFIG.JWT_SECRET_KEY}:assisted-limits-v1`).digest();
@@ -66,39 +62,11 @@ export async function hitLookup(orgKey: string): Promise<void> {
   if (count > assistedLimits.lookupsPerHour()) throw new AssistedLimitError('lookups', Math.ceil(((index + 1) * hour - t) / 1000));
 }
 
-/** New accounts: counted only when a booking is about to open an account for an unknown number. */
-export async function hitNewAccount(orgKey: string): Promise<void> {
-  const t = now();
-  const count = await bump(dayId('new_accounts', orgKey, t), 1, new Date(istDayEnd(t) + DAY_MS));
-  if (count > assistedLimits.newAccountsPerDay()) throw new AssistedLimitError('new_accounts', Math.ceil((istDayEnd(t) - t) / 1000));
-}
-
-/** In the booking transaction that opens the account (aborted bookings never count): one more new account today. */
-export async function countNewAccountIn(orgKey: string, s: ClientSession): Promise<void> {
-  const t = now();
-  const count = await bump(dayId('new_accounts', orgKey, t), 1, new Date(istDayEnd(t) + DAY_MS), s);
-  if (count > assistedLimits.newAccountsPerDay()) throw new AssistedLimitError('new_accounts', Math.ceil((istDayEnd(t) - t) / 1000));
-}
-
-/** In the booking transaction: one more assisted booking for this phone today, across every booker (aborts when over). */
-export async function countBookingForPhoneIn(phone: string, s: ClientSession): Promise<void> {
-  const t = now();
-  const count = await bump(dayId('bookings_per_phone', phoneKey(phone), t), 1, new Date(istDayEnd(t) + DAY_MS), s);
-  if (count > assistedLimits.bookingsPerPhonePerDay()) throw new AssistedLimitError('bookings_per_phone', Math.ceil((istDayEnd(t) - t) / 1000));
-}
-
+// r10g (owner, 23 Nov): the new-account, per-phone and booker-cancellation STOPS are removed; only the hourly lookup
+// limit above still refuses. Booker cancellations are still counted, for the alert below.
 const cancelId = (orgKey: string, t: number) => dayId('booker_cancellations', orgKey, t);
 
-/** P7: refuses NEW bookings once the booker cancelled N bookings today (cancellations themselves stay allowed). */
-export async function assertBookerMayBook(orgKey: string, s?: ClientSession): Promise<void> {
-  const t = now();
-  const row = await AssistedCounterModel.findById(cancelId(orgKey, t)).session(s ?? null).lean();
-  if (Number(row?.count ?? 0) >= assistedLimits.bookerCancellationsPerDay()) {
-    throw new AssistedLimitError('booker_cancellations', Math.ceil((istDayEnd(t) - t) / 1000));
-  }
-}
-
-/** In the cancellation transaction: counts a booker cancellation; at the threshold an alert is raised (P7, P10). */
+/** In the cancellation transaction: counts a booker cancellation; at the threshold an alert is raised (P10; alert only since r10g). */
 export async function countBookerCancellationIn(orgKind: string, orgId: string, s: ClientSession): Promise<number> {
   const t = now();
   const count = await bump(cancelId(`${orgKind}:${orgId}`, t), 1, new Date(istDayEnd(t) + DAY_MS), s);
@@ -130,15 +98,4 @@ export async function raiseAlertIn(a: { kind: string; bookerKind?: string; booke
 export async function bookerCancellationsToday(orgKey: string): Promise<number> {
   const row = await AssistedCounterModel.findById(cancelId(orgKey, now())).lean();
   return Number(row?.count ?? 0);
-}
-
-/**
- * r10b: at most N card bookings of one booker waiting for their payment at once (ASSISTED_LIMIT_PENDING_CARD_BOOKINGS,
- * default 10), so unpaid card bookings cannot hold doctors' slots for free. In the booking transaction, after the insert:
- * a per-booker lock row is written first (concurrent creates of one booker conflict and run one after the other), then
- * the booker's pending card bookings — this one included — are counted.
- */
-export async function assertPendingCardRoomIn(orgKind: string, orgId: string, countPending: () => Promise<number>, s: ClientSession): Promise<void> {
-  await bump(`pending_card_lock:${orgKind}:${orgId}`, 1, new Date(now() + DAY_MS), s);
-  if (await countPending() > assistedLimits.pendingCardBookings()) throw new AssistedLimitError('pending_card_bookings', 1800);
 }

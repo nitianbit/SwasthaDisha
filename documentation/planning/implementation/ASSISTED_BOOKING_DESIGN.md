@@ -972,7 +972,7 @@ The list is configuration. A language shows in a switcher once its catalogue is 
 | D7 | One-word names mask as two letters + "…" | §6.2 |
 | D8 | The patient app shows "Paid by <partner>", not the amount (O3 confirms) | §6.7 |
 | D9 | Spending uses withdrawable top-up money first, oldest lot first | §5.3 |
-| D10 | Abuse and alert thresholds: lookups 120/h, new accounts 30/day, 5 bookings per number per day, 20 cancellations a day stop new bookings, 30% cancel alert, 50% withdraw alert, 10 same-pair bookings a day | §6.2, §8.7 |
+| D10 | Abuse and alert thresholds: lookups 120/h, ~~new accounts 30/day, 5 bookings per number per day, 20 cancellations a day stop new bookings~~ (**removed by owner, 23 Nov**: only the lookup limit refuses; 20 cancellations a day now only raise an alert), 30% cancel alert, 50% withdraw alert, 10 same-pair bookings a day | §6.2, §8.7 |
 | D11 | Patients cannot reschedule partner-paid consultations; the booker can, before start, same doctor and price | §6.7 |
 | D12 | The patient may book the free follow-up from an assisted consultation in the app; partners may not (S3) | §6.7 |
 | D13 | Instant requests have no partner cancellation after acceptance | §7.7 |
@@ -1150,7 +1150,7 @@ Where an earlier section and this one differ, this one wins.
 | **P4** | Names, as set out in §17.4. **Narrowed after review (§19.7 item 2), ASSUMED, awaiting owner confirmation:** the real account name is shown (and searchable) only on a `customer_order` link; a `patient_agreed` link — the pharmacy's own tick — shows the typed name, else the masked holder name |
 | **P5** | **Earnings in 1a.** Completion posts the provider's earning = `split.providerMinor` (provider-borne coupon, cut 0). `assisted.referral` is `null` until phase 4. A no-show earns nothing (§8.6) |
 | **P6** | **Views.** The booker view and the generic-read view keep the raw booking field names minus the hidden fields, so the released pharmacy app keeps working (§17.2) |
-| **P7** | **Limits.** A limit hit answers 429 `ASSISTED_LIMIT_REACHED` with the limit's name. At 20 cancellations in a day by one booker, its new bookings are refused for the rest of the IST day; cancellations stay allowed; an alert is raised |
+| **P7** | **Limits.** A limit hit answers 429 `ASSISTED_LIMIT_REACHED` with the limit's name. ~~At 20 cancellations in a day by one booker, its new bookings are refused for the rest of the IST day~~ (**removed by owner, 23 Nov**: the only limit left is the hourly lookup limit, `limit: 'lookups'`); at 20 cancellations a day an alert is raised (alert only) |
 | **P8** | **Admin move and "not mine"**, as set out in §17.5 |
 | **P9** | **Booker reschedule.** The booker may reschedule a consultation before it starts in 1a: same doctor, same price, same slot rules (`rescheduleWithHolds`, `SLOT_NOT_THIS_DOCTOR`, started-slot fence) |
 | **P10** | **Alerts.** They go to admin notifications and the daily reconciliation report. The same booker–doctor pair alerts at 10 bookings a day |
@@ -1615,7 +1615,7 @@ Answers `{ success, data }`. Money is paise.
 | `ASSISTED_ADMIN_TOOLS_ENABLED` | off | "Not mine", admin move and dismiss, wallet freeze (503 when off). Keep it on during a rollback of the booking switch |
 | `ASSISTED_RECONCILIATION_ENABLED` | off | The 02:30 IST daily job. The admin reconciliation route works regardless (read only) |
 | `WALLET_RECHARGE_SWEEP_FROM` | unset | ISO time; pharmacy top-ups created from then on join the payment recovery sweep. Older ones are on the uncredited list |
-| `ASSISTED_LIMIT_LOOKUPS_PER_HOUR` 120, `…_NEW_ACCOUNTS_PER_DAY` 30, `…_BOOKINGS_PER_PHONE_PER_DAY` 5, `…_BOOKER_CANCELLATIONS_PER_DAY` 20, `ASSISTED_ALERT_CANCEL_RATE_PCT` 30, `ASSISTED_ALERT_CANCEL_RATE_MIN` 10, `ASSISTED_ALERT_SAME_PAIR_PER_DAY` 10 | D10 | Thresholds |
+| `ASSISTED_LIMIT_LOOKUPS_PER_HOUR` 120, ~~`…_NEW_ACCOUNTS_PER_DAY` 30, `…_BOOKINGS_PER_PHONE_PER_DAY` 5~~ (removed by owner, 23 Nov; no longer read), `…_BOOKER_CANCELLATIONS_PER_DAY` 20 (alert threshold only since r10g), `ASSISTED_ALERT_CANCEL_RATE_PCT` 30, `ASSISTED_ALERT_CANCEL_RATE_MIN` 10, `ASSISTED_ALERT_SAME_PAIR_PER_DAY` 10 | D10 | Thresholds (only the lookup limit refuses) |
 | `WALLET_WITHDRAWALS_ENABLED` | off | Not used in 1a (withdrawals are phase 4) |
 
 ### 19.5 Migrations and deploy order
@@ -2207,7 +2207,7 @@ other contexts still close a record on a bad signature). Where this section and 
 | # | Finding | Fix | Check |
 |---|---|---|---|
 | 1 (MEDIUM-HIGH, ₹) | A card refund Razorpay kept `pending` used up the 20 attempts with harmless lookups; then nobody looked again, the queue showed it and to-wallet refused it: the refund could be lost | `attempts` now counts REAL failures only (gateway unreachable, outcome unknown, refund mismatch). A refund still pending at Razorpay counts `checks` and is looked up again with back-off (10 min doubling, at most every 12 h) for as long as it stays pending — never given up (`nextCheckAt`). New admin `POST /admin/assisted/card-refunds/:id/recheck` (asks Razorpay now, whatever the back-off or failure count) and `POST …/:id/mark-failed { reason }` (admin tools switch; holds the row, reads Razorpay, refuses 409 `REFUND_AT_GATEWAY` while any refund of that payment is processed or pending there; audited `card_refund.marked_failed`), after which `to-wallet` works. Stuck money adds `cardRefundsPendingOverDays` (`ASSISTED_CARD_REFUND_STUCK_DAYS`, default 7). C11 stays | 1a, 1b, 1c |
-| 2 (MEDIUM) | Unpaid card bookings held doctors' slots for free (30 minutes each, without limit) | At most `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (default 10) card bookings of one booker wait for payment at once: decided in the booking transaction after a per-booker lock row (concurrent creates run one after the other), 429 `ASSISTED_LIMIT_REACHED` `limit: 'pending_card_bookings'`. An unpaid card booking that expires counts as a booker cancellation (P7 daily limit, alert at the threshold) | 2a, 2b |
+| 2 (MEDIUM) | Unpaid card bookings held doctors' slots for free (30 minutes each, without limit) | **Removed by owner, 23 Nov (r10g):** the cap and the per-booker lock row are gone; an unpaid expiry still counts toward the cancellation alert. *As built in r10b:* At most `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (default 10) card bookings of one booker wait for payment at once: decided in the booking transaction after a per-booker lock row (concurrent creates run one after the other), 429 `ASSISTED_LIMIT_REACHED` `limit: 'pending_card_bookings'`. An unpaid card booking that expires counts as a booker cancellation (P7 daily limit, alert at the threshold) | 2a, 2b |
 | 3 (MEDIUM) | The patient and the doctor saw card bookings never paid, with "Paid by" | A card booking never confirmed (`lifecycle.confirmed` absent: waiting for payment, or expired / cancelled before it) is the booker's alone: left out of the patient's and the doctor's lists (generic `/bookings` lists by query, the specialist portal's appointment list and patient history), 404 on their reads (`/bookings/:id`, portal appointment, status, prescription), on the patient's cancel, notes edit and "not mine", and on a doctor's cancel. `paidBy` is null unless paid. Once its payment confirms it, it is theirs (and stays so if cancelled later) | 3 |
 | 4 (LOW-MEDIUM, ₹) | to-wallet did not ask Razorpay first | Before crediting, Razorpay's refunds of the payment are read: any processed or pending one → 409 `REFUND_AT_GATEWAY` (502 `GATEWAY_LOOKUP_FAILED` when Razorpay cannot be asked) | 4 |
 | 5 (LOW-MEDIUM) | A crash between the confirmation and its follow-up (Meet, reminders, notices) left it undone, and a later call even returned the capture as late | The record is marked processed only after the follow-up; a record that already confirmed its booking is recognised as such and only finishes the follow-up (verify, reconcile, recovery sweep). The booking CAS alone confirms exactly once | 5 |
@@ -2223,7 +2223,7 @@ other contexts still close a record on a bad signature). Where this section and 
 `REFUND_AT_GATEWAY` and 502 `GATEWAY_LOOKUP_FAILED`; the assisted chargeback adds 409 `PAYMENT_NOT_CAPTURED`; stuck money
 adds `cardRefundsPendingOverDays` and `cardChargebacks`. A refund row's `attempts` now counts failures only.
 
-**Switches added:** `ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (10), `ASSISTED_CARD_REFUND_STUCK_DAYS` (7). No migration, no
+**Switches added:** ~~`ASSISTED_LIMIT_PENDING_CARD_BOOKINGS` (10)~~ (removed by owner, 23 Nov), `ASSISTED_CARD_REFUND_STUCK_DAYS` (7). No migration, no
 new index (the two new refund-row fields are unindexed).
 
 **r10c (read-only additions for the web, same branch):** checks 9–10 of `test/assisted/r10b-phase1b-fixes.integration.ts`
@@ -2275,6 +2275,37 @@ Branch `m0/r10f-card-last` from `d1ed6d24` (origin/stage). Local commits only. C
 | 2 (LOW) | A card dispute could only be recorded against the booking's own payment, not an extra capture | `POST /admin/assisted-payments/:paymentId/chargeback` also takes an extra capture's Razorpay payment id: flag only (C4, owner: no debit, no freeze): `chargebackAt` on that capture's refund row (once), its unsent refund held (`manual_review`, never sent or credited to the wallet), alert `booking_card_chargeback`, audit. The answer adds `extraCapture: true` and `razorpayPaymentId`; stuck money's `cardChargebacks` lists such rows with `extraCapture: true`. An unknown id is 404 `PAYMENT_NOT_FOUND` as before | 2 |
 | 3 | Rollback | §23.4: never below r10e once an `extra_capture` row exists | — |
 | 4 | Deploy wording | §23.6 r10e deploy note corrected (`DUPLICATE_RESOURCE` until sync-indexes) | — |
+
+### 23.8 Meet retry; booking limits removed (r10g, 2026-11-23)
+
+Branch `m0/r10g-meet-retry-limits` from `f81c8f3b` (origin/stage). Local commits only. Checks:
+`test/assisted/r10g-meet-retry.integration.ts` (5 checks; all fail on `f81c8f3b`), the changed limit check of
+`test/assisted/phase1a.integration.ts` and checks 2a / 2b of `test/assisted/r10b-phase1b-fixes.integration.ts`.
+
+| # | Change |
+|---|---|
+| 1 (M1 of the r10f review) | **Meet retry** (`meet/retry.ts`, scheduler every 5 minutes, started in `index.ts`). It covers EVERY paid, confirmed consultation or second opinion in `video` or `call` mode starting within the next 48 hours and not ended (start + 60 minutes): customer bookings, clinic online visits, wallet- and card-paid assisted bookings alike — the production gap for customer bookings is covered too. Only bookings whose `virtualMeeting` is missing (15 minutes after the confirmation, so the payment follow-up keeps its own first attempt) or `failed`; an active link is never touched. One claimer per booking (`meetRetry.leaseUntil`, 5 minutes, on the wall clock); each attempt's Google calls are bounded by `ASSISTED_MEET_TIMEOUT_MS` (default 60 s, at most half the lease). A failed attempt backs off (5 minutes doubling, at most 2 hours; `meetRetry.attempts`, `nextAt`); after 3 failed attempts one alert `meet_link_missing` is raised (assisted alerts list). A failure whose cause is permanent (patient without email on a customer booking, Google not configured) keeps retrying with back-off and is alerted once. Stuck money adds `upcomingMeetsMissing` (all such bookings of the next 48 hours, with attempts). New booking field `meetRetry` (written only by the retry) |
+| 2 (owner, 23 Nov) | **Booking limits removed** except the hourly lookup limit (`ASSISTED_LIMIT_LOOKUPS_PER_HOUR`, 120). Gone: bookings per phone (5/day), new accounts (30/day), the stop after 20 booker cancellations a day, and pending card bookings (10, with its per-booker lock row — nothing else relied on it). The cancellation count (booker cancels and unpaid expiries) and the same-pair count stay, as alerts only. 429 `ASSISTED_LIMIT_REACHED` now only carries `limit: 'lookups'` |
+
+### 23.9 Meet retry review fixes (r10h, 2026-11-25)
+
+Branch `m0/r10h-meet-retry-fixes` from `4d2b53a9` (r10g). Local commits only. Checks: 6–11 of
+`test/assisted/r10g-meet-retry.integration.ts` (now 10 checks; checks 6–10 fail on `4d2b53a9`). Where this section and
+§23.8 differ, this one wins.
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 (must) | Google could create an event without a Meet link (conference pending or refused, or a create whose answer was lost); the failure record kept no event id, so every retry created a NEW event and invited everyone again (27 invites in 48 h in the probe) | `syncBookingMeet` keeps the event it made on the failure record (`calendarEventId`) and marks every event it creates with `extendedProperties.private.jansetuBookingId`. The retry calls it with `reuseExisting`: a failed record naming an event re-reads that event (GET: no update, nobody emailed; a deleted one is replaced once); a record without one looks the booking's own event up first and creates only when Google has none. Ordinary callers (payment follow-up, reschedule) are unchanged | 6 |
+| 2 (must) | The retry invited a doctor who is no longer verified or active (S5), with the patient's name and concern | Skipped with the existing S5 check `doctorExistsIneligible` (no claim, no Google call); retried once the doctor is eligible again | 7 |
+| 3 (must) | Ended-but-confirmed rows filled every 100-row batch (earliest first) and starved upcoming bookings; stuck money had the same blind spot | The query starts today (India time); the whole due set is scanned and only the attempts are capped (100 a run); a row found ended (start + 60 minutes, or no start) is marked with that appointment (`meetRetry.endedFor: '<date> <time>'`) and left out of the query until it moves to another slot. Stuck money scans the whole set too | 8 |
+| 4 | Failures no retry can fix were retried for 48 h | `permanentMeetFailure` (meet service: patient or doctor without email, Meet not configured, slot missing) closes the booking after the attempt (`closed: 'permanent'`, `closedReason`). Alerts: at most one per booking — **none for a customer booking whose patient has no email** (DECIDED here: phone-only customers are common and the gap is expected; the booking is still listed in stuck money with `closedReason: 'patient_email_missing'`); "Meet not configured" raises one alert a day for all bookings | 9 |
+| 5 | A failure write bumped `updatedAt` (a booker's `expectedUpdatedAt` then failed with 409 `BOOKING_CHANGED`) | Every failure record `syncBookingMeet` writes uses `timestamps: false`; the retry's own writes never touched it | 10–11 |
+| 6 | `meetRetry.attempts` kept counting after a success | Reset to 0 on success | 10–11 |
+
+**Seen, not changed (from the review, later):** a reschedule or cancel in the same second as a retry (the final
+unconditional write in `syncBookingMeet`); `meetRetry` in the patient and doctor views. Also: a create aborted by the
+time limit after Google made the event is now found by the next retry (`jansetuBookingId`), but the first, ordinary
+(non-retry) attempt never looks up before creating.
 
 ## 24. Phase 2 build specification (labs) (r11, 2026-11-23)
 

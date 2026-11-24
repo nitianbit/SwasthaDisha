@@ -675,12 +675,12 @@ async function main() {
     });
 
     // ───────────────────────── Limits (P7) ─────────────────────────
-    await check('limits: bookings per phone a day, new accounts a day, and 20 booker cancellations stop new bookings (cancels still allowed)', async () => {
+    await check('limits removed (r10g, owner 23 Nov): a second booking of one phone, new accounts past 1 and bookings after 2 booker cancellations all go through; the cancellation alert stays', async () => {
       process.env.ASSISTED_LIMIT_BOOKINGS_PER_PHONE_PER_DAY = '1';
       try {
         await expect('P', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000601', patient: { relation: 'self', name: 'Once Only' } }));
-        const hit = await expect('Q', 'POST', '/pharmacy-assisted/consultations', 429, consult(await futureSlot(), { phone: '9600000601', patient: { relation: 'self', name: 'Once Only' } }), 'ASSISTED_LIMIT_REACHED');
-        assert.equal(hit.json.limit, 'bookings_per_phone', 'across bookers');
+        await adminTopup(Q, 1000);
+        await expect('Q', 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000601', patient: { relation: 'self', name: 'Once Only' } }));
       } finally { process.env.ASSISTED_LIMIT_BOOKINGS_PER_PHONE_PER_DAY = '1000'; }
       process.env.ASSISTED_LIMIT_NEW_ACCOUNTS_PER_DAY = '1';
       try {
@@ -690,14 +690,12 @@ async function main() {
         (tokens as any).T = sign({ _id: T, pharmacyId: T, userType: 'pharmacy' });
         await adminTopup(T, 2000);
         await expect('T' as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000701', patient: { relation: 'self', name: 'New One' } }));
-        const hit = await expect('T' as Who, 'POST', '/pharmacy-assisted/consultations', 429, consult(await futureSlot(), { phone: '9600000702', patient: { relation: 'self', name: 'New Two' } }), 'ASSISTED_LIMIT_REACHED');
-        assert.equal(hit.json.limit, 'new_accounts');
-        assert.equal(await UserModel.countDocuments({ phone: '9600000702' }), 0, 'no account opened over the limit');
-        await expect('T' as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000202', patient: { relation: 'self', name: 'Bikash' } }));
+        await expect('T' as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000702', patient: { relation: 'self', name: 'New Two' } }));
+        assert.equal(await UserModel.countDocuments({ phone: '9600000702' }), 1, 'the second new account is opened');
       } finally { delete process.env.ASSISTED_LIMIT_NEW_ACCOUNTS_PER_DAY; }
       process.env.ASSISTED_LIMIT_BOOKER_CANCELLATIONS_PER_DAY = '2';
       try {
-        // P already cancelled bookings today as the booker; take a fresh booker for an exact count.
+        // A fresh booker for an exact count.
         const V = oid();
         await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(V), name: 'Cancel Pharmacy', phone: '9700000213', isActive: true, isVerified: true } as never);
         (tokens as any).V = sign({ _id: V, pharmacyId: V, userType: 'pharmacy' });
@@ -706,9 +704,8 @@ async function main() {
         for (let i = 0; i < 3; i++) ids.push((await expect('V' as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: `96000008${i}0`, patient: { relation: 'self', name: `C ${i}` } }))).json.data.booking._id);
         await expect('V' as Who, 'POST', `/pharmacy-assisted/bookings/${ids[0]}/cancel`, 200, {});
         await expect('V' as Who, 'POST', `/pharmacy-assisted/bookings/${ids[1]}/cancel`, 200, {});
-        const hit = await expect('V' as Who, 'POST', '/pharmacy-assisted/consultations', 429, consult(await futureSlot(), { phone: '9600000890', patient: { relation: 'self', name: 'C x' } }), 'ASSISTED_LIMIT_REACHED');
-        assert.equal(hit.json.limit, 'booker_cancellations');
-        await expect('V' as Who, 'POST', `/pharmacy-assisted/bookings/${ids[2]}/cancel`, 200, {}); // cancellations stay allowed
+        await expect('V' as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000890', patient: { relation: 'self', name: 'C x' } }));
+        await expect('V' as Who, 'POST', `/pharmacy-assisted/bookings/${ids[2]}/cancel`, 200, {});
         assert.equal(await assistedModels.AssistedAlertModel.countDocuments({ kind: 'booker_cancellations', bookerId: V }), 1, 'an alert is raised once');
       } finally { delete process.env.ASSISTED_LIMIT_BOOKER_CANCELLATIONS_PER_DAY; }
     });

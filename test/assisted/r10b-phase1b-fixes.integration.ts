@@ -362,24 +362,17 @@ async function main() {
     });
 
     // ───────────────────────── 2. Free slot-holding ─────────────────────────
-    await check('2a: at most N card bookings of one booker wait for payment at once (also under concurrency)', async () => {
+    await check('2a (limit removed by r10g, owner 23 Nov): unpaid card bookings of one booker are not capped, also under concurrency', async () => {
       process.env.ASSISTED_LIMIT_PENDING_CARD_BOOKINGS = '2';
       const Q = await newPharmacy('Cap Medicals', '9700001011');
       try {
         const r = await Promise.all([1, 2, 3, 4].map(async () => call(Q, 'POST', '/pharmacy-assisted/consultations', consult(await futureSlot()))));
-        assert.deepEqual(r.map((x) => x.status).sort(), [201, 201, 429, 429], r.map((x) => x.text.slice(0, 120)).join(' | '));
-        const refused = r.find((x) => x.status === 429)!;
-        assert.equal(refused.json.code, 'ASSISTED_LIMIT_REACHED');
-        assert.equal(refused.json.limit, 'pending_card_bookings');
-        assert.equal(await BookingModel.countDocuments({ 'assisted.bookedBy.id': Q }), 2, 'no seat held by the refused ones');
-        // Paying one frees a place.
-        const ok = r.find((x) => x.status === 201)!;
-        await expect(Q, 'POST', '/payments/verify', 200, capture(ok.json.data));
-        await expect(Q, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot()));
+        assert.deepEqual(r.map((x) => x.status), [201, 201, 201, 201], r.map((x) => x.text.slice(0, 120)).join(' | '));
+        assert.equal(await BookingModel.countDocuments({ 'assisted.bookedBy.id': Q, status: 'pending' }), 4);
       } finally { delete process.env.ASSISTED_LIMIT_PENDING_CARD_BOOKINGS; }
     });
 
-    await check('2b: an unpaid card booking left to expire counts toward the booker\'s daily cancellation limit', async () => {
+    await check('2b: an unpaid card booking left to expire counts as a booker cancellation (alert only since r10g: the next booking goes through)', async () => {
       process.env.ASSISTED_LIMIT_BOOKER_CANCELLATIONS_PER_DAY = '1';
       const Q = await newPharmacy('Expire Medicals', '9700001012');
       try {
@@ -387,9 +380,8 @@ async function main() {
         await BookingModel.collection.updateOne({ _id: new Types.ObjectId(r.json.data.booking._id) }, { $set: { createdAt: new Date(Date.now() - 40 * MIN) } });
         await expire();
         assert.equal((await bookingOf(r.json.data.booking._id)).status, 'cancelled');
-        const again = await call(Q, 'POST', '/pharmacy-assisted/consultations', consult(await futureSlot()));
-        assert.equal(again.status, 429, again.text.slice(0, 200));
-        assert.equal(again.json.limit, 'booker_cancellations');
+        assert.equal(await AssistedAlertModel.countDocuments({ kind: 'booker_cancellations', bookerId: Q }), 1, 'counted: the alert is raised');
+        await expect(Q, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot()));
       } finally { delete process.env.ASSISTED_LIMIT_BOOKER_CANCELLATIONS_PER_DAY; }
     });
 
