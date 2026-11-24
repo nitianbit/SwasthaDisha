@@ -540,6 +540,9 @@ const bookingSchema = new Schema<IBooking>(
     virtualMeeting: {
       type: virtualMeetingSchema,
     },
+    // r10g: the Meet retry of a paid call/video booking left without a link (meet/retry.ts): attempts, next try, the
+    // retry lease, when it was alerted and when a link was made. Written only by that retry.
+    meetRetry: { type: Schema.Types.Mixed, default: undefined },
   },
   {
     timestamps: true,
