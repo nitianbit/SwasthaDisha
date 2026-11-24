@@ -4331,3 +4331,12 @@ It is an alert only. The places:
    consultations?**
    Recommended: both, as the design says (§7.4). Many rural doctors see patients outside the app. The same masked
    lookup, "patient agreed" tick and 120-an-hour lookup limit apply as for pharmacies (DR6).
+
+**Decided 25 Nov (coordinator, owner asleep; reversible).** In line with the owner's earlier choices:
+
+| Q | Decision | Effect on the spec |
+|---|---|---|
+| 1 | The account holder allows or denies in the Jansetu app now; the SMS code comes in phase 5 | §25.9.4 as written (DR21) |
+| 2 | "Consult now" is paid from the wallet only | §25.8 as written (DR18) |
+| 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays |
+| 4 | A doctor books lab tests for patients of its own consultations AND for walk-ins by phone | §25.5.3 as written (DR6) |
