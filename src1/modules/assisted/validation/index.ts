@@ -139,6 +139,13 @@ export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().ma
   /** r14: where a card-paid lab booking's money goes back (default `card`); ignored for wallet-paid bookings. */
   refundTo: Joi.string().valid('card', 'wallet') });
 export const labAcceptRescheduleSchema = Joi.object({ version: Joi.number().integer().min(0).required() });
+/**
+ * r26 (§25.5.3): a doctor's lab booking — 2a's body with exactly one patient source: the doctor's own consultation
+ * (`fromBookingId` + `typedName`), or a walk-in by phone (`phone` + `patient` [+ `holderName`]). Wallet only (card is 3c).
+ */
+export const doctorLabBookingSchema = labBookingSchema.keys({
+  phone: mobile, patient: consultationSchema.extract('patient').optional(), fromBookingId: objectId, typedName: personName,
+}).xor('phone', 'fromBookingId').with('phone', 'patient').with('fromBookingId', 'typedName').without('fromBookingId', ['patient', 'holderName']);
 
 // ── r17 (§25.8.3): pharmacy → instant "Consult now", wallet-paid ──
 const instantMode = Joi.string().valid('video', 'call'); // DR19: never chat

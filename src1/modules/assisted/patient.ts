@@ -84,9 +84,12 @@ export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: strin
 /**
  * r12 (§17.4 for labs): the lab's link to the account holder, with consent and the FIRST typed name (never overwritten).
  * An upsert: concurrent first bookings of one patient conflict inside their transactions and are retried, never duplicated.
+ * r26: the one `assisted_links` writer for doctors too — `{ bookerKind: 'doctor', bookerId }` instead of `partnerId`.
  */
-export async function linkLabIn(l: { partnerId: string; userId: string; typedName: string; recordedById: string; at: Date }, s: ClientSession): Promise<void> {
-  const key = { bookerKind: 'lab' as const, bookerId: lower(l.partnerId), userId: lower(l.userId) };
+export async function linkLabIn(l: ({ partnerId: string } | { bookerKind: 'lab' | 'doctor'; bookerId: string }) & { userId: string; typedName: string;
+  recordedById: string; at: Date }, s: ClientSession): Promise<void> {
+  const key = 'bookerKind' in l ? { bookerKind: l.bookerKind, bookerId: lower(l.bookerId), userId: lower(l.userId) }
+    : { bookerKind: 'lab' as const, bookerId: lower(l.partnerId), userId: lower(l.userId) };
   await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: l.at, consentRecordedById: l.recordedById,
     ...(l.typedName ? { typedName: l.typedName } : {}) } }, { upsert: true, session: s });
   if (l.typedName) {

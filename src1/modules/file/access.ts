@@ -187,6 +187,14 @@ async function canReadPartnerLabReport(r: Reader, bookingId: string, released: b
     if (!bookerReportWindowOpen(b as never)) return false;
     return isOperationalPharmacy(pharmacyOf(r));
   }
+  // r26 (§25.5.5, owner decision 2): the doctor that BOOKED it reads the released report for 90 days from the first
+  // release while it is verified and active; a doctor that only recommended the tests never does (the uniform 404).
+  if (r.userType === 'specialist') {
+    const by = (b as { assisted?: { bookedBy?: { kind?: string; id?: string } } }).assisted?.bookedBy;
+    if (!released || by?.kind !== 'doctor' || id(by.id).toLowerCase() !== specialistOf(r).toLowerCase()) return false;
+    if (!bookerReportWindowOpen(b as never)) return false;
+    return doctorIsEligible(specialistOf(r));
+  }
   return partnerMemberMayRead(r, b, released
     ? ['reports.upload', 'reports.release', 'bookings.view', 'bookings.manage']
     : ['reports.upload', 'reports.release']);

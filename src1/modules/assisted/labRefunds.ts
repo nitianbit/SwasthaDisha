@@ -1,7 +1,6 @@
 import { ClientSession, Types } from 'mongoose';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
-import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
+import { bookerEntryLotsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { reverseRedemptionIn, settleCardFundingIn } from '@/modules/assisted/refunds';
 import type { AssistedRefundRow } from '@/modules/assisted/types';
 
@@ -40,13 +39,14 @@ export async function settleAssistedLabFundingIn(b: IPartnerLabBooking, p: { cau
     await reverseRedemptionIn('lab_booking', id, s);
     const already = (a.funding.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
     const budget = Number(a.funding.amountMinor || 0) - already;
-    if (budget > 0 && a.funding.payerKind === 'pharmacy') {
-      const debit = a.funding.walletEntryId && Types.ObjectId.isValid(a.funding.walletEntryId)
-        ? await PharmacyWalletTransactionModel.findById(a.funding.walletEntryId).select({ lotAllocations: 1 }).session(s).lean() : null;
-      const posted = await postPharmacyMovementIn({
-        pharmacyId: a.funding.payerId, kind: 'refund_credit', amountPaise: budget, operationKey: labRefundKey(id),
+    // r26 (§25.5.2): every payer through the one dispatcher (a doctor-paid row used to be marked refunded with no credit).
+    if (budget > 0) {
+      const lots = already === 0 && a.funding.walletEntryId && Types.ObjectId.isValid(a.funding.walletEntryId)
+        ? await bookerEntryLotsIn(a.funding.payerKind, a.funding.walletEntryId, s) : [];
+      const posted = await postBookerMovementIn({
+        payerKind: a.funding.payerKind, payerId: a.funding.payerId, kind: 'refund_credit', amountPaise: budget, operationKey: labRefundKey(id),
         referenceType: 'assisted_lab_booking', referenceId: `${id}:refund`, description: 'Refund of an assisted lab booking',
-        ...(already === 0 && debit?.lotAllocations?.length ? { restore: debit.lotAllocations } : {}),
+        ...(lots.length ? { restore: lots } : {}),
       }, s);
       refundedMinor = budget;
       const attemptId = new Types.ObjectId().toHexString();
