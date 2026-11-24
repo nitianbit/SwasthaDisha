@@ -44,7 +44,7 @@ import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultatio
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
-  cleanName, countPhoneUse, linkAssistedIn, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
+  cleanName, countPhoneUse, linkLabIn, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput, type PreparedPatient,
 } from '@/modules/assisted/patient';
 import type { AssistedBlock } from '@/modules/assisted/types';
@@ -101,7 +101,6 @@ export interface AssistedLabInput {
   couponCode?: string;
   /** Price fence (§6.3): what the pharmacy pays, after the coupon, in paise. */
   acceptedPriceMinor: number;
-  notes?: string;
   paymentMethod: 'wallet' | 'razorpay';
   /** r26 (§25.5.3, doctors only): the patient of the doctor's own consultation, with the name the doctor confirmed. */
   fromBookingId?: string;
@@ -122,9 +121,12 @@ const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: c
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
 const uniqueIds = (ids: string[]) => [...new Set((ids ?? []).map(lower))].sort();
 
-/** The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. */
+/**
+ * The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. r11b: only the
+ * desk takes notes; a pharmacy request has none (`notes: null`, as 2a hashed it, so earlier keys still replay).
+ */
 export function labRequestContent(input: Pick<AssistedLabInput, 'phone' | 'patient' | 'holderName' | 'branchId' | 'visitMode' | 'itemIds' | 'address'
-  | 'preferredLanguage' | 'notes'> & { slotId?: string }) {
+  | 'preferredLanguage'> & { slotId?: string; notes?: string }) {
   return {
     phone: canonicalMobile(input.phone) ?? input.phone,
     patient: patientIdentity(input.patient),
@@ -454,7 +456,7 @@ export async function createAssistedLabBooking(booker: LabBooker, input: Assiste
       await claimRequestKey(labKeyScope(booker), input.requestKey, s);
       await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
       if (booker.kind === 'pharmacy') await linkPharmacyCustomerIn(booker, customer._id, holderTyped, s);
-      else await linkAssistedIn({ kind: booker.kind, id: bookerId, actorId: bookerId }, customer._id, holderTyped, now, s);
+      else await linkLabIn({ bookerKind: booker.kind, bookerId, userId: customer._id, typedName: holderTyped, recordedById: bookerId, at: now }, s);
       // P10, alert only: the same booker–lab pair at N bookings a day.
       await countPairBookingIn(booker.kind, bookerId, `lab:${lower(partner!._id)}`, s);
       if (coupon) {

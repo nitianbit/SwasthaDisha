@@ -1,4 +1,3 @@
-import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -10,6 +9,7 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import type { PharmacyActor } from '@/modules/assisted/consultations';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { hitLookup } from '@/modules/assisted/limits';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 
 /**
  * r11 (§24.3): the patient steps every assisted create shares — the family member of the phone's account, the account
@@ -64,22 +64,6 @@ export async function openOrPrepareAccountIn(a: { phone: string; newUserId: stri
     ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
 }
 
-/**
- * §17.4 for labs and doctors (r12; r26 shared): the booker's `assisted_links` row to the account holder, with consent and
- * the FIRST typed name (never overwritten). Upsert: concurrent first bookings of one patient conflict inside their
- * transactions and are retried, never duplicated.
- */
-export async function linkAssistedIn(booker: { kind: 'lab' | 'doctor'; id: string; actorId: string }, userId: string, typedName: string, now: Date,
-  s: ClientSession): Promise<void> {
-  const key = { bookerKind: booker.kind, bookerId: lower(booker.id), userId: lower(userId) };
-  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: now, consentRecordedById: lower(booker.actorId),
-    ...(typedName ? { typedName } : {}) } }, { upsert: true, session: s });
-  if (typedName) {
-    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
-      { $set: { typedName } }, { session: s });
-  }
-}
-
 /** §17.4 / S3: the pharmacy's link to the account holder, with consent and the first typed name. */
 export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: string, typedName: string, s: ClientSession): Promise<void> {
   const pid = new Types.ObjectId(actor.pharmacyId);
@@ -95,6 +79,23 @@ export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: strin
   if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
   if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
   if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
+}
+
+/**
+ * r12 (§17.4 for labs): the lab's link to the account holder, with consent and the FIRST typed name (never overwritten).
+ * An upsert: concurrent first bookings of one patient conflict inside their transactions and are retried, never duplicated.
+ * r26: the one `assisted_links` writer for doctors too — `{ bookerKind: 'doctor', bookerId }` instead of `partnerId`.
+ */
+export async function linkLabIn(l: ({ partnerId: string } | { bookerKind: 'lab' | 'doctor'; bookerId: string }) & { userId: string; typedName: string;
+  recordedById: string; at: Date }, s: ClientSession): Promise<void> {
+  const key = 'bookerKind' in l ? { bookerKind: l.bookerKind, bookerId: lower(l.bookerId), userId: lower(l.userId) }
+    : { bookerKind: 'lab' as const, bookerId: lower(l.partnerId), userId: lower(l.userId) };
+  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: l.at, consentRecordedById: l.recordedById,
+    ...(l.typedName ? { typedName: l.typedName } : {}) } }, { upsert: true, session: s });
+  if (l.typedName) {
+    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
+      { $set: { typedName: l.typedName } }, { session: s });
+  }
 }
 
 /** §5.7: the redemption row and the guarded total count, in the booking transaction (r11: any booking and payer kind). */

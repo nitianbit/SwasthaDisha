@@ -22,5 +22,6 @@ export const deskBookingSchema = Joi.object({
   address: shared('address'),
   collector: assignCollectorSchema.fork(['expectedVersion'], (x) => x.forbidden()),
   acceptedTotalMinor: Joi.number().integer().min(0).required(),
-  notes: shared('notes'),
+  // The desk keeps its notes (on `desk.notes`); r11b took them off the pharmacy create, so the rule is its own here.
+  notes: Joi.string().trim().max(2000),
 });

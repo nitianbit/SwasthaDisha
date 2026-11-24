@@ -390,7 +390,7 @@ async function main() {
       const byKey = await expect('P', 'GET', `${PA}/lab-bookings/by-key/${first.body.requestKey}`, 200);
       assert.equal(byKey.json.data.state, 'used');
       assert.equal(byKey.json.data.payment.razorpayOrderId, first.data.payment.razorpayOrderId);
-      await expect('P', 'POST', `${PA}/lab-bookings`, 409, { ...first.body, notes: 'other' }, 'IDEMPOTENCY_KEY_REUSED');
+      await expect('P', 'POST', `${PA}/lab-bookings`, 409, { ...first.body, preferredLanguage: 'hi' }, 'IDEMPOTENCY_KEY_REUSED');
       assert.equal(gateway.orders.length, orders0, 'no second order');
       assert.equal(await PaymentRecordModel.countDocuments({ contextId: first.id }), 1);
       const v = (await expect('P', 'GET', `${PA}/lab-bookings/${first.id}`, 200)).json.data;
@@ -428,6 +428,7 @@ async function main() {
       await expect('X', 'POST', `/api/v1/lab-bookings/${id}/cancel`, 404, {}, 'LAB_BOOKING_NOT_FOUND');
       await expect('X', 'POST', `/api/v1/lab-bookings/${id}/pay`, 404, {}, 'LAB_BOOKING_NOT_FOUND');
       await expect('X', 'POST', `/api/v1/lab-bookings/${id}/not-mine`, 404, {}, 'LAB_BOOKING_NOT_FOUND');
+      await expect('X', 'POST', `/api/v1/lab-bookings/${id}/accept-reschedule`, 404, { version: 1 }, 'LAB_BOOKING_NOT_FOUND');
       assert.ok(!(await expect('LAB', 'GET', `${WS}/lab-bookings?branchId=${A}`, 200)).json.data.some((x: any) => x._id === id));
       await expect('LAB', 'GET', `${WS}/lab-bookings/${id}`, 404, undefined, 'LAB_BOOKING_NOT_FOUND');
       await expect('LAB', 'POST', `${WS}/lab-bookings/${id}/reject`, 404, { reason: 'not today' }, 'LAB_BOOKING_NOT_FOUND');

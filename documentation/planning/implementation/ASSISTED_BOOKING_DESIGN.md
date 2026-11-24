@@ -2298,7 +2298,7 @@ Branch `m0/r10h-meet-retry-fixes` from `4d2b53a9` (r10g). Local commits only. Ch
 | 1 (must) | Google could create an event without a Meet link (conference pending or refused, or a create whose answer was lost); the failure record kept no event id, so every retry created a NEW event and invited everyone again (27 invites in 48 h in the probe) | `syncBookingMeet` keeps the event it made on the failure record (`calendarEventId`) and marks every event it creates with `extendedProperties.private.jansetuBookingId`. The retry calls it with `reuseExisting`: a failed record naming an event re-reads that event (GET: no update, nobody emailed; a deleted one is replaced once); a record without one looks the booking's own event up first and creates only when Google has none. Ordinary callers (payment follow-up, reschedule) are unchanged | 6 |
 | 2 (must) | The retry invited a doctor who is no longer verified or active (S5), with the patient's name and concern | Skipped with the existing S5 check `doctorExistsIneligible` (no claim, no Google call); retried once the doctor is eligible again | 7 |
 | 3 (must) | Ended-but-confirmed rows filled every 100-row batch (earliest first) and starved upcoming bookings; stuck money had the same blind spot | The query starts today (India time); the whole due set is scanned and only the attempts are capped (100 a run); a row found ended (start + 60 minutes, or no start) is marked with that appointment (`meetRetry.endedFor: '<date> <time>'`) and left out of the query until it moves to another slot. Stuck money scans the whole set too | 8 |
-| 4 | Failures no retry can fix were retried for 48 h | `permanentMeetFailure` (meet service: patient or doctor without email, Meet not configured, slot missing) closes the booking after the attempt (`closed: 'permanent'`, `closedReason`). Alerts: at most one per booking — **none for a customer booking whose patient has no email** (DECIDED here: phone-only customers are common and the gap is expected; the booking is still listed in stuck money with `closedReason: 'patient_email_missing'`); "Meet not configured" raises one alert a day for all bookings | 9 |
+| 4 | Failures no retry can fix were retried for 48 h | `permanentMeetFailure` (meet service: patient or doctor without email, Meet not configured, slot missing) closes the booking after the attempt (`closed: 'permanent'`, `closedReason`). Alerts: at most one per booking — **none for a customer booking whose patient has no email** (DECIDED here: phone-only customers are common and the gap is expected; the booking is still listed in stuck money with `closedReason: 'patient_email_missing'`); "Meet not configured" raises one alert a day for all bookings. *Changed by §23.10 (r10i): "not configured" closes nothing* | 9 |
 | 5 | A failure write bumped `updatedAt` (a booker's `expectedUpdatedAt` then failed with 409 `BOOKING_CHANGED`) | Every failure record `syncBookingMeet` writes uses `timestamps: false`; the retry's own writes never touched it | 10–11 |
 | 6 | `meetRetry.attempts` kept counting after a success | Reset to 0 on success | 10–11 |
 
@@ -2306,6 +2306,19 @@ Branch `m0/r10h-meet-retry-fixes` from `4d2b53a9` (r10g). Local commits only. Ch
 unconditional write in `syncBookingMeet`); `meetRetry` in the patient and doctor views. Also: a create aborted by the
 time limit after Google made the event is now found by the next retry (`jansetuBookingId`), but the first, ordinary
 (non-retry) attempt never looks up before creating.
+
+### 23.10 Meet retry polish (r10i, 2026-11-25)
+
+Branch `m0/r10i-meet-retry-polish` from `a18adba7` (r10h). Local commits only. Checks: 12–15 of
+`test/assisted/r10g-meet-retry.integration.ts` (now 14 checks; 12–15 fail on `a18adba7`). Where this section and §23.9
+differ, this one wins.
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| H3 | A reused event (§23.9 item 1) could still be at an older time — a reschedule whose update to Google failed — and the booking was marked active while the calendar showed the old time | When the retry reuses an event whose start differs from the booking's current appointment, it updates that event to the current time and text (`sendUpdates=all`: telling the attendees is right then). One shared update step in `syncBookingMeet` (the ordinary update path uses it too); an event already at the right time is only read | 13 |
+| H5 | "Meet not configured" closed bookings for good, so restoring the configuration linked nothing | It is no longer a permanent failure: without the configuration a retry run attempts nothing and closes nothing, and raises one `meet_link_missing` alert a day (`detail.permanent: 'meet_not_configured'`); the next run after the configuration is back links the bookings | 12 |
+| 3 | A permanent close stayed after a success or a move | A permanent close holds only for the appointment it was decided on (`meetRetry.closedFor`, compared in the query, so a move to another slot brings the booking back without touching the reschedule code); a success clears `closed`, `closedReason` and `closedFor`. Rows closed by r10h (no `closedFor`) get one more attempt | 14 |
+| 4 | A stored `bookingDate` / `bookingTime` that is not a string made `$concat` fail the whole run and stuck money | The appointment key converts both with `$convert` (`onError`/`onNull`: empty) | 15 |
 
 ## 24. Phase 2 build specification (labs) (r11, 2026-11-23)
 
@@ -3253,7 +3266,7 @@ Check: `test/assisted/r11-phase2a.integration.ts` (26 checks).
 | `GET /api/v1/pharmacy-assisted/labs` | `?visitMode=lab\|home&limit≤100` | `[{ partnerId, name, nearby: 'pincode'\|'city'\|null, branches: [{ branchId, name, address, phone, homeCollection, inLab }] }]` |
 | `GET …/labs/:partnerId/catalogue` | `?visitMode` | `[{ itemId, kind, name, code, description, preparation, sampleType, includes, price, priceMinor, mrpMinor, visitModes, reportTatHours }]`; unknown/unverified lab 404 `LAB_NOT_FOUND` |
 | `GET …/labs/branches/:branchId/slots` | `?visitMode (required)&from=YYYY-MM-DD&days≤14` | `[{ slotId, date, startTime, endTime, seatsLeft }]` (≥ 60 min ahead); 404 `BRANCH_NOT_AVAILABLE` |
-| `POST …/lab-bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, partnerId, branchId, visitMode, slotId, itemIds[1..20], address? (home only: {line1,line2?,city,state?,pincode(6 digits),landmark?}), couponCode?, acceptedPriceMinor, notes?, paymentMethod:'wallet' }` | 201 (replay 200) `{ booking: <booker lab view>, funding: { method:'wallet', amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode }, newAccount, replayed }` |
+| `POST …/lab-bookings` | `{ requestKey, phone, patient ({relation:'self',name} \| {dependentId} \| {relation,name,gender?,dateOfBirth?}), holderName?, consent:{agreed:true,statementVersion,statementLanguage}, preferredLanguage, partnerId, branchId, visitMode, slotId, itemIds[1..20], address? (home only: {line1,line2?,city,state?,pincode(6 digits),landmark?}), couponCode?, acceptedPriceMinor, paymentMethod:'wallet' }` (r11b: no `notes` — it was never stored or shown; a `notes` key is ignored and is not part of the request hash) | 201 (replay 200) `{ booking: <booker lab view>, funding: { method:'wallet', amountMinor, state, walletEntryId }, split: { listMinor, discountMinor, couponCode }, newAccount, replayed }` |
 | `GET …/lab-bookings` | `?status&from&to (slot date)&cursor&limit≤50` | `[booker lab view]`, top-level `pagination: { total, nextCursor }` (newest first; cursor `<ms>_<id>`) |
 | `GET …/lab-bookings/:id` | — | booker lab view; any other booking 404 `LAB_BOOKING_NOT_FOUND` |
 | `GET …/lab-bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | `{ state:'used', booking } \| { state:'abandoned' } \| { state:'unknown' }` |
@@ -3302,7 +3315,7 @@ the 2a helpers were generalised in one place and reused (see C15).
 
 | Area | Where | What |
 |---|---|---|
-| Model | `partners/model/labBooking.ts` | `desk` (typed: `memberId, branchId, requestKey, requestHash, arrivedAt?, consent, preferredLanguage, payAtLab, notes?, newAccount`); `settlement.settlementSystem` `'ledger' \| 'lab_desk'`; `paymentDeadline` required unless `lab_desk`; `slot.walkIn` (seat fields required unless a walk-in); `cancellation.reason: 'desk'`; indexes `{desk.requestKey}` unique partial and `{partnerId, source, createdAt:-1}` |
+| Model | `partners/model/labBooking.ts` | `desk` (typed: `memberId, branchId, requestKey, requestHash, arrivedAt?, consent, preferredLanguage, payAtLab, notes?, newAccount`); `settlement.settlementSystem` `'ledger' \| 'lab_desk'`; `paymentDeadline` required unless `lab_desk`; `slot.walkIn` (seat fields required unless a walk-in); `cancellation.reason: 'desk'`; indexes `{desk.requestKey}` unique partial and (r12b) `{partnerId, source, slot.startsAt, _id}` |
 | Links | `assisted/model/links.ts` (new) | `assisted_links` `{ bookerKind: 'lab'\|'doctor', bookerId, userId, typedName, consent: 'patient_agreed', consentRecordedAt, consentRecordedById }`, unique `{bookerKind, bookerId, userId}`; upserted in the desk transaction with the first typed name, never overwritten |
 | Desk | `assisted/labDesk.ts` (new), `assisted/controller/phase2c.ts`, `assisted/routes/labDesk.ts`, `assisted/validation/labDesk.ts` | lookup; create (walk-in, lab visit on a slot, home collection) in the §24.3 order and ONE transaction; by-key / abandon; desk cancel. Registered inside `registerWorkspaceRoutes`, so members and the admin mirror both get it |
 | Guards (§5.5) | `partners/services/labBookings.ts` | pay-again / wallet / gateway on a desk row → 409 `PAY_AT_LAB` (`retryPayment` and `resume`); the expiry sweep leaves out `settlementSystem: 'lab_desk'`; `postEarning` returns unless `ledger` (so no payout system ever sees a desk row); every cancel of a desk row (patient, desk, lab reject, admin) moves no money, keeps `paymentStatus: 'pending'` and releases the seat once (none for a walk-in); walk-ins: `no-show` 409 `WALK_IN_ARRIVED`, reschedule 409 `WALK_IN_NOT_RESCHEDULABLE`, `visit` at once |
@@ -3325,7 +3338,7 @@ Check: `test/assisted/r12-phase2c.integration.ts` (24 checks); the 2a suite (26)
 | C3 | No new-account count (§24.6.3 `countNewAccountIn`); lookups and every non-replay create count against the hourly lookup limit, audited with ids only | owner, 23 Nov |
 | C4 | A walk-in stores `slot.date` / `startTime` (IST arrival) for display; `slotId` / `endTime` absent; `desk.arrivedAt` = `startsAt` | readers show a time |
 | C5 | Desk cancel writes `cancellation.reason: 'desk'`; a lab reject on a desk row also works and moves no money | the existing steps stay valid |
-| C6 | The patient cancels a desk row any time while `confirmed` (no 2 h window, also after a moved no-show); "not mine" stays for partner-paid rows (a desk row answers 409 `NOT_ASSISTED_BOOKING`) | nothing to refund; the patient can cancel |
+| C6 | The patient cancels a desk row any time while `confirmed` (no 2 h window, also after a moved no-show). **r12b (overnight, as the owner's 2a decision):** the holder's "not mine", the admin dismiss and the admin move work on desk rows too, before or after the report — the review and the moves live on `desk.identity.disputed` / `desk.moves`; the lab's `assisted_links` row follows the move; the desk member who booked is told; no money moves; bills stay with the customer they name; the Ref of a desk row is the last 8 characters of its id | a desk booking under a mistyped phone can be corrected |
 | C7 | The `bill` on views has the appointment bill shape `{ invoiceId, serial, number, state }` | one shape for the web |
 | C8 | Cancelling a desk booking does not cancel its bill (the lab cancels it with its own refund record); a cancelled booking cannot be newly billed | Q10 bill rules stay the lab's |
 | C9 | `PRICE_CHANGED` details reuse the 2a shape `{ priceMinor, listMinor, discountMinor: 0 }` | no new error shape |
@@ -3369,12 +3382,25 @@ desk row of this lab, outside scope, or an online row, L10); 400 `LAB_BOOKING_BR
 - `LAB_DESK_ENABLED` (new, off unless exactly `"true"`; `assisted/flags.ts`). Off: lookup and create answer 503 `ASSISTED_BOOKING_DISABLED`.
   Desk cancel, by-key, steps, reports, bills and patient reads and cancels always work.
 - Order: 1. deploy (switch off); 2. `npm run sync-indexes` (new: `partner_lab_bookings {desk.requestKey}` unique partial and
-  `{partnerId, source, createdAt}`; `assisted_links {bookerKind, bookerId, userId}` unique; `partner_invoices {openLabBookingId}` unique partial and
+  `{partnerId, source, slot.startsAt, _id}`; `assisted_links {bookerKind, bookerId, userId}` unique; `partner_invoices {openLabBookingId}` unique partial and
   `{partnerId, labBookingId, issuedAt}`; until then a desk create, and a bill naming a lab booking, answer 503 `INDEXES_OUTDATED`);
   3. `LAB_DESK_ENABLED=true`; 4. restart. No migration (fields are optional; the enum and `required` changes only loosen).
 - Rollback: the switch only. Never roll the code back below r12 while a desk row is open (older code requires `paymentDeadline` and treats
   the row as ledger-settled): `db.partner_lab_bookings.countDocuments({ source: 'lab_desk', status: { $nin: ['completed','cancelled','no_show'] } })`
   must be 0.
+
+**r12b (review of `e304dabe`)**
+
+- "Not mine", dismiss and the admin move for desk rows (C6). One accessor in `assisted/review.ts` (`labOrigin`) names where a lab row's review
+  lives (`assisted` or `desk`) and who hears about it; the lab link helper `linkLabIn` moved to `assisted/patient.ts` and serves the desk
+  create and the move. Routes unchanged: `POST /api/v1/lab-bookings/:id/not-mine`, the admin review queue / dismiss and
+  `POST /api/v1/admin/assisted-bookings/:id/move` now accept desk rows (behind `ASSISTED_ADMIN_TOOLS_ENABLED`, as before). Patient app: a desk
+  row shows `disputed { state, at }` while reported; it leaves the list while `open`.
+- The patient's lab list reads desk bills through the partners' bill index (`partnerId: { $in }`), not a scan of every bill.
+- `postEarning` uses `isDeskRow`; the unused `ASSISTED_CAUSE.desk` is gone; the desk branch admission uses `assertBranchInScope`.
+- The list index is `{partnerId, source, slot.startsAt, _id}` (the workspace list's own order). Deploy: `sync-indexes` drops the r12
+  `{partnerId, source, createdAt}` index and builds this one.
+- Check: the r12 suite has 26 checks.
 
 **Seen, not changed**
 
@@ -3627,6 +3653,24 @@ gateway).
 | 3 | Three maps from booking kind to context strings (`cardKindOf`, `walletReferenceOf`, `payContextOf`) | One table in `assisted/cardRefunds.ts` (`BOOKING_KINDS`: collection, card payment context, wallet reference type); `cardContextOf` / `cardKindOf` / `bookingModelOf` read it, and so do the card machinery's kinds and the lab service's payment context |
 | 4 | Stuck money's `lateCaptures` items did not say which kind of booking | They add `bookingKind` (`booking` for rows from before r14) |
 | 5 | "Pay now" from the booking page lacked the amount for Checkout | The booker view's `payment` (lab bookings and consultations alike, the one `bookerPayments`) adds `amountMinor` and `currency` while the booking waits (null when no order is open yet) |
+
+### 24.15 Round 2a leftovers (r11b, 2026-11-25)
+
+Branch `m0/r11b-phase2a-fixes` at `7d99f2cf` (stage `f5f171c9` + r10h `a18adba7`). Local commits only. Checks:
+`test/assisted/r11b-phase2a-fixes.integration.ts` (4 checks; all fail on `7d99f2cf`).
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 | `notes` on the lab create was validated and hashed but never stored or shown (the web sends none) | Dropped from the lab create's validation (an unknown key is stripped) and from its request hash (§24.11 updated). A key used before this change with `notes` in its hash answers 409 `IDEMPOTENCY_KEY_REUSED` on a replay — only a replay within minutes of a deploy could meet it | 1 |
+| 2 (patient data) | During an open "this isn't mine" report the account holder could still read the lab report files | `file/access.ts` `canReadPartnerLabReport`: the holder reads a released report only while no report is open (the existing `notDisputed` rule); the booking partner and the lab keep their access; a dismissal gives it back, a move gives it to the new holder | 2 |
+| 3 | Some lab-booking notices had no `data.bookingKind` | The lab notifier (`defaultLabNotifier`, every customer notice of a lab booking) and the patients' moved-off / moved-to notices carry `data.bookingKind: 'lab_booking'` (`tellBooker` already did) | 3 |
+| 4 | Small gaps | The patient's cancel and the patient's accept of a lab's new time are audited (`assisted_audit_events`, actor `customer`, in their transaction); the patient's accept tells the booker ("The patient accepted the new time", key `assisted:lab:<id>:reschedule:<version>:accepted:booker`) — the patient's accept now runs through the booker's accept (one compare-and-set, one transaction). The lab's view of a booker cancellation shows `byKind: 'booker'` without the pharmacy's id (`by`) | 4 |
+| 5 | Dedupe of the patient helpers in `consultations.ts` | **Not done here** (coordinator, 25 Nov): phase 2c is generalising `assisted/patient.ts`; one dedupe round follows after 2c merges | — |
+
+Merge note (`m0/r19-stage-next`): phase 2c made the request content shared with the lab desk (`labRequestContent`), and
+the desk keeps its notes. So the pharmacy hash keeps a `notes` field that is always null (the validator strips the key):
+keys used before r11b without notes still replay; a key used with notes answers 409 `IDEMPOTENCY_KEY_REUSED`, as above.
+The desk's `notes` rule and type moved into its own schema and input (`assisted/validation/labDesk.ts`, `LabDeskInput`).
 
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 
@@ -5095,7 +5139,7 @@ answers and money are byte-identical (the 2a/2b suites are the check).
 | Money dispatcher | `assisted/bookerWallet.ts` | `postBookerMovementIn` gains the doctor case (`debitDoctorWalletIn` / `refundDoctorWalletIn`, 3a), signature unchanged (2e adds the lab case beside it); `bookerEntryLotsIn` and `bookerEntriesOf` read the doctor's partner-store entries |
 | **Refund bug** | `assisted/labRefunds.ts` | Every wallet-funded lab refund goes through `postBookerMovementIn` (the debit's lots restored). A doctor-paid row used to be marked refunded with no credit; pharmacy refunds are unchanged |
 | Report access | `file/access.ts` | `canReadPartnerLabReport`: the doctor that BOOKED reads the released report for 90 days from the first release while verified and active; a recommending-only doctor, another doctor and pharmacies get the uniform 404 |
-| Names | `assisted/names.ts`, `assisted/patient.ts` | `linkFacingHolders` (typed name on the booker's `assisted_links` row, else masked; never the account name); `bookerNames` takes the booker kind. `linkAssistedIn` is the one link writer (the lab desk's `linkLabIn` now calls it) |
+| Names | `assisted/names.ts`, `assisted/patient.ts` | `linkFacingHolders` (typed name on the booker's `assisted_links` row, else masked; never the account name); `bookerNames` takes the booker kind. The stage line's `linkLabIn` (r12b) stays the one `assisted_links` writer; r26 lets it take `{ bookerKind: 'doctor', bookerId }` (its lab calls are unchanged) |
 | Reconciliation | `assisted/reconciliation.ts` | `labBookingChecks` reads the payer's own entries (`bookerEntriesOf`): doctor rows reconcile |
 | Routes, switch | `assisted/routes/doctorLab.ts` (new), `assisted/validation`, `assisted/flags.ts`, `src1/routes/index.ts` | Below. `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR` (+ `assertDoctorLabOn`) |
 
@@ -5110,7 +5154,7 @@ Checks: `test/assisted/r26-phase3b.integration.ts` (11 checks).
 | F3 | The treating window is the pure §25.9.1 helper; 3f will reuse it for history and files | spec |
 | F4 | The doctor's view shows no `payment` block (wallet only in 3b); `holder` is `{ linkId, name, typedName }` | §25.5.2 |
 | F5 | Doctor routes need an eligible doctor for every call (reads included); refunds and report reads re-check eligibility themselves | S5, DR3 |
-| F6 | Not built in 3b: the admin move of doctor rows' `assisted_links` (§25.5.2 last row) — the admin move keeps its pharmacy-only link step; card (3c) | time; flagged for the next round |
+| F6 | Not built in 3b: the admin move of a doctor row's `assisted_links` row (§25.5.2 last row; r12b's `moveLabLinkIn` moves desk rows only); card (3c) | time; flagged for the next round |
 
 **API for the web** (specialist token, verified and active; `{ success, data }`, `Cache-Control: private, no-store`; paise)
 

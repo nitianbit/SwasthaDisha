@@ -63,8 +63,8 @@ export function assistedLabPartnerPart(view: Row, b: Row): Row {
   };
 }
 
-/** §17.5: an assisted row reported as not mine (still open) leaves the holder's lists; direct reads still work. */
-export const LAB_NOT_DISPUTED_QUERY = { 'assisted.identity.disputed.state': { $ne: 'open' } };
+/** §17.5: an assisted row (r12b: or a lab desk row) reported as not mine (still open) leaves the holder's lists; direct reads still work. */
+export const LAB_NOT_DISPUTED_QUERY = { 'assisted.identity.disputed.state': { $ne: 'open' }, 'desk.identity.disputed.state': { $ne: 'open' } };
 
 /**
  * r14 (§24.5.3, L5; as r10b item 3 for consultations): a card-paid lab booking never confirmed (`lifecycle.confirmedAt`
