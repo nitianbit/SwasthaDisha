@@ -5,7 +5,7 @@ import { postPharmacyMovementIn, type PharmacyMovement, type PostedMovement } fr
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import type { Posted } from '@/modules/pharmacyWallet/walletCore';
 import type { LotAllocation } from '@/modules/pharmacyWallet/walletLots';
-import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
+import { PartnerWalletEntryModel, PartnerWalletModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
 import { assertPartnerWalletIndexes, debitLabWalletIn, refundLabWalletIn } from '@/modules/partnerWallets/ledger';
 import type { BookerKind } from '@/modules/assisted/types';
 
@@ -49,14 +49,21 @@ export async function bookerEntryLotsIn(payerKind: BookerKind, entryId: string |
   return entry?.lotAllocations ?? [];
 }
 
-/** The booker-wallet entries posted under one operation key (reconciliation, §8.8): positive paise and the payer. */
-export async function bookerEntriesOf(payerKind: BookerKind, operationKey: string): Promise<{ amountPaise: number; payerId: string }[]> {
+/**
+ * The booker-wallet entries this payer posted under one operation key (reconciliation, §8.8): positive paise and the
+ * payer. r17b: index reads only — the pharmacy store's `{ pharmacyId, operationKey }`; the lab store's wallet by
+ * `{ ownerKind, ownerId }`, then `{ walletId, operationKey }` (both unique).
+ */
+export async function bookerEntriesOf(payerKind: BookerKind, payerId: string, operationKey: string): Promise<{ amountPaise: number; payerId: string }[]> {
+  const owner = String(payerId ?? '').toLowerCase();
   if (payerKind === 'lab') {
-    const rows = await PartnerWalletEntryModel.find({ ownerKind: 'lab', operationKey }).select({ amountMinor: 1, ownerId: 1 }).lean();
+    const wallet = await PartnerWalletModel.findOne({ ownerKind: 'lab', ownerId: owner }).select({ _id: 1 }).lean();
+    if (!wallet) return [];
+    const rows = await PartnerWalletEntryModel.find({ walletId: String(wallet._id), operationKey }).select({ amountMinor: 1, ownerId: 1 }).lean();
     return rows.map((r) => ({ amountPaise: Math.abs(Number(r.amountMinor)), payerId: String(r.ownerId) }));
   }
   if (payerKind !== 'pharmacy') return [];
-  const rows = await PharmacyWalletTransactionModel.find({ operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
+  const rows = await PharmacyWalletTransactionModel.find({ pharmacyId: owner, operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
   return rows.map((r) => ({ amountPaise: Number(r.amountPaise), payerId: String(r.pharmacyId) }));
 }
 

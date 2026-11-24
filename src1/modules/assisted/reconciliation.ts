@@ -84,14 +84,14 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
     const f = a.funding;
     if (f.amountMinor > 0) {
       // 2e: the payer's own wallet store (a pharmacy's or a lab's).
-      const debits = await bookerEntriesOf(f.payerKind, `assisted:${id}:debit`);
+      const debits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted:${id}:debit`);
       if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
     if (refunded > 0) {
-      const [credit] = await bookerEntriesOf(f.payerKind, `assisted:${id}:refund`);
+      const [credit] = await bookerEntriesOf(f.payerKind, f.payerId, `assisted:${id}:refund`);
       if (!credit || credit.amountPaise !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
     }
     if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'cancelled_not_refunded', ref: id, detail: {} });
@@ -128,13 +128,13 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      const debits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:debit`);
+      const debits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted_lab:${id}:debit`);
       if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const credits = await bookerEntriesOf(f.payerKind, `assisted_lab:${id}:refund`);
+    const credits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted_lab:${id}:refund`);
     if (credits.length > 1 || (refunded > 0 && (credits.length !== 1 || Number(credits[0]!.amountPaise) !== refunded)) || (refunded === 0 && credits.length > 0)) {
       mismatches.push({ check: 'lab_refund_posted', ref: id, detail: { refundedMinor: refunded, credits: credits.length } });
     }
@@ -195,7 +195,7 @@ async function instantChecks(scope: { since: Date | null; flagged: string[] }): 
     const id = lower(r._id);
     const f = r.assisted!.funding;
     const held = r.funding?.partnerMinor ?? 0;
-    const entries = (kind: string) => bookerEntriesOf(f.payerKind, `assisted_instant:${id}:${kind}`);
+    const entries = (kind: string) => bookerEntriesOf(f.payerKind, f.payerId, `assisted_instant:${id}:${kind}`);
     const [debits, refunds, returns, cancels] = await Promise.all([entries('debit'), entries('refund'), entries('quote_return'), entries('cancel_refund')]);
     if (held !== f.amountMinor || (f.amountMinor > 0 && (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor
       || lower(debits[0]!.payerId) !== lower(f.payerId)))) {
