@@ -9,6 +9,7 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import type { PharmacyActor } from '@/modules/assisted/consultations';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { hitLookup } from '@/modules/assisted/limits';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 
 /**
  * r11 (§24.3): the patient steps an assisted lab booking shares with the 1a consultation create — the family member of
@@ -79,6 +80,20 @@ export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: strin
   if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
   if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
   if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
+}
+
+/**
+ * r12 (§17.4 for labs): the lab's link to the account holder, with consent and the FIRST typed name (never overwritten).
+ * An upsert: concurrent first bookings of one patient conflict inside their transactions and are retried, never duplicated.
+ */
+export async function linkLabIn(l: { partnerId: string; userId: string; typedName: string; recordedById: string; at: Date }, s: ClientSession): Promise<void> {
+  const key = { bookerKind: 'lab' as const, bookerId: lower(l.partnerId), userId: lower(l.userId) };
+  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: l.at, consentRecordedById: l.recordedById,
+    ...(l.typedName ? { typedName: l.typedName } : {}) } }, { upsert: true, session: s });
+  if (l.typedName) {
+    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
+      { $set: { typedName: l.typedName } }, { session: s });
+  }
 }
 
 /** §5.7: the redemption row and the guarded total count, in the booking transaction (r11: any booking and payer kind). */
