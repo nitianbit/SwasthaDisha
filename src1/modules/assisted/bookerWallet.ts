@@ -33,8 +33,9 @@ export async function bookerEntryLotsIn(payerKind: BookerKind, entryId: string |
 }
 
 /** The booker-wallet entries posted under one operation key (reconciliation). */
-export async function bookerEntriesOf(payerKind: BookerKind, operationKey: string) {
+export async function bookerEntriesOf(payerKind: BookerKind, payerId: string, operationKey: string) {
   if (payerKind !== 'pharmacy') return [];
-  return PharmacyWalletTransactionModel.find({ operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean() as unknown as
+  // The `{ pharmacyId, operationKey }` unique index serves this read.
+  return PharmacyWalletTransactionModel.find({ pharmacyId: payerId, operationKey }).select({ amountPaise: 1, pharmacyId: 1 }).lean() as unknown as
     Promise<{ _id: unknown; amountPaise: number; pharmacyId: string }[]>;
 }

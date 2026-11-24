@@ -5029,3 +5029,20 @@ The customer suites (Q4b, Q13, Q16a) run unchanged in the full regression.
   there is no booking. It is refunded within 30 minutes of the booker leaving the screen.
 - The booker's weekly cancellation rate counts bookings only. Refunding a request before any doctor accepts it is not
   counted as a cancellation.
+
+**r17b: review fixes (Opus xhigh review of `02b4a0e0`).** The money paths were probed and are correct.
+
+| # | Finding | Fix | Check |
+|---|---|---|---|
+| 1 (must) | The doctor's accept answer (fresh and replay, `doctors/services/instant.ts` `accept`) returned the raw partner booking: `price`, `originalPrice` and the whole `assisted` block (keys, consent actor, booker id, split). This breaks D8 | Both paths answer `assistedPublicView(booking)` for a partner's booking (`doctorBookingView`): no money, no keys, `paidBy` | accept check |
+| 2 (must) | An admin move of an instant booking left the pharmacy-created family member active on the old account. Its `booking.created` audit is keyed by the request id, and the request still named the member when the check ran | `deactivateBookingDependentIn` also matches the audit on `instantRequestId`, and leaves the moved booking's own request out of the "still used" check | "r17b: an admin move…" |
+| 3 | `bookerEntriesOf` read by operation key alone | It reads `{ pharmacyId, operationKey }`, which the unique index serves | reconciliation check |
+| 4 | An instant booking kept its "Join call" after it was cancelled or completed | The join window also requires `status: 'confirmed'` | "r17b: an admin move…" |
+| 5 | The patient got "No doctor joined this time" even when the booker cancelled the request at the counter | No patient notice for a booker refund; the booker's notice stays | booker refund check |
+
+**Later (seen, not changed):**
+- by-key / abandon, cursor paging and the create preamble (validate, replay, count the lookup, abandoned key) are written
+  three times: in `assisted/instant.ts`, `assisted/labBookings.ts` and `assisted/pharmacyCommands.ts`. Extract one
+  helper of each once the open rounds have merged.
+- ASSUMED E2: `AssistedBlock.funding` keeps its type for the instant pointer. A union type needs the readers changed in
+  one pass.

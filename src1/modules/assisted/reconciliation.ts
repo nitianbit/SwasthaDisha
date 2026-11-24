@@ -194,7 +194,7 @@ async function instantChecks(scope: { since: Date | null; flagged: string[] }): 
     const id = lower(r._id);
     const f = r.assisted!.funding;
     const held = r.funding?.partnerMinor ?? 0;
-    const entries = (kind: string) => bookerEntriesOf(f.payerKind, `assisted_instant:${id}:${kind}`);
+    const entries = (kind: string) => bookerEntriesOf(f.payerKind, f.payerId, `assisted_instant:${id}:${kind}`);
     const [debits, refunds, returns, cancels] = await Promise.all([entries('debit'), entries('refund'), entries('quote_return'), entries('cancel_refund')]);
     if (held !== f.amountMinor || (f.amountMinor > 0 && (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor
       || lower(debits[0]!.pharmacyId) !== lower(f.payerId)))) {
