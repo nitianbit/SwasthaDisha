@@ -119,10 +119,12 @@ export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerV
       v.assisted = a;
       // r10c: how this booking is paid, for its OWN booker only (pay now / refund choice on any device). Never in the
       // patient's or the doctor's views (they strip `assisted.funding`); never another pharmacy's.
-      const f = b.assisted.funding;
       // r17: an instant booking's money lives on its request (the booker reads it at /instant/requests/:id).
-      if (isInstantFunding(f)) v.instantRequestId = f.instantRequestId;
-      else if (payments.has(String(b._id))) v.payment = payments.get(String(b._id));
+      if (isInstantFunding(b.assisted.funding)) v.instantRequestId = b.assisted.funding.instantRequestId;
+      else {
+        const payment = payments.get(String(b._id));
+        if (payment) v.payment = payment;
+      }
     }
     // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end;
     // r17: an instant consultation from its acceptance to the end of the doctor's held interval.
