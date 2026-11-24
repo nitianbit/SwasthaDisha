@@ -1,10 +1,12 @@
 import { ClientSession } from 'mongoose';
 import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/services/settlement';
+import { postReferralEarningIn } from '@/modules/referralCuts/service';
+import type { AssistedReferral } from '@/modules/assisted/types';
 
 type EarningBooking = {
   _id?: unknown; specialistId?: string; doctorName?: string; settlementSystem?: string; paymentStatus?: string;
   price?: number; originalPrice?: number; settlement?: { settlementAccountId?: string };
-  earningRule?: string; assisted?: { split?: { providerMinor?: number; baseMinor?: number; cutMinor?: number; rule?: string } } | null;
+  earningRule?: string; assisted?: { split?: { providerMinor?: number; baseMinor?: number; cutMinor?: number; rule?: string }; referral?: AssistedReferral | null } | null;
 };
 
 /**
@@ -23,14 +25,17 @@ export async function postConsultationEarningIn(b: EarningBooking, s: ClientSess
   const amountMinor = v2 ? Number(split!.providerMinor) : Math.round(Number(b.price ?? 0) * 100);
   const grossMinor = v2 ? Number(split!.baseMinor) : amountMinor;
   const commissionMinor = v2 ? Number(split!.cutMinor ?? 0) : 0;
-  if (!(amountMinor > 0)) return;
-  let accountId = b.settlement?.settlementAccountId;
-  if (!accountId) {
-    const account = await ensureSettlementAccount('doctor', String(b.specialistId).toLowerCase(), b.doctorName || 'Doctor', s);
-    accountId = String(account._id);
+  if (amountMinor > 0) {
+    let accountId = b.settlement?.settlementAccountId;
+    if (!accountId) {
+      const account = await ensureSettlementAccount('doctor', String(b.specialistId).toLowerCase(), b.doctorName || 'Doctor', s);
+      accountId = String(account._id);
+    }
+    await postLedgerEntry({
+      settlementAccountId: accountId, kind: 'earning', amountMinor, grossMinor, commissionMinor,
+      source: 'consultation', sourceId: String(b._id), by: actor.by, byKind: actor.byKind,
+    }, s);
   }
-  await postLedgerEntry({
-    settlementAccountId: accountId, kind: 'earning', amountMinor, grossMinor, commissionMinor,
-    source: 'consultation', sourceId: String(b._id), by: actor.by, byKind: actor.byKind,
-  }, s);
+  // Phase 4b (§26.6.1): the booking partner's referral cut, out of that earning, once, in the same transaction.
+  if (v2) await postReferralEarningIn(b, 'referral_consultation', s, actor);
 }

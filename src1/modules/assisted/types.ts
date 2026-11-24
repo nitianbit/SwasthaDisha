@@ -80,6 +80,35 @@ export interface InstantAssistedBlock extends Omit<AssistedBlock, 'funding' | 's
   primaryConcern?: string;
 }
 
+/** r24 (§26.5.1): the referral categories a rule can cut — the one list the model, the validation and the types use. */
+export const REFERRAL_CATEGORIES = ['consultation', 'lab_test', 'lab_package'] as const;
+export type ReferralCategory = typeof REFERRAL_CATEGORIES[number];
+
+/**
+ * r24 (§26.5.2): the cut snapshotted on a consultation (`split.referral`) or a lab line (`lines[].referral`) at create
+ * (instant: at accept). It is frozen: a rule edited later never changes it. `disabledReason` says why the cut is 0.
+ */
+export interface ReferralSnapshot {
+  category: ReferralCategory | null;
+  cutMinor: number;
+  ruleId?: string;
+  ruleVersion?: number;
+  basis?: 'percent' | 'fixed';
+  percentBasisPoints?: number;
+  fixedMinor?: number;
+  capMinor?: number;
+  disabledReason?: 'cuts_off' | 'doctor_cuts_off' | 'no_rule' | 'category_not_cut';
+}
+
+/** r24 (§26.5.1): where a booking's cut is credited at completion — the booker's `*_referral` settlement account. */
+export interface AssistedReferral {
+  accountId: string;
+  ownerKind: 'pharmacy_referral' | 'lab_referral' | 'doctor_referral';
+  bookerKind: BookerKind;
+  bookerId: string;
+  cutMinor: number;
+}
+
 export interface AssistedSplit {
   listMinor: number;
   couponCode?: string;
@@ -89,11 +118,15 @@ export interface AssistedSplit {
   cutMinor: number;
   providerMinor: number;
   rule: 'provider_coupon_v2';
+  /** r24: a consultation's cut snapshot (absent on rows made before phase 4: cut 0). */
+  referral?: ReferralSnapshot;
   /**
    * r11 (§24.4.1, D4, L16): lab bookings store the split per test. The coupon is spread over the lines by price, largest
-   * remainder in paise; `cutMinor` is 0 on every line (cuts are phase 4). Σ lines.baseMinor = baseMinor.
+   * remainder in paise. Σ lines.baseMinor = baseMinor. r24: each line carries its category and cut snapshot;
+   * Σ lines.cutMinor = cutMinor.
    */
-  lines?: { catalogItemId: string; listMinor: number; discountMinor: number; baseMinor: number; cutMinor: number }[];
+  lines?: { catalogItemId: string; listMinor: number; discountMinor: number; baseMinor: number; cutMinor: number;
+    category?: ReferralCategory | null; referral?: ReferralSnapshot }[];
 }
 
 export interface AssistedBlock {
@@ -110,8 +143,8 @@ export interface AssistedBlock {
    */
   funding: AssistedFunding;
   split: AssistedSplit;
-  /** null until phase 4 (cuts), §17.1 P5. */
-  referral: null;
+  /** r24 (§26.5.1): where the cut is credited at completion; null when the cut is 0 (and on rows before phase 4). */
+  referral: AssistedReferral | null;
   shortRef: string;
   recommendationId?: string;
   requestKey: string;

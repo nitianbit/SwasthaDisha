@@ -5225,6 +5225,648 @@ The released report file is readable by the booking doctor at `report.releases[]
 
 Checks: `test/assisted/r26-phase3b.integration.ts` (14 checks).
 
+## 26. Phase 4 build specification (referral cuts, earnings, withdrawals) (r22, 2026-11-25)
+
+Design only; nothing here is built. Three code lines are cited:
+- **BASE** = `02b4a0e0` (stage `f5f171c9` + r10g + 3e). An uncited `file:line` is under `src1/modules/` at BASE.
+- **2D** = `m0/r13-phase2d` `215556e2` (lab wallet, one wallet core).
+- **3A** = `m0/r20-phase3a` `d3f89855` (doctor wallet on the partner store).
+
+Phase 4 starts when 2b, 2c, 2d, 2e, 3a and 3b are merged, so every booker's create exists. Where this section and an
+earlier one differ, this one wins.
+
+### 26.1 Owner decisions this section builds (not reopened)
+
+1. **Referral cut.**
+   - It is paid **to the booking partner**.
+   - It is set per partner **and** per category: consultation, lab test, package.
+   - It is a % or a fixed amount **per line**, set when the partner is set up.
+2. **The cut comes from the provider's earning.**
+   - ₹500 consultation at 10% → doctor ₹450, partner ₹50.
+   - The coupon comes first, then the cut (§2.2 item 1, §8.3).
+3. **The doctor's referral cut** is built but **off (0)** until legal advice. Pharmacy and lab cuts work.
+4. **O1:** partner payouts stay **off** until the CA confirms GST/TDS. Earnings keep accruing.
+5. **O2:**
+   - ₹50,000 maximum wallet balance;
+   - one withdrawal a week;
+   - card top-ups withdrawable **7 days after payment**;
+   - a withdrawal to the bank goes through an admin and is paid like a payout;
+   - withdrawals are built but **off**.
+6. **Card chargebacks are flagged only.** The admin decides what happens next.
+7. **No blocking limits** except the phone lookups. The O2 wallet rules are the owner's money rules, not abuse limits.
+8. **Jansetu pays the gateway fees.**
+
+### 26.2 What exists now
+
+| Area | Code | Gap for phase 4 |
+|---|---|---|
+| Provider earning (consultations) | `doctors/services/earnings.ts:17-35`: <ul><li>with `earningRule: 'provider_coupon_v2'` it posts `amountMinor = split.providerMinor`, `grossMinor = split.baseMinor`, `commissionMinor = split.cutMinor` (`:21-25`);</li><li>otherwise it posts `price × 100` (`:23`).</li></ul> It is called once, on completion (`bookings/services/index.ts:1492`, inside the completion transaction `:1481-1497`). Instant bookings earn through the same path (`doctors/services/instant.ts:651-662`) | The booker's side of the cut is never posted. Self bookings use the old rule |
+| Provider earning (lab) | `partners/services/labBookings.ts:842-852`: an assisted row with `split.rule === 'provider_coupon_v2'` posts provider / base / cut. A self row posts `subtotal − discount` (`:855-860`) | Same gaps |
+| No earning | Clinic desk (`bookings/holds.ts:327`, `settlementSystem: 'clinic'`), lab desk, in-house invoices, packages, pharmacy orders | Unchanged (no cut) |
+| Settlement ledger | <ul><li>`partners/model/settlement.ts`: `ownerKind: 'partner' \| 'doctor'` (`:20`); unique `{ownerKind, ownerId}` (`:69`);</li><li>entry kinds `earning \| reversal \| payout \| adjustment` (`:75`); unique `{settlementAccountId, source, sourceId, kind}` (`:114`);</li><li>`postLedgerEntry` (`partners/services/settlement.ts:71`) is exactly once by that key (`:77`), and the same key with another amount → 409 `LEDGER_SOURCE_CONFLICT` (`:102-107`);</li><li>`ensureSettlementAccount` (`:22`) creates accounts.</li></ul> | No `*_referral` owner kinds |
+| Payouts | `recordPayout` (`partners/services/finance.ts:426`) checks:<ul><li>account active (`:451`);</li><li>details verified, at the version the admin saw (`:452-453`);</li><li>amount ≤ balance (`:454`).</li></ul> It posts `payout` (`:464`); there are also `voidPayout` (`:485`) and `postAdjustment` (`:509`). Admin routes are at `/api/v1/settlements` (`partners/routes/index.ts:329-354`) | No referral switch; statement rows don't show gross or commission (`:167-186`) |
+| Finance reads | <ul><li>partner workspace `/finance*` (`partners/routes/index.ts:252-258`, `finance.view`);</li><li>doctor `/me/finance*` (`specialists/routes/index.ts:135-144`);</li><li>pharmacy: only `/api/v1/pharmacy-wallet` `GET /` and `/transactions` (`pharmacyWallet/routes/index.ts:13`, `:16`).</li></ul> | No pharmacy finance screen and no referral view |
+| Split writers | <ul><li>`assisted/consultations.ts:262`, `:280-282` (cut 0, `referral: null`), `:298`;</li><li>`assisted/labBookings.ts:321-325` (lines, cut 0), `:339-341` (no `earningRule` on lab rows);</li><li>`assisted/instant.ts:184`;</li><li>`doctors/services/instant.ts:191-197`;</li><li>types `assisted/types.ts:81-95`, `referral: null` `:109-110`.</li></ul> Reconciliation checks provider + cut = base (`assisted/reconciliation.ts:96`, `:141-142`, `:215`) | The cut is always 0 |
+| Coupons | `coupon/model/index.ts:118-119` (`fundedBy`, `partnerUsable`) | — |
+| Partner setup | <ul><li>pharmacies are created by admins (`POST /api/v1/pharmacies`, `pharmacies/routes/index.ts:29-34`, service `:94`); the model has no payout fields;</li><li>labs and clinics: `createPartner` (`partners/services/index.ts:218`, `:260`) creates the settlement account (`:284`); `verifyPartner` is at `:421`;</li><li>catalogue kinds `test \| package \| consultation \| procedure \| other` (`partners/model/catalogueItem.ts:7`).</li></ul> | No home for cut rules. `modules/referral` is the customer referral-code programme, unrelated, so the new module is `referralCuts` |
+| Pharmacy wallet | `pharmacyWallet/ledger.ts`:<ul><li>kinds `credit \| booking_debit \| refund_credit` (`:23`); debits refused on receivable / frozen / inactive / short (`:111-114`);</li><li>withdrawable = Σ remaining of closed:false, fee-known, undisputed lots, **with no time condition** (`:64-68`); lots consumed and restored (`:70-97`);</li><li>receivable set-off (`:142-163`); chargebacks take money and freeze (`:174-218`, `:288-339`).</li></ul> The model already reserves `withdrawal_hold \| withdrawal_release \| withdrawal_void` (`pharmacyWallet/model/index.ts:31`) | Nothing writes the withdrawal kinds; pharmacy top-ups have no cap (`pharmacyWallet/services/index.ts:69-106`, validation `:5`) |
+| Wallet core (2D, 3A) | `pharmacyWallet/walletCore.ts`:<ul><li>one store interface (`:46-71`) and `postMovementIn` (`:136`, refusals `:145-148`);</li><li>top-up kinds with `chargeback: 'take' \| 'flag'` and `cardHoldDays` (`:73-87`); `creditTopupIn` stores `withdrawableAfter = paidAt + cardHoldDays` (`:417-438`);</li><li>`'flag'` chargebacks mark the lot lost with no debit and no freeze (`:290-303`).</li></ul> `walletLots.ts:17-21` ignores `withdrawableAfter`. `PARTNER_WALLET_POLICY` (3A `partnerWallets/ledger.ts:27-33`): `maxBalanceMinor 5_000_000`, `withdrawalsPerWeek 1`, `cardHoldDays 7`. The cap is enforced on lab and doctor top-ups (2D `partnerWallets/service.ts:118-125`; 3A `:126-129`). Partner entry kinds have no withdrawal kinds (2D `partnerWallets/model/index.ts:28`). Pharmacy top-ups: `chargeback: 'take'`, no `cardHoldDays` (2D `pharmacyWallet/ledger.ts:137-151`) | The 7-day hold isn't enforced; pharmacy top-ups have no cap or hold; there are no withdrawals |
+| Switches | `assisted/flags.ts:42-43` `withdrawals()` (`WALLET_WITHDRAWALS_ENABLED`) is never called. No `REFERRAL_*` switch exists in code. Placeholders: `assisted/reconciliation.ts:264`, `:270`, `:322` | — |
+| Gateway fees | Top-ups are made with `baseAmount = finalAmount` and credited in full (`pharmacyWallet/services/index.ts:89-90`, `payment/services/index.ts:1659-1660`). The fee is only stored (`payment/model/index.ts:89-90`, lot `gatewayFeeMinor`): **Jansetu bears it** | — |
+
+### 26.3 The split, and why
+
+The suggestion was one phase. The code splits it into six rounds:
+
+| Round | Content | Depends on | Size |
+|---|---|---|---|
+| **4a** | Referral rules (admin), cut snapshot at create, `*_referral` accounts, switches. **No money moves**; deployed dark | 2e, 3b merged | M |
+| **4b** | Posting the cut at completion: the provider earning net of the cut plus the booker's referral earning, both once; statements with list / coupon / cut / net; reconciliation | 4a | M |
+| **4c** | `provider_coupon_v2` for every new ledger booking (self consultations, self instant, self lab bookings; ASSUMED D3), cut 0 | 4b | S |
+| **4d** | Wallet withdrawals for pharmacy, lab and doctor; the 7-day card hold; the ₹50,000 cap on pharmacy top-ups; chargebacks flag-only with an explicit admin recovery | 2d, 3a merged; 4a (the pharmacy home account) | M–L |
+| **4e** | Referral payouts behind `REFERRAL_PAYOUTS_ENABLED`; a receivable set off against the referral balance | 4b, 4d | S |
+| **4f** | Finance read endpoints and web screens: pharmacy finance, referral views for labs and doctors, admin queues | 4b, 4d, 4e | M |
+
+**Why this order:**
+- **4a and 4b ship together.** Today's posting already lowers the provider by `cutMinor` (`earnings.ts:23-25`,
+  `labBookings.ts:848-852`). A nonzero snapshot without 4b would make the cut vanish (Jansetu would keep it), so 4a's
+  master switch stays off until 4b is deployed.
+- **4d** touches only wallet code, beside 4b and 4c.
+- **4e** needs both the referral balance (4b) and the withdrawal destination rules (4d).
+
+Each round is backend, an integration suite and an independent review (Opus xhigh). Commits stay local; stage only on
+the owner's word.
+
+### 26.4 Shared rules for every round
+
+- **Money.**
+  - Integer paise.
+  - Wallet movements go through the wallet core (`postMovementIn`, 2D) or `postBookerMovementIn` (`assisted/bookerWallet.ts:20-24`).
+  - Ledger rows go through `postLedgerEntry` (exactly once by `{account, source, sourceId, kind}`).
+  - Credits, releases and voids **always post**, even on a frozen, inactive, over-cap or ineligible wallet.
+- **Keys.**
+  - Every money command carries `requestKey`; the hash is from `requestHashOf`.
+  - Same key and content → 200 `replayed`. Other content → 409 `IDEMPOTENCY_KEY_REUSED`. Abandoned → 409 `REQUEST_ABANDONED`.
+  - Every command has a by-key / abandon pair (Q13 shape).
+- **Fences.**
+  - Rule edits carry `expectedVersion` (409 `RECORD_CHANGED`).
+  - Withdrawal commands carry `expectedVersion` (409 `WITHDRAWAL_CHANGED`).
+  - Payouts carry the destination's `detailsVersion` (`finance.ts:452-453`).
+- **Indexes.** Each writer calls `assertUniqueIndex` on every unique index it relies on before it reads or holds. Until
+  `npm run sync-indexes` has run, it answers 503 `INDEXES_OUTDATED`.
+- **Switches** are read on every call and are off unless exactly `"true"`. Off stops only **new** cut snapshots,
+  withdrawal requests and referral payouts. Reads, cancels, rejects, voids, paid records and every credit always run.
+- **Audit.**
+  - Booker actions go to `assisted_audit_events`.
+  - Finance actions go to `SettlementEvent` (`partners/model/settlement.ts:213-238`).
+  - Both are written in the same transaction.
+- **Names.** Statements and referral rows show the booking's short ref, date and category. They show no patient name
+  (ASSUMED M9).
+- **No limits** besides the phone lookups and the owner's O2 wallet rules.
+
+### 26.5 Round 4a: referral rules, cut snapshot, referral accounts
+
+#### 26.5.1 Data model
+
+- **New module `referralCuts`:**
+  - `referral_rules { _id, bookerKind: 'pharmacy' | 'lab' | 'doctor', bookerId, category: 'consultation' | 'lab_test' |
+    'lab_package', basis: 'percent' | 'fixed', percentBasisPoints?, fixedMinor?, capMinor?, isActive, version, updatedBy,
+    updatedAt }`, unique `{bookerKind, bookerId, category}`;
+  - `referral_rule_events { ruleId, version, before, after, by, reason, at }`, unique `{ruleId, version}`, append-only.
+- **Categories:**
+  - `consultation`: scheduled and instant consultations;
+  - `lab_test`: catalogue kind `test`;
+  - `lab_package`: catalogue kind `package`;
+  - any other catalogue kind gets cut 0, `disabledReason: 'category_not_cut'` (ASSUMED M3).
+- **Snapshot on the split** (`assisted/types.ts:81-95`):
+  - a consultation gets `split.referral = { ruleId, ruleVersion, category, basis, percentBasisPoints?, fixedMinor?, capMinor?, cutMinor, disabledReason? }`;
+  - each lab line gets `lines[].category` and the same object as `lines[].referral`;
+  - `cutMinor` and `providerMinor` are no longer always 0 and the base;
+  - `assisted.referral` (`:109-110`, now `null`) becomes `{ accountId, ownerKind, bookerKind, bookerId, cutMinor }` when the
+    total cut is > 0, else stays `null`.
+- **Settlement owner kinds** (`partners/model/settlement.ts:20`, `:43`; `ensureSettlementAccount`, `partners/services/settlement.ts:22`) add:
+  - `pharmacy_referral` (id = pharmacyId);
+  - `lab_referral` (partnerId);
+  - `doctor_referral` (specialistId).
+
+  The beneficiary name is the booker's name. The unique index `{ownerKind, ownerId}` (`:69`) is unchanged.
+
+#### 26.5.2 The cut (§8.3 step 4), one pure function
+
+`referralCuts/compute.ts` `cutFor(lineBaseMinor, rule, switches) → { cutMinor, disabledReason? }`:
+- `percent`: `floor(base × bp / 10000)`;
+- `fixed`: `min(fixedMinor, base)`;
+- then `capMinor` per line;
+- never above the base;
+- 0 with a reason when:
+  - the master switch is off (`cuts_off`);
+  - the booker is a doctor and doctor cuts are off (`doctor_cuts_off`);
+  - there is no active rule (`no_rule`).
+
+`providerMinor = baseMinor − Σ cutMinor`.
+
+#### 26.5.3 Where the snapshot is taken
+
+| Flow | Change point | When |
+|---|---|---|
+| Pharmacy → consultation | `assisted/consultations.ts:280-282` | In the create transaction |
+| Pharmacy → lab test, doctor → lab test (3b) | `assisted/labBookings.ts:321-325`, `:339-341` (and the 3b writer) | In the create transaction, per line (lab desk rows never cut, §5.5) |
+| Lab → consultation (2e) | its create | In the create transaction |
+| Partner instant (3e) | `doctors/services/instant.ts:191-197` `instantBookingAssisted` | **At accept**, on the fee base (§5.4) |
+
+**In the same transaction:**
+- read the rule;
+- `ensureSettlementAccount(<booker>_referral, …, s)` when the total cut is > 0;
+- write the snapshot.
+
+A rule edited later never changes a stored snapshot.
+
+#### 26.5.4 Routes
+
+**Admin** (`requireAdmin`; writes need `ASSISTED_ADMIN_TOOLS_ENABLED`):
+
+| Route | Request → answer |
+|---|---|
+| `GET /api/v1/admin/referral-rules?bookerKind&bookerId` | `[{ _id, category, basis, percentBasisPoints, fixedMinor, capMinor, isActive, version, updatedAt, effective }]` (`effective` = would cut now, given the switches) |
+| `PUT /api/v1/admin/referral-rules/:bookerKind/:bookerId/:category` | `{ basis, percentBasisPoints? (1–5000), fixedMinor? (≥ 1), capMinor?, isActive, expectedVersion (0 = create), reason }` → the rule. 409 `RECORD_CHANGED`; 404 for an unknown booker |
+| `GET …/:category/events` | `[{ version, before, after, by, reason, at }]` |
+
+**Partners (read-only):**
+- pharmacy: `GET /api/v1/pharmacy-assisted/referral-rules`;
+- lab: `GET /api/v1/partner-workspace/assisted/referral-rules` (`finance.view`);
+- doctor: `GET /api/v1/specialists/me/assisted/referral-rules`.
+
+All three answer the admin list without `updatedBy`.
+
+**Setup.** The admin pharmacy and partner setup screens call the PUT after the create. The create schemas stay
+unchanged (`pharmacies/validation/index.ts:29`, `partners/services/index.ts:218`).
+
+#### 26.5.5 Switches, indexes, deploy
+
+- **Switches:**
+  - `REFERRAL_CUTS_ENABLED` (new master, off): nothing is snapshotted (cut 0; the row is stored exactly as before phase 4, M20);
+  - `REFERRAL_DOCTOR_CUTS_ENABLED` (off, owner decision 3).
+- **Indexes** (`assertUniqueIndex`):
+  - `referral_rules {bookerKind, bookerId, category}`;
+  - `referral_rule_events {ruleId, version}`;
+  - `settlement_accounts {ownerKind, ownerId}`, before a snapshot that opens an account.
+- **Migration:** none.
+- **Order:**
+  1. deploy;
+  2. `sync-indexes`;
+  3. enter the rules (as many as needed);
+  4. **switch on only with 4b deployed**.
+- **Rollback:** the master switch. Snapshots already stored keep their cut, and 4b still posts them.
+
+#### 26.5.6 Tests (`test/assisted/phase4a.integration.ts`)
+
+1. `cutFor`: percent floors, fixed per line, cap per line, never above the base. Property check over 10,000 random
+   bases and rules: `provider + cut = base`.
+2. The §8.1 examples:
+   - CBC ₹300 at 5% plus a package ₹40 fixed → lab ₹1,045, Sharma ₹55;
+   - provider-funded coupon: base ₹400, cut ₹40, doctor ₹360;
+   - platform-funded coupon: base ₹500, cut ₹50.
+3. The master switch off → 0 `cuts_off`. A doctor booker is always 0 while doctor cuts are off.
+4. Rule PUT: stale `expectedVersion` → 409; one event row per version. **Race:** two edits at once → one wins.
+5. A snapshot is frozen: an edit after the booking changes nothing stored. Instant snapshots at accept, on the fee.
+6. The referral account opens once under 5 parallel creates (unique index), and only when the cut is > 0.
+7. The index 503.
+8. Partners see rules read-only; another booker's rules → 404.
+
+#### 26.5.7 Web screens
+
+- **Admin → pharmacy / lab / doctor setup → "Referral cuts".**
+  - Three rows (consultation, lab test, package), each with % or ₹ per line and an optional cap.
+  - The switch state is shown: "Doctor cuts are off until legal advice".
+  - History.
+- **Partner → Finance:** a read-only "Your referral rates" card.
+
+### 26.6 Round 4b: posting the cut, statements
+
+#### 26.6.1 Money
+
+On completion, in the transaction that already posts the provider earning (`earnings.ts:17-35` via
+`bookings/services/index.ts:1492`; `labBookings.ts:842-852`):
+1. **The provider entry is unchanged in form:** `amountMinor = providerMinor`, `grossMinor = baseMinor`,
+   `commissionMinor = Σ cut`.
+2. **Booker entry:** when `assisted.referral.cutMinor > 0`, one `earning` on `assisted.referral.accountId`:
+   - `amountMinor = cutMinor`, `grossMinor = baseMinor`, `commissionMinor = 0`;
+   - `source: 'referral_consultation' | 'referral_lab_booking'`, `sourceId` = the booking id.
+   - It is exactly once by the ledger key (`settlement.ts:77`).
+3. Nothing posts on a no-show, cancellation, rejection, expiry or desk row, as today.
+
+#### 26.6.2 Reads and statements
+
+- `finance.ts:167-186` describes the two new sources.
+- Statement rows (JSON and CSV) of provider and referral accounts add `listMinor`, `discountMinor`, `couponFundedBy`,
+  `cutMinor`, `netMinor` and the booking's `shortRef` and category.
+- Provider statements show "Referral to <partner>" with the cut.
+- Referral statements show the booking's short ref, date, category, base and cut (no patient name, M9).
+- New reads, each with `?from&to&cursor` and a CSV:
+  - pharmacy: `GET /api/v1/pharmacy-assisted/referral` → `{ earnedMinor, paidMinor, dueMinor, payoutsEnabled }`;
+  - pharmacy: `GET /api/v1/pharmacy-assisted/referral/statement`;
+  - lab: `GET /api/v1/partner-workspace/finance/referral` and `…/referral/statement` (`finance.view`);
+  - doctor: `GET /api/v1/specialists/me/finance/referral` and `…/statement`.
+
+#### 26.6.3 Reconciliation
+
+New check `referral_posted`, for every completed row with a cut:
+- exactly one referral earning equal to the cut, on the account in the snapshot;
+- the provider earning equals `providerMinor`.
+
+`split_sum` stays. The stuck list adds referral accounts with a balance > 0 and no payout in 90 days (shown only,
+since payouts are off).
+
+#### 26.6.4 Tests (`test/assisted/phase4b.integration.ts`)
+
+1. Completion posts both entries once. **Race:** two completions at once → one of each.
+2. A no-show, cancellation, rejection or desk row posts nothing.
+3. A coupon then the cut, for provider- and platform-funded coupons (§8.1). A lab with mixed per-line rules.
+4. An instant cut on the accepted fee (not the quote).
+5. Statements and CSV show the columns and add up; no patient name.
+6. Reconciliation is clean, and a tampered referral entry is flagged.
+7. The old suites (consultation, lab, instant earnings) pass with a cut of 0.
+
+#### 26.6.5 Web screens
+
+- **Partner and doctor Finance:** a "Referral earned" row (paused-payouts badge), and the statement with the cut column.
+- **Pharmacy:** see 4f.
+
+### 26.7 Round 4c: `provider_coupon_v2` for every new ledger booking (D3)
+
+- **Who:** new **self** ledger bookings — customer scheduled consultations, customer instant
+  (`doctors/services/instant.ts:651` non-assisted) and customer lab bookings (`labBookings.ts:855-860`).
+- **What they get:**
+  - `earningRule: 'provider_coupon_v2'`;
+  - a top-level `earningSplit` of the `AssistedSplit` shape (cut 0, no referral; lines for labs).
+- **Readers:** `earnings.ts:21` and `labBookings.ts:846` read `b.assisted?.split ?? b.earningSplit`.
+- **Effect:**
+  - only a **platform-funded** coupon changes anything: the provider earns the list price and Jansetu bears the discount;
+  - a provider-funded coupon earns list − discount, as today (Q16a).
+- **Switch** `EARNING_RULE_V2_FOR_ALL` (off). Bookings made while it is on keep the rule; older ones keep theirs.
+- **No migration.** Turn it on after providers are told (§14).
+- **Tests:**
+  - a corporate (platform) coupon earns the list price;
+  - a provider coupon earns list − discount;
+  - old rows are unchanged;
+  - legacy and clinic rows are untouched (`payouts/services/index.ts:128`, `:332` exclusions hold).
+
+### 26.8 Round 4d: wallet withdrawals, card hold, cap, chargebacks
+
+#### 26.8.1 Data model
+
+- **`wallet_withdrawals`:**
+  ```
+  { _id, walletRef { kind: 'pharmacy'|'lab'|'doctor', id },
+    requestedBy { kind: 'pharmacy'|'member'|'doctor', id },
+    grossMinor, feeMinor, transferMinor,
+    lotAllocations [{ lotId, amountMinor, feeMinor }],
+    state: 'requested'|'cancelled'|'rejected'|'paid'|'voided',
+    destination { homeAccountId, detailsVersion, masked },
+    holdEntryId, releaseEntryId?, voidEntryId?,
+    paid? { method, reference, paidOn, note, by, at },
+    reason?, requestKey, requestHash, version, createdAt, updatedAt }
+  ```
+- **Movement kinds** `withdrawal_hold` (debit), `withdrawal_release` and `withdrawal_void` (credits) are added to:
+  - the wallet core (2D `walletCore.ts:89-90`);
+  - partner entries (2D `partnerWallets/model/index.ts:28`);
+  - pharmacy (already reserved: `pharmacyWallet/model/index.ts:31`).
+- **A hold takes only lots withdrawable now:**
+  - fee known, not disputed, `withdrawableAfter ≤ now`;
+  - oldest first;
+  - recorded on the entry's `lotAllocations`.
+
+  Release and void restore exactly those allocations.
+- **7-day card hold (O2):**
+  - `withdrawableOfIn` (2D `walletLots.ts:17-21`) adds `withdrawableAfter ≤ now`;
+  - pharmacy top-ups get `cardHoldDays: 7` (2D `pharmacyWallet/ledger.ts:137-151`);
+  - a lot without the field is backfilled `createdAt + 7 days` by `npm run migrate:lot-withdrawable-after` (dry run,
+    then `--commit`; rerunnable).
+- **Stored vs now.** The stored `withdrawableMinor` stays "card money", lots on hold included, and the daily invariant
+  keeps using it. Reads add `withdrawableNowMinor` and `availableLater [{ amountMinor, availableAt }]`, computed at read
+  (ASSUMED M5).
+- **Cap ₹50,000 (O2).**
+  - Pharmacy top-up creation (`pharmacyWallet/services/index.ts:69-106`) gets the lab/doctor check (2D
+    `partnerWallets/service.ts:118-125`): balance + unpaid top-ups of the last 30 min + the new amount ≤ ₹50,000, else
+    409 `WALLET_LIMIT_REACHED`.
+  - Credits above the cap (refunds, late-verified top-ups, releases) still post and raise the alert `wallet_over_limit`
+    (alert only, M6).
+- **One withdrawal a week (O2).** A request is refused when the wallet has a `requested` or `paid` withdrawal created in
+  the last 7 days (rolling; cancelled, rejected and voided ones don't count; Q5): 409 `WITHDRAWAL_WEEKLY_LIMIT` with
+  `details: { nextAllowedAt }`.
+- **Fee (decided 25 Nov, Q2):** none. Jansetu pays every gateway fee, so `feeMinor = 0` and `transferMinor =
+  grossMinor`. The fields stay on the row so that a later owner decision can change the rule without a migration.
+- **Destination: the home account (§5.4):**
+  - lab → its `partner` account;
+  - doctor → its `doctor` account;
+  - pharmacy → its `pharmacy_referral` account (4a).
+
+  The pharmacy sets its details with `PUT /api/v1/pharmacy-assisted/finance/payout-details` (the Q5 versioned rules of
+  `finance.ts`). Admins verify them with the existing `/api/v1/settlements/accounts/:id/payout-details/verify`.
+
+#### 26.8.2 Routes
+
+**Owner** (pharmacy `/api/v1/pharmacy-assisted/wallet/…`; lab `/api/v1/partner-workspace/assisted/wallet/…` with
+`wallet.manage`; doctor `/api/v1/specialists/me/assisted/wallet/…` with `requireEligibleDoctor`):
+
+| Route | Request → answer |
+|---|---|
+| `GET …/withdrawable` | `{ enabled, withdrawableNowMinor, availableLater, nextAllowedAt, destination: { state, masked, detailsVersion } }` |
+| `POST …/withdrawals` | `{ amountMinor (≥ `WALLET_WITHDRAWAL_MIN_MINOR`, default 50,000 = ₹500; Q4), requestKey, detailsVersion }` → 201 (replay 200) `{ withdrawal, wallet, replayed }`; below the minimum → 400 `WITHDRAWAL_BELOW_MINIMUM` |
+| `GET …/withdrawals` | `?state&cursor&limit≤50`; `GET …/withdrawals/:id`; `GET …/withdrawals/by-key/:key`; `POST …/by-key/:key/abandon` |
+| `POST …/withdrawals/:id/cancel` | `{ expectedVersion }` → `{ withdrawal, wallet }` (only while `requested`) |
+
+**Admin** (`/api/v1/admin/wallet-withdrawals`, `requireAdmin`):
+
+| Route | Request → answer |
+|---|---|
+| `GET /` | `?state=requested&cursor` (oldest first) |
+| `GET /:id` | With its lots, fee and the destination version |
+| `POST /:id/reject` | `{ reason, expectedVersion }` |
+| `POST /:id/paid` | `{ method: 'bank_transfer' \| 'upi', reference, paidOn, note?, detailsVersion, expectedVersion, requestKey }`. Checks the destination like `recordPayout` (`finance.ts:451-453`) |
+| `POST /:id/void` | `{ reason, expectedVersion }`, only for `paid` (the transfer bounced) |
+
+**Errors:**
+- 503 `WITHDRAWALS_DISABLED` (new requests only), `INDEXES_OUTDATED`;
+- 409:
+  - destination: `PAYOUT_DESTINATION_NOT_VERIFIED`, `PAYOUT_DETAILS_CHANGED`;
+  - amount and wallet: `WITHDRAWAL_ABOVE_AVAILABLE`, `WALLET_FROZEN`, `WALLET_RECEIVABLE`, `WITHDRAWAL_WEEKLY_LIMIT`;
+  - state: `WITHDRAWAL_CHANGED`, `WITHDRAWAL_NOT_REQUESTED`;
+  - keys: `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`;
+  - `REFERENCE_REUSED`;
+- 404 for another owner's row.
+
+#### 26.8.3 Money
+
+| Step | One transaction |
+|---|---|
+| Request | Key claim; refusals checked inside on a fresh wallet read (frozen, receivable, weekly, now-withdrawable); insert `requested`; `withdrawal_hold` (`withdrawal:<id>:hold`); audit |
+| Cancel / reject | CAS `requested` → `cancelled` / `rejected` on `version`; `withdrawal_release` (`:release`) restores the allocations; **always posts** |
+| Paid | CAS `requested` → `paid`; `paid` recorded; the reference is unique per home account; nothing moves; a `SettlementEvent` `withdrawal_paid` on the home account (M7) |
+| Void | CAS `paid` → `voided`; `withdrawal_void` (`:void`) restores `grossMinor` and the lots; **always posts** |
+
+**Races:**
+- cancel and paid at once → exactly one wins;
+- two requests within the week → one wins (the weekly check and the insert run under a CAS on the wallet `version`).
+
+#### 26.8.4 Chargebacks: flagged only, the admin decides (owner decision 6)
+
+- **Every top-up kind uses `chargeback: 'flag'`.** Pharmacy changes from `'take'` (2D `pharmacyWallet/ledger.ts:137-151`).
+  - Recording a dispute (`POST /api/v1/admin/wallet-lots/:lotId/chargeback`, `…/wallet-payments/:paymentId/chargeback`)
+    marks the lot `disputeState: 'open' | 'lost'`.
+  - That money stops being withdrawable, and nothing is debited (2D `walletCore.ts:290-303`).
+- **The admin decides** with a new `POST /api/v1/admin/wallet-lots/:lotId/recover { reason, requestKey }`. It runs
+  today's take (`chargeBackLotIn`, 2D `walletCore.ts:202`):
+  - debit up to the balance;
+  - the shortfall becomes a receivable;
+  - the wallet is frozen.
+- **A lot already withdrawn and paid** becomes an admin case: recover is allowed, and the shortfall becomes a receivable.
+- **Freeze** exists (`assisted/controller/phase1a.ts:81-101`; 2D `walletCore.ts:484`). Frozen or owing wallets refuse
+  withdrawals.
+
+#### 26.8.5 Indexes, switch, deploy
+
+- **Indexes** (`assertUniqueIndex`):
+  - `wallet_withdrawals {walletRef.kind, walletRef.id, requestKey}` unique;
+  - `{destination.homeAccountId, paid.reference}` unique, partial on the reference;
+  - `{state, createdAt}`;
+  - `{walletRef.kind, walletRef.id, createdAt: -1}`;
+  - lots `{walletRef.kind, walletRef.id, withdrawableAfter}`.
+- **Switch:** `WALLET_WITHDRAWALS_ENABLED` (exists, `assisted/flags.ts:42-43`). It stays **off** (GATE-RBI). Off → new
+  requests answer 503; everything else runs.
+- **Order:**
+  1. deploy;
+  2. `sync-indexes`;
+  3. `migrate:lot-withdrawable-after` (dry run, then `--commit`);
+  4. restart.
+
+  The switch waits for GATE-RBI.
+- **Rollback:** never roll back while a withdrawal is `requested` or a hold is unreleased:
+  `db.wallet_withdrawals.countDocuments({ state: 'requested' })` must be 0.
+
+#### 26.8.6 Tests (`test/assisted/phase4d.integration.ts`)
+
+1. **Hold:** a request holds once.
+   - **Race:** 5 identical requests → one row and one hold.
+   - Above `withdrawableNowMinor` → 409. Non-withdrawable money (admin credits) is never taken.
+2. **Card hold:**
+   - a lot younger than 7 days is not withdrawable;
+   - at day 7 it is;
+   - a backfilled old lot is.
+3. **Weekly:** a second request within 7 days → 409 with `nextAllowedAt`. After a cancel, a new request is allowed.
+4. **Fee:** none: `feeMinor = 0`, `transfer = gross` (decided 25 Nov).
+5. **Cancel, reject, paid and void:**
+   - **race:** cancel vs paid → one outcome, the money moves once;
+   - reject releases once; void restores once;
+   - the reference is unique per account.
+6. **Refusals:** frozen, receivable, an unverified destination, a changed `detailsVersion` → 409.
+7. **Spending after a withdrawal:** a booking refund restores its own lots correctly after a withdrawal took others.
+8. **Cap:**
+   - pharmacy top-up above ₹50,000 → 409;
+   - a refund above the cap posts and raises the alert.
+9. **Chargebacks:** a flag never debits. Recover debits, sets the receivable and freezes. A credit sets the receivable
+   off first.
+10. **Switch:** off → 503 for requests; cancel, reject and paid still work. The index 503.
+11. **Reconciliation:**
+    - Σ holds of `requested` = Σ their gross;
+    - every `paid` has no release;
+    - the wallet invariants hold.
+
+#### 26.8.7 Web screens
+
+- **Wallet (pharmacy, lab, doctor):**
+  - "Card money you can withdraw now ₹x" and "₹y more on <date>";
+  - **Withdraw**: amount, the bank or UPI (masked), "you get ₹t";
+  - a list with states;
+  - "Withdrawals are coming soon" while off.
+- **Admin → Withdrawals:**
+  - a queue, oldest first;
+  - a detail with lots, fee and destination;
+  - Mark paid (UTR, method, date), Reject, Void.
+- **Admin → Lots:** Flag dispute, Recover.
+
+### 26.9 Round 4e: referral payouts
+
+- **`recordPayout`** (`finance.ts:426`) on a `*_referral` account:
+  - refused with 409 `REFERRAL_PAYOUTS_DISABLED` unless `REFERRAL_PAYOUTS_ENABLED` (new, off, O1);
+  - the destination check (`:452-453`) reads the **home account's** verified details and version (§5.4); for a pharmacy
+    the referral account is itself the home account.
+- **Receivable set-off from the referral balance:**
+  - `POST /api/v1/admin/wallets/:kind/:id/receivable/setoff-from-referral { amountMinor, requestKey }`, ≤ min(receivable,
+    referral balance);
+  - one transaction: a ledger `adjustment` −amount on the referral account (`source: 'receivable_setoff'`,
+    `sourceId: <key>`), and a wallet `receivable_setoff` posting the same amount;
+  - exactly once;
+  - the same switch as payouts (M8).
+- **Admin:**
+  - the settlement accounts list (`finance.ts:594`) filters by the new owner kinds;
+  - the payout form shows "Paused until tax advice" while off.
+- **Tests:**
+  - payout refused while off;
+  - allowed when on, to the home destination, version-fenced;
+  - set-off paired once (race), never below 0;
+  - statements show payouts.
+
+### 26.10 Round 4f: finance reads and screens
+
+- **Pharmacy** `GET /api/v1/pharmacy-assisted/finance` →
+  ```
+  { wallet: { balanceMinor, withdrawableNowMinor, availableLater, receivableMinor, frozen },
+    referral: { earnedMinor, paidMinor, dueMinor, payoutsEnabled },
+    withdrawals: { openCount, lastPaidAt, enabled },
+    payoutDetails: { state, masked, detailsVersion } }
+  ```
+- **Pharmacy** `GET …/finance/statement?kind=wallet|referral&from&to&cursor` (+ `.csv`). The wallet kind maps entries
+  as `transactionView` does (`pharmacyWallet/services/index.ts:30-40`).
+- **Lab workspace** `/finance` (`partners/routes/index.ts:252-258`) and **doctor** `/me/finance`
+  (`specialists/routes/index.ts:135-144`) add the `referral` and `withdrawals` blocks.
+- **Admin Finance:**
+  - referral accounts (due, payouts paused);
+  - withdrawals queue;
+  - disputes;
+  - rules per partner.
+- **Web screens:**
+  - **Pharmacy → Finance:** three tiles (wallet, card money, referral earned), a statement with a filter, payout
+    details, Withdraw;
+  - lab and doctor Finance gain the same tiles;
+  - plain words, one primary action per screen.
+
+### 26.11 Deploy order for the phase
+
+1. **4a** dark: deploy, `sync-indexes`, enter the rules. `REFERRAL_CUTS_ENABLED` stays off.
+2. **4b**: deploy, `sync-indexes`, then `REFERRAL_CUTS_ENABLED=true`. The pharmacy and lab cuts the admin has set
+   start, consultations included; doctor cuts stay off.
+3. **4c**: `EARNING_RULE_V2_FOR_ALL=true` after providers are told.
+4. **4d**: deploy, `sync-indexes`, the lot migration. Withdrawals stay off until GATE-RBI.
+5. **4e**: deploy. Payouts stay off until O1.
+6. **4f**: deploy; the web apps follow each round.
+
+### 26.12 ASSUMED (reversible)
+
+| # | Assumption (the safer default) | Where |
+|---|---|---|
+| M1 | Six rounds; 4a deploys dark behind a new master switch `REFERRAL_CUTS_ENABLED` and is switched on only with 4b, because a snapshot without 4b's posting would lose the cut | §26.3 |
+| M2 | **Decided 25 Nov (Q1):** pharmacy and lab cuts work for every category, consultations included, once `REFERRAL_CUTS_ENABLED` is on and an admin has set the rules. `REFERRAL_CONSULTATION_CUTS_ENABLED` is not built. Doctor cuts stay off (`REFERRAL_DOCTOR_CUTS_ENABLED=false`) | §26.5.5 |
+| M3 | Only `consultation`, `lab_test` (catalogue `test`) and `lab_package` (catalogue `package`) are cut; other catalogue kinds snapshot 0 | §26.5.1 |
+| M4 | A percent rule is 0.01%–50% (1–5,000 bp); a fixed rule ≥ ₹0.01; the cap is per line | §26.5.4 |
+| M5 | The stored `withdrawableMinor` stays "card money"; what is withdrawable now (after the 7-day hold) is computed at read and at request | §26.8.1 |
+| M6 | The ₹50,000 cap refuses new top-up orders only; refunds, releases and late-verified top-ups always post (money is never stranded) and raise an alert | §26.8.1 |
+| M7 | A withdrawal marked paid moves no ledger money (wallet money is not an earning); it is audited on the home account | §26.8.3 |
+| M8 | Setting a receivable off against the referral balance uses the payout switch (it is a payment of the referral) | §26.9 |
+| M9 | Statements and referral rows show the short ref, date and category, never the patient's name | §26.4 |
+| M10 | **Decided 25 Nov (Q2):** Jansetu pays every gateway fee. A withdrawal has no fee deduction: `feeMinor = 0`, `transferMinor = grossMinor` (this replaces §2.3 C) | §26.8.1 |
+| M11 | Every top-up kind flags a chargeback; debiting the wallet is the admin's explicit "Recover" | §26.8.4 |
+| M12 | Lots without `withdrawableAfter` are backfilled `createdAt + 7 days` (older card money is already past the hold) | §26.8.1 |
+| M13 | `provider_coupon_v2` for self bookings uses a top-level `earningSplit` (no `assisted` block), behind `EARNING_RULE_V2_FOR_ALL` | §26.7 |
+| M14 | Rules are snapshotted at create (instant: at accept); a rule edit never changes a stored booking | §26.5.3 |
+| M15 | **Decided 25 Nov (Q4):** a minimum withdrawal of ₹500 (`WALLET_WITHDRAWAL_MIN_MINOR`, configurable) | §26.8.2 |
+
+### 26.13 Questions for the owner (only the ones that change what is built)
+
+1. **Consultation cuts for pharmacies and labs. Switch them on now, or after legal advice?**
+   Recommended: **after written legal advice.** A cut out of a doctor's fee for a referral may breach medical ethics
+   rules on fee-splitting (GATE-NMC). Lab-test and package cuts work now. The consultation switch is built and can be
+   turned on the day advice arrives.
+2. **Withdrawals of unspent card top-ups: deduct that top-up's card fee, or does Jansetu pay it too?**
+   Recommended: **deduct it, only on withdrawal of unspent card money.** Spent money never pays a fee, so Jansetu still
+   pays the gateway on everything that becomes a booking. Without the deduction, a top-up followed by a withdrawal costs
+   Jansetu about 2% for nothing (§2.3 C).
+3. **While payouts are paused (O1), may a partner move referral earnings into its wallet to pay for bookings?**
+   Recommended: **no.** Moving them is a payment of the referral, which is the same tax question. Earnings accrue and
+   are paid once the CA answers.
+4. **A minimum withdrawal amount?**
+   Recommended: **₹500** (bank transfers of a few rupees cost more than they move). No other limits beyond O2.
+5. **"One withdrawal a week": a rolling 7 days, or Monday–Sunday?**
+   Recommended: **rolling 7 days** from the last withdrawal that was not cancelled or rejected (simplest to explain:
+   "next withdrawal from <date>").
+
+### 26.14 Decided 25 Nov (coordinator, owner asleep; reversible)
+
+The owner asked for decisions in line with their earlier answers. These replace the recommendations in §26.13:
+
+| # | Decision | Built as |
+|---|---|---|
+| Q1 | **Pharmacy and lab consultation cuts work.** Owner, 22 Nov: "Doctor's referral cut OFF until legal advice; pharmacy/lab cuts work". Legal work is not chased now | Behind `REFERRAL_CUTS_ENABLED` (default off); the admin sets rules per partner and category. No separate consultation switch. Doctor cuts stay off. **Open owner item:** the NMC fee-splitting risk of consultation cuts (GATE-NMC) |
+| Q2 | **Jansetu pays gateway fees** (owner decision): no fee deduction on withdrawal | `feeMinor = 0`. **Open owner question:** the cost of a card top-up followed by a withdrawal (about 2% of the amount, paid by Jansetu) |
+| Q3 | Referral earnings cannot fund the wallet while payouts are paused | No route |
+| Q4 | Minimum withdrawal ₹500, configurable | `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000) |
+| Q5 | Rolling 7 days | §26.8.1 |
+
+### 26.15 Rounds 4a + 4b build record (r24, 2026-11-25)
+
+Branch `m0/r24-phase4ab`. It is built from `m0/r19-stage-next` `2273b88a`, with two merges:
+- `m0/r17-phase3e` → `f7f57ad2`, conflicts resolved, tsc 17;
+- `m0/r22-phase4-spec` → `f605c0a6`.
+
+Local commits only. Built: §26.5 (4a) and §26.6 (4b), with the 25 Nov decisions (§26.14): pharmacy and lab cuts
+work in every category, consultations included, behind `REFERRAL_CUTS_ENABLED`; doctor cuts stay off.
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Rules | `referralCuts/model.ts` (new) | `referral_rules` unique `{bookerKind, bookerId, category}`, `version`; `referral_rule_events` unique `{ruleId, version}`, append-only |
+| Cut and snapshot | `referralCuts/service.ts` (new) | <ul><li>`cutFor`: pure; % floor, fixed per line, cap per line, ≤ base, 0 with a reason (`cuts_off`, `doctor_cuts_off`, `no_rule`, `category_not_cut`);</li><li>`snapshotCuts(booker, lines, s?)`: reads the booker's active rules; when the total is > 0 it opens the `*_referral` account idempotently (`assertUniqueIndex` on `settlement_accounts {ownerKind, ownerId}`);</li><li>`labCategoryOf`: catalogue `test` → `lab_test`, `package` → `lab_package`, otherwise none;</li><li>`postReferralEarningIn`: the booker's `earning` on its referral account, once by the ledger key;</li><li>`putRule` / `listRules` / `ruleEvents`.</li></ul> |
+| Snapshots | `assisted/consultations.ts`, `assisted/labBookings.ts`, `doctors/services/instant.ts` | <ul><li>pharmacy consultation: `split.referral`, `cutMinor`, `providerMinor = base − cut`, `assisted.referral`;</li><li>pharmacy lab booking: per line, `lines[].category`, `cutMinor`, `referral`;</li><li>partner instant: at accept, inside the accept transaction, on the fee (base after a provider-funded coupon).</li></ul> 2e (lab → consultation) and 3b (doctor → lab) are not on this line; they call `snapshotCuts` the same way when merged |
+| Types | `assisted/types.ts` | `ReferralCategory`, `ReferralSnapshot`, `AssistedReferral`; `AssistedSplit.referral`, `lines[].category` / `referral`; `AssistedBlock.referral: AssistedReferral \| null` |
+| Accounts | `partners/model/settlement.ts`, `partners/services/settlement.ts`, `finance.ts` | Owner kinds `pharmacy_referral`, `lab_referral`, `doctor_referral` (`isReferralOwnerKind`) |
+| Posting | `doctors/services/earnings.ts`, `partners/services/labBookings.ts` `postEarning` | Completion posts the provider entry (base − cut, commission = cut) **and** the booker entry (`referral_consultation` / `referral_lab_booking`) in the same transaction. A provider amount of 0 no longer skips the cut. Nothing posts on a no-show, cancel or desk row |
+| Payout guard | `finance.ts` `recordPayout` | A `*_referral` account → 409 `REFERRAL_PAYOUTS_DISABLED` while `REFERRAL_PAYOUTS_ENABLED` is off (pulled forward from 4e, because referral accounts now have balances in the admin list) |
+| Statements | `finance.ts` | Referral rows say "Referral · consultation · <date> · Ref <shortRef>" (no patient name); earning lines add `grossMinor` and `commissionMinor`. The CSV columns are unchanged (M16) |
+| Reconciliation | `assisted/reconciliation.ts` | `referral_posted`, on scheduled consultations, lab bookings and instant bookings: completed → exactly one referral earning of the cut on the snapshot's account; otherwise none |
+| Switches | `assisted/flags.ts` | `REFERRAL_CUTS_ENABLED`, `REFERRAL_DOCTOR_CUTS_ENABLED`, `REFERRAL_PAYOUTS_ENABLED` (all off) |
+
+**API**
+
+- **Admin**, on `adminAssistedRouter`; PUT needs `ASSISTED_ADMIN_TOOLS_ENABLED`:
+  - `GET /api/v1/admin/referral-rules?bookerKind&bookerId` → `[{ _id, category, basis, percentBasisPoints, fixedMinor,
+    capMinor, isActive, version, updatedAt, effective, updatedBy }]`;
+  - `PUT /api/v1/admin/referral-rules/:bookerKind/:bookerId/:category` with `{ basis, percentBasisPoints? (1–5000),
+    fixedMinor? (≥ 1), capMinor?, isActive, expectedVersion (0 = create), reason }` → the rule. Errors: 400
+    `VALIDATION_ERROR`, 404 `BOOKER_NOT_FOUND`, 409 `RECORD_CHANGED`, 503 `ASSISTED_BOOKING_DISABLED`,
+    `INDEXES_OUTDATED`;
+  - `GET …/:category/events` → `[{ ruleId, version, before, after, by, reason, at }]`.
+- **Pharmacy**, on `pharmacyAssistedRouter`:
+  - `GET /api/v1/pharmacy-assisted/referral-rules` → the list above, without `updatedBy`;
+  - `GET /api/v1/pharmacy-assisted/referral` → `{ earnedMinor, paidMinor, dueMinor, payoutsEnabled }`;
+  - `GET /api/v1/pharmacy-assisted/referral/statement?before&limit&from&to` → `[{ _id, at, kind, source, sourceId,
+    description, amountMinor, balanceAfterMinor, grossMinor?, commissionMinor? }]`, plus `pagination.nextCursor`.
+
+Lab and doctor reads of their rules and referral accounts arrive with 2e and 3b, the rounds where they become
+bookers (M17).
+
+**ASSUMED while building**
+
+| # | Choice | Why |
+|---|---|---|
+| M16 | The statement CSV keeps its columns; base and cut are in the JSON lines only | The CSV header is a released contract |
+| M17 | Lab and doctor read routes for rules and referral accounts are not built until 2e / 3b put them on this line | Minimal API; no booker of those kinds exists here yet |
+| M18 | Rules are read and the referral account is opened before the create transaction (as the lab create does for its settlement account). The instant snapshot runs inside the accept transaction | A rule edit racing a create gives one consistent version, which the snapshot records (`ruleVersion`). An unused empty referral account is harmless |
+| M19 | The referral payout refusal (§26.9) ships now | Referral accounts with balances appear in the admin payout list from 4b |
+| M20 | While `REFERRAL_CUTS_ENABLED` is off nothing is snapshotted (no `split.referral`, no line category): a booking is stored exactly as before phase 4. With the switch on, a zero cut still records its reason (`no_rule`, `doctor_cuts_off`, `category_not_cut`) | The dark deploy changes no row, and the 1a, 2a and 3e suites stay byte-for-byte |
+
+**Tests:** `test/assisted/r24-phase4ab.integration.ts`, 15 checks:
+- rules: create, change, stale 409, bad terms 400, unknown booker 404, tools switch 503, history;
+- rule-edit race: one wins;
+- partner read and `effective`; partners can't write;
+- `cutFor` over 10,000 random lines;
+- snapshot with the switch off and on; the account opened once under 3 parallel creates; no-rule pharmacy;
+- coupon first, then the cut (provider- and platform-funded);
+- a rule edit racing a create;
+- completion posts provider and referral once under racing completions;
+- completion racing the pharmacy cancel: one outcome;
+- a no-show posts nothing;
+- instant: snapshot at accept on the fee, posted at completion;
+- lab lines (5%, ₹40 fixed, other kinds 0), doctor cuts off, posting once;
+- pharmacy reads and statements (short ref, no name) and the doctor statement's base and cut;
+- payout refused while off;
+- reconciliation: clean, then a missing referral earning is flagged.
+
+**Seen, not changed**
+- `assisted/labBookings.ts` keeps its own `newShortRef`.
+- Lab desk rows never snapshot (§5.5).
+- 4c to 4f are not built.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

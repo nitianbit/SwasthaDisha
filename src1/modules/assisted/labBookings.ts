@@ -47,6 +47,7 @@ import {
   cleanName, countPhoneUse, linkLabIn, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput, type PreparedPatient,
 } from '@/modules/assisted/patient';
+import { assertReferralIndexes, labCategoryOf, snapshotCuts } from '@/modules/referralCuts/service';
 import type { AssistedBlock } from '@/modules/assisted/types';
 
 /**
@@ -158,6 +159,7 @@ export async function assertAssistedLabIndexes(withCoupon: boolean, payerKind: '
   }
   await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
+  await assertReferralIndexes();
 }
 
 /**
@@ -419,9 +421,14 @@ export async function createAssistedLabBooking(booker: LabBooker, input: Assiste
   const platformFunded = coupon?.fundedBy === 'platform';
   const baseMinor = platformFunded ? listMinor : payMinor;
   const lineDiscounts = spreadByPrice(ordered.map((i) => Number(i.priceMinor || 0)), discountMinor);
-  const lines = ordered.map((i, n) => ({ catalogItemId: String(i._id), listMinor: Number(i.priceMinor || 0), discountMinor: lineDiscounts[n]!,
-    baseMinor: platformFunded ? Number(i.priceMinor || 0) : Number(i.priceMinor || 0) - lineDiscounts[n]!, cutMinor: 0 }));
   const bookerName = await bookerNameOf(booker);
+  // Phase 4a (§26.5.3): each test or package line's referral cut, snapshotted now (0 while the switch is off); r28: the
+  // booker's own rules (a pharmacy's, or a doctor's under the doctor-cuts switch).
+  const lineBases = ordered.map((i, n) => (platformFunded ? Number(i.priceMinor || 0) : Number(i.priceMinor || 0) - lineDiscounts[n]!));
+  const cut = await snapshotCuts({ kind: booker.kind, id: bookerId, name: bookerName },
+    ordered.map((i, n) => ({ category: labCategoryOf(i.kind), baseMinor: lineBases[n]! })));
+  const lines = ordered.map((i, n) => ({ catalogItemId: String(i._id), listMinor: Number(i.priceMinor || 0), discountMinor: lineDiscounts[n]!,
+    baseMinor: lineBases[n]!, cutMinor: cut.lines[n]?.cutMinor ?? 0, ...(cut.lines[n] ? { category: cut.lines[n]!.category, referral: cut.lines[n]! } : {}) }));
   const account = await ensureSettlementAccount('partner', String(partner!._id), partner!.legalName || partner!.name);
   const now = clock();
   const bookingId = new Types.ObjectId().toHexString();
@@ -439,9 +446,9 @@ export async function createAssistedLabBooking(booker: LabBooker, input: Assiste
       ? { method: 'razorpay', payerKind: booker.kind, payerId: bookerId, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
       : { method: 'wallet', payerKind: booker.kind, payerId: bookerId, amountMinor: payMinor, state: 'captured',
         ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
-    split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor, cutMinor: 0,
-      providerMinor: baseMinor, rule: 'provider_coupon_v2', lines },
-    referral: null,
+    split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor,
+      cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2', lines },
+    referral: cut.referral,
     shortRef: newShortRef(),
     requestKey: storedKey,
     requestHash: hash,

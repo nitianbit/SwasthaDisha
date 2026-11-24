@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 const isoDate = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({ 'string.pattern.base': 'Dates are YYYY-MM-DD' });
-const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).messages({ 'string.pattern.base': 'Invalid id' });
+export const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).messages({ 'string.pattern.base': 'Invalid id' });
 const requestKey = Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required()
   .messages({ 'string.pattern.base': 'requestKey must be 8 to 100 letters, digits, - or _' });
 

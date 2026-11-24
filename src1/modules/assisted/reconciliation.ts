@@ -23,6 +23,7 @@ import { cardChargebacks, cardRefundQueue, cardRefundsStuckPending } from '@/mod
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { upcomingMeetsMissing } from '@/modules/meet/retry';
 import { InstantRequestModel, type IInstantRequest } from '@/modules/doctors/model/instant';
+import type { AssistedReferral } from '@/modules/assisted/types';
 import { bookerEntriesOf } from '@/modules/assisted/bookerWallet';
 
 /**
@@ -35,6 +36,21 @@ const DAY = 86_400_000;
 const HOUR = 3_600_000;
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
 const LIST_MAX = 200;
+
+/**
+ * r24 (§26.6.3): a booking with a cut has exactly one referral earning of that cut, on the snapshot's account, once
+ * completed — and none before (a no-show, cancellation or open row earns nothing).
+ */
+async function referralMismatches(bookingId: string, status: string, referral: AssistedReferral | null | undefined,
+  source: 'referral_consultation' | 'referral_lab_booking'): Promise<Mismatch[]> {
+  if (!referral || !(Number(referral.cutMinor) > 0)) return [];
+  const rows = await LedgerEntryModel.find({ source, sourceId: { $in: [lower(bookingId), String(bookingId)] }, kind: 'earning' })
+    .select({ amountMinor: 1, settlementAccountId: 1 }).lean();
+  const ok = status === 'completed'
+    ? rows.length === 1 && Number(rows[0]!.amountMinor) === Number(referral.cutMinor) && String(rows[0]!.settlementAccountId) === String(referral.accountId)
+    : rows.length === 0;
+  return ok ? [] : [{ check: 'referral_posted', ref: lower(bookingId), detail: { entries: rows.length, cutMinor: referral.cutMinor, status } }];
+}
 
 export interface Mismatch { check: string; ref: string; detail: Record<string, unknown> }
 
@@ -97,6 +113,7 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
     if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'refunded_not_cancelled', ref: id, detail: { status: b.status } });
     const sp = a.split;
     if (sp.providerMinor + sp.cutMinor !== sp.baseMinor) mismatches.push({ check: 'split_sum', ref: id, detail: { ...sp } });
+    mismatches.push(...await referralMismatches(id, b.status, a.referral, 'referral_consultation'));
     if (b.status === 'completed' && sp.providerMinor > 0) {
       const earned = await LedgerEntryModel.find({ source: 'consultation', sourceId: { $in: [id, String(b._id)] }, kind: 'earning' }).select({ amountMinor: 1 }).lean();
       if (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor) {
@@ -145,6 +162,7 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     if (sp.providerMinor + sp.cutMinor !== sp.baseMinor || (sp.lines?.length && linesBase !== sp.baseMinor)) {
       mismatches.push({ check: 'lab_split_sum', ref: id, detail: { baseMinor: sp.baseMinor, providerMinor: sp.providerMinor, cutMinor: sp.cutMinor, linesBase } });
     }
+    mismatches.push(...await referralMismatches(id, b.status, a.referral, 'referral_lab_booking'));
     const earned = await LedgerEntryModel.find({ source: 'partner_lab_booking', sourceId: { $in: [id, String(b._id)] }, kind: 'earning' }).select({ amountMinor: 1 }).lean();
     if (b.status === 'completed' && sp.providerMinor > 0 && (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor)) {
       mismatches.push({ check: 'lab_provider_earning', ref: id, detail: { entries: earned.length, providerMinor: sp.providerMinor } });
@@ -215,10 +233,11 @@ async function instantChecks(scope: { since: Date | null; flagged: string[] }): 
       mismatches.push({ check: 'instant_open_refunded', ref: id, detail: {} });
     }
     if (!r.bookingId) continue;
-    const b = await BookingModel.findById(r.bookingId).select({ status: 1, 'assisted.split': 1 }).lean() as unknown as IBooking | null;
+    const b = await BookingModel.findById(r.bookingId).select({ status: 1, 'assisted.split': 1, 'assisted.referral': 1 }).lean() as unknown as IBooking | null;
     const sp = b?.assisted?.split;
     if (!sp) { mismatches.push({ check: 'instant_booking_split', ref: id, detail: { bookingId: r.bookingId } }); continue; }
     if (sp.providerMinor + sp.cutMinor !== sp.baseMinor) mismatches.push({ check: 'split_sum', ref: lower(r.bookingId), detail: { ...sp } });
+    mismatches.push(...await referralMismatches(String(r.bookingId), String(b!.status), b!.assisted?.referral, 'referral_consultation'));
     const earned = await LedgerEntryModel.find({ source: 'consultation', sourceId: { $in: [lower(r.bookingId), String(r.bookingId)] }, kind: 'earning' })
       .select({ amountMinor: 1 }).lean();
     if (b!.status === 'completed' && sp.providerMinor > 0 && (earned.length !== 1 || Number(earned[0]!.amountMinor) !== sp.providerMinor)) {

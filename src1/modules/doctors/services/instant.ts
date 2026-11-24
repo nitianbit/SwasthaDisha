@@ -33,6 +33,7 @@ import { reverseRedemptionIn } from '@/modules/assisted/refunds';
 import { sendAssistedNotices } from '@/modules/assisted/support';
 import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
+import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 
 export const OFFER_MS = 5 * 60_000;
 export const INACTIVITY_MS = 30 * 60_000;
@@ -194,13 +195,18 @@ const istParts = (at: Date) => {
  * list = fee, discount = the coupon on that fee, base = fee − coupon (provider-funded) or the fee (platform-funded),
  * cut 0, provider = base.
  */
-function instantBookingAssisted(a: InstantAssistedBlock, requestId: string, feeMinor: number, couponMinor: number, couponCode?: string) {
+function instantBookingAssisted(a: InstantAssistedBlock, requestId: string, feeMinor: number, couponMinor: number, couponCode: string | undefined,
+  cut: Awaited<ReturnType<typeof snapshotCuts>>) {
   const { funding: _f, couponFundedBy, primaryConcern: _p, ...rest } = a;
-  const baseMinor = couponFundedBy === 'platform' ? feeMinor : feeMinor - couponMinor;
-  return { ...rest, funding: { instantRequestId: requestId },
+  const baseMinor = instantBaseMinor(a, feeMinor, couponMinor);
+  return { ...rest, funding: { instantRequestId: requestId }, referral: cut.referral,
     split: { listMinor: feeMinor, ...(couponCode && couponMinor > 0 ? { couponCode, couponFundedBy: couponFundedBy ?? 'provider' } : {}),
-      discountMinor: couponMinor, baseMinor, cutMinor: 0, providerMinor: baseMinor, rule: 'provider_coupon_v2' as const } };
+      discountMinor: couponMinor, baseMinor, cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2' as const,
+      ...(cut.lines[0] ? { referral: cut.lines[0] } : {}) } };
 }
+
+/** §8.3: the earning base of an instant fee — after a provider-funded coupon, the fee itself for a platform-funded one. */
+const instantBaseMinor = (a: InstantAssistedBlock, feeMinor: number, couponMinor: number) => (a.couponFundedBy === 'platform' ? feeMinor : feeMinor - couponMinor);
 
 /**
  * Q16a (L7): a doctor is busy for instant consultations when any held interval overlaps [now, now + 30 min) — the
@@ -574,6 +580,7 @@ export class InstantConsultService {
     if (await InstantRequestModel.exists({ _id: id, 'assisted.requestKey': { $type: 'string' } })) {
       await assertUniqueIndex(BookingModel, { 'assisted.shortRef': 1 });
       await assertUniqueIndex(BookingModel, { 'assisted.requestKey': 1 });
+      await assertReferralIndexes(); // the instant cut is snapshotted at accept
     }
     let out: { request: IInstantRequest; booking: IBooking };
     try {
@@ -657,6 +664,9 @@ export class InstantConsultService {
       const settlementSystem = a ? 'ledger' : settlementSystemFor(now);
       const account = settlementSystem === 'ledger' ? await ensureSettlementAccount('doctor', String(doctorId), sp.name || 'Doctor', s) : null;
       const contact = a ? await UserModel.findById(r.userId).select({ phone: 1 }).session(s).lean() as { phone?: string } | null : null;
+      // Phase 4a (§26.5.3): a partner's instant cut is snapshotted at accept, on the fee actually charged.
+      const cut = a ? await snapshotCuts({ kind: a.bookedBy.kind, id: a.bookedBy.id, name: a.bookedBy.name },
+        [{ category: 'consultation', baseMinor: instantBaseMinor(a, fee, allocated.couponMinor) }], s) : null;
       const [booking] = await BookingModel.create([{
         _id: bookingId, bookingType: 'consultation', bookingKind: 'instant', instantRequestId: id, userId: r.userId,
         ...(r.patient.kind === 'dependent' ? { dependentId: r.patient.dependentId } : {}),
@@ -665,7 +675,7 @@ export class InstantConsultService {
         paymentTransactionId: r.paymentTransactionId, settlementSystem, ...(account ? { settlement: { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName } } : {}),
         ...(a ? { source: r.source, earningRule: 'provider_coupon_v2', ...(contact?.phone ? { contactNo: contact.phone } : {}),
           ...(a.primaryConcern ? { primaryConcern: a.primaryConcern } : {}),
-          ...(a.bookedBy.kind === 'pharmacy' ? { pharmacyId: a.bookedBy.id } : {}), assisted: instantBookingAssisted(a, id, fee, allocated.couponMinor, r.couponCode) } : {}),
+          ...(a.bookedBy.kind === 'pharmacy' ? { pharmacyId: a.bookedBy.id } : {}), assisted: instantBookingAssisted(a, id, fee, allocated.couponMinor, r.couponCode, cut!) } : {}),
       }], { session: s });
       const request = a ? await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest : taken;
       return { request, booking: booking!.toObject() as IBooking };
