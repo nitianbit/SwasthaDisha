@@ -3616,3 +3616,1214 @@ gateway).
   `assisted/labBookings.ts`, `partners/services/labBookings.ts`, `payment/*`, `assisted/reconciliation.ts`, `assisted/review.ts`,
   `assisted/validation`. Expect conflicts with r10g (`consultations.ts` imports), 2c (`assisted/labBookings.ts`,
   `partners/services/labBookings.ts`) and 2d (`payment/types` and `payment/model` context lists); each side keeps both.
+
+## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
+
+Design only; nothing here is built. Base: `f5f171c9` (the stage line with round 2a, r11). Rounds 2b, 2c, 2d and 2e are being
+built on other branches. Where a round below needs one of them, it names the §24 contract it relies on, not code that does
+not exist yet. Every `file:line` is under `src1/modules/` at `f5f171c9` unless it says otherwise. Where this section and an
+earlier one differ, this one wins.
+
+Phase 3 adds three new pieces: the recommendation code, the treating window and the records grant. Everything else reuses
+what phases 0–2 built:
+- the `assisted` block (`assisted/types.ts:63-81`);
+- request keys claimed in the transaction, `requestHashOf` hashes and by-key / abandon routes;
+- `assertUniqueIndex` fail-closed 503;
+- the booker wallet ledger with operation keys and lots (2d's `postPartnerMovementIn` and `postBookerMovementIn`, §24.7.1);
+- card refund rows and their worker;
+- the hourly lookup limit (`assisted/limits.ts:61-67`);
+- the audit in the same transaction;
+- notices after the commit (`assisted/support.ts:42-46`).
+
+### 25.1 Owner decisions this section builds (not reopened)
+
+1. **Book or recommend.** A doctor can **book** a lab test for a patient, **recommend** tests, or both.
+2. **Report access.** A doctor who only recommended does **not** see the report. A doctor who booked sees the released
+   report like a pharmacy: released files only, for 90 days.
+3. **Doctor wallet.**
+   - Top-up by Razorpay.
+   - The wallet pays bookings, and refunds go back into it.
+   - Withdrawals are phase 4 (built later, switched off).
+   - The doctor collects from the patient at its own counter.
+4. **Cuts.** The doctor's referral cut is a setting that stays **off (0)** until legal advice. Phase 3 stores the split
+   fields with cut 0 and `referral: null`; phase 4 builds cuts.
+5. **History.** Doctors see the patient's past consultations and reports while treating. Pharmacies and labs see only
+   their own bookings.
+6. **Recommendation code.** Recommended tests get an 8-character code with a check character, printed with the Jansetu
+   brand on the prescription PDF. `testsAdvised` stays filled for older readers.
+7. **Partner "Consult now".** Partners book scheduled and instant consultations, as doctor availability allows.
+8. **Verified doctors only (S5).** An unverified or inactive doctor is blocked from everything. Re-verification restores
+   access.
+9. **Limits.** No blocking limit except the phone lookups (120 an hour per organisation). Cancellation and same-pair
+   counts stay alerts only (r10g). No other limit is added.
+10. **Names.** The real account name is shown only on `customer_order` links.
+11. **SMS** is phase 5: comments at the call sites only.
+
+### 25.2 The split, and why it differs from the suggestion
+
+The suggestion was five rounds: wallet, doctor → lab, recommendations, instant, treating window. The code changes three
+things:
+
+- **Card payment for doctor lab bookings is its own small round (3c).** It rides on 2b's new payment context
+  `assisted_lab_booking`, which is not merged yet. The wallet path (3b) needs nothing from 2b, and keeping card money in its
+  own review is how 1a/1b and 2a/2b were done.
+- **Partner instant consults are wallet-only in phase 3 (3e; question Q2).** Instant money lives on the request, and the
+  accepted fee can be lower than the quote (`allocateFunding`, `doctors/services/instant.ts:47-64`), so a card-paid request
+  would need a **partial** card refund of the difference. Today every assisted card refund is the full capture (§23.2 C12),
+  and refund rows are unique per capture (`captureKey`, §23.6 r10e). A partner card payment for instant would therefore be
+  a new money pattern. Partners who pay by card top up their wallet by card instead.
+- **The treating window comes last (3f).** It changes `file/access.ts` and the doctor's history. 3b (report access) and 3e
+  (instant bookings) change the same places first.
+
+| Round | Content | Depends on | Size |
+|---|---|---|---|
+| **3a** | Doctor wallet on 2d's `partner_wallets` (`ownerKind: 'doctor'`): Razorpay top-up with lots, verify/reconcile/check, recovery sweep, admin wallet tools | 2d | S–M |
+| **3b** | Doctor → lab test paid from the **doctor wallet**: patient from the doctor's own consultation or by phone; booker lab list and detail; cancellations and refunds to the doctor wallet; doctor report access (released, 90 days) | 3a, 2a, 2c (`assisted_links`), 2b merged first (same files) | M |
+| **3c** | Doctor → lab test by **card/UPI** on 2b's context | 3b, 2b | S |
+| **3d** | **Test recommendations**: the code, the PDF box, loading by code and phone, linking lab bookings (customer, pharmacy, lab desk, doctor) | 2a, 2c; after 3b so the doctor create links too | M |
+| **3e** | **Partner instant "Consult now"**, wallet-paid: pharmacy now, lab once 2e is merged | 1a/1b; 2d + 2e for labs | M |
+| **3f** | **Treating window, read log, records-access approvals and grants**; doctor history; file access | 3b, 3e (shares `file/access.ts`, the instant bookings) | M |
+
+**Build order:** 3a → 3b → 3c, with 3d after 3b. 3e can run beside 3a–3d: apart from the instant files it makes only small,
+separate edits in `assisted/bookerView.ts`, `assisted/review.ts` and `assisted/reconciliation.ts`. 3f comes last. Rounds that touch `partners/model/labBooking.ts` (3b, 3d) go one after the other, never at
+the same time as 2b or 2c.
+
+Each round is backend, an integration suite and an independent review (Opus xhigh). Commits stay local; stage only on the
+owner's word (§13).
+
+### 25.3 Shared rules for every round
+
+- **Doctor admission.**
+  - Every new doctor route has `requireSpecialist` + `requireEligibleDoctor` (`specialists/eligibility.ts:29-37`; 403
+    `SPECIALIST_NOT_VERIFIED`).
+  - Every writer re-reads the doctor inside its transaction (`isEligibleDoctor`, `:12-13`), as `reserveSlot` does (§20.1),
+    and answers the same 403 when the doctor became ineligible meanwhile.
+  - **Exception: money already paid is never stranded.** Top-up verify, reconcile and check always credit. Every refund
+    credit always posts.
+- **Doctor actor.** `DoctorActor = { kind: 'doctor', specialistId }`. The doctor is both the organisation and the actor
+  (no staff).
+  - Lookup organisation key: `doctor:<specialistId>`.
+  - Audit: `assisted_audit_events` with `actorKind` and `orgKind` `'doctor'`. Both enums already allow it
+    (`assisted/model/index.ts:26-28`, `:39-41`).
+- **Notices to a doctor** go through `sendAssistedNotices` with `userId` = the specialist id. Specialist notices are keyed
+  by that id (`notification/services/index.ts:331-333`).
+- **Money.**
+  - Amounts are integer paise.
+  - Every booker wallet movement goes through 2d's dispatcher `postBookerMovementIn({ payerKind, payerId, … })`.
+  - A credit **always posts**, whether the wallet is frozen or inactive or the doctor is ineligible.
+- **Keys.**
+  - Request keys use `ASSISTED_KEY` (`assisted/consultations.ts:43`).
+  - The hash comes from `requestHashOf` and never includes the payment method.
+  - Same key and hash → 200 `replayed`. Other content → 409 `IDEMPOTENCY_KEY_REUSED`. Abandoned → 409 `REQUEST_ABANDONED`.
+- **Fences.** Later steps carry `expectedVersion` (lab `statusVersion`), `expectedUpdatedAt` (consultations) or
+  `expectedStatusVersion` (instant requests).
+- **Indexes.** Each writer calls `assertUniqueIndex` on every unique index it relies on, before any read that counts or
+  holds. Until `npm run sync-indexes` has run, it answers 503 `INDEXES_OUTDATED`.
+- **Switches** are read on every call and are off unless exactly `"true"` (`assisted/flags.ts:14`). Off stops only NEW
+  bookings, top-ups, lookups and requests. Reads, cancellations, refunds, verify, reconcile and the sweeps always run.
+- **Patient order** (§24.3, review 4 of 1a):
+  1. validate;
+  2. replay first;
+  3. count the lookup and audit `booking.attempted`;
+  4. abandoned key;
+  5. every refusable check, with one answer for known and unknown numbers;
+  6. ONE transaction, which also opens a new number's account.
+- **Names.**
+  - Pharmacies keep their rule (`assisted/names.ts:31`).
+  - Labs and doctors see the name typed on their own `assisted_links` row (2c, `bookerKind: 'lab' | 'doctor'`), else the
+    masked name. They never get the account name through assisted routes.
+  - The doctor's own appointment views are unchanged.
+- **Cut 0.** `split.cutMinor` is 0 and every `split.lines[].cutMinor` is 0. `assisted.referral` is `null`.
+- **SMS hooks.** A comment `// SMS phase 5: <message>` at the call site, and nothing else.
+
+### 25.4 Round 3a: doctor wallet
+
+#### 25.4.1 Data model
+
+- **No new store.** 2d's `partner_wallets` and `partner_wallet_entries` (§24.7.1) take `ownerKind: 'doctor'` and
+  `ownerId` = the specialist id (lower-case hex).
+- **Lots.** Top-up lots use the shared `wallet_topup_lots`, which already allows `walletRef.kind: 'doctor'`
+  (`pharmacyWallet/model/lots.ts:10`, `:30`).
+- **`PaymentRecord`** gains `payerSpecialistId`:
+  - types: `payment/types/index.ts:9`, `:54`, `:82`;
+  - model: `payment/model/index.ts:15`;
+  - index `{ payerSpecialistId: 1, createdAt: -1 }`, partial on string.
+- **Earnings and the wallet never mix.** The doctor's earnings (`doctors/services/earnings.ts`, settlement ledger) never
+  fund a booking, and a wallet credit is never an earning (ASSUMED DR2).
+
+#### 25.4.2 Routes
+
+**Doctor.** A sub-router `specialistAssistedRouter` is mounted at `/me/assisted` in `specialists/routes/index.ts`, beside
+the other `/me/*` routes and before `/:id` (`:234`). Guards: `requireSpecialist`, `requireEligibleDoctor`.
+
+| Route | Request → answer |
+|---|---|
+| `GET /api/v1/specialists/me/assisted/wallet` | `{ balanceMinor, withdrawableMinor, receivableMinor, frozen, isActive, updatedAt }`. Zeros when there is no wallet; nothing is created |
+| `GET …/wallet/entries` | `?cursor&limit≤50` → `[{ _id, kind, amountMinor, balanceAfterMinor, description, referenceType, referenceId, at }]`, `nextCursor` |
+| `POST …/wallet/topups` | `{ amountMinor (integer ≥ 100), requestKey }` → `{ paymentTransactionId, razorpayOrderId, razorpayKeyId, amountMinor, currency, replayed }` |
+| `POST …/wallet/topups/:paymentTransactionId/check` | **Without** `requireEligibleDoctor`. → `{ state: 'credited' \| 'unpaid' }`, plus `wallet` for an eligible doctor. Another doctor's record: 404 |
+| `POST /api/v1/payments/verify`, `/reconcile` (existing) | Specialist tokens already pass the router (`src1/routes/index.ts:99`). `entity` = the wallet view (state only for an ineligible doctor) |
+
+**Admin.** On `adminAssistedRouter` (`assisted/routes/phase1a.ts:42`); the writes need `ASSISTED_ADMIN_TOOLS_ENABLED`.
+- `GET /api/v1/admin/doctors/:specialistId/wallet`, `/wallet/entries` and `/wallet/lots`.
+- `POST …/wallet/topup`:
+  - needs the `Idempotency-Key` header;
+  - body `{ amountMinor, notes? }`;
+  - non-withdrawable;
+  - `operationKey: 'admin_topup:<key>'` with `requestHash` (§20.6 item 4).
+- `GET …/wallet/topups/by-key/:key` (§21.3 shape).
+- `PUT …/wallet/freeze` `{ frozen, reason }`.
+- The existing lot chargeback, payment chargeback and close-compensated routes (`assisted/routes/phase1a.ts:53-58`) route
+  by `lot.walletRef.kind` and `notes.flow`. 2d makes them handle `lab`; 3a adds `doctor`.
+
+#### 25.4.3 Money
+
+- **Top-up order.** As `pharmacyWallet/services/index.ts:83-95`:
+  - `context: 'wallet_recharge'`, `contextId: doctor_<specialistId>_<ms>`;
+  - `userId` = `payerUserId` = `payerSpecialistId` = the doctor;
+  - `notes.flow: 'doctor_wallet_recharge'`.
+
+  One order per (doctor, request key): claim scope `wallet_topup:doctor:<specialistId>`, hash `{ amountMinor }`. A replay
+  answers the same order.
+- **Credit.** 2d's `isPartnerWalletRecharge` (beside `isPharmacyWalletRecharge`, `payment/services/index.ts:1615-1621`)
+  also recognises the doctor flow:
+  - `postPartnerMovementIn({ ownerKind: 'doctor', kind: 'credit', operationKey: 'wallet_recharge:<recordId>' })`;
+  - the same `walletCreditedAt` claim;
+  - records with `chargebackAt` or `compensatedAt` are refused;
+  - a lot holding the Razorpay fee is written while `ASSISTED_BOOKING_ENABLED_DOCTOR` is on and the lot index exists.
+- **Never the customer wallet.** Today `processWalletRechargePayment` (`:1888-1890`) and the entity read (`:1161`) send
+  every `wallet_recharge` record that is not a pharmacy one to `ensureWalletRechargeTransaction`, which credits the
+  CUSTOMER wallet of `userId`.
+  - A doctor-flow record must be routed before that default.
+  - If the doctor wallet cannot be credited, the call fails, and the sweep retries it. It never credits a customer wallet
+    (DR5).
+- **Recovery.**
+  - The sweep (`:2019-2020`) adds `{ context: 'wallet_recharge', 'notes.flow': 'doctor_wallet_recharge', createdAt ≥
+    WALLET_RECHARGE_SWEEP_FROM }`.
+  - The uncredited list (`assisted/reconciliation.ts:151`) covers doctor top-ups.
+- **Verification.** `getPaymentRecordForVerification` (`payment/services/index.ts:778-779`) already admits the doctor,
+  because `payerUserId` is the doctor. 3a adds an explicit rule: a doctor-flow record is verified only by the specialist
+  whose id is `payerSpecialistId`, or by an admin.
+- **Withdrawals:** none (phase 4; `WALLET_WITHDRAWALS_ENABLED` stays unread).
+- **Reconciliation:** 2d's `walletInvariants` covers doctor wallets: balance = Σ entries, withdrawable = Σ eligible lots,
+  and a receivable implies frozen.
+
+#### 25.4.4 Permissions, keys and indexes
+
+- A doctor reads and tops up only its own wallet. An ineligible doctor gets 403 on wallet reads and new top-ups; the check
+  route and verify still credit (DR3).
+- **Indexes:**
+  - 2d's `partner_wallets {ownerKind, ownerId}` and `partner_wallet_entries {walletId, operationKey}`, both unique;
+  - `wallet_topup_lots {paymentRecordId}` unique;
+  - `request_keys {scope, key}` unique;
+  - new: `payment_records {payerSpecialistId, createdAt}`.
+
+  `assertUniqueIndex` runs before a top-up is created and before any credit.
+
+#### 25.4.5 Switches, deploy and rollback
+
+- **Switch.** `ASSISTED_BOOKING_ENABLED_DOCTOR` (new): top-up creation, with lots. Off → 503 `ASSISTED_BOOKING_DISABLED`
+  on creation. Verify, reconcile, check, the sweep and the admin reads always run.
+- **Migration:** none (2d's collections).
+- **Order:**
+  1. deploy with the switch off;
+  2. `npm run sync-indexes`;
+  3. `ASSISTED_BOOKING_ENABLED_DOCTOR=true`;
+  4. restart.
+- **Rollback:** the switch. Never roll the code back while a doctor top-up record is `created`, or captured but not
+  credited: older code would credit a CUSTOMER wallet keyed by the doctor's id. Check:
+  `db.paymentrecords.countDocuments({ 'notes.flow': 'doctor_wallet_recharge', walletCreditedAt: { $exists: false }, status: { $in: ['created', 'paid'] } })`
+  = 0.
+
+#### 25.4.6 Tests (`test/assisted/phase3a-doctor-wallet.integration.ts`)
+
+**Top-ups and credits:**
+1. Top-up → verify → one credit and a lot holding the fee. The same key gives the same order; another amount with the
+   same key → 409.
+2. **Race:** verify, reconcile, check and the sweep at once give one credit.
+3. A doctor top-up never creates or credits a customer `wallets` row, including when the doctor-wallet write fails (that
+   call fails and the sweep credits it later).
+4. Another doctor's or a pharmacy's verify → 404 `PAYMENT_RECORD_NOT_FOUND`.
+
+**Eligibility:**
+
+5. An unverified doctor gets 403 on the wallet read and on a new top-up. A top-up it already paid is still credited
+   through check. Re-verification restores the reads.
+
+**Ledger:**
+
+6. **Race:** two debits beyond the balance (direct ledger test): one succeeds, and the balance never goes negative.
+7. A credit to a frozen or inactive wallet posts; a debit is refused.
+
+**Chargebacks, reconciliation and regression:**
+
+8. Lot chargeback; payment chargeback against close-compensated on a doctor top-up: either credited and charged back, or
+   blocked and never credited.
+9. Reconciliation: clean, then a tampered entry is flagged.
+10. The 1a, 1b and 2d suites pass unchanged.
+
+#### 25.4.7 Web screens
+
+- **Doctor app → Wallet.**
+  - Balance; "card money" (withdrawable, labelled "withdrawals coming later"); a frozen or owing banner; the entries list.
+  - **Top up:** amount, then Razorpay Checkout, then verify; "Check" for a lost answer.
+  - The line "Collect from your patient at your counter".
+- **Admin → Doctor wallet.** Balance, entries, lots, freeze, admin top-up with the by-key check, and the chargeback and
+  close-compensated buttons.
+
+### 25.5 Round 3b: doctor → lab test, paid from the doctor wallet
+
+#### 25.5.1 Data model
+
+- **The booking.** A `PartnerLabBooking` with:
+  - `source: 'doctor_assisted'` (the enum already has it, `partners/model/labBooking.ts:27-28`);
+  - `assisted.bookedBy = { kind: 'doctor', id: specialistId, actorKind: 'doctor', actorId: specialistId, name: 'Dr <name>' }`;
+  - `assisted.funding.payerKind: 'doctor'`.
+- **`AssistedBlock`** (`assisted/types.ts:63-81`) gains `fromBookingId?`: the doctor's consultation the patient was taken
+  from.
+- **The link.** An `assisted_links` row with `bookerKind: 'doctor'` (2c's model; the enum already has `doctor`).
+- No new collection.
+
+#### 25.5.2 Generalising round 2a (no new pattern)
+
+| Change point | Today | Phase 3b |
+|---|---|---|
+| Actor (`assisted/labBookings.ts:35`, `PharmacyActor`) | pharmacy only | `LabBooker = { kind: 'pharmacy', pharmacyId, actorId } \| { kind: 'doctor', specialistId }` |
+| `storedLabKey`, `labKeyScope` (`:84-85`), `orgKey` (`:59`) | pharmacy | Pharmacy strings stay byte-identical. Doctor: key `assisted_lab:doctor:<sid>:<sid>:<key>`, scope `assisted_lab_create:doctor:<sid>`, org key `doctor:<sid>` |
+| `createPharmacyLabBooking` (`:240-413`) | one booker | `createAssistedLabBooking(booker, input)`; the pharmacy route calls it with `kind: 'pharmacy'` |
+| Link (`:359`) | `linkPharmacyCustomerIn` | doctor: the `assisted_links` row (first typed name, never overwritten) |
+| Pair alert (`:361`) | `('pharmacy', …)` | `countPairBookingIn('doctor', sid, 'lab:<partnerId>')` (alert only) |
+| Redemption (`:363`) | `payerKind: 'pharmacy'` | `'doctor'` |
+| In-transaction re-reads (`:366`) | the lab | the lab, then the doctor (`isEligibleDoctor`) → 403 `SPECIALIST_NOT_VERIFIED` |
+| Debit (`:386-389`) | `postPharmacyMovementIn` | `postBookerMovementIn` (2d), same `labDebitKey` |
+| Audit (`:256`, `:390`) | pharmacy | `actorKind` and `orgKind` `'doctor'` |
+| Booker view `bookerLabViews` (`:174-213`) | `mine` = pharmacy (`:186`); pharmacy names (`:180`) | `(bookerKind, bookerId)`; doctor names from `assisted_links`; `holder: { linkId, name, typedName }` |
+| Own filter (`:446`) | pharmacy | `assistedBookerFilter('doctor', sid)` (`assisted/refunds.ts:28-29`) |
+| **Refund** (`assisted/labRefunds.ts:37`) | credits only when `payerKind === 'pharmacy'` | **A doctor-paid row would be marked refunded with no credit.** It must go through `postBookerMovementIn`. Same rule for `assisted/refunds.ts:71`, which 2e changes for labs |
+| Booker notices (`partners/services/labBookings.ts:129-133`) | `userId` = `bookedBy.id` | unchanged (the specialist id) |
+| Reconciliation `labBookingChecks` (`assisted/reconciliation.ts:113`) | pharmacy wallet rows | reads the payer's entries (partner wallet for doctors) |
+| Admin move (`assisted/review.ts:342`; `moveBookerLinkIn` `:295`, pharmacy only) | pharmacy link | doctor rows move their `assisted_links` row |
+
+#### 25.5.3 The patient: two sources
+
+Exactly one source per request; both or neither → 400 `VALIDATION_ERROR`.
+
+1. **From the doctor's own consultation:** `fromBookingId` + `typedName`. The booking must be:
+   - a consultation of this doctor;
+   - not an unpaid card booking (`assisted/views.ts:20-23`);
+   - without an open "not mine" report;
+   - inside its treating window (the rule of §25.9.1).
+
+   The account and the person (holder or family member) come from that booking. No phone is named, so no lookup is
+   counted. The web pre-fills `typedName` from the appointment, and the doctor confirms it. Another doctor's booking, or a
+   missing one → 404 `BOOKING_NOT_FOUND`. A closed window → 409 `TREATING_WINDOW_CLOSED`.
+2. **A walk-in by phone:** `phone` + `patient` + `holderName?`, exactly as 2a (masked lookup; the lookup is counted; one
+   answer for known and unknown numbers; the account opens in the transaction). Owner question Q4.
+
+#### 25.5.4 Routes (doctor token; `requireEligibleDoctor`; under `/api/v1/specialists/me/assisted`)
+
+| Route | Request → answer |
+|---|---|
+| `POST …/patients/lookup` | `{ phone }` → `{ exists, holderNameMasked }`; `hitLookup('doctor:<sid>')`; audited |
+| `GET …/labs` | `?visitMode&limit`. 2a's list; "nearby" uses the doctor's `pincode`, then `city` (`specialists/model/index.ts:160-170`) |
+| `GET …/labs/:partnerId/catalogue`, `GET …/labs/branches/:branchId/slots` | as 2a (`?visitMode&from&days≤14`; slots ≥ 60 min ahead) |
+| `POST …/lab-bookings` | 2a's body (§24.11) with one patient source of §25.5.3; `paymentMethod: 'wallet'` → 201 (replay 200) `{ booking: <doctor booker lab view>, funding, split, newAccount, replayed }` |
+| `GET …/lab-bookings`, `GET …/lab-bookings/:id` | `?status&from&to&cursor&limit≤50`; only rows with `bookedBy` = this doctor; otherwise 404 `LAB_BOOKING_NOT_FOUND` |
+| `GET …/lab-bookings/by-key/:key`, `POST …/by-key/:key/abandon` | Q13 shape |
+| `POST …/lab-bookings/:id/cancel` | `{ reason?, expectedVersion? }` → `{ booking, refundedMinor, alreadyCancelled }`. Up to 1 h before the slot, or any time while a lab reschedule is unanswered (`cancelAsBooker`, `partners/services/labBookings.ts:725-751`) |
+| `POST …/lab-bookings/:id/accept-reschedule` | `{ version }` → the view (L7) |
+
+**Errors:** 2a's (§24.11), plus:
+- 403 `SPECIALIST_NOT_VERIFIED`;
+- 404 `BOOKING_NOT_FOUND` (`fromBookingId`);
+- 409 `TREATING_WINDOW_CLOSED`.
+
+**Doctor booker lab view:** 2a's allowlist. `report.releases` is filled only inside L3 (90 days from the first release)
+and only while the doctor is eligible.
+
+#### 25.5.5 Report access (owner decision 2)
+
+`canReadPartnerLabReport` (`file/access.ts:174-190`) gains a case `r.userType === 'specialist'`. All of these must hold:
+- the file is **released**;
+- `assisted.bookedBy.kind === 'doctor'` and its id = `specialistOf(r)`;
+- `bookerReportWindowOpen` (`assisted/labViews.ts:23-26`);
+- `doctorIsEligible` (`specialists/eligibility.ts:119-122`).
+
+Drafts are never readable. Everyone else, a recommending doctor included, gets the uniform 404.
+
+#### 25.5.6 Money
+
+- **Debit:** `assisted_lab:<id>:debit` on the doctor wallet, in the booking transaction.
+- **Refund:** one `refund_credit` of the budget, `assisted_lab:<id>:refund`, restoring the debit's lots. It always posts.
+  Every cancel path reaches it through `cancelIn` (`partners/services/labBookings.ts:482-517`):
+  - the doctor (1 h before the slot);
+  - the patient (2 h window; the refund goes to the doctor; the notice says so);
+  - a lab reject;
+  - an admin.
+
+  An admin cancel of a moved no-show without refund forfeits the money (L9).
+- **Earning:** unchanged (`:842-853`): the lab earns `split.providerMinor` once, on completion.
+
+#### 25.5.7 Switches, indexes, deploy
+
+- **Switch.** `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR` (new), which needs `ASSISTED_BOOKING_ENABLED_DOCTOR` too. Off → 503 on
+  the lookup, the lab reads and new bookings. Reads, by-key, cancel, accept, refunds and report access always work.
+- **Indexes.** `assertAssistedLabIndexes` (`assisted/labBookings.ts:113-119`) takes the payer: partner entries
+  `{walletId, operationKey}` for doctors instead of the pharmacy index, plus `assisted_links {bookerKind, bookerId, userId}`.
+  No new index.
+- **Migration:** none.
+- **Order:**
+  1. deploy;
+  2. `sync-indexes` (2c/2d indexes);
+  3. switch on;
+  4. restart.
+- **Rollback:** the switch. Never roll the code back while a `doctor_assisted` row is open (older code refunds nobody):
+  `db.partner_lab_bookings.countDocuments({ source: 'doctor_assisted', status: { $nin: ['completed','cancelled','no_show'] } })`
+  must be 0.
+
+#### 25.5.8 Tests (`test/assisted/phase3b-doctor-lab.integration.ts`)
+
+**Create:**
+1. From a consultation: one doctor-wallet debit, one seat, `source: 'doctor_assisted'`, `fromBookingId` stored, the
+   link's typed name, no lookup counted.
+2. By phone: the lookup is counted; same answer for known and unknown numbers; the account opens only in the transaction.
+3. `fromBookingId` of another doctor → 404; cancelled, or outside the window → 409 `TREATING_WINDOW_CLOSED`; an unpaid
+   card booking → 404.
+4. **Race:** 5 identical creates give one booking and one debit.
+5. **Race:** two creates beyond the balance: one is 409 `INSUFFICIENT_BALANCE`, and the balance is never negative.
+6. **Race:** the doctor is unverified between the checks and the transaction → 403, nothing committed.
+
+**Cancel and refunds:**
+
+7. Doctor cancel at slot − 61 min refunds; at − 59 min it is 409. A patient cancel refunds the DOCTOR wallet, and the
+   customer wallet is unchanged. A lab reject refunds the doctor. An admin no-show cancel forfeits.
+8. **Race:** doctor cancel against patient cancel gives one refund, one redemption reversal and one seat release.
+9. A refund to a frozen or inactive wallet, or for an unverified doctor, posts.
+
+**Reports and names:**
+
+10. The doctor reads a released report: never a draft, not after 90 days, not while unverified. Another doctor and the
+    pharmacy get 404; the patient reads it.
+11. The lab-facing and doctor-facing names are never the account name.
+
+**Regression and reconciliation:**
+
+12. The 2a suite is unchanged (pharmacy keys and answers byte-identical).
+13. Reconciliation is clean on doctor rows and flags a cancelled row that was not refunded.
+
+#### 25.5.9 Web screens
+
+**Doctor app:**
+- **Appointment detail → "Book lab tests".** Patient prefilled (name editable); lab list (nearby badge); branch; tests;
+  visit mode; home address; slot; coupon; price summary; "patient agreed" tick; wallet balance; "Pay from wallet".
+- **Book for a walk-in.** The same wizard, starting with the phone lookup (masked name).
+- **Lab tests I booked.** A list and a detail: Ref, patient, lab and branch, slot, status, the proposed new time with
+  Accept / Cancel, Cancel (1 h cut-off, "refund to your wallet"), and the report while allowed.
+
+**Patient app:** "Booked and paid by Dr <name>"; on cancel, "the refund goes to Dr <name>".
+
+**Lab workspace:** "Booked by Dr <name>", Ref, "Identity attested by the partner, not verified".
+
+**Admin:** review queue and move tool rows name the doctor.
+
+### 25.6 Round 3c: doctor → lab test by card/UPI
+
+The 2b flow (§24.5) with a doctor payer. Nothing new beyond these change points.
+
+- **Payment record.** On 2b's context `assisted_lab_booking`, a doctor's record has `userId` = `payerUserId` =
+  `payerSpecialistId` = the doctor, and no `payerPharmacyId`.
+- **Verification** (`payment/services/index.ts:782-803`):
+  - a `specialist` requester matches by `payerSpecialistId`;
+  - a booking payment by an ineligible doctor → 403 `SPECIALIST_NOT_VERIFIED` (the pharmacy gate of §23.1, applied to
+    doctors);
+  - `entity` = the doctor booker lab view.
+- **Capture** (2b's `applyAssistedLabCapture`):
+  - the payer is checked by `funding.payerKind`;
+  - a capture for a doctor who is no longer eligible is a **late capture**, returned to the card, and the booking expires
+    (DR9, the C9 pattern).
+- **Card refund rows.** `payerKind` gains `'doctor'` (`assisted/model/index.ts:150`, `:182`).
+  - A refund `to: 'wallet'` (the doctor's own choice, C2, or the admin fallback, C5) credits the doctor wallet,
+    non-withdrawable (C3).
+  - Admin rows carry `payerName` = "Dr <name>".
+- **Routes.** `POST /api/v1/specialists/me/assisted/lab-bookings` with `paymentMethod: 'razorpay'` answers as §24.5.2.
+  The cancel adds `refundTo?: 'card' | 'wallet'`.
+- **Keys and hash.** As 3b. The method is not in the hash, so the same key sent with `wallet` answers the card booking
+  (§23.3).
+- **Limits.** No pending-card cap (r10g).
+- **Switches.** `ASSISTED_CARD_PAYMENT_ENABLED` and `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR`.
+- **Indexes.** `assisted_card_refunds {captureKey}` (r10e); nothing new.
+- **Migration:** none.
+- **Rollback:** never below 3c while a doctor card row is `pending_payment` or its refund row is `pending`.
+
+**Tests** (`test/assisted/phase3c-doctor-card.integration.ts`):
+1. The card create is pending: one record, the seat held, no debit, nothing shown to the patient or the lab.
+2. **Race:** verify, reconcile and the sweep at once confirm once and send one notice.
+3. Expiry, then a capture: one `late_capture` refund. A second capture on the order: one `extra_capture` refund.
+4. Doctor unverified before the capture → late capture returned to the card.
+5. `refundTo: 'wallet'` gives a doctor-wallet credit with no lot. A patient cancel gives a card refund row.
+6. A pharmacy, another doctor or the patient verifying → 404.
+7. The admin queue row names the doctor.
+
+**Web:** "Pay by card/UPI" in the doctor wizard; a "Waiting for payment" badge with Pay now; the refund choice with the
+non-withdrawable warning; the refund status row.
+
+### 25.7 Round 3d: test recommendations and the code on the PDF
+
+#### 25.7.1 Data model
+
+**New module `testRecommendations`** (`src1/modules/testRecommendations/model/index.ts`, so `sync-indexes` builds it).
+`test_recommendations` (§5.6, refined):
+
+| Field | Meaning |
+|---|---|
+| `_id`, `code` | The 8-character code |
+| `consultationId` | The consultation; one recommendation per consultation |
+| `specialistId`, `userId`, `dependentId` | The doctor and the person (`dependentId` null for the holder) |
+| `items` | `[{ index, name, catalogueCode?, note? }]` |
+| `status` | `'open' \| 'partly_booked' \| 'booked' \| 'withdrawn'` |
+| `bookings` | `[{ labBookingId, itemIndexes[], byKind: 'customer' \| 'pharmacy' \| 'lab_desk' \| 'doctor', at, cancelled? }]` |
+| `version`, `createdAt`, `updatedAt` | |
+
+- **Indexes:** `{code}` unique; `{consultationId}` unique; `{userId, createdAt: -1}`.
+- **`Booking.prescription.recommendationCode`** (schema `bookings/model/index.ts:107`, type `bookings/types/index.ts:46`).
+  It is server-owned: S4 already refuses a client `prescription` at create (`bookings/serverOwnedFields.ts:14`).
+- **`PartnerLabBooking.recommendationId`** (top level, every source; partial index). It replaces §5.1's
+  `assisted.recommendationId`, because customer and desk rows have no `assisted` block (DR17).
+
+#### 25.7.2 The code
+
+- **Shape.** 7 random characters plus 1 check character, from the Crockford base32 alphabet
+  `0123456789ABCDEFGHJKMNPQRSTVWXYZ`. The check character is Luhn mod 32 over the seven. Printed as `ABCD-EFGH`.
+- **Why Crockford.** `shortRef` uses RFC 4648 base32 (`assisted/labBookings.ts:88-91`). Crockford avoids I, L, O and U,
+  which are misread aloud or on paper (DR10).
+- **Input.** Upper-cased; spaces and hyphens removed; I and L read as 1, O as 0. A wrong check character → 400
+  `INVALID_CODE`, before any read.
+- **Making it.** `crypto.randomInt`. A duplicate code (11000) retries with a new code, up to 3 times.
+
+#### 25.7.3 Writing it (`createAppointmentPrescription`, `specialistPortal/services/index.ts:326-409`)
+
+- **Input** (`specialistPortal/validation/index.ts:126-128`).
+  - `testsAdvised: string[]` stays.
+  - New optional `testsRecommended: [{ name (1–120), catalogueCode?, note? (≤ 200) }]`, at most 30.
+  - With `testsRecommended`, the server fills `testsAdvised` from its names, for older readers. With only
+    `testsAdvised`, the items are those names.
+- **Before the PDF** (`:355`), the recommendation is upserted by `consultationId`. Its person is the booking's `userId`
+  and `dependentId`.
+  - A re-save keeps the code, replaces the items and keeps the linked bookings.
+  - An empty list → `withdrawn`. The code stays reserved, and loading it answers 404 (DR11).
+- **Best effort** (DR12). If the store fails (index missing, database error), the failure is logged, the PDF prints
+  without a code, and the prescription is still saved. The next save tries again.
+- **The PDF.** The Tests Advised section (`:629-632`, from `testsHtml` `:555-560`) gets a box: **"Jansetu — book these
+  tests with code ABCD-EFGH at a Jansetu pharmacy or lab, or in the Jansetu app."** The header brand (`:596`, "MyEwaCare")
+  is unchanged (question Q3).
+- **Stored and shown.**
+  - `prescription.recommendationCode` is saved with the prescription (`:367-378`).
+  - The dispensing copy prints it under "Tests advised" (`assisted/dispensingCopy.ts:101-102`). Its hash (`:35-41`)
+    includes `recommendationCode` **only when present**, so copies of older prescriptions stay current (DR14).
+  - The booker view adds it to `PRESCRIPTION_FIELDS` (`assisted/bookerView.ts:19`). Customer and doctor reads carry it.
+- **Instant consultations** get it too: they use the same prescription route (`specialists/routes/index.ts:208-215`).
+
+#### 25.7.4 Loading by code and phone (D2)
+
+| Who | Route | Guard and count |
+|---|---|---|
+| Pharmacy | `GET /api/v1/pharmacy-assisted/recommendations/:code?phone=` | `requireOperationalPharmacy`; `hitLookup('pharmacy:<id>')`; audited `recommendation.lookup` (ids only) |
+| Lab desk (2c) | `GET /api/v1/partner-workspace/lab-desk/recommendations/:code?phone=` | lab member with `bookings.manage`, branch in scope; `hitLookup('lab:<partnerId>')` |
+| Doctor (walk-in) | `GET /api/v1/specialists/me/assisted/recommendations/:code?phone=` | eligible; `hitLookup('doctor:<sid>')` |
+| Patient | `GET /api/v1/lab-bookings/recommendations?status` (customer router, `partners/routes/index.ts:312-322`) | the holder's own account, all family members |
+
+**Answers:**
+- **Partner:** `{ code, status, items: [{ index, name, note }] }`. No doctor, patient or diagnosis.
+- **Patient:** also `_id`, `consultationId`, `doctorName`, `date`, `patient: { kind, dependentId, name }` and `bookings`.
+
+**Errors:**
+- 400 `INVALID_CODE`;
+- 404 `RECOMMENDATION_NOT_FOUND` (unknown, withdrawn, or the phone is not the account's: one answer);
+- 429 `ASSISTED_LIMIT_REACHED` (lookups);
+- 503 `RECOMMENDATIONS_DISABLED`.
+
+#### 25.7.5 Linking a lab booking
+
+Every lab create accepts `recommendation?: { code, itemIndexes: number[] }` (at least one, unique, in range):
+- customer (`partners/services/labBookings.ts:74-89`, create `:202`);
+- pharmacy 2a (`assisted/labBookings.ts:63-81`);
+- lab desk 2c;
+- doctor 3b.
+
+**Rules:**
+- **A refusable check, before any account or transaction.** The recommendation must belong to this exact person: the
+  account of the phone and the chosen patient (holder or family member); for a customer, its own. Otherwise 404
+  `RECOMMENDATION_NOT_FOUND`, the same answer for unknown numbers (DR16).
+- **In the booking transaction:**
+  - `recommendationId` is written on the row;
+  - an entry is pushed to `bookings`;
+  - `status` is recomputed: every index covered by a booking that is not cancelled → `booked`; some → `partly_booked`;
+    none → `open`;
+  - `version` + 1.
+- **Never a lock.** Other tests may be booked too, and an index may be covered twice.
+- **Hash.** The create hash includes `recommendation`: the normalised code and the sorted indexes (§6.3).
+- **Cancellation and expiry.** `cancelIn` and `expireUnpaid` (`partners/services/labBookings.ts:482`, `:418`) mark the entry `cancelled: true` and
+  recompute the status in their transaction.
+- **The recommending doctor** never reads the report: no access rule names a recommender.
+
+#### 25.7.6 Switches, indexes, deploy
+
+- **Switch.** `TEST_RECOMMENDATIONS_ENABLED` (new) gates creation at save, the partner loads and links.
+  - Off: no recommendation is made, and the PDF is as today.
+  - Loads, and creates that carry `recommendation`, answer 503 `RECOMMENDATIONS_DISABLED` (nothing written).
+  - The patient list and stored codes stay readable.
+- **Indexes.** `assertUniqueIndex` on `{code}` and `{consultationId}`:
+  - before the upsert (missing → the best-effort skip, logged);
+  - before a link (missing → 503).
+- **Migration:** none. Older prescriptions get no code; nothing is backfilled.
+- **Order:**
+  1. deploy;
+  2. `sync-indexes`;
+  3. switch on;
+  4. restart.
+- **Rollback:** the switch. The code rollback is safe: no money is involved, and linked rows keep a field older code
+  ignores.
+
+#### 25.7.7 Tests (`test/assisted/phase3d-recommendations.integration.ts`)
+
+**Writing the code:**
+1. A save with tests gives one recommendation and a code with a valid check character. The PDF HTML holds the code and
+   "Jansetu", and `testsAdvised` is filled.
+2. **Race:** two saves at once give one recommendation with one code.
+3. A re-save keeps the code and replaces the items. An empty list withdraws it, and a load answers 404.
+4. Every single-character change of a valid code, and every adjacent swap, fails the check (exhaustive over one code).
+
+**Loading and linking:**
+
+5. Pharmacy load: the right phone gets the names only; a wrong phone gets the same 404 as an unknown code; the load is
+   counted.
+6. A pharmacy booking with `recommendation` gives `partly_booked`, then `booked`; a cancel brings it back to `open`.
+7. **Race:** two bookings linking one recommendation at once are both linked, and the status matches.
+8. The patient books from the app and it links; another account's code → 404.
+
+**Access and failure:**
+
+9. The recommending doctor gets 404 on the report. The pharmacy that booked reads it.
+10. The prescription save succeeds when the recommendation store fails (index dropped); the PDF has no code.
+11. The dispensing copy shows the code. A copy made before 3d stays current (hash unchanged).
+
+#### 25.7.8 Web screens
+
+- **Doctor app → Prescription form:** a "Tests" list (name, optional note). After saving, the code is shown and the PDF
+  has it.
+- **Pharmacy → "Book from a recommendation":** code and phone → the test names → the lab wizard, with the recommended
+  tests ticked.
+- **Lab desk:** the same, into the desk booking.
+- **Patient app:** "Recommended tests" on the consultation and in a list, with a Book button that pre-fills the lab
+  booking.
+- **Doctor appointment:** "Book these tests myself" (3b), pre-filled.
+
+### 25.8 Round 3e: partner instant "Consult now" (wallet-paid)
+
+#### 25.8.1 Data model (`doctors/model/instant.ts`)
+
+- **`IInstantRequest`** (`:44-97`) and its schema (`:101-159`) gain:
+  - `source?: 'self' | 'pharmacy_assisted' | 'lab_assisted'`;
+  - `assisted?` (Mixed): `bookedBy`, `consent`, `preferredLanguage`, `identity`, `join`, `shortRef`, `requestKey`,
+    `requestHash`, `referral: null`;
+  - `assisted.funding = { method: 'wallet', payerKind, payerId, amountMinor, state: 'held' | 'allocated' | 'refunded', walletEntryId, refunds[] }`.
+- **`MoneySplit`** (`:38`) gains an optional `partnerMinor` (default 0) in `funding`, `allocated`, `returned` and
+  `refunded` (`:123-127`).
+- **`refundReason`** (`:94`, `:156`) adds `'booker'`.
+- **Required fields** on assisted rows:
+  - `createRequestKey` (`:104`) = the stored namespaced key (unique with `userId`, `:160`);
+  - `createRequestHash` = the assisted hash;
+  - `paymentStatus: 'paid'`;
+  - `paymentDeadline` = the create time (never `pending_payment`).
+- **Indexes:** `{ 'assisted.requestKey': 1 }` unique partial; `{ 'assisted.shortRef': 1 }` unique partial;
+  `{ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1, _id: -1 }`.
+- **The booking made at accept** (`acceptIn`, `doctors/services/instant.ts:584-590`) gets:
+  - `source`;
+  - `assisted`, copied from the request with `funding: { instantRequestId }` only (§5.1) and the split: list = the fee,
+    discount = `allocated.couponMinor`, base = fee − coupon (provider-funded) or the fee (platform-funded), cut 0,
+    provider = base;
+  - `earningRule: 'provider_coupon_v2'`;
+  - `settlementSystem: 'ledger'`, whatever `settlementSystemFor` (`doctors/services/instant.ts:582`) says;
+  - `pharmacyId` for pharmacy bookers, so the phase 0 list and the S2 readers show it.
+- **Coupon redemption** `bookingKind: 'instant_request'` (the enum already has it, `coupon/model/redemption.ts:13`).
+
+#### 25.8.2 Money
+
+Line numbers in §25.8.2–§25.8.4 without a file are in `doctors/services/instant.ts`.
+
+- **`allocateFunding`** (`:47-64`): the order is coupon → wallet → partner → gateway; `returned.partnerMinor`; the
+  invariants include `partnerMinor`.
+- **Create: ONE transaction.** Offers (`offerTargets`, `:414-428`) are computed first; none → 409 `NO_DOCTOR_ONLINE`
+  before anything. Then, in the transaction:
+  1. key claim;
+  2. account, family member, and the booker's link (pharmacy link, or `assisted_links` for labs);
+  3. redemption;
+  4. the insert as `offered` / `held` (`holdPatch`, `:431-437`, with `partnerMinor` = quote − discount);
+  5. the debit `assisted_instant:<id>:debit`;
+  6. the audit.
+
+  After the commit: `notifyOffer` (`:469`).
+- **Accept** (`:530-593`), for assisted rows:
+  - instead of the customer credit (`:573-574`): a `refund_credit` of `returned.partnerMinor`,
+    `assisted_instant:<id>:quote_return`, to the booker wallet (non-withdrawable, no lot restore; DR20);
+  - instead of undoing the coupon on payment records (`:576-579`): the redemption's `discountMinor` is set to
+    `allocated.couponMinor`, or the redemption is reversed when that is 0.
+- **Refund before acceptance** (`refundHeld`, `:665-688`; the booker or the inactivity sweep `:848-862`): a
+  `refund_credit` of `funding.partnerMinor`, `assisted_instant:<id>:refund`, restoring the debit's lots; the redemption is
+  reversed.
+- **Cancel after acceptance.** Only the doctor or an admin (D13), through `cancelAccepted` (`:720-752`) and
+  `cancelByDoctor` (`bookings/services/index.ts:1595-1602`):
+  - `allocated.partnerMinor − refunded.partnerMinor` goes back as `assisted_instant:<id>:cancel_refund` (non-withdrawable);
+  - the redemption is reversed;
+  - `linkVersion` + 1.
+- **No-show:** final; nothing goes back (§8.6).
+- **Completion** earns `split.providerMinor` once (`doctors/services/earnings.ts:17-36` already reads `earningRule`).
+- **Never the customer wallet.** No assisted row touches it.
+
+#### 25.8.3 Routes (pharmacy token; `pharmacyAssistedRouter`, `assisted/routes/phase1a.ts:15-16`)
+
+| Route | Request → answer |
+|---|---|
+| `GET /api/v1/pharmacy-assisted/instant/specialities` | `?mode=video\|call` → `[{ specialization, onlineNow }]` (`specialities`, `:888-909`) |
+| `GET …/instant/doctors` | `?speciality&mode` → `[{ doctorId, name, specialization, modes, instantFeeMinor, nearby }]` (`onlineDoctors`, `:254-274`; eligible only; nearby by the pharmacy's pincode, then city, then fee) |
+| `GET …/instant/quote` | `?speciality&mode&doctorId?` → `{ quotedAmountMinor, doctors }` (`:277-286`) |
+| `POST …/instant/requests` | below → 201 (replay 200) `{ request: <booker instant view>, funding: { method, amountMinor, state, walletEntryId }, newAccount, replayed }` |
+| `GET …/instant/requests`, `GET …/instant/requests/:id` | `?status&cursor&limit≤50`, own rows only (404 otherwise) |
+| `GET …/instant/requests/by-key/:key`, `POST …/by-key/:key/abandon` | Q13 shape |
+| `POST …/instant/requests/:id/reoffer` | `{ target, expectedStatusVersion }` (`reoffer` rules, `:612-641`) |
+| `POST …/instant/requests/:id/activity` | the booker's heartbeat (§7.7: the inactivity refund follows the booker's screen) |
+| `POST …/instant/requests/:id/refund` | `{ expectedStatusVersion }` → `{ refundedMinor }` |
+
+**Create body:**
+```
+{ requestKey, phone, patient, holderName?, consent, preferredLanguage, specialization, mode: 'video' | 'call',
+  target: { kind: 'any' } | { kind: 'specific', doctorId }, join: { on, phone? }, couponCode?,
+  acceptedQuoteMinor, acceptedPayableMinor, primaryConcern?, paymentMethod: 'wallet' }
+```
+- Chat is refused (DR19).
+- `razorpay` → 400 `PAYMENT_METHOD_UNAVAILABLE` (Q2).
+
+**Booker instant view:**
+```
+{ _id, status, statusVersion, mode, specialization, target, offerGeneration, offerExpiresAt, inactivityRefundAt,
+  offeredCount, acceptedDoctorName, bookingId, patientName, holder,
+  assisted: { shortRef, join: { on }, preferredLanguage, disputed? },
+  money: { quotedAmountMinor, discountMinor, paidMinor, returnedMinor, refundedMinor },
+  createdAt, updatedAt }
+```
+The booking itself appears in `GET /pharmacy-bookings`. Its "Join call" window for `bookingKind: 'instant'` runs from
+acceptance to the end of the doctor's held interval (`assisted/bookerView.ts:21` today uses the slot).
+
+**Errors:**
+- 400 `CONSENT_REQUIRED`, `PAYMENT_METHOD_UNAVAILABLE`, `VALIDATION_ERROR`, `DOCTOR_REQUIRED`, `INVALID_COUPON`,
+  `COUPON_NOT_FOR_ASSISTED`;
+- 409:
+  - doctors: `NO_DOCTOR_ONLINE`, `DOCTOR_NOT_ONLINE`;
+  - price: `QUOTE_CHANGED` (`details: { quotedAmountMinor, discountMinor }`);
+  - wallet: `INSUFFICIENT_BALANCE`, `WALLET_FROZEN`, `WALLET_INACTIVE`, `WALLET_RECEIVABLE`;
+  - coupon: `COUPON_EXHAUSTED`;
+  - keys: `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`;
+  - request state: `REQUEST_NOT_OPEN`, `REQUEST_NOT_REFUNDABLE`, `INSTANT_REQUEST_CHANGED`;
+- 429 `ASSISTED_LIMIT_REACHED` (lookups);
+- 503 `ASSISTED_BOOKING_DISABLED`, `INDEXES_OUTDATED`, `CUSTOMER_LINKING_UNAVAILABLE`.
+
+**Labs (after 2e).** The same routes under `/api/v1/partner-workspace/assisted/instant/*`, with `assisted.book` and the
+branch in scope. "Nearby" is the member's branch.
+
+#### 25.8.4 Other change points
+
+| Change point | Rule |
+|---|---|
+| Customer commands (`doctors/routes/index.ts:13-19`: pay, reoffer, activity, refund) | assisted request → 409 `PARTNER_PAID_BOOKING` |
+| Customer reads (`requestView` `:143-146`; `getForCustomer` / `listForCustomer` `:873-885`) | assisted rows hide `quotedAmountMinor`, `discountMinor`, `funding`, `allocated`, `returned`, `refunded`, `acceptedFeeMinor`, `offerFees`, `couponTerms` and the `assisted` money and keys; they add `paidBy` |
+| Doctor offers (`myOffers`, `:479-497`) | add `source`, `bookedBy.name` and the identity note (`assisted/views.ts:13`). `patient.name` is the typed or family-member name, never the account name |
+| After accept (`afterAccept`, `:596-609`) | Meet with neutral text (`meet/service/index.ts:444-470`: `assisted` is present). The patient is told "<partner> booked an instant consultation; a doctor is joining", and the booker "Doctor accepted, Ref <ref>: join now". *SMS hook: booked* |
+| "Not mine" and admin move (`assisted/review.ts:38`, `:172`) | allowed on the instant booking; the move also moves the request's `userId` and `patient` in the same transaction |
+| Reconciliation (`assisted/reconciliation.ts`) | new `instantChecks`: one debit = `funding.partnerMinor`; a refunded request has one refund = the debit; an accepted one has `quote_return` = `returned.partnerMinor`, and `cancel_refund` ≤ `allocated.partnerMinor`; split sums; one earning on completion |
+| Stuck money (`assisted/reconciliation.ts:174`) | `offered` requests more than 1 h past `inactivityRefundAt` |
+
+#### 25.8.5 Keys, switches, indexes, deploy
+
+- **Keys.** Stored `assisted_instant:<kind>:<orgId>:<actorId>:<key>`; claim scope
+  `assisted_instant_create:<kind>:<orgId>:<actorId>` (§6.3 names this kind).
+- **Hash** over: phone, patient identity, `holderName`, service `{ specialization (lower-case), mode, target, join }`,
+  `couponCode`, `preferredLanguage`, `primaryConcern`, `acceptedQuoteMinor` and `acceptedPayableMinor`.
+- **Fences.** Reoffer and refund CAS on `statusVersion` / `offerGeneration`, as the customer paths already do.
+- **Switch.** `ASSISTED_INSTANT_ENABLED` (new), plus the booker's own switch (`ASSISTED_BOOKING_ENABLED_PHARMACY` or
+  `_LAB`).
+  - Off: the speciality, doctor and quote reads and new requests answer 503.
+  - Reoffer, activity, refund, accept, cancel and the sweeps always run.
+- **Indexes.** `assertUniqueIndex` on:
+  - `instant_requests {assisted.requestKey}`, `{assisted.shortRef}`, `{userId, createRequestKey}`;
+  - `bookings {assisted.shortRef}` (at accept);
+  - the booker's wallet entry index;
+  - `request_keys`;
+  - `coupon_redemptions`.
+- **Migration:** none.
+- **Order:**
+  1. deploy;
+  2. `sync-indexes`;
+  3. `ASSISTED_INSTANT_ENABLED=true`;
+  4. restart.
+- **Rollback:** the switch. Never roll the code back while an assisted request is `offered`, or its booking is
+  `confirmed` (older code would refund the patient's wallet):
+  `db.instant_requests.countDocuments({ 'assisted.bookedBy.kind': { $exists: true }, status: 'offered' })` and
+  `db.bookings.countDocuments({ bookingKind: 'instant', source: { $in: ['pharmacy_assisted','lab_assisted'] }, status: 'confirmed' })`
+  must both be 0.
+
+#### 25.8.6 Tests (`test/assisted/phase3e-partner-instant.integration.ts`)
+
+**Create:**
+1. A create gives one debit = quote − coupon, `offered` / `held`, offers sent, one redemption, the typed-name link, and
+   no customer-wallet movement.
+2. A replay, other content (409) and an abandoned key behave as §25.3.
+3. **Race:** 5 identical creates give one request and one debit.
+4. **Race:** two creates beyond the balance: one is 409 `INSUFFICIENT_BALANCE`.
+
+**Accept:**
+
+5. Accept gives a booking with `source`, `assisted.funding = { instantRequestId }`, `earningRule`, the split,
+   `pharmacyId` and `settlementSystem: 'ledger'`. The quote difference is credited to the partner once. A percentage
+   coupon is recomputed on the fee.
+6. **Race:** two doctors accept at once: one booking and one quote return.
+7. **Race:** accept against the booker's refund, and accept against the inactivity sweep: exactly one outcome, and the
+   money moves once.
+
+**Refunds and commands:**
+
+8. Booker activity moves the inactivity refund. The inactivity refund credits the partner, with lots restored.
+9. A doctor or admin cancel after acceptance refunds the allocation to the partner once; the customer wallet is untouched;
+   the redemption is reversed.
+10. The patient's pay, reoffer, refund and activity → 409 `PARTNER_PAID_BOOKING`. Patient reads show `paidBy` and no
+    money.
+11. A refund to a frozen or inactive wallet posts.
+
+**Doctors and earnings:**
+
+12. An unverified doctor gets no offer, and its accept → 403.
+13. Completion earns `split.providerMinor` once; a no-show earns nothing.
+
+**Reconciliation and regression:**
+
+14. `instantChecks` is clean, and a tampered row is flagged.
+15. The customer instant suites (Q4b, Q13, Q16a) pass unchanged.
+
+#### 25.8.7 Web screens
+
+**Pharmacy (and lab after 2e):**
+- **Consult now.**
+  - Speciality with "N doctors online", and the mode.
+  - Any doctor, or a chosen online doctor.
+  - Patient lookup; where the patient joins; coupon; the quoted price and "you may get some back"; the consent tick;
+    "Pay from wallet".
+- **Waiting for a doctor.** Offer countdown; "Offer again" (any or another doctor); "Cancel and refund"; the screen sends
+  the activity heartbeat.
+- **Doctor joined.** "Join call" and Ref; the amount returned to the wallet.
+
+**Patient app:** an instant consultation "Booked and paid by <partner>".
+
+**Doctor app:** the offer card shows "Booked by <partner>" and "Identity attested by the partner, not verified".
+
+### 25.9 Round 3f: treating window, read log, records-access approvals and grants
+
+#### 25.9.1 The treating window (§9.1, D5, N8)
+
+A pure helper, `treatingWindowOf(booking, slot) → { open, opensAt, closesAt }`, in `assisted/treating.ts`. 3b introduces it
+for `fromBookingId`.
+
+**It opens:**
+- video or call: at slot start − 10 min (`appointmentIntervalOf`, `assisted/rxAccess.ts:30-36`);
+- instant: at acceptance (the booking's `createdAt`);
+- in person: at desk check-in (`clinicDesk.arrivedAt`, `bookings/types/index.ts:152`), or at slot start for an online
+  in-clinic booking.
+
+**It closes:**
+- 30 days after completion (`lifecycle.completed.at`);
+- if not completed, 7 days after the consultation's end (`consultationEndOf`, `assisted/rxAccess.ts:42-58`);
+- at once on cancellation or no-show. A booking cancelled before it starts never opens a window.
+
+An unpaid card booking never opens a window. The doctor must be eligible at every read.
+
+#### 25.9.2 Data model (new module `recordAccess`, `src1/modules/recordAccess/model/index.ts`)
+
+**`record_reads`:**
+- fields: `{ doctorId, holderUserId, personKey ('self' | dependentId), treatingBookingId | null, scope: 'own_history' | 'other_history' | 'file', path?, sourceBookingId?, at }`;
+- indexes: `{doctorId, at: -1}`, `{holderUserId, personKey, at: -1}`, `{treatingBookingId}`;
+- kept for good (an audit).
+
+**`record_access_requests`:**
+- fields: `{ holderUserId, personKey, dependentId?, specialistId, treatingBookingId, state: 'pending' | 'approved' | 'denied' | 'expired' | 'replaced', via?: 'app' | 'sms_code', codeHash?, codeExpiresAt?, wrongTries, expiresAt, decidedAt?, createdAt }`;
+- index: unique partial `{treatingBookingId, specialistId}` where `state: 'pending'` (one open request per booking and
+  doctor);
+- index: `{holderUserId, state, createdAt: -1}`.
+
+**`record_access_grants`:**
+- fields: `{ holderUserId, personKey, dependentId?, specialistId, via, requestId, at, expiresAt (at + 12 months), revokedAt?, revokedBy?, revokedByKind? }`;
+- index: unique `{holderUserId, personKey, specialistId}`. One row per doctor and person, renewed in place;
+- index: `{specialistId, holderUserId}`.
+
+#### 25.9.3 The doctor's history
+
+**Route:** `GET /api/v1/specialists/me/patients/:userId/history?dependentId=&bookingId=` (`specialists/routes/index.ts:217-223`;
+service `specialistPortal/services/index.ts:411-441`; repository `bookings/repository/index.ts:255-269`).
+
+- **Without `bookingId`:** the doctor's own consultations, as today (§9.1 item 5; no window, no grant).
+  - Without `dependentId`: the whole account, so the released doctor app keeps working (DR23).
+  - With `dependentId`: that person only.
+- **With `bookingId`** (the doctor's treating booking):
+  - the person is that booking's; another account → 404; a closed window → 409 `TREATING_WINDOW_CLOSED`;
+  - answer:
+    ```
+    { patient,
+      consultations,                                    // own, this person
+      others?: { consultations: [...], labReports: [...] },
+      access: { window: { opensAt, closesAt },
+                grant: { at, expiresAt, via } | null,
+                request: { state, createdAt, expiresAt } | null,
+                identityNote? } }
+    ```
+  - `others` only with a grant in force and `RECORDS_ACCESS_ENABLED`;
+  - `identityNote` for a partner-booked treating booking.
+- **Allowlists for `others`** (DR24):
+  - **consultations:** `{ bookingId, date, doctorName, specialization, consultationMode, diagnosis, advice, medicines, testsAdvised, recommendationCode, prescribedAt, prescriptionFile }`.
+    - Included: bookings of the same person with a doctor-saved prescription (`hasPrescription`,
+      `assisted/rxAccess.ts:83-91`) that an admin clear has not withdrawn.
+    - Never included: notes, documents, contact details, price, payment, meeting link or the `assisted` block.
+  - **labReports:** released partner-lab reports of the person: `{ labBookingId, labName, date, tests: [names], releases: [{ file, releasedAt, signer }] }`.
+- **Read log first.** One `record_reads` row (`own_history` or `other_history`) is written before the answer. If the write
+  fails → 503 `READ_LOG_UNAVAILABLE`, and no data is sent.
+- **Ineligible doctor.** `restrictIneligibleDoctorReads` (`specialists/eligibility.ts:167-174`) still reduces the own
+  part. With `bookingId` → 403 `SPECIALIST_NOT_VERIFIED`.
+
+#### 25.9.4 Approval and grants
+
+**Doctor:**
+- `POST /api/v1/specialists/me/bookings/:id/records-access/request` (eligible; inside the window; switch on).
+  - It creates a `pending` request; any older pending one of that booking becomes `replaced`.
+  - It expires at the earlier of the window's close and 24 h (DR21).
+  - The holder gets an in-app notice naming the doctor and the patient's first name, with no health details.
+  - The code sender is a hook, `RecordsCodeSender` (set like `setAssistedEffects`, `assisted/support.ts:79`). In phase 3
+    it is "unavailable". In phase 5 it makes a 6-digit code, stores its HMAC with `codeExpiresAt` = +10 min, and sends
+    the security SMS of §10.6. *SMS hook: records code.*
+  - Answer: `{ requestId, state: 'pending', expiresAt, channels: { app: <the holder has signed in>, sms: false } }`.
+  - A grant already in force → 200 `{ state: 'approved', grant }`, and nothing is created.
+- `POST …/records-access/confirm { code }`.
+  - Only when a code was sent; otherwise 409 `NO_CODE_SENT`.
+  - The code is compared in constant time.
+  - After 5 wrong tries, or after 10 minutes, the request is `expired` (409 `CODE_EXPIRED`). This is the code's own life,
+    like the sign-in code (DR22).
+  - Success → a grant with `via: 'sms_code'`.
+
+**Holder (customer app; the account holder only):**
+- `GET /api/v1/records-access/requests?state=pending`;
+- `POST /api/v1/records-access/requests/:id/approve` and `/deny` (CAS `pending` and not expired; approve upserts the grant,
+  `via: 'app'`);
+- `GET /api/v1/records-access/grants`, `POST /api/v1/records-access/grants/:id/revoke`.
+
+**Admin:**
+- `GET /api/v1/admin/records-access/grants?holderUserId&specialistId`;
+- `POST …/grants/:id/revoke { reason }` (audited);
+- `GET /api/v1/admin/records-access/reads?holderUserId&doctorId&from&to`.
+
+**Rules:**
+- A grant counts only inside an open treating window.
+- A moved booking follows its new account: grants of the old holder never apply (§17.5 item 3).
+
+#### 25.9.5 File access (`file/access.ts`)
+
+- **`Decision`** (`:24`) gains `{ allow: false; status: 503 }`. `decideFileAccess` (`:344-371`) and the file controller
+  answer it.
+- **The full prescription PDF of ANOTHER booking** (`BOOKING_PRESCRIPTION` `:33`; `canReadBooking` `:47-59`). New
+  specialist rule; all of these must hold:
+  - the reader has an open treating booking for the same person;
+  - a grant is in force;
+  - the booking still holds the file (`:65-68`);
+  - no admin clear withdrew it (`:78-87`).
+
+  A `file` read-log row is written first; failure → 503. Treating doctors read the full PDF, not the dispensing copy
+  (DR26).
+- **Released partner-lab reports** (`canReadPartnerLabReport`, `:174-190`): the same rule, released files only.
+
+#### 25.9.6 Read-then-cancel alert
+
+When a booking is cancelled or marked no-show after its doctor read other providers' records (`record_reads` with
+`treatingBookingId` = the booking and scope `other_history` or `file`), raise
+`raiseAlertIn({ kind: 'read_then_cancel', subject: bookingId })` (`assisted/limits.ts:121-127`) in that transaction.
+It is an alert only. The places:
+- `cancelBookingSettlement` (`bookings/holds.ts:376`);
+- `cancelAccepted` (`doctors/services/instant.ts:720`);
+- `markNoShow` (`bookings/services/index.ts:1697-1714`).
+
+#### 25.9.7 Keys, switches, indexes, deploy
+
+- **Concurrency.**
+  - Two requests at once: the unique pending index lets one in; the other answers the existing pending request.
+  - Approve, deny and confirm are CAS on `state: 'pending'` and `wrongTries`.
+  - A grant is upserted by its unique key.
+  - Revoke is CAS on `revokedAt: null`.
+- **Switch.** `RECORDS_ACCESS_ENABLED` (new) gates request, confirm, approve and deny, the `others` sections and file reads
+  by grant.
+  - Off: history = own consultations, still logged.
+  - Revoke (holder and admin) and the grant lists always work.
+- **Indexes.** `assertUniqueIndex` on the grants and pending-request indexes before any write (503 `INDEXES_OUTDATED`).
+  `record_reads` needs no unique index.
+- **Migration:** none.
+- **Order:**
+  1. deploy (history reads are logged from now on; answers without `bookingId` are unchanged);
+  2. `sync-indexes`;
+  3. the GATE-DPDP review of the approval notice and the in-app text;
+  4. `RECORDS_ACCESS_ENABLED=true`;
+  5. restart.
+- **Rollback:** the switch, or the code (no money; grants simply stop being read).
+
+#### 25.9.8 Tests (`test/assisted/phase3f-treating.integration.ts`)
+
+**The window:**
+1. A video booking opens at start − 10 min, not at "confirmed". In person it opens at arrival; instant at acceptance. It
+   closes 30 days after completion, 7 days after the slot end if not completed, and at once on cancel or no-show. A
+   booking cancelled before it starts never opens (clock-driven).
+
+**History and the read log:**
+
+2. Own history works without a window, as today. With `dependentId` it covers one person. The read-log row exists before
+   the answer. A failing log write → 503 and no data.
+3. `others`:
+   - absent without a grant;
+   - with an app approval: the allowlist only (no notes, documents or price);
+   - outside the window → 409;
+   - absent after a revoke, and after 12 months.
+
+**Requests and grants:**
+
+4. A request outside the window → 409. Inside: pending, and the holder is told. A second request replaces the first.
+   **Race:** two requests at once give one pending.
+5. **Race:** approve against deny gives one outcome. Approve after a revoke renews the grant.
+6. Another account's holder cannot approve (404).
+7. Code path with a test sender:
+   - the right code → grant `sms_code`;
+   - 5 wrong codes → expired; 10 minutes → expired;
+   - the code is stored only as a hash;
+   - without a sender → 409 `NO_CODE_SENT`.
+
+**Files:**
+
+8. Another booking's PDF:
+   - readable in the window with a grant, and logged;
+   - 404 without a grant;
+   - 503 when the log fails;
+   - 404 once an admin clear withdrew it.
+
+   A released partner-lab report follows the same rule; a draft never.
+
+**Eligibility, alerts and switches:**
+
+9. An ineligible doctor: no `others`, file 404, request 403.
+10. The read-then-cancel alert is raised once.
+11. After an admin move, the old holder's grant does not apply.
+12. Switch off: no `others`, request 503, revoke works.
+
+#### 25.9.9 Web screens
+
+**Doctor app → Appointment → Patient history:**
+- the doctor's own consultations;
+- an "Other doctors' records" panel, locked until approved: "Ask the patient for approval", then pending / approved until
+  <date> / denied;
+- a code box, shown only once SMS codes exist;
+- for partner-booked patients, the warning "Identity attested by the partner, not verified".
+
+**Patient app:**
+- "Doctors asking to see records" with Allow / Deny;
+- "Who can see my records" with Revoke.
+
+**Admin:**
+- grants search and revoke;
+- the read log per patient;
+- the alert list shows `read_then_cancel`.
+
+### 25.10 ASSUMED (reversible)
+
+| # | Assumption (the safer default) | Where |
+|---|---|---|
+| DR1 | Six rounds instead of five: card for doctor lab bookings is its own round; partner instant consults are wallet-only; the treating window comes last | §25.2 |
+| DR2 | Doctor wallets are 2d's `partner_wallets` (`ownerKind: 'doctor'`). Earnings never fund bookings, and a wallet credit is never an earning | §25.4.1 |
+| DR3 | An unverified doctor's wallet reads, top-ups and bookings are refused. A top-up it already paid is still credited, and refunds always post to its wallet | §25.4.4 |
+| DR4 | Doctor top-ups are verified through the existing `/payments` routes, owned by `payerSpecialistId`; no new verify route | §25.4.3 |
+| DR5 | A doctor top-up record never falls back to the customer wallet; a failed credit is retried by the sweep | §25.4.3 |
+| DR6 | A doctor books a lab test for a patient of its own consultation inside that consultation's treating window (no lookup counted), or for a walk-in by phone as a pharmacy does | §25.5.3 |
+| DR7 | Doctors see typed or masked names in their lab-booking views, never the account name through assisted routes; the appointment views stay as they are | §25.3 |
+| DR8 | The doctor's cancel window and accepting a lab's new time follow the pharmacy's (1 h; L6, L7) | §25.5.4 |
+| DR9 | A card capture for a doctor no longer verified is a late capture, returned to the card | §25.6 |
+| DR10 | The recommendation code: Crockford base32, 7 random characters + a Luhn mod 32 check, printed `ABCD-EFGH` | §25.7.2 |
+| DR11 | One recommendation per consultation. The code stays the same across re-saves; an empty list withdraws it | §25.7.3 |
+| DR12 | The recommendation is made best effort: a prescription save never fails because of it | §25.7.3 |
+| DR13 | The full prescription PDF keeps its "MyEwaCare" header; the recommended-tests box is branded Jansetu (Q3) | §25.7.3 |
+| DR14 | The code is printed on the dispensing copy too; the copy's hash includes it only when present | §25.7.3 |
+| DR15 | Partners load a recommendation by code and phone, get test names only, and the load counts as a lookup | §25.7.4 |
+| DR16 | A recommendation links only to a booking for the same person; it never locks anything; a cancellation unlinks | §25.7.5 |
+| DR17 | `PartnerLabBooking.recommendationId` is a top-level field for every source, instead of `assisted.recommendationId` | §25.7.1 |
+| DR18 | Partner instant consults are paid from the wallet only in phase 3 (Q2) | §25.2 |
+| DR19 | Partner instant consults are video or call only, never chat | §25.8.3 |
+| DR20 | The quote difference and refunds after acceptance return non-withdrawable money (no lot restore). A full refund before acceptance restores the lots | §25.8.2 |
+| DR21 | Records approval is in the app in phase 3; the SMS code is wired in phase 5 (Q1). A pending request expires at the earlier of 24 h and the window's close | §25.9.4 |
+| DR22 | A records code dies after 5 wrong tries or 10 minutes: the code's own life, as the sign-in code. No per-doctor or per-day cap is added | §25.9.4 |
+| DR23 | History without `bookingId` keeps today's answer (own consultations, whole account) for the released doctor app | §25.9.3 |
+| DR24 | Other providers' records = consultations with a doctor-saved prescription, plus released partner-lab reports. External diagnostics reports are not included in phase 3 | §25.9.3 |
+| DR25 | Every history read and every other-provider file read is logged, with no switch. The read is refused (503) when the log cannot be written | §25.9.3 |
+| DR26 | A treating doctor with a grant reads other bookings' full prescription PDF (not the dispensing copy) | §25.9.5 |
+| DR27 | Each round has its own switch: doctor wallet, doctor lab bookings, instant, recommendations, records access | §25.4–§25.9 |
+
+### 25.11 Questions for the owner (only the ones that change what is built)
+
+1. **Until SMS arrives (phase 5), how does the account holder approve a doctor seeing other doctors' records?**
+   Recommended: in the Jansetu app. The holder gets "Dr X asks to see Rina's past records" with Allow / Deny. Patients
+   without the app cannot approve until phase 5, so their doctor sees only its own past consultations with them. The SMS
+   code switches on in phase 5 (DR21).
+2. **Should partners pay for "Consult now" by card/UPI too, or only from the wallet?**
+   Recommended: wallet only for now. The patient is waiting at the counter and the wallet pays at once; partners who use a
+   card top up the wallet by card. Card payment would need partial card refunds of the quote difference, a new money flow
+   (DR18).
+3. **Should the prescription PDF say "Jansetu" at the top instead of "MyEwaCare"?**
+   Recommended: yes, one brand on every paper the patient carries. The dispensing copy already says Jansetu. Until you
+   answer, only the new recommended-tests box says Jansetu (DR13).
+4. **May a doctor book lab tests for a walk-in patient by phone number, or only for patients of its own Jansetu
+   consultations?**
+   Recommended: both, as the design says (§7.4). Many rural doctors see patients outside the app. The same masked
+   lookup, "patient agreed" tick and 120-an-hour lookup limit apply as for pharmacies (DR6).
+
+**Decided 25 Nov (coordinator, owner asleep; reversible).** In line with the owner's earlier choices:
+
+| Q | Decision | Effect on the spec |
+|---|---|---|
+| 1 | The account holder allows or denies in the Jansetu app now; the SMS code comes in phase 5 | §25.9.4 as written (DR21) |
+| 2 | "Consult now" is paid from the wallet only | §25.8 as written (DR18) |
+| 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays |
+| 4 | A doctor books lab tests for patients of its own consultations AND for walk-ins by phone | §25.5.3 as written (DR6) |
+
+### 25.12 Round 3d build record: test recommendations (r16, 2026-11-25)
+
+Branch `m0/r16-phase3d` from `3edeceaf` (the r15 spec with the 25 Nov decisions). Local commits only. Check:
+`test/assisted/r16-phase3d.integration.ts` (14 checks over HTTP with the real routers). Every check fails on `3edeceaf`,
+where the `testRecommendations` module does not exist.
+
+A mutation run on the built code, one break at a time:
+- dropping the phone match fails "one 404" alone;
+- always hashing the code fails "dispensing copy hash" alone;
+- keeping the previous code on a re-save fails "re-save" (and the later checks that build on its state).
+
+**Full regression** (`prun.sh`, 4 jobs), tsc 17 (unchanged): 68 of 69 suites pass.
+- `test/pharmacy-inventory/q16c-pharmacy.integration.ts` failed one spreadsheet-import check (N2) on 503
+  `AUTH_STATE_UNAVAILABLE`: the sign-in state read has a 2-second limit (`auth/tokenVersion.ts:43`), and other agents'
+  regressions were running at the same time (load average about 28).
+- Run alone, it passes 31 of 31. 3d touches none of its code.
+
+Built: the 3d core that does not depend on 3b. **Linking lab bookings to a recommendation (§25.7.5, DR16, DR17) is not
+built.** It needs 2b, 2c and 3b, which are not merged; the seam is described below.
+
+#### 25.12.1 What was built
+
+| Part | Where | What |
+|---|---|---|
+| The code | `testRecommendations/code.ts` | `newRecommendationCode` (7 Crockford base32 characters from `crypto.randomInt` + a Luhn mod 32 check), `normalizeRecommendationCode` (upper case; spaces and hyphens removed; I and L read as 1, O as 0; shape and check), `formatRecommendationCode` (`ABCD-EFGH`) |
+| The model | `testRecommendations/model/index.ts` | `test_recommendations { code, consultationId, specialistId, items: [{ index, name }], status, bookings: [], version }`; unique `{code}` and `{consultationId}` |
+| Made at the save | `testRecommendations/service.ts` `recommendTestsAtSave`, called by `createAppointmentPrescription` (`specialistPortal/services/index.ts:359`) before the PDF | One per consultation, upserted. The code stays the same across re-saves; the items come from `testsAdvised` (kept filled, unchanged). An empty list → `withdrawn`. Best effort (DR12): switched off, a missing unique index or any error → null (logged), and the prescription is saved without a code |
+| On the prescription | `bookings/model`, `bookings/types` | `prescription.recommendationCode` (server-written). A new save never keeps the previous one's code |
+| The PDF box | `specialistPortal/pdf.ts:67` `recommendationBoxHtml` | One box shared by both documents: "Jansetu", "Recommended tests code: ABCD-EFGH", "Show this code and your mobile number at a Jansetu pharmacy or lab to book these tests." On the full PDF under Tests Advised (`specialistPortal/services/index.ts:641`; the header stays "MyEwaCare", DR13) and on the dispensing copy (`assisted/dispensingCopy.ts:106`) |
+| Dispensing copy hash | `assisted/dispensingCopy.ts` `dispensingHashOf` | Includes `recommendationCode` only when present, so copies made before 3d stay current (DR14) |
+| Booker view | `assisted/bookerView.ts` `PRESCRIPTION_FIELDS` | Adds `recommendationCode`. Customer and doctor reads already carry the whole prescription |
+| Loading | `loadRecommendation` (service) + three thin handlers (`testRecommendations/controller.ts`) | By the code AND the mobile number of the consultation's account. Test names only. Counted with the existing `hitLookup` against the caller's organisation (`pharmacy:<id>`, `doctor:<id>`, `lab:<partnerId>`) and audited, ids only: `assisted_audit_events` action `recommendation.lookup` for pharmacies and doctors, `PartnerAuditEvent` action `lab_desk.recommendation_lookup` for labs |
+| Switch | `assisted/flags.ts:41` | `TEST_RECOMMENDATIONS_ENABLED` |
+| Lab check | `assisted/labBookings.ts` | `labAdmissible` is exported (the identical change is in r12's working tree), so the lab route reuses it |
+
+**The recommending doctor and the report.** No code change: no file-access rule names a recommender. The suite pins it:
+a pharmacy books a lab test for the patient and the lab releases the report; the pharmacy and the patient read it, while
+the recommending doctor and another doctor get 404.
+
+#### 25.12.2 Choices made while building (ASSUMED r16, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| R1 | No new `testsRecommended` input. The items are the `testsAdvised` names (cleaned: trimmed, inner spaces collapsed, empties dropped) | The owner asked for a minimal API. Notes or catalogue codes per test can be added later |
+| R2 | The person (account and family member) is **not stored** on the recommendation; it is read from the consultation | An admin move of the booking (§17.5) then moves the recommendation with it; nothing goes stale |
+| R3 | A code loads only while the consultation's doctor-saved prescription (`hasPrescription`) still carries it | A re-save without tests, a re-save while switched off, or an admin clear (S5) makes the old code unloadable without any extra write |
+| R4 | The patient list `GET /lab-bookings/recommendations` (§25.7.4) is not built | It serves only "Book" in the app, which is linking. The patient sees the code on the prescription (booking reads) and on the PDF |
+| R5 | A malformed code or phone answers 400 without counting a lookup. Every well-formed load counts, found or not | Malformed input reads nothing and reveals nothing; a well-formed load is a phone lookup |
+| R6 | Any operational pharmacy, any verified lab with the desk permission, or any eligible doctor may load; the code and phone together are the key | D2: the patient hands both to whoever books |
+| R7 | The Luhn mod 32 check misses one error: the swap of neighbouring `0` and `Z` | The mod-N form of decimal Luhn's 09 ↔ 90 blind spot. Every single wrong character is caught |
+| R8 | Lab route inside the partner workspace (members, and admins acting as owner), `bookings.manage`. A non-lab → 403 `LAB_PARTNER_REQUIRED`; an unverified or suspended lab → 403 `PARTNER_NOT_VERIFIED` | The same codes as r12's desk |
+| R9 | Switched off, a save neither makes nor withdraws a recommendation | The new prescription has no code, so R3 already makes the old one unloadable |
+| R10 | The recommendation is upserted before the PDF. If the PDF then fails (500), the recommendation stays without a prescription carrying it | Harmless (R3: not loadable). The next save reuses it, with the same code |
+
+#### 25.12.3 The seam for linking (the next round, after 2b, 2c and 3b)
+
+- **Model.** `test_recommendations.bookings[]` (`{ labBookingId, itemIndexes, byKind, at, cancelled? }`) and the
+  statuses `partly_booked` / `booked` exist. Nothing writes them yet.
+- **Status at a re-save.** `recommendTestsAtSave` sets `status: 'open'` at every save, marked in the code. The linking
+  round recomputes it from `bookings` instead.
+- **Still to add:**
+  - `PartnerLabBooking.recommendationId` (DR17);
+  - `recommendation?: { code, itemIndexes }` on the four lab creates, with the same-person check;
+  - the push in the booking transaction;
+  - unlinking on cancel and expiry (`partners/services/labBookings.ts:482`, `:418`).
+- **The load answer** (`code`, `items[].index`) is what a booker sends back when it links.
+
+#### 25.12.4 API for the web
+
+Each of the three load routes answers `{ success, data }` with `Cache-Control: private, no-store`:
+
+| Who | Route | Guard |
+|---|---|---|
+| Pharmacy | `GET /api/v1/pharmacy-assisted/recommendations/:code?phone=` | operational, verified pharmacy |
+| Lab desk | `GET /api/v1/partner-workspace/lab-desk/recommendations/:code?phone=` (admins: `/api/v1/partner-workspace/admin/:partnerId/workspace/lab-desk/recommendations/:code?phone=`) | member with `bookings.manage`, at a verified lab |
+| Doctor | `GET /api/v1/specialists/me/assisted/recommendations/:code?phone=` | verified, active doctor |
+
+- **`:code`** as printed (`ABCD-EFGH`); lower case, spaces and hyphens are fine. **`phone`**: the patient's 10-digit
+  mobile number.
+- **200:** `data: { code: 'ABCDEFGH', status: 'open', items: [{ index: 0, name: 'CBC' }, { index: 1, name: 'Lipid profile' }] }`.
+  Nothing else: no doctor, patient or diagnosis. Show the names; keep `code` and the indexes for booking (linking comes
+  later).
+- **Errors:**
+  - 400 `VALIDATION_ERROR` (no `phone`; a code longer than 20 characters);
+  - 400 `INVALID_CODE` ("This code is not valid; check it on the prescription": a typo, caught by the check character);
+  - 400 `INVALID_PHONE`;
+  - 403: pharmacy admission codes, `INSUFFICIENT_PERMISSIONS`, `LAB_PARTNER_REQUIRED`, `PARTNER_NOT_VERIFIED`,
+    `SPECIALIST_NOT_VERIFIED`;
+  - 404 `RECOMMENDATION_NOT_FOUND` (the one answer for an unknown code, a wrong phone, or a code no longer on the
+    prescription);
+  - 429 `ASSISTED_LIMIT_REACHED` `limit: 'lookups'` (shared with the patient lookup, 120 an hour per organisation);
+  - 503 `RECOMMENDATIONS_DISABLED`.
+
+**Doctor's prescription save** (`POST /api/v1/specialists/me/appointments/:id/prescription`): unchanged body. When
+`testsAdvised` is not empty and the switch is on, the answer's `prescription.recommendationCode` holds the code. Show it
+formatted (`ABCD-EFGH`) after saving. It is absent when no code could be made: the prescription is saved anyway.
+
+**Readers of a prescription:**
+- `prescription.recommendationCode` is in the patient's booking reads, the doctor's appointment reads, and the pharmacy
+  booker view (`GET /api/v1/pharmacy-bookings[/:id]`).
+- The full PDF and the dispensing copy print it in a Jansetu box.
+
+#### 25.12.5 Switch, indexes, deploy, rollback
+
+- **Switch.** `TEST_RECOMMENDATIONS_ENABLED`, off unless exactly `"true"`. Off: saves make no code (the PDF is as before),
+  and loads answer 503. Stored codes stay on their prescriptions and PDFs.
+- **Indexes.** `npm run sync-indexes` builds the new collection `test_recommendations` (`code_1` unique,
+  `consultationId_1` unique). Before it has run, a save makes no code (best effort, logged). Nothing else depends on it.
+- **Migration:** none. Older prescriptions get no code.
+- **Order:**
+  1. deploy;
+  2. `npm run sync-indexes`;
+  3. `TEST_RECOMMENDATIONS_ENABLED=true`;
+  4. restart.
+- **Rollback:** the switch. Rolling the code back is safe: no money is involved, and older code ignores
+  `prescription.recommendationCode`.
+
+#### 25.12.6 Seen, not changed
+
+- **The full prescription PDF header** still says "MyEwaCare" (`specialistPortal/services/index.ts:605`). Owner question
+  Q3, to ask in the morning.
+- **`testsAdvised` has no limit on count or length** (`specialistPortal/validation/index.ts:126-128`). A very long list
+  makes a long PDF and a long recommendation. Unchanged (no new limit).
+- **r12's working tree** has `labOf` and `countPhoneUse` helpers (`assisted/labDesk.ts`, `assisted/patient.ts`). Once
+  r12 is merged, the lab route's three-line kind and eligibility check and its lookup-plus-audit can use them.
+- **The admin booking edit** (`PUT /api/v1/bookings/:id`, `updateBookingSchema` with its `prescription` part,
+  `bookings/validation/index.ts:109-137`) does not know `recommendationCode`, and it leaves the recommendation's items as
+  they were. A code the edited prescription no longer carries is not loadable (R3). Unchanged (S4 admin path).

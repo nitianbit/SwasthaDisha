@@ -20,7 +20,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   /** r11: the booker accepted a lab's proposed new time for the patient (§24.4.4, L7). */
   'booking.reschedule_accepted',
   /** r13: an admin credited a lab wallet by hand (non-withdrawable, L20). */
-  'wallet.admin_topup'] as const;
+  'wallet.admin_topup',
+  /** Phase 3d: a pharmacy or doctor loaded a doctor's recommended tests by code and phone (§25.7.4). */
+  'recommendation.lookup'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {
