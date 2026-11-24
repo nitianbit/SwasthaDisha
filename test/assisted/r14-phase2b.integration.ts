@@ -16,7 +16,8 @@
  * 11. S5 for labs: a capture after the lab was unverified is returned;
  * 12. customer lab bookings and their payment path unchanged;
  * 13. consultation card payments unchanged beside lab ones (their rows carry their kind);
- * 14. stuck money and the admin queue name the lab rows; reconciliation stays clean; no PII in the audit.
+ * 14. stuck money and the admin queue name the lab rows; reconciliation stays clean; no PII in the audit;
+ * 15. r14b: a stale copy of a booking no longer waiting (expired, cancelled) never answers with a payable order.
  *
  * Every check runs even when an earlier one fails (the run exits 1 if any failed).
  *
@@ -73,7 +74,7 @@ import { resetIndexChecks } from '@/modules/common/utils/requiredIndex';
 import { AssistedAlertModel, AssistedAuditEventModel, AssistedCardRefundModel, AssistedCounterModel } from '@/modules/assisted/model';
 import { setAssistedEffects, setAssistedNotifier } from '@/modules/assisted/support';
 import { runCardRefundsDue, setAssistedRefundGateway } from '@/modules/assisted/cardRefunds';
-import { sweepAssistedOtherCaptures } from '@/modules/assisted/cardPayments';
+import { openCardOrder, openCardOrderOf, sweepAssistedOtherCaptures } from '@/modules/assisted/cardPayments';
 import type { IMember, PartnerPermission } from '@/modules/partners/types';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r14_phase2b_check?directConnection=true';
@@ -343,8 +344,6 @@ async function main() {
       }
       assert.equal(await PartnerLabBookingModel.countDocuments({}), 0);
       assert.equal(await seats(s1), 0);
-      // The new {bookingKind, bookingId} index is declared on the model (sync-indexes builds it).
-      assert.ok((await col.indexes()).some((i) => JSON.stringify(i.key) === JSON.stringify({ bookingKind: 1, bookingId: 1 })));
     });
 
     // ───────────────────────── 2. Create, replay, by-key ─────────────────────────
@@ -397,7 +396,7 @@ async function main() {
       const v = (await expect('P', 'GET', `${PA}/lab-bookings/${first.id}`, 200)).json.data;
       assert.equal(v.status, 'pending_payment');
       assert.deepEqual(v.payment, { method: 'razorpay', state: 'pending', payBy: first.data.payment.payBy, paymentTransactionId: first.data.payment.paymentTransactionId,
-        razorpayOrderId: first.data.payment.razorpayOrderId, razorpayKeyId: 'rzp_test_key' });
+        razorpayOrderId: first.data.payment.razorpayOrderId, razorpayKeyId: 'rzp_test_key', amountMinor: 50000, currency: 'INR' });
       assert.equal(v.assisted.funding, undefined, 'never the funding block');
       const waiting = (await expect('P', 'GET', `${PA}/lab-bookings?status=pending_payment`, 200)).json.data;
       assert.ok(waiting.some((x: any) => x._id === first.id));
@@ -412,7 +411,8 @@ async function main() {
       assert.equal(row.status, 'pending_payment');
       assert.equal(await seats(s1), 1, 'held');
       const byKey = (await expect('P', 'GET', `${PA}/lab-bookings/by-key/${body.requestKey}`, 200)).json.data;
-      assert.deepEqual([byKey.payment, byKey.booking.payment.razorpayOrderId], [null, null], 'no order yet');
+      assert.deepEqual([byKey.payment, byKey.booking.payment.razorpayOrderId, byKey.booking.payment.amountMinor, byKey.booking.payment.currency],
+        [null, null, null, null], 'no order yet');
       const r = (await expect('P', 'POST', `${PA}/lab-bookings`, 200, body)).json.data;
       assert.match(r.payment.razorpayOrderId, /^order_r14_/);
       assert.equal(r.booking.payment.razorpayOrderId, r.payment.razorpayOrderId);
@@ -786,6 +786,8 @@ async function main() {
       assert.match(gateway.orders.find((o) => o.id === c.payment.razorpayOrderId)!.receipt, /^ewa_ab_/);
       const bv = (await expect('P', 'GET', `/api/v1/pharmacy-bookings/${cid}`, 200)).json.data;
       assert.deepEqual([bv.payment.method, bv.payment.state, bv.payment.razorpayOrderId], ['razorpay', 'pending', c.payment.razorpayOrderId]);
+      // r14b: the consultation's booker view carries the amount and currency for "Pay now" too (the same shared function).
+      assert.deepEqual([bv.payment.amountMinor, bv.payment.currency], [50000, 'INR']);
       const v = capture(c);
       const r = await expect('P', 'POST', `${PAY}/verify`, 200, v);
       assert.equal(r.json.data.context, 'assisted_booking');
@@ -798,6 +800,8 @@ async function main() {
       const rows = await refundsOf(cid);
       assert.deepEqual(rows.map((x) => [x.bookingKind, x.cause, x.state]), [['booking', 'booker', 'processed']]);
       const booking = await BookingModel.findById(cid).lean() as any;
+      // r14b: a stale copy of the consultation still "waiting" gets no payable order once it is cancelled (1b path too).
+      assert.equal(await openCardOrder({ ...booking, status: 'pending', paymentStatus: 'pending', assisted: { ...booking.assisted, funding: { ...booking.assisted.funding, state: 'pending' } } }), null);
       assert.deepEqual(booking.assisted.funding.refunds.map((x: any) => x.state), ['processed'], 'mirrored on the consultation');
       // Admin rows say which kind of booking a refund belongs to.
       const one = (await expect('ADMIN', 'GET', `/api/v1/admin/assisted/card-refunds/${String(rows[0]._id)}`, 200)).json.data;
@@ -827,12 +831,43 @@ async function main() {
       assert.deepEqual((await stored(b.id)).assisted.funding.refunds.map((x: any) => [x.method, x.state]), [['wallet', 'processed']], 'mirrored on the lab booking');
     });
 
+    await check('r14b: a stale copy of a lab booking that expired or was cancelled never answers with a payable order, nor makes one', async () => {
+      // Expired while a replay held the old copy: the stored order is no longer offered.
+      const a = await book();
+      const staleA = await stored(a.id);
+      assert.equal((await openCardOrderOf('lab_booking', staleA))?.razorpayOrderId, a.data.payment.razorpayOrderId, 'offered while it waits');
+      await labSvc.expireUnpaid(a.id, later(31 * MIN));
+      assert.equal((await stored(a.id)).status, 'cancelled');
+      assert.equal(await openCardOrderOf('lab_booking', staleA), null);
+      assert.equal(await openCardOrderOf('lab_booking', staleA, { create: false }), null);
+      // Cancelled before its order was ever made: no order is made from the stale copy.
+      gateway.failOrders = true;
+      const body = order(await slot());
+      try { await expect('P', 'POST', `${PA}/lab-bookings`, 502, body, 'RAZORPAY_ORDER_CREATION_FAILED'); } finally { gateway.failOrders = false; }
+      const staleB = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $regex: body.requestKey + '$' } }).lean() as any;
+      await expect('P', 'POST', `${PA}/lab-bookings/${String(staleB._id)}/cancel`, 200, {});
+      const orders0 = gateway.orders.length;
+      assert.equal(await openCardOrderOf('lab_booking', staleB), null);
+      assert.equal(gateway.orders.length, orders0, 'no order made');
+      assert.equal(await PaymentRecordModel.countDocuments({ contextId: String(staleB._id) }), 0);
+      // The replay answers without an order as well.
+      assert.equal((await expect('P', 'POST', `${PA}/lab-bookings`, 200, body)).json.data.payment, null);
+    });
+
     await check('stuck money lists a lab card booking still waiting an hour past its pay-by; reconciliation reports no mismatch for card lab rows', async () => {
       const b = await book();
       await PartnerLabBookingModel.updateOne({ _id: b.id }, { $set: { paymentDeadline: new Date(Date.now() - 2 * 3_600_000) } });
       const stuck = (await expect('ADMIN', 'GET', '/api/v1/admin/assisted/stuck-money', 200)).json.data;
       const row = stuck.pendingPaymentPastDeadline.find((x: any) => x.bookingId === b.id);
       assert.equal(row?.bookingKind, 'lab_booking');
+      // r14b: late and extra captures name their kind too (rows from before r14 read as consultations).
+      const late = await AssistedCardRefundModel.findOne({ bookingKind: 'lab_booking', cause: 'late_capture' }).lean() as any;
+      assert.equal(stuck.lateCaptures.find((x: any) => x.refundId === String(late._id))?.bookingKind, 'lab_booking');
+      const old = await AssistedCardRefundModel.collection.insertOne({ bookingId: oid(), paymentRecordId: oid(), captureKey: `record:${oid()}`, amountMinor: 100,
+        cause: 'late_capture', payerKind: 'pharmacy', payerId: P, method: 'razorpay', state: 'processed', attempts: 0, submissions: 0, createdAt: new Date() } as never);
+      const again = (await expect('ADMIN', 'GET', '/api/v1/admin/assisted/stuck-money', 200)).json.data;
+      assert.equal(again.lateCaptures.find((x: any) => x.refundId === String(old.insertedId))?.bookingKind, 'booking');
+      await AssistedCardRefundModel.collection.deleteOne({ _id: old.insertedId });
       const rec = (await expect('ADMIN', 'GET', '/api/v1/admin/assisted/reconciliation', 200)).json.data;
       const cardIds = new Set((await PartnerLabBookingModel.find({ 'assisted.funding.method': 'razorpay' }).select({ _id: 1 }).lean()).map((x) => String(x._id)));
       assert.ok(!rec.checks.mismatches.some((m: any) => cardIds.has(m.ref)), JSON.stringify(rec.checks.mismatches).slice(0, 300));

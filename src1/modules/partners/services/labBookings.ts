@@ -9,7 +9,7 @@ import { undoCouponUsageIn } from '@/modules/coupon/usage';
 import { sweepFailure } from '@/modules/common/utils/sweepFailure';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentService, registerPaymentContextHandler } from '@/modules/payment/services';
-import type { IPaymentRecord } from '@/modules/payment/types';
+import type { IPaymentRecord, PaymentContext } from '@/modules/payment/types';
 import { CouponService } from '@/modules/coupon/services';
 import { WalletRepository } from '@/modules/wallet/repository';
 import UserModel from '@/modules/user/model';
@@ -28,7 +28,7 @@ import type { AuthRequest } from '@/modules/middleware/auth';
 import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
 import { LAB_NOT_DISPUTED_QUERY, LAB_UNPAID_CARD_QUERY, assistedLabCustomerPart, assistedLabPartnerPart, isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
-import { kickCardRefunds } from '@/modules/assisted/cardRefunds';
+import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 
@@ -148,7 +148,7 @@ const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_
 const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
 const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
 /** r14: the payment context of a row's gateway payments — a partner's card payment of an assisted row, else the customer's. */
-const payContextOf = (b: IPartnerLabBooking) => (isAssisted(b) ? 'assisted_lab_booking' as const : 'lab_booking' as const);
+const payContextOf = (b: IPartnerLabBooking) => (isAssisted(b) ? cardContextOf('lab_booking') : 'lab_booking' as const);
 /** r14: the booker notice's money line, by how this cancellation refunded the partner (card/UPI or wallet). */
 const bookerMoney = (b: IPartnerLabBooking) => bookerMoneyLine(cancellationRowOf(b.assisted?.funding));
 
@@ -514,7 +514,7 @@ export class LabBookingService {
   // ───────────────────────────── Cancellation (customer, lab, timeout) ─────────────────────────────
 
   /** Writes every unsettled payment record of the booking first: a capture committing earlier is seen, a later one waits. */
-  private async fenceRecords(id: string, s: ClientSession, context: 'lab_booking' | 'assisted_lab_booking' = 'lab_booking') {
+  private async fenceRecords(id: string, s: ClientSession, context: PaymentContext = 'lab_booking') {
     await PaymentRecordModel.collection.updateMany({ context, contextId: id, status: { $nin: ['paid', 'refunded'] } },
       { $set: { updatedAt: new Date() } }, { session: s });
     return PaymentRecordModel.find({ context, contextId: id }).session(s).lean() as unknown as Promise<
