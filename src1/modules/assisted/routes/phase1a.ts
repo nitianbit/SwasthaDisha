@@ -7,7 +7,7 @@ import * as c from '@/modules/assisted/controller/phase1a';
 import * as v from '@/modules/assisted/validation';
 import * as lab from '@/modules/assisted/controller/phase2a';
 import { pharmacyRecommendation } from '@/modules/testRecommendations/controller';
-import { recommendationParamSchema, recommendationQuerySchema } from '@/modules/testRecommendations/validation';
+import { recommendationLookupSchema } from '@/modules/testRecommendations/validation';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -41,8 +41,7 @@ pharmacyAssistedRouter.post('/lab-bookings/:id/cancel', validate(v.idParamSchema
 pharmacyAssistedRouter.post('/lab-bookings/:id/accept-reschedule', validate(v.idParamSchema, 'params'), validate(v.labAcceptRescheduleSchema, 'body'),
   catchAsync(lab.acceptLabReschedule));
 // Phase 3d (§25.7.4): a doctor's recommended tests, by the printed code and the patient's mobile number.
-pharmacyAssistedRouter.get('/recommendations/:code', validate(recommendationParamSchema, 'params'), validate(recommendationQuerySchema, 'query'),
-  catchAsync(pharmacyRecommendation));
+pharmacyAssistedRouter.post('/recommendations/lookup', validate(recommendationLookupSchema, 'body'), catchAsync(pharmacyRecommendation));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);

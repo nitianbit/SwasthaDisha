@@ -9,9 +9,10 @@ import { Schema, model, Model } from 'mongoose';
  * the booking (§17.5) moves the recommendation with it.
  *
  * `bookings` is the seam for linking lab bookings to the recommendation (DR16, §25.7.5). No writer exists yet: linking
- * needs rounds 2b, 2c and 3b. Until then `status` is only `open` or `withdrawn`.
+ * needs rounds 2b, 2c and 3b. Until then `status` is only `open` (r16b: a prescription saved without tests simply
+ * carries no code, R3).
  */
-export type RecommendationStatus = 'open' | 'partly_booked' | 'booked' | 'withdrawn';
+export type RecommendationStatus = 'open' | 'partly_booked' | 'booked';
 
 export interface ITestRecommendation {
   _id?: string;
@@ -34,7 +35,7 @@ const recommendationSchema = new Schema<ITestRecommendation>({
     type: [new Schema({ index: { type: Number, required: true, min: 0 }, name: { type: String, required: true, trim: true } }, { _id: false })],
     default: [],
   },
-  status: { type: String, required: true, enum: ['open', 'partly_booked', 'booked', 'withdrawn'] },
+  status: { type: String, required: true, enum: ['open', 'partly_booked', 'booked'] },
   bookings: {
     type: [new Schema({
       labBookingId: { type: String, required: true },

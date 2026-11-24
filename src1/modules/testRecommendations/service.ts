@@ -21,23 +21,23 @@ import logger from '@/services/logger';
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const CODE_TRIES = 3;
 
+/** The test names as recommended and as loaded: trimmed, inner spaces collapsed, empty ones dropped (one rule for both). */
+export const testNames = (tests: unknown): string[] =>
+  (Array.isArray(tests) ? tests : []).map((t) => String(t ?? '').trim().replace(/\s+/g, ' ')).filter(Boolean);
+
 /**
  * At the prescription save, BEFORE the PDF is written: the consultation's recommendation for `tests` (made, or updated
- * with the same code) and its code; null when there is nothing to print. An empty list withdraws an earlier one. Best
- * effort: switched off, a missing index or any database error gives null (logged) and the prescription is saved without
- * a code; the next save tries again. Never throws.
+ * with the same code) and its code; null when there is nothing to print (a prescription saved without tests carries no
+ * code, so an earlier code stops loading: R3). Best effort: switched off, a missing index or any database error gives
+ * null (logged) and the prescription is saved without a code; the next save tries again. Never throws.
  */
 export async function recommendTestsAtSave(consultation: { _id?: unknown; specialistId?: unknown }, tests: string[])
   : Promise<string | null> {
   if (!assistedFlags.recommendations()) return null;
   const consultationId = String(consultation._id).toLowerCase();
-  const names = tests.map((t) => String(t ?? '').trim().replace(/\s+/g, ' ')).filter(Boolean);
+  const names = testNames(tests);
+  if (!names.length) return null;
   try {
-    if (!names.length) {
-      await TestRecommendationModel.updateOne({ consultationId, status: { $ne: 'withdrawn' } },
-        { $set: { status: 'withdrawn', items: [] }, $inc: { version: 1 } });
-      return null;
-    }
     // Fail closed for the code itself: without the unique indexes two consultations could print one code.
     await assertUniqueIndex(TestRecommendationModel, { code: 1 });
     await assertUniqueIndex(TestRecommendationModel, { consultationId: 1 });
@@ -69,10 +69,12 @@ export interface RecommendationLoader {
 }
 
 /**
- * GET …/recommendations/:code?phone= (§25.7.4, D2): the recommended test names, for the code AND the mobile number of
- * the consultation's account. A code that is unknown, withdrawn, no longer on the consultation's doctor-saved
- * prescription (saved again without it, or cleared by an admin), or whose account has another number: the one 404, so
- * a code alone never reveals anything. Every well-formed load counts as a phone lookup and is audited.
+ * POST …/recommendations/lookup { code, phone } (§25.7.4, D2; r16b: in the body, never in a request line or a logged
+ * path): the recommended test names, for the code AND the mobile number of the consultation's account. A code that is
+ * unknown, no longer on the consultation's doctor-saved prescription (saved again without it, or cleared by an admin),
+ * or whose account has another number: the one 404, so a code alone never reveals anything. The names are those of the
+ * prescription itself (r16b: never the recommendation's own copy, which a failed or racing save can leave different).
+ * Every well-formed load counts as a phone lookup and is audited.
  */
 export async function loadRecommendation(rawCode: unknown, rawPhone: unknown, by: RecommendationLoader) {
   if (!assistedFlags.recommendations()) throw err(503, 'RECOMMENDATIONS_DISABLED', 'Recommended tests are not switched on yet');
@@ -82,7 +84,7 @@ export async function loadRecommendation(rawCode: unknown, rawPhone: unknown, by
   if (!code) throw err(400, 'INVALID_CODE', 'This code is not valid; check it on the prescription');
   await hitLookup(by.orgKey);
   const rec = await TestRecommendationModel.findOne({ code }).lean();
-  const consultation = rec && rec.status !== 'withdrawn'
+  const consultation = rec
     ? await BookingModel.findById(rec.consultationId).select({ userId: 1, specialistId: 1, prescription: 1, 'lifecycle.prescriptionUploaded': 1 }).lean()
     : null;
   const current = !!consultation && hasPrescription(consultation) && consultation.prescription?.recommendationCode === code;
@@ -90,5 +92,5 @@ export async function loadRecommendation(rawCode: unknown, rawPhone: unknown, by
   const found = !!holder && canonicalMobile(holder.phone) === phone;
   await by.audit({ found, ...(found ? { recommendationId: String(rec!._id) } : {}) });
   if (!found) throw err(404, 'RECOMMENDATION_NOT_FOUND', 'No recommended tests match this code and mobile number');
-  return { code, status: rec!.status, items: rec!.items.map((i) => ({ index: i.index, name: i.name })) };
+  return { code, status: rec!.status, items: testNames(consultation!.prescription?.testsAdvised).map((name, index) => ({ index, name })) };
 }
