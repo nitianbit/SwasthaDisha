@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PaymentService } from '@/modules/payment/services';
-import { VerifyPaymentRequest } from '@/modules/payment/types';
+import { VerifyPaymentRequest, isAssistedCardContext } from '@/modules/payment/types';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { bookerView } from '@/modules/assisted/bookerView';
 import { isOperationalPharmacy } from '@/modules/assisted/rxAccess';
@@ -15,15 +15,20 @@ import { isOperationalPharmacy } from '@/modules/assisted/rxAccess';
 async function forRequester<T extends object>(req: AuthRequest, result: T): Promise<T> {
   const r = result as { context?: unknown; entity?: unknown };
   // Phase 1b: an assisted card payment (only its paying pharmacy can verify it) answers the booker view too; anyone else
-  // gets the booking's id and states only.
-  if (r?.context === 'assisted_booking' && req.user?.userType !== 'pharmacy') {
+  // gets the booking's id and states only. r14: lab bookings too.
+  if (isAssistedCardContext(r?.context) && req.user?.userType !== 'pharmacy') {
     const e = (r.entity ?? {}) as Record<string, unknown>;
     return { ...result, entity: { _id: e._id, status: e.status, paymentStatus: e.paymentStatus } };
   }
-  if (req.user?.userType !== 'pharmacy' || (r?.context !== 'booking' && r?.context !== 'assisted_booking')) return result;
+  if (req.user?.userType !== 'pharmacy' || (r?.context !== 'booking' && !isAssistedCardContext(r?.context))) return result;
   const entity = r.entity as Record<string, any> | null | undefined;
   if (!entity || typeof entity !== 'object' || !entity._id) return result;
   const pharmacyId = String(req.user.pharmacyId || req.user._id);
+  // r14 (§24.5.2): a lab booking's card payment answers the booker LAB view (§24.4.2 allowlist).
+  if (r.context === 'assisted_lab_booking') {
+    const { bookerLabView } = await import('@/modules/assisted/labBookings');
+    return { ...result, entity: await bookerLabView(entity, pharmacyId) };
+  }
   return { ...result, entity: await bookerView(entity, pharmacyId, { copies: 'queue', clinical: await isOperationalPharmacy(pharmacyId) }) };
 }
 
@@ -48,8 +53,8 @@ export class PaymentController {
         ? 'Payment received. Booking confirmation is pending. Please try again after some time.'
         : result.context === 'pharmacy_order' && result.paymentRecord.status === 'refunded'
           ? 'Payment was received after the 30-minute payment window and has been refunded to wallet. Please create a new order.'
-        : result.context === 'assisted_booking' && result.paymentRecord.status === 'refunded'
-          ? 'The booking could not take this payment (it expired, was cancelled, or the doctor is not available); the amount is being refunded to the card or UPI it was paid with.'
+        : isAssistedCardContext(result.context) && result.paymentRecord.status === 'refunded'
+          ? `The booking could not take this payment (it expired, was cancelled, or the ${result.context === 'assisted_lab_booking' ? 'lab' : 'doctor'} is not available); the amount is being refunded to the card or UPI it was paid with.`
         : 'Payment verified successfully';
 
     res.status(200).json({

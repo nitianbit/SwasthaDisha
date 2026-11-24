@@ -26,7 +26,9 @@ import { takeSeat, releaseSeat, listBookableSlots, istDate, addDays } from '@/mo
 import { attachFiles, grantFiles, rebindStored, uploadPathOf } from '@/modules/file/access';
 import type { AuthRequest } from '@/modules/middleware/auth';
 import { settleAssistedLabFundingIn } from '@/modules/assisted/labRefunds';
-import { LAB_NOT_DISPUTED_QUERY, assistedLabCustomerPart, assistedLabPartnerPart } from '@/modules/assisted/labViews';
+import { LAB_NOT_DISPUTED_QUERY, LAB_UNPAID_CARD_QUERY, assistedLabCustomerPart, assistedLabPartnerPart, isUnpaidCardLab } from '@/modules/assisted/labViews';
+import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
+import { kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
@@ -121,6 +123,10 @@ type CancelReason = 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'p
 const ASSISTED_CAUSE: Record<CancelReason, string> = { customer: 'patient', lab_reject: 'partner_lab_reject', admin_no_show: 'admin', partner: 'booker', timeout: 'system' };
 const isAssisted = (b: { assisted?: unknown } | null | undefined) => !!(b?.assisted && typeof b.assisted === 'object');
 const shownSlot = (b: IPartnerLabBooking) => `${b.slot.date} at ${b.slot.startTime}`;
+/** r14: the payment context of a row's gateway payments — a partner's card payment of an assisted row, else the customer's. */
+const payContextOf = (b: IPartnerLabBooking) => (isAssisted(b) ? 'assisted_lab_booking' as const : 'lab_booking' as const);
+/** r14: the booker notice's money line, by how this cancellation refunded the partner (card/UPI or wallet). */
+const bookerMoney = (b: IPartnerLabBooking) => bookerMoneyLine(cancellationRowOf(b.assisted?.funding));
 
 /**
  * r11: in-app notices to the partner that booked an assisted lab booking (after the commit, best effort; no health
@@ -421,14 +427,15 @@ export class LabBookingService {
       const b = await PartnerLabBookingModel.findById(id).session(s).lean() as IPartnerLabBooking | null;
       if (!b || b.status !== 'pending_payment' || b.paymentStatus !== 'pending') return { expired: false, reason: 'not_pending' };
       if (now < b.paymentDeadline) return { expired: false, reason: 'not_due' };
-      const records = await this.fenceRecords(id, s);
+      const records = await this.fenceRecords(id, s, payContextOf(b));
       if (records.some((r) => r.status === 'paid') || ((b.walletFunding as any)?.captures ?? []).some((c: any) => c.state === 'applied')) {
         return { expired: false, reason: 'paid' };
       }
       await this.cancelIn(b, records, { reason: 'timeout', actor: { kind: 'system' } }, s, now);
       return { expired: true, booking: b };
     });
-    if (out.expired) {
+    // r14 (C7): a partner's card booking that expired unpaid was never announced to the patient; nobody is told.
+    if (out.expired && !isAssisted((out as any).booking)) {
       const b = (out as any).booking as IPartnerLabBooking;
       await this.notify({ userId: b.userId, type: 'booking_cancelled', title: 'Lab booking not completed',
         message: 'Payment was not completed in time, so the booking was released. Any amount taken is back in your wallet.',
@@ -442,13 +449,14 @@ export class LabBookingService {
     const due = await PartnerLabBookingModel.find({
       status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
-    }).sort({ paymentDeadline: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1 }).lean();
+    }).sort({ paymentDeadline: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1, 'assisted.bookedBy.kind': 1 }).lean();
     let expired = 0; let deferred = 0; let failed = 0;
     for (const d of due) {
       const id = String(d._id);
       // Q16a: one failing row never stops the sweep; logged by id and error only (no patient data), retried next run.
       try {
-        const check = await this.paymentService.reconcileContextPayments('lab_booking', id).catch(() => ({ unknown: 1 }));
+        // r14: a partner's card booking is paid under its own context (`assisted_lab_booking`).
+        const check = await this.paymentService.reconcileContextPayments(payContextOf(d as IPartnerLabBooking), id).catch(() => ({ unknown: 1 }));
         if (check.unknown > 0) {
           const checks = Number(d.expiryChecks || 0) + 1;
           await PartnerLabBookingModel.updateOne({ _id: id, status: 'pending_payment' },
@@ -468,10 +476,10 @@ export class LabBookingService {
   // ───────────────────────────── Cancellation (customer, lab, timeout) ─────────────────────────────
 
   /** Writes every unsettled payment record of the booking first: a capture committing earlier is seen, a later one waits. */
-  private async fenceRecords(id: string, s: ClientSession) {
-    await PaymentRecordModel.collection.updateMany({ context: 'lab_booking', contextId: id, status: { $nin: ['paid', 'refunded'] } },
+  private async fenceRecords(id: string, s: ClientSession, context: 'lab_booking' | 'assisted_lab_booking' = 'lab_booking') {
+    await PaymentRecordModel.collection.updateMany({ context, contextId: id, status: { $nin: ['paid', 'refunded'] } },
       { $set: { updatedAt: new Date() } }, { session: s });
-    return PaymentRecordModel.find({ context: 'lab_booking', contextId: id }).session(s).lean() as unknown as Promise<
+    return PaymentRecordModel.find({ context, contextId: id }).session(s).lean() as unknown as Promise<
       { _id: unknown; userId?: string; status?: string; finalAmount?: number }[]>;
   }
 
@@ -480,7 +488,7 @@ export class LabBookingService {
    * release. Refunds draw only on what the booking holds.
    */
   private async cancelIn(b: IPartnerLabBooking, records: { _id: unknown; userId?: string; status?: string; finalAmount?: number }[],
-    c: { reason: CancelReason; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
+    c: { reason: CancelReason; note?: string; actor: Actor; refundTo?: 'card' | 'wallet' }, s: ClientSession, now: Date): Promise<number> {
     const id = String(b._id);
     const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
       $set: { status: 'cancelled', paymentStatus: 'refunded', 'lifecycle.cancelledAt': now,
@@ -489,8 +497,9 @@ export class LabBookingService {
     }, { session: s });
     if (r.modifiedCount !== 1) throw changed();
     // r11 (§24.4.4): a partner-paid booking refunds the PARTNER (its wallet, exactly once), never the customer wallet.
+    // r14: a card-paid one goes back by its card refund row (to the card; the wallet only on the booker's own choice).
     if (isAssisted(b) && b.assisted?.funding) {
-      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false }, s);
+      const back = await settleAssistedLabFundingIn(b, { cause: ASSISTED_CAUSE[c.reason], keepMoney: false, refundTo: c.refundTo }, s);
       await releaseSeat(b.slot.slotId, s);
       if (c.actor.kind === 'partner') {
         await recordPartnerAudit(c.actor.actor, c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
@@ -519,7 +528,7 @@ export class LabBookingService {
   async customerCancel(userId: string, bookingId: string, note: string | undefined, now = new Date()): Promise<{ booking: Record<string, unknown>; refunded: number }> {
     const id = String(bookingId).toLowerCase();
     const refunded = await runLedgerTransaction(async (s) => {
-      const b = await PartnerLabBookingModel.findOne({ _id: id, userId: { $eq: userId } }).session(s).lean() as IPartnerLabBooking | null;
+      const b = await PartnerLabBookingModel.findOne({ _id: id, userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }).session(s).lean() as IPartnerLabBooking | null;
       if (!b) throw notFound();
       if (!['pending_payment', 'confirmed'].includes(b.status)) throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
       if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
@@ -534,10 +543,11 @@ export class LabBookingService {
     if (isAssisted(after)) {
       // r11 (decision 4): the patient cancelled a partner-paid booking; the refund went to the partner, which is told.
       // SMS phase 5: "Lab test Ref <ref> cancelled; the refund goes to <partner>"
+      await kickCardRefunds(id);
       await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `Cancelled. The refund goes to ${after.assisted!.bookedBy.name}, who paid for this booking.`, bookingId: id, key: `plb:${id}:cancelled` });
       await tellBooker(after, { type: 'booking_cancelled', title: 'Cancelled by the patient',
-        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was cancelled by the patient.${refunded > 0 ? ' The amount is back in your Jansetu wallet.' : ''}`,
+        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was cancelled by the patient.${refunded > 0 ? bookerMoney(after) : ''}`,
         key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'patient' } });
       return { booking: customerView(after), refunded: 0 };
     }
@@ -568,10 +578,11 @@ export class LabBookingService {
     if (isAssisted(after)) {
       // r11 (L8): the partner that paid is refunded in full; the patient is told without the wallet line.
       // SMS phase 5: "The lab could not take lab test Ref <ref>"
+      await kickCardRefunds(id);
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking',
         message: `${note}. ${after.assisted!.bookedBy.name} has been refunded.`, bookingId: id, key: `plb:${id}:cancelled` });
       await tellBooker(after, { type: 'booking_cancelled', title: 'The lab could not take the booking',
-        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was refused by the lab. The amount is back in your Jansetu wallet.`,
+        message: `Lab booking Ref ${after.assisted!.shortRef} on ${shownSlot(after)} was refused by the lab.${bookerMoney(after)}`,
         key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'partner_lab_reject' } });
       return { booking: partnerView(after), refunded };
     }
@@ -621,10 +632,11 @@ export class LabBookingService {
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     if (isAssisted(after)) {
+      await kickCardRefunds(id);
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: `${note}.`, bookingId: id,
         key: `plb:${id}:no_show_admin_cancelled` });
       await tellBooker(after, { type: 'booking_cancelled', title: 'Booking cancelled',
-        message: `Lab booking Ref ${after.assisted!.shortRef} was cancelled by the Jansetu team.${refunded > 0 ? ' The amount is back in your Jansetu wallet.' : ''}`,
+        message: `Lab booking Ref ${after.assisted!.shortRef} was cancelled by the Jansetu team.${refunded > 0 ? bookerMoney(after) : ''}`,
         key: `assisted:lab:${id}:cancelled:booker`, data: { cause: 'admin' } });
       return { booking: partnerView(after), refunded };
     }
@@ -722,7 +734,8 @@ export class LabBookingService {
    * unanswered. `expectedVersion` fences a stale screen. The refund goes to its wallet exactly once (cancelIn), the
    * seat is released, and `inTx` audits in the same transaction. A cancelled row answers `alreadyCancelled`.
    */
-  async cancelAsBooker(bookerFilter: Record<string, unknown>, bookerId: string, bookingId: string, input: { note?: string; expectedVersion?: number },
+  async cancelAsBooker(bookerFilter: Record<string, unknown>, bookerId: string, bookingId: string,
+    input: { note?: string; expectedVersion?: number; refundTo?: 'card' | 'wallet' },
     now: Date, inTx: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>): Promise<{ booking: IPartnerLabBooking; refunded: number; alreadyCancelled: boolean }> {
     const id = String(bookingId).toLowerCase();
     if (!Types.ObjectId.isValid(id)) throw notFound();
@@ -730,18 +743,23 @@ export class LabBookingService {
       const b = await PartnerLabBookingModel.findOne({ _id: id, ...bookerFilter }).session(s).lean() as IPartnerLabBooking | null;
       if (!b) throw notFound();
       if (b.status === 'cancelled') return { refunded: 0, alreadyCancelled: true };
-      if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
+      // r14: a card booking still waiting for its payment may be cancelled at any time (nothing was paid; its seat is
+      // released). A capture landing later is a late capture, returned to the card.
+      const unpaidCard = b.status === 'pending_payment' && isUnpaidCardLab(b);
+      if (b.status !== 'confirmed' && !unpaidCard) throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
       if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
       this.assertVersion(b, input.expectedVersion);
-      if (!b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - BOOKER_CANCEL_CUTOFF_MS) {
+      if (!unpaidCard && !b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - BOOKER_CANCEL_CUTOFF_MS) {
         throw err(409, 'CANCELLATION_WINDOW_CLOSED', 'Lab bookings can be cancelled up to 1 hour before the slot');
       }
-      const refunded = await this.cancelIn(b, [], { reason: 'partner', note: input.note, actor: { kind: 'booker', id: bookerId } }, s, now);
+      const refunded = await this.cancelIn(b, [], { reason: 'partner', note: input.note, actor: { kind: 'booker', id: bookerId },
+        ...(input.refundTo ? { refundTo: input.refundTo } : {}) }, s, now);
       await inTx(b, s);
       return { refunded, alreadyCancelled: false };
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
-    if (!out.alreadyCancelled) {
+    // r14 (C7): a card booking cancelled before its payment was never announced to the patient; nobody is told.
+    if (!out.alreadyCancelled && !isUnpaidCardLab(after)) {
       // SMS phase 5: "Lab test Ref <ref> on <date> was cancelled by <partner>"
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `The lab test on ${shownSlot(after)} (Ref ${after.assisted?.shortRef}) was cancelled.${out.refunded > 0 ? ` ${after.assisted?.bookedBy.name} has been refunded.` : ''}`,
@@ -1072,7 +1090,8 @@ export class LabBookingService {
 
   private async ownBooking(userId: string, bookingId: string): Promise<IPartnerLabBooking> {
     if (!Types.ObjectId.isValid(bookingId)) throw notFound();
-    const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: userId } }).lean();
+    // r14 (L5): a partner's card booking never paid is not the patient's (the one 404).
+    const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }).lean();
     if (!b) throw notFound();
     return b as IPartnerLabBooking;
   }
@@ -1082,6 +1101,8 @@ export class LabBookingService {
     const b = await PartnerLabBookingModel.findById(bookingId).session(s ?? null).lean() as IPartnerLabBooking | null;
     if (!b || b.partnerId !== actor.partnerId) throw notFound();
     if (!hasGlobalScope(actor) && !actor.branchIds.includes(b.branchId)) throw notFound();
+    // r14 (L5): a partner's card booking never paid is not the lab's yet (the one 404 on every read and step).
+    if (isUnpaidCardLab(b)) throw notFound();
     return b;
   }
 
@@ -1094,7 +1115,8 @@ export class LabBookingService {
     const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const pg = Math.max(Number(page) || 1, 1);
     // r11 (§17.5): an assisted row reported as not mine (still open) leaves the holder's list.
-    const q = { userId: { $eq: userId }, ...LAB_NOT_DISPUTED_QUERY };
+    // r14 (L5): a partner's card booking never paid is left out too.
+    const q = { userId: { $eq: userId }, ...LAB_NOT_DISPUTED_QUERY, $nor: [LAB_UNPAID_CARD_QUERY] };
     const [rows, total] = await Promise.all([
       PartnerLabBookingModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
       PartnerLabBookingModel.countDocuments(q),
@@ -1118,7 +1140,8 @@ export class LabBookingService {
 
   /** Q11: paged by an exact cursor on (slot.startsAt, _id), soonest first, with the total. */
   async listForPartnerPage(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number; cursor?: string }) {
-    const q: Record<string, unknown> = { partnerId: actor.partnerId };
+    // r14 (L5): a partner's card booking never paid is not the lab's yet.
+    const q: Record<string, unknown> = { partnerId: actor.partnerId, $nor: [LAB_UNPAID_CARD_QUERY] };
     if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
     else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
     if (f.status) q.status = f.status;
@@ -1155,7 +1178,8 @@ export class LabBookingService {
   }
 
   async listForPartner(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number }) {
-    const q: Record<string, unknown> = { partnerId: actor.partnerId };
+    // r14 (L5): a partner's card booking never paid is not the lab's yet.
+    const q: Record<string, unknown> = { partnerId: actor.partnerId, $nor: [LAB_UNPAID_CARD_QUERY] };
     if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
     else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
     if (f.status) q.status = f.status;

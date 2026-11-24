@@ -18,7 +18,8 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     },
     context: {
       type: String,
-      enum: ['wallet_recharge', 'booking', 'external_booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking'],
+      enum: ['wallet_recharge', 'booking', 'external_booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking',
+        'assisted_lab_booking'],
       required: true,
       index: true,
     },

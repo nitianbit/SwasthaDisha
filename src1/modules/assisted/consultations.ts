@@ -28,9 +28,7 @@ import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
 import { assertBookerMayBook, assertPendingCardRoomIn, countBookingForPhoneIn, countNewAccountIn, countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
-import { assistedFlags } from '@/modules/assisted/flags';
-import { assertCardGatewayReady, openCardOrder, type CardPaymentView } from '@/modules/assisted/cardPayments';
-import { AssistedCardRefundModel } from '@/modules/assisted/model';
+import { assertCardPaymentAvailable, openCardOrder, type CardPaymentView } from '@/modules/assisted/cardPayments';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -225,12 +223,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   // Phase 1b: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on and the gateway has keys (decided before anything
   // is counted or held, the same answer for every number).
   const card = input.paymentMethod === 'razorpay';
-  if (card && !assistedFlags.card()) throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Card and UPI payment of assisted bookings is not switched on; pay from the wallet');
-  if (card) {
-    assertCardGatewayReady();
-    // A card booking's refunds rely on the one-row-per-payment unique index (fail closed until sync-indexes has run).
-    await assertUniqueIndex(AssistedCardRefundModel, { captureKey: 1 });
-  }
+  if (card) await assertCardPaymentAvailable();
   // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit and is audited
   // (a key reused for other content too: it is counted, then refused below).
   if (attempt === 0) {

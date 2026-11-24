@@ -4,6 +4,8 @@
  * 0 and `referral: null`.
  */
 export type BookerKind = 'pharmacy' | 'lab' | 'doctor';
+/** r14: which collection an assisted booking lives in — a consultation (`bookings`) or a lab booking (`partner_lab_bookings`). */
+export type AssistedBookingKind = 'booking' | 'lab_booking';
 
 export interface AssistedRefundRow {
   refundId: string;
@@ -37,7 +39,7 @@ export interface AssistedFunding {
    */
   state: 'captured' | 'refunded' | 'forfeited' | 'pending' | 'not_paid';
   walletEntryId?: string;
-  /** Phase 1b: the one payment record (context `assisted_booking`) of a card booking, chosen before the insert. */
+  /** Phase 1b: the one payment record (context `assisted_booking`; r14: `assisted_lab_booking` on a lab booking) of a card booking, chosen before the insert. */
   paymentRecordId?: string;
   /** Phase 1b: the Razorpay payment applied to a card booking. */
   razorpayPaymentId?: string;

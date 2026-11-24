@@ -12,6 +12,7 @@ import UserModel from '@/modules/user/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
+import { LAB_UNPAID_CARD_QUERY } from '@/modules/assisted/labViews';
 import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -75,7 +76,8 @@ export async function reportLabNotMine(userId: string, bookingId: string, note?:
   if (!/^[0-9a-fA-F]{24}$/.test(String(bookingId))) throw missing();
   const text = typeof note === 'string' ? note.trim().slice(0, 500) : '';
   const out = await inTransaction(async (s) => {
-    const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: String(userId) } }).session(s).lean() as IPartnerLabBooking | null;
+    // r14 (L5): a partner's card booking never paid is not the holder's yet (the one 404).
+    const b = await PartnerLabBookingModel.findOne({ _id: bookingId, userId: { $eq: String(userId) }, $nor: [LAB_UNPAID_CARD_QUERY] }).session(s).lean() as IPartnerLabBooking | null;
     if (!b) throw missing();
     if (!b.assisted) throw err(409, 'NOT_ASSISTED_BOOKING', 'Only a booking made for you by a partner can be reported here');
     if (b.assisted.identity?.disputed) throw err(409, 'ALREADY_REPORTED', 'This booking was already reported');

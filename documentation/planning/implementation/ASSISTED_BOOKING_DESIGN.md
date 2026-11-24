@@ -3258,3 +3258,114 @@ Patient app: lab booking reads carry `paidBy` and `assisted.{shortRef, bookedBy{
   the patient's wallet): `db.partner_lab_bookings.countDocuments({ source: 'pharmacy_assisted', status: { $nin: ['completed','cancelled','no_show'] } })` must be 0.
 - Merge with r10g: expected to touch `assisted/consultations.ts` and `assisted/limits.ts`, which r11 does not change; r11
   adds one line to `assisted/flags.ts` (the switch) and one action to `assisted/model`.
+
+### 24.14 Round 2b build record: pharmacy → lab test by card/UPI (r14, 2026-11-25)
+
+Branch `m0/r14-phase2b` from `f5f171c9` (2a on r10f). Local commits only; nothing pushed or deployed. Built: §24.5 with the
+owner's decisions of 23 Nov (no blocking limits except the hourly phone lookups, so **no pending-card cap**) and the owner's
+instruction of 25 Nov 00:20 IST (**no duplicated code**: the phase 1b card machinery is generalised by booking kind; the
+consultation behaviour is unchanged and the r10 / r10b / r10f suites pass unchanged). Where this section and §24.5 differ,
+this one wins.
+
+Check: `test/assisted/r14-phase2b.integration.ts` (23 checks over HTTP with the real routes, a stand-in Razorpay and refund
+gateway).
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Payment context | `payment/types`, `payment/model`, `payment/services`, `payment/routes`, `payment/controller` | New context `assisted_lab_booking` (receipt code `al`). `ASSISTED_CARD_CONTEXTS` / `isAssistedCardContext` replace the `assisted_booking` literal wherever 1b special-cased it: verification by the paying pharmacy (`payerPharmacyId`), 409 `PAYMENT_DISPUTED`, a bad signature never closing the record, the recovery sweep's context list, the operational-pharmacy gate on verify / reconcile. Routing stays by the stored record's `context` (S6; `module` is informational). A pharmacy's verify / reconcile answer carries the booker LAB view; anyone else gets id and states only |
+| One card machinery for both kinds | `assisted/cardPayments.ts` | A `KINDS` table holds what differs between a consultation and a lab booking: the context, the collection, "waiting for payment" (`pending`/`pending` vs `pending_payment`/`pending`), pay-by (`createdAt` + 30 min vs `paymentDeadline`), the S5 provider check (doctor vs an active, verified `lab` partner), the confirming compare-and-set (lab rows bump `statusVersion` and set `lifecycle.paidAt/confirmedAt`) and the follow-up (consultation: Meet, reminders, notices; lab: the patient's "booked" notice). Everything else is one code path: `openCardOrderOf` (one order on the pre-chosen record id), `applyAssistedCaptureOf` (confirm once in one transaction, else a late capture returned to the card in the same transaction; the follow-up lease `assisted.followUpLeaseUntil`; record processed only after the follow-up), `settleOtherAssistedCaptures` (extra captures, by the record's context), `sweepAssistedOtherCaptures` (both contexts), `bookerPayments` (the booker view's `payment` field, now also used by the consultation booker view), `assertCardPaymentAvailable` (switch, keys, `captureKey` index; used by both creates). `registerAssistedPayments` registers both contexts (no change in `routes/index.ts`) |
+| Card refund rows | `assisted/cardRefunds.ts`, `assisted/model` | `bookingKind: 'booking' \| 'lab_booking'` (rows from before carry none and are read as `booking`; every new row writes it); index `{bookingKind, bookingId}`. The row's kind picks the collection for `syncBookingRow`, the chargeback answers' `bookingStatus` and the wallet reference type (`assisted_lab_booking`) of a to-wallet credit. The assisted chargeback looks up records of both contexts. Admin refund rows and stuck money's `cardChargebacks` add `bookingKind`. `cancellationRefundOf` moved here from `pharmacyCommands.ts` (used by both cancels) |
+| Cancel money | `assisted/refunds.ts` `settleCardFundingIn`, `assisted/labRefunds.ts` | The card step of the 1b cancel was extracted (coupon reversal, then the record's one card refund row: card by default, wallet on the booker's own choice; `not_paid` when no capture was applied) and is called by the consultation cancel (unchanged behaviour) and the lab cancel (`settleAssistedLabFundingIn`; the 2a `REFUND_METHOD_UNSUPPORTED` guard is gone). `bookerMoneyLine` / `cancellationRowOf` give both kinds the same booker notice line ("being refunded to the card or UPI" / "back in your Jansetu wallet") |
+| Lab create | `assisted/labBookings.ts` | `paymentMethod: 'razorpay'`: the 2a checks, key, hash, coupon and transaction, but the row is inserted `pending_payment` / `pending`, `paymentDeadline` = now + 30 min, seat held, funding `{ method: 'razorpay', state: 'pending', paymentRecordId }` (chosen before the insert), no wallet debit; the order is made after the commit. 400 `NOTHING_TO_PAY` for 0. Receipt, by-key and booker view carry the payment (below). The patient's "booked" notice (`notifyLabBooked`, shared with the wallet path) follows the confirmation |
+| Lab cancel | `assisted/labBookings.ts`, `partners/services/labBookings.ts` | Booker cancel takes `refundTo` and answers `refund`; a card booking still waiting for payment may be cancelled at any time (nothing refunded, nobody but the booker knew of it). Patient, lab-reject and admin cancels queue the card refund row in the cancel transaction (always to the card); card refunds are sent at once after the commit and by the 5-minute worker |
+| Lab expiry | `partners/services/labBookings.ts` | The 5-minute lab sweep reconciles a row's own context (`assisted_lab_booking` for assisted rows), fences the records of that context, then expires: seat released, coupon reversed, funding `not_paid`; nobody is told (C7). A capture recorded but not yet applied leaves the row to the payment handler |
+| Unpaid rows hidden | `assisted/labViews.ts` (`LAB_UNPAID_CARD_QUERY`, `isUnpaidCardLab`), `partners/services/labBookings.ts`, `assisted/review.ts` | A card lab booking never confirmed (`lifecycle.confirmedAt` absent) is the booker's alone: left out of the patient's list and the lab's lists, 404 `LAB_BOOKING_NOT_FOUND` on the patient's reads, cancel, pay-again and "not mine", and on every lab read and step. Once paid it is theirs (and stays so if cancelled later) |
+| Stuck money | `assisted/reconciliation.ts` | `pendingPaymentPastDeadline` adds lab card rows still waiting an hour past `paymentDeadline` (`bookingKind: 'lab_booking'`) |
+| Validation | `assisted/validation` | Lab cancel `refundTo`; the booker list accepts `status=pending_payment` |
+
+**ASSUMED (r14 build, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| E1 | No pending-card cap for lab bookings (§24.5.3, L21 not built) | Owner, 23 Nov |
+| E2 | An unpaid card lab booking that expires is NOT counted as a booker cancellation (§24.5.3 said `countBookerCancellationIn`) | That counter blocks new consultations (P7); owner: no blocking limits; as 2a B2 |
+| E3 | The booker may cancel its card lab booking while it waits for payment at any time (no 1-hour window); nothing is refunded, nobody else is told; a capture landing later is a late capture | Nothing was paid; frees the seat; as consultations (§23.3) |
+| E4 | S5 at capture = the lab partner (`kind: 'lab'`, active, verified). A branch or test switched off after booking does not refuse the capture | §24.1 item 12 provider rule; customer lab bookings behave the same |
+| E5 | Lab card refunds use the 1b rows, worker, keys (`ab-<row id>`) and wallet operation key (`assisted_card:<record>:refund`); only the wallet reference type differs (`assisted_lab_booking`) | One machinery |
+| E6 | Every new card refund row writes `bookingKind`, consultations included (`booking`) | Readable; old rows read as `booking` |
+| E7 | The patient is told once paid, with the 2a notice and key (`assisted:lab:<id>:booked:customer`); the lab is not told (L18) | C7, L18 |
+| E8 | The admin lab list (`/partner-workspace/admin/lab-bookings`) still shows unpaid card rows | Admins see everything (B12) |
+| E9 | No per-booking reconciliation checks for card lab rows (the daily checks cover wallet rows; stuck money lists waiting card rows) | As consultations (§23.5) |
+| E10 | A returned lab capture's verify message says "…or the lab is not available…" | Wording only |
+| E11 | No pay-again: one order per booking; after 30 minutes the booker books again (C10) | As 1b |
+| E12 | `cardRefundView` (the booker's own `refund`) is unchanged; only admin rows add `bookingKind` | r10c kept the booker's answer as it was |
+
+**API for the web** (pharmacy token, `requireOperationalPharmacy`; `{ success, data }`; money in paise unless marked ₹)
+
+- **Book with card/UPI.** `POST /api/v1/pharmacy-assisted/lab-bookings` — the §24.11 body with `paymentMethod: 'razorpay'`. 201:
+  ```
+  { booking: <booker lab view, status 'pending_payment'>,
+    funding: { method: 'razorpay', amountMinor, state: 'pending', walletEntryId: null, paymentTransactionId },
+    split: { listMinor, discountMinor, couponCode },
+    payment: { paymentRequired: true, paymentTransactionId, razorpayOrderId, razorpayKeyId, amount (₹), amountMinor, currency, payBy } | null,
+    newAccount, replayed }
+  ```
+  Open Razorpay Checkout with `key = razorpayKeyId`, `order_id = razorpayOrderId`, `amount = amountMinor`, `currency`. `payBy` (ISO) =
+  `paymentDeadline`: the seat is released after it unless the payment arrived. Same key and body → 200 `replayed: true` with the SAME
+  order (`payment: null` once paid, cancelled or expired); the method is not in the request hash. Errors besides §24.11: 400
+  `PAYMENT_METHOD_UNAVAILABLE` (card switch off), `NOTHING_TO_PAY`; 502 `RAZORPAY_ORDER_CREATION_FAILED` (the booking is held: send the same
+  request again); 503 `RAZORPAY_NOT_CONFIGURED`, `INDEXES_OUTDATED` (card refund index). All refusals come before any account, seat or order,
+  with one answer for every number. No 429 for waiting card bookings.
+- **Booker lab view `payment`** (list, detail, by-key, cancel and verify answers; this pharmacy only): `{ method: 'wallet' | 'razorpay', state,
+  payBy, paymentTransactionId?, razorpayOrderId?, razorpayKeyId? }`. `state`: `pending`, `captured`, `refunded`, `not_paid`, `forfeited`.
+  Card rows carry `paymentTransactionId`; while waiting (`status: 'pending_payment'`) `payBy` and the open order (null when none is open
+  yet: replay the create) so "Pay now" works from any device. `GET …/lab-bookings?status=pending_payment` lists the waiting ones.
+  `GET …/lab-bookings/by-key/:key` adds `payment` (the open order or null, read only) for a card booking.
+- **After Checkout.** `POST /api/v1/payments/verify { paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature }` →
+  `{ context: 'assisted_lab_booking', paymentRecord, entity: <booker lab view> }`. `paymentRecord.status: 'paid'` and `entity.status:
+  'confirmed'`: booked. `paymentRecord.status: 'refunded'`: the booking could not take it (expired, cancelled, or the lab is no longer
+  available); the money goes back to the card or UPI. Lost answer or closed Checkout: `POST /api/v1/payments/reconcile { paymentTransactionId }`
+  → `{ state: 'paid', … }` as verify, or `{ state: 'unpaid', gatewayStatuses }`. Errors as §23.3: 400 `PAYMENT_SIGNATURE_INVALID`,
+  `PAYMENT_ORDER_MISMATCH`, `PAYMENT_AMOUNT_MISMATCH`, `PAYMENT_NOT_COMPLETED`, `PAYMENT_FAILED`, `PAYMENT_REFUNDED`; 403 (pharmacy not
+  operational); 404 `PAYMENT_RECORD_NOT_FOUND` (another pharmacy, the patient); 409 `PAYMENT_CHANGED`, `PAYMENT_DISPUTED`,
+  `DUPLICATE_PAYMENT_REFUNDED` (a second payment on the order: refunded to its card); 502 `RAZORPAY_PAYMENT_FETCH_FAILED`.
+- **Cancel.** `POST /api/v1/pharmacy-assisted/lab-bookings/:id/cancel { reason?, expectedVersion?, refundTo?: 'card' | 'wallet' }` →
+  `{ booking, refundedMinor, alreadyCancelled, refund }`; `refund` (card bookings only) = `{ refundId, bookingId, paymentRecordId, amountMinor,
+  cause, method: 'card' | 'wallet', state: 'pending' | 'processed' | 'failed' | 'manual_review', lastError, attempts, razorpayRefundId,
+  processedAt, createdAt, updatedAt }`, or null (cancelled before payment). `refundTo` defaults to `card`; `wallet` credits the wallet at once
+  and is NOT withdrawable (show this before the partner chooses); ignored for wallet-paid bookings. A waiting card booking may be cancelled at
+  any time; a paid one up to 1 hour before the slot (or while a lab reschedule is unanswered). 400 `VALIDATION_ERROR` for another
+  `refundTo`; other errors as §24.11. Show "refund to card: in progress" while `pending`.
+- **Patient app.** A card lab booking appears only once paid; until then list and reads answer as if it did not exist (404
+  `LAB_BOOKING_NOT_FOUND`). Once paid it looks like a wallet one ("Paid by <partner>", no price). A patient cancel refunds the PARTNER's card.
+- **Lab workspace.** Unpaid card bookings are not listed and answer 404 on reads and steps until paid.
+- **Admin.** Card refund rows (`GET /api/v1/admin/assisted/card-refunds`, `…/:id`) add `bookingKind` (`booking` | `lab_booking`); recheck,
+  mark-failed and to-wallet work on lab rows unchanged. `POST /api/v1/admin/assisted-payments/:paymentId/chargeback` takes a lab payment's
+  record id, `order_…` or `pay_…` (flag only, C4; `bookingStatus` is the lab booking's). Stuck money: `pendingPaymentPastDeadline` items of
+  lab rows are `{ bookingId, bookingKind: 'lab_booking', createdAt, paymentDeadline }`; `cardChargebacks` items add `bookingKind`.
+
+**Switches and deploy order**
+
+- No new switch. A card lab booking needs `ASSISTED_CARD_PAYMENT_ENABLED`, `ASSISTED_LAB_BOOKING_ENABLED_PHARMACY` and
+  `ASSISTED_BOOKING_ENABLED_PHARMACY` (each off unless exactly `"true"`) and the Razorpay keys. Card switch off: 400
+  `PAYMENT_METHOD_UNAVAILABLE`; a lab or pharmacy switch off: 503 `ASSISTED_BOOKING_DISABLED`. Verify, reconcile, the sweeps, expiry and
+  refunds always run.
+- `npm run sync-indexes` adds `assisted_card_refunds {bookingKind: 1, bookingId: 1}` (not unique). A card create relies on the r10e
+  `captureKey` unique index (503 `INDEXES_OUTDATED` without it). No migration.
+- Order: 1. deploy; 2. `npm run sync-indexes`; 3. restart. Where both `ASSISTED_CARD_PAYMENT_ENABLED` and
+  `ASSISTED_LAB_BOOKING_ENABLED_PHARMACY` are already on, card lab bookings are live at the restart: on stage test them first (book by card,
+  pay in Checkout, see it confirmed; cancel it, see the refund at Razorpay; book and let it expire, then pay the same order from the
+  Razorpay test dashboard: refunded once).
+- Rollback: the switches only. Never roll the code back below r14 while any lab card booking is `pending_payment`, any
+  `assisted_lab_booking` record could still capture, or any card refund row of a lab booking is not settled: older code has no handler for
+  the context (a capture would stay unapplied and unrefunded) and syncs refund rows onto `bookings`. Checks:
+  `db.partner_lab_bookings.countDocuments({ 'assisted.funding.method': 'razorpay', status: 'pending_payment' })` = 0 and
+  `db.assisted_card_refunds.countDocuments({ bookingKind: 'lab_booking', state: { $ne: 'processed' } })` = 0.
+- Merge notes: r14 edits shared files in small, local hunks — `assisted/consultations.ts` (the card gate now calls
+  `assertCardPaymentAvailable`; two imports), `assisted/bookerView.ts` (uses `bookerPayments`), `assisted/pharmacyCommands.ts`
+  (`cancellationRefundOf`, `bookerMoneyLine`), `assisted/refunds.ts`, `assisted/cardPayments.ts`, `assisted/cardRefunds.ts`,
+  `assisted/labBookings.ts`, `partners/services/labBookings.ts`, `payment/*`, `assisted/reconciliation.ts`, `assisted/review.ts`,
+  `assisted/validation`. Expect conflicts with r10g (`consultations.ts` imports), 2c (`assisted/labBookings.ts`,
+  `partners/services/labBookings.ts`) and 2d (`payment/types` and `payment/model` context lists); each side keeps both.

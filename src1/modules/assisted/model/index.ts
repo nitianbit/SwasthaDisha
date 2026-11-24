@@ -134,6 +134,8 @@ export const AssistedReconciliationReportModel: Model<IAssistedReconciliationRep
  */
 export interface IAssistedCardRefund {
   _id: unknown;
+  /** r14: the collection of `bookingId` — `lab_booking` (`partner_lab_bookings`); rows from before r14 carry none (= `booking`). */
+  bookingKind?: 'booking' | 'lab_booking';
   bookingId: string;
   paymentRecordId: string;
   razorpayPaymentId?: string;
@@ -172,6 +174,7 @@ export interface IAssistedCardRefund {
 }
 const cardRefundSchema = new Schema<IAssistedCardRefund>({
   _id: { type: Schema.Types.ObjectId, required: true },
+  bookingKind: { type: String, enum: ['booking', 'lab_booking'] },
   bookingId: { type: String, required: true },
   paymentRecordId: { type: String, required: true },
   razorpayPaymentId: { type: String },
@@ -202,5 +205,7 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
 cardRefundSchema.index({ paymentRecordId: 1 });
 cardRefundSchema.index({ captureKey: 1 }, { unique: true, partialFilterExpression: { captureKey: { $type: 'string' } } });
 cardRefundSchema.index({ bookingId: 1 });
+// r14 (§24.5.4): a booking's rows by its kind (consultation or lab booking).
+cardRefundSchema.index({ bookingKind: 1, bookingId: 1 });
 cardRefundSchema.index({ state: 1, updatedAt: 1 });
 export const AssistedCardRefundModel: Model<IAssistedCardRefund> = model<IAssistedCardRefund>('AssistedCardRefund', cardRefundSchema, 'assisted_card_refunds');

@@ -1,5 +1,13 @@
-/** Phase 1b: `assisted_booking` = a booker (pharmacy) pays an assisted consultation by card/UPI (contextId = the booking). */
-export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking' | 'instant_request' | 'assisted_booking';
+/**
+ * Phase 1b: `assisted_booking` = a booker (pharmacy) pays an assisted consultation by card/UPI (contextId = the booking).
+ * r14 (§24.5): `assisted_lab_booking` = the same for an assisted lab booking (contextId = the `partner_lab_bookings` row).
+ */
+export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking' | 'instant_request' | 'assisted_booking'
+  | 'assisted_lab_booking';
+/** r14: the contexts of a booker's card payment of an assisted booking (verified by the paying organisation, never failed by a bad signature). */
+export type AssistedCardContext = 'assisted_booking' | 'assisted_lab_booking';
+export const ASSISTED_CARD_CONTEXTS: AssistedCardContext[] = ['assisted_booking', 'assisted_lab_booking'];
+export const isAssistedCardContext = (c: unknown): c is AssistedCardContext => c === 'assisted_booking' || c === 'assisted_lab_booking';
 export type PaymentRecordStatus = 'created' | 'paid' | 'failed' | 'refunded';
 
 export interface IPaymentRecord {

@@ -59,6 +59,7 @@ import {
   IPaymentRecord,
   PaymentContext,
   VerifyPaymentRequest,
+  isAssistedCardContext,
 } from '@/modules/payment/types';
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 
@@ -563,6 +564,8 @@ export class PaymentService {
             ? 'ic'
           : data.context === 'assisted_booking'
             ? 'ab'
+          : data.context === 'assisted_lab_booking'
+            ? 'al'
           : 'bk';
     const contextId = String(data.contextId || '');
     const userId = String(data.userId || '');
@@ -783,10 +786,11 @@ export class PaymentService {
       !belongsToRequester &&
       data.requesterUserType === 'pharmacy' &&
       data.requesterPharmacyId &&
-      (paymentRecord.context === 'booking' || paymentRecord.context === 'pharmacy_order' || paymentRecord.context === 'assisted_booking')
+      (paymentRecord.context === 'booking' || paymentRecord.context === 'pharmacy_order' || isAssistedCardContext(paymentRecord.context))
     ) {
-      if (paymentRecord.context === 'assisted_booking') {
+      if (isAssistedCardContext(paymentRecord.context)) {
         // Phase 1b (§6.1): an assisted card payment is verified by its paying organisation (the pharmacy), whoever of it acts.
+        // r14: consultations and lab bookings alike.
         pharmacyCanVerify = !!paymentRecord.payerPharmacyId
           && String(paymentRecord.payerPharmacyId).toLowerCase() === String(data.requesterPharmacyId).toLowerCase();
       } else if (paymentRecord.context === 'booking') {
@@ -823,8 +827,8 @@ export class PaymentService {
 
   private handleExistingRecordStatus(paymentRecord: IPaymentRecord): void {
     if (paymentRecord.compensatedAt) throw topupClosedCompensated();
-    // r10b: a card dispute recorded on an assisted booking payment (not a top-up).
-    if (paymentRecord.chargebackAt && paymentRecord.context === 'assisted_booking') {
+    // r10b: a card dispute recorded on an assisted booking payment (not a top-up); r14: lab bookings too.
+    if (paymentRecord.chargebackAt && isAssistedCardContext(paymentRecord.context)) {
       throw new AppError({ status: 409, code: 'PAYMENT_DISPUTED',
         message: 'A card dispute was recorded on this booking payment; it is not applied again. Contact Jansetu support' });
     }
@@ -866,8 +870,8 @@ export class PaymentService {
 
     if (generatedSignature !== data.razorpaySignature) {
       // r10b: an assisted card payment's order is never closed by a bad signature (anyone holding the record id could
-      // otherwise strand it): the record stays as it is, so a real capture is still verified, reconciled or swept.
-      if (paymentRecord.context === 'assisted_booking') {
+      // otherwise strand it): the record stays as it is, so a real capture is still verified, reconciled or swept (r14: lab bookings too).
+      if (isAssistedCardContext(paymentRecord.context)) {
         throw new AppError({ status: 400, code: 'PAYMENT_SIGNATURE_INVALID', message: 'Invalid Razorpay payment signature' });
       }
       await this.paymentRepository.update(
@@ -2015,8 +2019,9 @@ export class PaymentService {
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
       $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] },
         { $or: [
-          // Phase 1b: assisted card payments (a capture is applied once, or refunded to its source when the booking closed).
-          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking'] } },
+          // Phase 1b: assisted card payments (a capture is applied once, or refunded to its source when the booking closed);
+          // r14: lab bookings too.
+          { context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request', 'assisted_booking', 'assisted_lab_booking'] } },
           ...(rechargeSweepFrom() ? [{ context: 'wallet_recharge', 'notes.flow': 'pharmacy_wallet_recharge', createdAt: { $gte: rechargeSweepFrom()! } }] : []),
         ] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
