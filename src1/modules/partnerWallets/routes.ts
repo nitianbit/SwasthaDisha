@@ -22,7 +22,8 @@ import { adminKeyParamSchema, adminLabTopupSchema, labTopupSchema, pageQuerySche
  */
 const fail = (status: number, code: string, message: string) => new AppError({ status, code, message });
 
-const labMember = (perm: PartnerPermission, opts: { operational?: boolean } = {}) =>
+/** A member of a lab holding `perm` (2e: or any one of several; the service then checks the one its record needs). */
+const labMember = (perm: PartnerPermission | PartnerPermission[], opts: { operational?: boolean } = {}) =>
   catchAsync(async (req: AuthRequest, _res: Response, next: NextFunction) => {
     if (!req.user) throw fail(401, 'UNAUTHORIZED', 'Authentication is required');
     if (req.user.userType !== 'partner') throw fail(403, 'FORBIDDEN', 'Partner access is required');
@@ -32,7 +33,10 @@ const labMember = (perm: PartnerPermission, opts: { operational?: boolean } = {}
     const partner = await PartnerModel.findById(member.partnerId).select('kind isActive').lean();
     if (!partner || partner.isActive === false) throw fail(403, 'PARTNER_INACTIVE', 'Partner is inactive');
     if (partner.kind !== 'lab') throw fail(404, 'WALLET_NOT_FOUND', 'This workspace has no lab wallet');
-    if (member.role !== 'owner' && !(member.permissions ?? []).includes(perm)) throw fail(403, 'INSUFFICIENT_PERMISSIONS', `Missing permissions: ${perm}`);
+    const perms = Array.isArray(perm) ? perm : [perm];
+    if (member.role !== 'owner' && !perms.some((p) => (member.permissions ?? []).includes(p))) {
+      throw fail(403, 'INSUFFICIENT_PERMISSIONS', `Missing permissions: ${perms.join(' or ')}`);
+    }
     req.user.memberId = String(member._id);
     req.user.partnerId = String(member.partnerId).toLowerCase();
     next();
@@ -46,7 +50,7 @@ const send = (res: Response, data: unknown, extra: Record<string, unknown> = {})
 const listed = (res: Response, r: { items: unknown[]; nextCursor: string | null }) => send(res, r.items, { pagination: { nextCursor: r.nextCursor } });
 const pageOf = (req: AuthRequest) => req.query as { cursor?: string; limit?: number };
 
-/** Mounted at `/api/v1/partner-workspace/assisted` (2e adds its lab-booker routes here). */
+/** Mounted at `/api/v1/partner-workspace/assisted`. 2e's lab-booker routes share the prefix from the workspace router (`assisted/routes/labBooker.ts`). */
 export const labWalletWorkspaceRouter = Router();
 labWalletWorkspaceRouter.get('/wallet', labMember('wallet.view'), catchAsync(async (req: AuthRequest, res) => send(res, await svc.walletOf(memberOf(req).partnerId))));
 labWalletWorkspaceRouter.get('/wallet/entries', labMember('wallet.view'), validate(pageQuerySchema, 'query'),
@@ -57,9 +61,10 @@ labWalletWorkspaceRouter.post('/wallet/topups', labMember('wallet.manage', { ope
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.createLabTopup(memberOf(req), req.body))));
 labWalletWorkspaceRouter.post('/wallet/topups/:paymentTransactionId/check', labMember('wallet.view'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.checkLabTopup(memberOf(req), req.params.paymentTransactionId))));
-labWalletWorkspaceRouter.post('/payments/verify', labMember('wallet.manage'), validate(verifyPaymentSchema, 'body'),
+// 2e: the same two routes settle a card payment of a consultation the lab booked (members with `assisted.book`).
+labWalletWorkspaceRouter.post('/payments/verify', labMember(['wallet.manage', 'assisted.book']), validate(verifyPaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.verifyLabPayment(memberOf(req), req.body))));
-labWalletWorkspaceRouter.post('/payments/reconcile', labMember('wallet.manage'), validate(reconcilePaymentSchema, 'body'),
+labWalletWorkspaceRouter.post('/payments/reconcile', labMember(['wallet.manage', 'assisted.book']), validate(reconcilePaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.reconcileLabPayment(memberOf(req), String(req.body.paymentTransactionId)))));
 
 const adminId = (req: AuthRequest) => String(req.user?._id ?? '');

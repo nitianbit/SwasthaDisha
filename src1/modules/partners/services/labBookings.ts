@@ -31,6 +31,7 @@ import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
 import { kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
+import { bookerNoticeUserId } from '@/modules/assisted/bookers';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
 
@@ -158,7 +159,7 @@ const bookerMoney = (b: IPartnerLabBooking) => bookerMoneyLine(cancellationRowOf
  */
 async function tellBooker(b: IPartnerLabBooking, n: Omit<AssistedNotice, 'audience' | 'userId' | 'bookingId'>): Promise<void> {
   if (!b.assisted?.bookedBy?.id) return;
-  await sendAssistedNotices([{ ...n, audience: 'booker', userId: b.assisted.bookedBy.id, bookingId: String(b._id),
+  await sendAssistedNotices([{ ...n, audience: 'booker', userId: bookerNoticeUserId(b.assisted.bookedBy), bookingId: String(b._id),
     data: { bookingKind: 'lab_booking', shortRef: b.assisted.shortRef, ...(n.data ?? {}) } }]);
 }
 

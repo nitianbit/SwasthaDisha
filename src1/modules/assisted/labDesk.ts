@@ -22,7 +22,7 @@ import { maskName } from '@/modules/assisted/names';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { labAdmissible, labRequestContent, validateLabRequest, type AssistedLabInput } from '@/modules/assisted/labBookings';
-import { cleanName, countPhoneUse, preparePatient, writePatientIn } from '@/modules/assisted/patient';
+import { cleanName, countPhoneUse, linkAssistedIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
 
 /**
  * Assisted booking round 2c (ASSISTED_BOOKING_DESIGN.md §24.6, §5.5, §7.5): the LAB FRONT DESK books the lab's own tests
@@ -130,18 +130,6 @@ async function replayOf(actor: PartnerActor, storedKey: string, hash: string, s?
   return prior;
 }
 
-/** §17.4 for labs: the lab's link to the account holder, with consent and the FIRST typed name (never overwritten). */
-async function linkLabIn(actor: PartnerActor, userId: string, typedName: string, now: Date, s: ClientSession): Promise<void> {
-  const key = { bookerKind: 'lab' as const, bookerId: lower(actor.partnerId), userId: lower(userId) };
-  // Upsert: concurrent first bookings of one patient conflict inside their transactions and are retried, never duplicated.
-  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: now, consentRecordedById: lower(actor.memberId),
-    ...(typedName ? { typedName } : {}) } }, { upsert: true, session: s });
-  if (typedName) {
-    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
-      { $set: { typedName } }, { session: s });
-  }
-}
-
 // ───────────────────────────── Lookup ─────────────────────────────
 
 /** POST /partner-workspace/lab-desk/patients/lookup — `{ exists, holderNameMasked }` only; the hourly limit per lab; audited (ids only). */
@@ -220,7 +208,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
       await labOf(actor, { eligible: true }, s);
       await deskBranch(actor, String(branch._id), input.visitMode, s);
       await writePatientIn(pp, { preferredLanguage: input.preferredLanguage, createdSource: 'lab_desk' }, s);
-      await linkLabIn(actor, pp.userId, pp.holderTyped, now, s);
+      await linkAssistedIn({ bookerKind: 'lab', bookerId: actor.partnerId, actorId: actor.memberId }, pp.userId, pp.holderTyped, now, s);
       // The desk may book a slot starting now (the 60-minute lead is for online bookings); a walk-in takes no seat (L11).
       const seat = walkIn ? null
         : await takeSeat(String(input.slotId), { partnerId, branchId: String(branch._id), visitMode: input.visitMode, minStart: now }, s);

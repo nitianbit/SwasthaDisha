@@ -387,8 +387,8 @@ export async function cancelBookingSettlement(p: {
    * and chooses whether the patient is refunded. Only with requester 'admin'; the booking must have been moved.
    */
   movedNoShow?: { refund: boolean };
-  /** Assisted booking phase 1a: the booker's own command (its assisted bookings only; never the generic routes). */
-  assistedBooker?: 'pharmacy';
+  /** Assisted booking phase 1a: the booker's own command (its assisted bookings only; never the generic routes). 2e: a lab too. */
+  assistedBooker?: 'pharmacy' | 'lab';
   /** Phase 1b: the booker's choice for a card-paid booking's refund (default: back to the card). */
   assistedRefundTo?: 'card' | 'wallet';
 }): Promise<CancelResult> {
@@ -607,8 +607,8 @@ export async function rescheduleWithHolds(p: {
    * already admitted the requester (doctor, clinic desk or admin); `owner` narrows the booking read in the transaction.
    */
   noShow?: NoShowReschedule;
-  /** Assisted booking phase 1a (P9): the booker's own command (its assisted bookings only). */
-  assistedBooker?: 'pharmacy';
+  /** Assisted booking phase 1a (P9): the booker's own command (its assisted bookings only). 2e: a lab too. */
+  assistedBooker?: 'pharmacy' | 'lab';
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();

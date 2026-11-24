@@ -6,7 +6,8 @@ import DependentModel from '@/modules/dependents/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
-import type { PharmacyActor } from '@/modules/assisted/consultations';
+import type { PharmacyActor } from '@/modules/assisted/bookers';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { hitLookup } from '@/modules/assisted/limits';
 
@@ -79,6 +80,22 @@ export async function linkPharmacyCustomerIn(actor: PharmacyActor, userId: strin
   if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
   if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
   if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
+}
+
+/**
+ * §17.4 for labs (r12) and doctors: the booker's link to the account holder (`assisted_links`), with consent and the
+ * FIRST typed name (never overwritten by a later booking). Upsert: concurrent first bookings of one patient conflict
+ * inside their transactions and are retried, never duplicated. Shared by the lab desk and lab-made consultations (2e).
+ */
+export async function linkAssistedIn(by: { bookerKind: 'lab' | 'doctor'; bookerId: string; actorId: string }, userId: string, typedName: string, now: Date,
+  s: ClientSession): Promise<void> {
+  const key = { bookerKind: by.bookerKind, bookerId: lower(by.bookerId), userId: lower(userId) };
+  await AssistedLinkModel.updateOne(key, { $setOnInsert: { ...key, consent: 'patient_agreed', consentRecordedAt: now, consentRecordedById: lower(by.actorId),
+    ...(typedName ? { typedName } : {}) } }, { upsert: true, session: s });
+  if (typedName) {
+    await AssistedLinkModel.updateOne({ ...key, $or: [{ typedName: { $exists: false } }, { typedName: null }, { typedName: '' }] },
+      { $set: { typedName } }, { session: s });
+  }
 }
 
 /** §5.7: the redemption row and the guarded total count, in the booking transaction (r11: any booking and payer kind). */

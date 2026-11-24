@@ -14,40 +14,40 @@ import SpecialistModel from '@/modules/specialists/model';
 import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import { clinicBranchAdmission, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
-import UserModel from '@/modules/user/model';
-import PharmacyModel from '@/modules/pharmacies/model';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
 import { bookerView } from '@/modules/assisted/bookerView';
 import { maskName } from '@/modules/assisted/names';
-import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
-import { countBookerCancellationIn, hitLookup } from '@/modules/assisted/limits';
-import { assistedBookerFilter, bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
+import { countBookerCancellationIn } from '@/modules/assisted/limits';
+import { countPhoneUse } from '@/modules/assisted/patient';
+import {
+  asBooker, assertBookerOn, auditBookerIn, bookerActorIdOf, bookerBookingsFilter, bookerNoticeUserId, bookerOrigin, bookerRefOf, orgKeyOf, rescheduleKeyScope,
+  type BookerActor,
+} from '@/modules/assisted/bookers';
+import { bookerMoneyLine, cancellationRowOf } from '@/modules/assisted/refunds';
 import { ASSISTED_KEY, asDoctorUnavailable, assistedKeyScope, storedAssistedKey, type PharmacyActor } from '@/modules/assisted/consultations';
-import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { assistedEffects, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { openCardOrder } from '@/modules/assisted/cardPayments';
 
 /**
- * Assisted booking phase 1a, pharmacy commands besides the create (§6.2, §7.1, §8.7, P7, P9, §17.6): the masked lookup,
+ * Assisted booking phase 1a, booker commands besides the create (§6.2, §7.1, §8.7, P7, P9, §17.6): the masked lookup,
  * the nearby doctor list, the booker's cancel (any time before the start, full refund to its wallet) and reschedule
- * (same doctor and price, before the start), and the by-key lookup / abandon of a create (Q13 pattern).
+ * (same doctor and price, before the start), and the by-key lookup / abandon of a create (Q13 pattern). 2e (§24.8): the
+ * same commands for a lab booker (`BookerActor`); a pharmacy actor without `kind` (1a callers) is a pharmacy.
  */
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const notFound = () => err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
-const orgKey = (pharmacyId: string) => `pharmacy:${lower(pharmacyId)}`;
 
-/** POST /pharmacy-assisted/patients/lookup — `{ exists, holderNameMasked }` only; limited and audited. */
-export async function lookupPatient(actor: PharmacyActor, rawPhone: unknown) {
-  assertPharmacyAssistedOn();
+/** POST …/patients/lookup — `{ exists, holderNameMasked }` only; the hourly lookup limit of the organisation; audited. */
+export async function lookupPatient(actorIn: PharmacyActor | BookerActor, rawPhone: unknown) {
+  const booker = asBooker(actorIn);
+  assertBookerOn(booker.kind);
   const phone = canonicalMobile(rawPhone);
   if (!phone) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
-  await hitLookup(orgKey(actor.pharmacyId));
-  const user = await UserModel.findOne({ phone, userType: 'user' }).select({ name: 1 }).lean() as { _id: unknown; name?: string } | null;
-  await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'patient.lookup',
-    detail: { exists: !!user, ...(user ? { userId: String(user._id) } : {}) } }, null);
+  const user = await countPhoneUse(orgKeyOf(booker), phone, (seen) => auditBookerIn(booker, 'patient.lookup', { detail: seen }, null));
   return { exists: !!user, holderNameMasked: user ? maskName(user.name) : null };
 }
 
@@ -202,9 +202,11 @@ async function eachLimited<T>(items: T[], fn: (item: T) => Promise<void>): Promi
  * pharmacy's pincode, then its city; then the requested language, the fee and the next free slot. With `date`, that
  * day's bookable slots.
  */
-export async function listDoctors(actor: PharmacyActor, q: DoctorQuery, now: Date = new Date()) {
-  assertPharmacyAssistedOn();
-  const pharmacy = await PharmacyModel.findById(actor.pharmacyId).select({ city: 1, pincode: 1 }).lean() as { city?: string; pincode?: string } | null;
+export async function listDoctors(actorIn: PharmacyActor | BookerActor, q: DoctorQuery, now: Date = new Date()) {
+  const booker = asBooker(actorIn);
+  assertBookerOn(booker.kind);
+  // 2e: "nearby" is the pharmacy's address, or the lab member's branch.
+  const pharmacy = await bookerOrigin(booker);
   const filter: Record<string, unknown> = { isActive: true, isVerified: true };
   if (q.speciality) filter.specialization = { $regex: `^${escapeRx(q.speciality.trim())}$`, $options: 'i' };
   if (q.language) filter.languages = { $regex: `^${escapeRx(q.language.trim())}$`, $options: 'i' };
@@ -263,8 +265,10 @@ const addDaysYmd = (d: string, n: number) => {
  * `days` days (default 7, at most 14) from `from` (default today), for the booking and reschedule screens. Only an
  * active, verified doctor (S5); any other id, missing or not eligible, is the same 404 DOCTOR_NOT_FOUND.
  */
-export async function listDoctorSlots(_actor: PharmacyActor, doctorId: string, q: DoctorSlotsQuery, now: Date = new Date()) {
-  assertPharmacyAssistedOn();
+export async function listDoctorSlots(actorIn: PharmacyActor | BookerActor, doctorId: string, q: DoctorSlotsQuery, now: Date = new Date()) {
+  const booker = asBooker(actorIn);
+  assertBookerOn(booker.kind);
+  if (booker.kind === 'lab') await bookerOrigin(booker);
   const notFound = () => err(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
   if (typeof doctorId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(doctorId)) throw notFound();
   const d = await SpecialistModel.findById(doctorId).select({ ...DOCTOR_FIELDS, isActive: 1, isVerified: 1 }).lean() as Record<string, any> | null;
@@ -296,9 +300,9 @@ export async function listDoctorSlots(_actor: PharmacyActor, doctorId: string, q
   };
 }
 
-async function ownAssisted(actor: PharmacyActor, bookingId: unknown): Promise<IBooking> {
+async function ownAssisted(booker: BookerActor, bookingId: unknown): Promise<IBooking> {
   if (typeof bookingId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(bookingId)) throw notFound();
-  const b = await BookingModel.findOne({ _id: bookingId, ...assistedBookerFilter('pharmacy', actor.pharmacyId) }).lean() as IBooking | null;
+  const b = await BookingModel.findOne({ _id: bookingId, ...bookerBookingsFilter(booker) }).lean() as IBooking | null;
   if (!b) throw notFound();
   return b;
 }
@@ -331,7 +335,7 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
   }
   if (by !== 'booker') {
     // "Cancelled by patient" badge (§6.5): the partner is told; no health details.
-    notices.push({ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: by === 'patient' ? 'Cancelled by the patient' : 'Booking cancelled',
+    notices.push({ audience: 'booker', userId: bookerNoticeUserId(a.bookedBy), type: 'booking_cancelled', title: by === 'patient' ? 'Cancelled by the patient' : 'Booking cancelled',
       message: `Booking Ref ${a.shortRef} on ${when} was cancelled${by === 'patient' ? ' by the patient' : ''}.${refunded ? bookerMoney : ''}`,
       bookingId: id, key: `assisted:${id}:cancelled:booker`, data: { cause: by } });
   }
@@ -344,12 +348,15 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
 }
 
 /** POST /pharmacy-assisted/bookings/:id/cancel — any time before the start (§8.7); full refund to the wallet; P7 count. */
-export async function cancelByBooker(actor: PharmacyActor, bookingId: string,
+export async function cancelByBooker(actorIn: PharmacyActor | BookerActor, bookingId: string,
   input: { reason?: string; expectedUpdatedAt?: string | Date; refundTo?: 'card' | 'wallet' }, clock: () => Date = () => new Date()) {
-  await ownAssisted(actor, bookingId);
+  const booker = asBooker(actorIn);
+  const ref = bookerRefOf(booker);
+  await ownAssisted(booker, bookingId);
   const reason = String(input.reason ?? '').trim() || 'Cancelled by the booking partner';
   const r = await cancelBookingSettlement({
-    bookingId, requester: { _id: lower(actor.pharmacyId), userType: 'pharmacy' }, assistedBooker: 'pharmacy', reason, cause: 'booker', cancelledAt: istTodayYyyymmdd(clock()),
+    bookingId, requester: { _id: ref.id, userType: booker.kind === 'pharmacy' ? 'pharmacy' : 'partner' }, assistedBooker: ref.kind, reason, cause: 'booker',
+    cancelledAt: istTodayYyyymmdd(clock()),
     ...(input.refundTo ? { assistedRefundTo: input.refundTo } : {}),
     wallets: new WalletRepository(), expectedUpdatedAt: input.expectedUpdatedAt ?? null,
     enforceWindow: (b) => {
@@ -358,21 +365,22 @@ export async function cancelByBooker(actor: PharmacyActor, bookingId: string,
     },
     lifecycle: (b) => buildBookingLifecyclePatch(b.lifecycle, { cancelled: { reason }, refunded: { reason } }),
     inTx: async (b, s) => {
-      await countBookerCancellationIn('pharmacy', lower(actor.pharmacyId), s);
-      await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.cancelled',
-        bookingId: String(b._id), detail: { reason, cause: 'booker' } }, s);
+      await countBookerCancellationIn(ref.kind, ref.id, s);
+      await auditBookerIn(booker, 'booking.cancelled', { bookingId: String(b._id), detail: { reason, cause: 'booker' } }, s);
     },
   });
   const booking = r.alreadyCancelled ? r.booking : await afterAssistedCancel(r.booking, 'booker');
-  return { booking: await bookerView(booking as never, lower(actor.pharmacyId)), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled,
+  return { booking: await bookerView(booking as never, ref), refundedMinor: Math.round(r.refunded * 100), alreadyCancelled: r.alreadyCancelled,
     ...(booking.assisted?.funding?.method === 'razorpay' ? { refund: await cancellationRefundOf(String(booking._id)) } : {}) };
 }
 
 /** POST /pharmacy-assisted/bookings/:id/reschedule — P9: same doctor and price, before the start, once per request key. */
-export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string, input: { slotId: string; requestKey: string; expectedUpdatedAt?: string | Date },
-  clock: () => Date = () => new Date()) {
+export async function rescheduleByBooker(actorIn: PharmacyActor | BookerActor, bookingId: string,
+  input: { slotId: string; requestKey: string; expectedUpdatedAt?: string | Date }, clock: () => Date = () => new Date()) {
   if (!ASSISTED_KEY.test(String(input.requestKey ?? ''))) throw err(400, 'REQUEST_KEY_REQUIRED', 'requestKey is required');
-  const b = await ownAssisted(actor, bookingId);
+  const booker = asBooker(actorIn);
+  const ref = bookerRefOf(booker);
+  const b = await ownAssisted(booker, bookingId);
   const hash = requestHashOf({ slotId: lower(input.slotId) });
   const replay = (x: IBooking) => {
     const prior = (x.assisted?.reschedules ?? []).find((r) => r.requestKey === input.requestKey);
@@ -381,7 +389,7 @@ export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string
     return x;
   };
   const prior = replay(b);
-  if (prior) return { booking: await bookerView(prior as never, lower(actor.pharmacyId)), replayed: true };
+  if (prior) return { booking: await bookerView(prior as never, ref), replayed: true };
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   // r6/r7: a move onto the slot the booking already holds is refused (409 SAME_SLOT) inside the move's transaction
   // (rescheduleWithHolds), after its status and start checks.
@@ -390,24 +398,24 @@ export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string
   let updated: IBooking;
   try {
     updated = await rescheduleWithHolds({
-      bookingId, requester: { _id: lower(actor.pharmacyId), userType: 'pharmacy' }, assistedBooker: 'pharmacy', nextSlotId: String(input.slotId),
+      bookingId, requester: { _id: ref.id, userType: booker.kind === 'pharmacy' ? 'pharmacy' : 'partner' }, assistedBooker: ref.kind, nextSlotId: String(input.slotId),
       patch: { bookingDate: slot.date, lifecycle: buildBookingLifecyclePatch(b.lifecycle, { rescheduled: true }) ?? b.lifecycle },
       expectedUpdatedAt: input.expectedUpdatedAt ?? null, refuseStartedSource: clock,
       inTx: async (x, s) => {
-        await claimRequestKey(`assisted_reschedule:${lower(actor.pharmacyId)}:${lower(bookingId)}`, input.requestKey, s);
+        await claimRequestKey(rescheduleKeyScope(booker, bookingId), input.requestKey, s);
         await BookingModel.updateOne({ _id: x._id }, { $push: { 'assisted.reschedules': { requestKey: input.requestKey, requestHash: hash, at: clock(),
-          fromSlotId: b.slotId, toSlotId: lower(input.slotId), by: lower(actor.actorId) } } }, { session: s });
-        await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.rescheduled',
-          bookingId: String(x._id), requestKey: input.requestKey, detail: { fromSlotId: b.slotId, toSlotId: lower(input.slotId) } }, s);
+          fromSlotId: b.slotId, toSlotId: lower(input.slotId), by: bookerActorIdOf(booker) } } }, { session: s });
+        await auditBookerIn(booker, 'booking.rescheduled', { bookingId: String(x._id), requestKey: input.requestKey,
+          detail: { fromSlotId: b.slotId, toSlotId: lower(input.slotId) } }, s);
       },
     });
   } catch (e) {
     const raced = await BookingModel.findById(bookingId).lean() as IBooking | null;
     const again = raced ? replay(raced) : null;
     if (!again) throw asDoctorUnavailable(e);
-    return { booking: await bookerView(again as never, lower(actor.pharmacyId)), replayed: true };
+    return { booking: await bookerView(again as never, ref), replayed: true };
   }
-  if (isReplayedBooking(updated)) return { booking: await bookerView(updated as never, lower(actor.pharmacyId)), replayed: true };
+  if (isReplayedBooking(updated)) return { booking: await bookerView(updated as never, ref), replayed: true };
   const fx = assistedEffects();
   // A move keeps the join link (§6.6): only the Meet event and reminders follow the new slot.
   const withMeet = updated.consultationMode === 'in-person' ? updated : await bestEffort('meet', () => fx.meet(updated), updated);
@@ -422,16 +430,16 @@ export async function rescheduleByBooker(actor: PharmacyActor, bookingId: string
       title: 'Consultation moved', message: `A consultation with you was moved to ${when}.`, bookingId: id, key: `assisted:${id}:moved:${v}:doctor` }] : []),
   ]);
   const fresh = await BookingModel.findById(id).lean() as IBooking;
-  return { booking: await bookerView(fresh as never, lower(actor.pharmacyId)), replayed: false };
+  return { booking: await bookerView(fresh as never, ref), replayed: false };
 }
 
 /** GET /pharmacy-assisted/bookings/by-key/:key — 'used' (with the booking), 'abandoned' or 'unknown' (Q9/Q13). */
-export async function findByKey(actor: PharmacyActor, key: string) {
+export async function findByKey(actor: PharmacyActor | BookerActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
   const b = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key) } }).lean() as IBooking | null;
   // Phase 1b: a card booking adds its open Razorpay order (read only: null while none is open) to resume the payment.
   if (b) {
-    return { state: 'used' as const, booking: await bookerView(b as never, lower(actor.pharmacyId)),
+    return { state: 'used' as const, booking: await bookerView(b as never, bookerRefOf(asBooker(actor))),
       ...(b.assisted?.funding?.method === 'razorpay' ? { payment: await openCardOrder(b, { create: false }) } : {}) };
   }
   const row = await RequestKeyModel.findOne({ scope: assistedKeyScope(actor), key }).lean();
@@ -439,7 +447,7 @@ export async function findByKey(actor: PharmacyActor, key: string) {
 }
 
 /** POST /pharmacy-assisted/bookings/by-key/:key/abandon — abandoned (it can never be booked) or used (here it is). */
-export async function abandonByKey(actor: PharmacyActor, key: string) {
+export async function abandonByKey(actor: PharmacyActor | BookerActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
   const made = await BookingModel.exists({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key) } });
   if (made) return findByKey(actor, key);

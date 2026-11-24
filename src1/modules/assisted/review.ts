@@ -12,6 +12,8 @@ import UserModel from '@/modules/user/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
+import { linkAssistedIn } from '@/modules/assisted/patient';
 import { LAB_UNPAID_CARD_QUERY } from '@/modules/assisted/labViews';
 import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
@@ -23,6 +25,7 @@ import { AssistedAuditEventModel, AssistedReviewItemModel } from '@/modules/assi
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices } from '@/modules/assisted/support';
+import { bookerNoticeUserId } from '@/modules/assisted/bookers';
 
 /**
  * Assisted booking phase 1a (§17.5, P8): the account holder's "this isn't mine" and the admin's review queue, dismiss
@@ -59,7 +62,7 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
   });
   // The booker's "reported as not mine" badge (§6.5); no health details.
   const a = out.booking.assisted!;
-  await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Reported as not mine',
+  await sendAssistedNotices([{ audience: 'booker', userId: bookerNoticeUserId(a.bookedBy), type: 'general', title: 'Reported as not mine',
     message: `The account holder reported booking Ref ${a.shortRef} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
     key: `assisted:${out.booking._id}:not_mine:booker` }]);
   return { reported: true, reviewItemId: out.itemId };
@@ -92,7 +95,7 @@ export async function reportLabNotMine(userId: string, bookingId: string, note?:
     return { booking: b, itemId: String(item!._id) };
   });
   const a = out.booking.assisted!;
-  await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Reported as not mine',
+  await sendAssistedNotices([{ audience: 'booker', userId: bookerNoticeUserId(a.bookedBy), type: 'general', title: 'Reported as not mine',
     message: `The account holder reported lab booking Ref ${a.shortRef} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
     key: `assisted:lab:${out.booking._id}:not_mine:booker`, data: { bookingKind: 'lab_booking' } }]);
   return { reported: true, reviewItemId: out.itemId };
@@ -254,6 +257,8 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
       const familyDeactivated = b.dependentId && lower(b.dependentId) !== lower(dependentId)
         ? await deactivateBookingDependentIn(String(b._id), lower(b.dependentId), s) : false;
       if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, String(b._id), fromUserId, target._id, cleanName(input.holderName), s);
+      // 2e: a lab-made consultation moves the lab's own link (`assisted_links`).
+      if (a.bookedBy.kind === 'lab') await moveLabLinkIn(a.bookedBy.id, a.bookedBy.actorId, String(b._id), fromUserId, target._id, cleanName(input.holderName), s);
       await CouponRedemptionModel.updateMany({ bookingKind: 'booking', bookingId: lower(b._id) },
         dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
       await AssistedReviewItemModel.updateOne({ bookingKind: 'booking', bookingId: lower(b._id), state: 'open' },
@@ -286,7 +291,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
       message: `Booking Ref ${ref} was moved to the right account after a review.`, bookingId: id, key: `assisted:${id}:moved_off:${fromUserId}` },
     { audience: 'customer' as const, userId: target._id, type: 'general' as const, title: 'A booking was added to your account',
       message: `Booking Ref ${ref} made by ${moved.assisted!.bookedBy.name} is now on your account.`, bookingId: id, key: `assisted:${id}:moved_to:${target._id}` }]),
-    { audience: 'booker', userId: moved.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
+    { audience: 'booker', userId: bookerNoticeUserId(moved.assisted!.bookedBy), type: 'general', title: 'Booking moved to another account',
       message: `Booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId: id, key: `assisted:${id}:moved:booker:${input.requestKey}` },
   ]);
   const { __fromUserId: _f, ...clean } = moved as IBooking & { __fromUserId?: string };
@@ -314,6 +319,23 @@ async function moveBookerLinkIn(pharmacyId: string, bookingId: string, fromUserI
   const otherLab = await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, 'assisted.bookedBy.kind': 'pharmacy', 'assisted.bookedBy.id': { $eq: lower(pharmacyId) },
     userId: { $eq: fromUserId } }).session(s);
   if (!otherBooking && !order && !otherLab) await PharmacyCustomerModel.deleteOne({ _id: old._id }, { session: s });
+}
+
+/**
+ * 2e: the lab's link to the holder follows a move of a consultation it booked — the target gets the link (the typed name
+ * given, else the old one), and the old holder's link goes when no other booking of this lab (consultation or lab
+ * booking, its desk included) names that holder. A move within one account keeps it.
+ */
+async function moveLabLinkIn(partnerId: string, actorId: string, bookingId: string, fromUserId: string, toUserId: string, holderName: string,
+  s: import('mongoose').ClientSession) {
+  const key = (userId: string) => ({ bookerKind: 'lab', bookerId: lower(partnerId), userId: lower(userId) });
+  const old = await AssistedLinkModel.findOne(key(fromUserId)).session(s).lean() as { _id: unknown; typedName?: string } | null;
+  await linkAssistedIn({ bookerKind: 'lab', bookerId: partnerId, actorId }, toUserId, holderName || old?.typedName || '', new Date(), s);
+  if (!old || lower(fromUserId) === lower(toUserId)) return;
+  const otherBooking = await BookingModel.exists({ _id: { $ne: bookingId }, 'assisted.bookedBy.kind': 'lab', 'assisted.bookedBy.id': { $eq: lower(partnerId) },
+    userId: { $eq: fromUserId } }).session(s);
+  const otherLab = await PartnerLabBookingModel.exists({ partnerId: { $in: [partnerId, lower(partnerId)] }, userId: { $eq: fromUserId } }).session(s);
+  if (!otherBooking && !otherLab) await AssistedLinkModel.deleteOne({ _id: old._id }, { session: s });
 }
 
 /**
@@ -427,7 +449,7 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
       message: `Lab booking Ref ${ref} was moved to the right account after a review.`, bookingId, key: `assisted:lab:${bookingId}:moved_off:${fromUserId}` },
     { audience: 'customer', userId: target._id, type: 'general', title: 'A booking was added to your account',
       message: `Lab booking Ref ${ref} made by ${clean.assisted!.bookedBy.name} is now on your account.`, bookingId, key: `assisted:lab:${bookingId}:moved_to:${target._id}` },
-    { audience: 'booker', userId: clean.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
+    { audience: 'booker', userId: bookerNoticeUserId(clean.assisted!.bookedBy), type: 'general', title: 'Booking moved to another account',
       message: `Lab booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
       key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } },
   ]);

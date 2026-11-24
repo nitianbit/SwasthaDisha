@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { bookerEntriesByKey } from '@/modules/assisted/bookerWallet';
 import logger from '@/services/logger';
 import { istDateIso } from '@/modules/common/utils/istDate';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
@@ -81,15 +82,16 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      const debits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted:${id}:debit` }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
-      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+      // 2e: the payer's own wallet store (a pharmacy's or a lab's).
+      const debits = await bookerEntriesByKey(f.payerKind, `assisted:${id}:debit`);
+      if (debits.length !== 1 || debits[0]!.amountMinor !== f.amountMinor || lower(debits[0]!.ownerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
     if (refunded > 0) {
-      const credit = await PharmacyWalletTransactionModel.findOne({ operationKey: `assisted:${id}:refund` }).select({ amountPaise: 1 }).lean();
-      if (!credit || Number(credit.amountPaise) !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
+      const [credit] = await bookerEntriesByKey(f.payerKind, `assisted:${id}:refund`);
+      if (!credit || credit.amountMinor !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
     }
     if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'cancelled_not_refunded', ref: id, detail: {} });
     if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'refunded_not_cancelled', ref: id, detail: { status: b.status } });
@@ -125,13 +127,13 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      const debits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted_lab:${id}:debit` }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
-      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+      const debits = await bookerEntriesByKey(f.payerKind, `assisted_lab:${id}:debit`);
+      if (debits.length !== 1 || debits[0]!.amountMinor !== f.amountMinor || lower(debits[0]!.ownerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const credits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted_lab:${id}:refund` }).select({ amountPaise: 1 }).lean();
+    const credits = (await bookerEntriesByKey(f.payerKind, `assisted_lab:${id}:refund`)).map((c) => ({ amountPaise: c.amountMinor }));
     if (credits.length > 1 || (refunded > 0 && (credits.length !== 1 || Number(credits[0]!.amountPaise) !== refunded)) || (refunded === 0 && credits.length > 0)) {
       mismatches.push({ check: 'lab_refund_posted', ref: id, detail: { refundedMinor: refunded, credits: credits.length } });
     }

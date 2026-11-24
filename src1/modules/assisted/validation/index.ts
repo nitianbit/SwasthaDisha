@@ -65,6 +65,11 @@ export const consultationSchema = Joi.object({
   paymentMethod: Joi.string().valid('wallet', 'razorpay').required(),
 });
 
+/** 2e (§24.8.2): a lab member books, lists doctors and reads slots for one of its branches (in its scope). */
+export const labConsultationSchema = consultationSchema.keys({ branchId: objectId.required() });
+export const labDoctorQuerySchema = doctorQuerySchema.keys({ branchId: objectId.required() });
+export const labDoctorSlotsQuerySchema = doctorSlotsQuerySchema.keys({ branchId: objectId.required() });
+
 export const bookerCancelSchema = Joi.object({ reason: Joi.string().trim().max(500), expectedUpdatedAt: Joi.date().iso(),
   /** Phase 1b: where a card-paid booking's money goes back (default `card`); ignored for wallet-paid bookings. */
   refundTo: Joi.string().valid('card', 'wallet') });

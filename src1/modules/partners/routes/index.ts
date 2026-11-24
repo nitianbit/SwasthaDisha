@@ -74,6 +74,7 @@ import Joi from 'joi';
 import { notMineSchema } from '@/modules/assisted/validation';
 import { labNotMine } from '@/modules/assisted/controller/phase2a';
 import { registerLabDeskRoutes } from '@/modules/assisted/routes/labDesk';
+import { registerLabBookerRoutes } from '@/modules/assisted/routes/labBooker';
 import { labDeskRecommendation } from '@/modules/testRecommendations/controller';
 import { recommendationParamSchema, recommendationQuerySchema } from '@/modules/testRecommendations/validation';
 
@@ -234,6 +235,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/reports/remove-draft', ...guard('reports.upload'), id, validate(labV.removeDraftSchema, 'body'), catchAsync(lab.removeDraftLabReport));
   // r12 (§24.6.2): the lab front desk (the lab's own tests for walk-in patients, paid at the lab).
   registerLabDeskRoutes(r, guard);
+  // 2e (§24.8.2): a lab books doctor consultations for walk-in patients.
+  registerLabBookerRoutes(r, guard);
 
   // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');

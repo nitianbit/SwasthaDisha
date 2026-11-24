@@ -1,8 +1,6 @@
-import { ClientSession, Types } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
-import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
-import { reverseRedemptionIn, settleCardFundingIn } from '@/modules/assisted/refunds';
+import { refundWalletFundingIn, reverseRedemptionIn, settleCardFundingIn } from '@/modules/assisted/refunds';
 import type { AssistedRefundRow } from '@/modules/assisted/types';
 
 /**
@@ -38,21 +36,8 @@ export async function settleAssistedLabFundingIn(b: IPartnerLabBooking, p: { cau
     refundedMinor = card.refundedMinor;
   } else {
     await reverseRedemptionIn('lab_booking', id, s);
-    const already = (a.funding.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const budget = Number(a.funding.amountMinor || 0) - already;
-    if (budget > 0 && a.funding.payerKind === 'pharmacy') {
-      const debit = a.funding.walletEntryId && Types.ObjectId.isValid(a.funding.walletEntryId)
-        ? await PharmacyWalletTransactionModel.findById(a.funding.walletEntryId).select({ lotAllocations: 1 }).session(s).lean() : null;
-      const posted = await postPharmacyMovementIn({
-        pharmacyId: a.funding.payerId, kind: 'refund_credit', amountPaise: budget, operationKey: labRefundKey(id),
-        referenceType: 'assisted_lab_booking', referenceId: `${id}:refund`, description: 'Refund of an assisted lab booking',
-        ...(already === 0 && debit?.lotAllocations?.length ? { restore: debit.lotAllocations } : {}),
-      }, s);
-      refundedMinor = budget;
-      const attemptId = new Types.ObjectId().toHexString();
-      push = { refundId: attemptId, cause: p.cause, amountMinor: budget, method: 'wallet', sourceRef: String(a.funding.walletEntryId ?? ''),
-        state: 'processed', walletEntryId: String(posted.entry._id), attemptId, at: new Date() };
-    }
+    ({ push, refundedMinor } = await refundWalletFundingIn(a.funding, { cause: p.cause, operationKey: labRefundKey(id),
+      referenceType: 'assisted_lab_booking', referenceId: `${id}:refund`, description: 'Refund of an assisted lab booking' }, s));
     set['assisted.funding.state'] = 'refunded';
     set.paymentStatus = 'refunded';
   }

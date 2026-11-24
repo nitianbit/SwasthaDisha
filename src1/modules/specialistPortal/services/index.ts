@@ -27,7 +27,7 @@ import {
 import { ageFromDob, escapeHtml, formatDisplayDate, recommendationBoxHtml, writeBookingPdf } from '@/modules/specialistPortal/pdf';
 import { recommendTestsAtSave } from '@/modules/testRecommendations/service';
 import { formatRecommendationCode } from '@/modules/testRecommendations/code';
-import { ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { bookerOfBooking, ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
 import logger from '@/services/logger';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
 
@@ -401,9 +401,9 @@ export class SpecialistPortalService {
       });
     }
 
-    // Assisted booking phase 0 (D15): a booking a pharmacy made gets its dispensing copy (no diagnosis) next to the full
+    // Assisted booking phase 0 (D15): a booking a pharmacy (2e: or a lab) made gets its dispensing copy (no diagnosis) next to the full
     // PDF. Best effort: the prescription is saved either way, and a missing copy is made on the booker's first read.
-    if (updated.pharmacyId) {
+    if (bookerOfBooking(updated as never)) {
       try {
         await ensureDispensingCopy(updated as never);
       } catch (error) {

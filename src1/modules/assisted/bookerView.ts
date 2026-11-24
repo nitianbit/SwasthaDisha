@@ -3,6 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import { bookerNames } from '@/modules/assisted/names';
 import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
 import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { refOf, type BookerLike } from '@/modules/assisted/bookers';
 
 type Row = Record<string, any>;
 
@@ -67,19 +68,25 @@ async function dispensingUrls(rows: Row[], open: (b: Row) => boolean, mode: 'inl
   return out;
 }
 
-export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerViewOptions = {}): Promise<Row[]> {
+/**
+ * The booker view of bookings THIS booker made. `booker`: a pharmacy id (phase 0–2 callers), or the booking organisation
+ * (2e: a lab). A lab sees its own assisted rows exactly as a pharmacy does; only the names rule (`bookerNames`) and the
+ * `holder` link differ (a lab's link is its `assisted_links` row; it has no pharmacy-customer link to edit).
+ */
+export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerViewOptions = {}): Promise<Row[]> {
+  const ref = refOf(booker);
   const now = opts.now ?? new Date();
   const clinical = opts.clinical !== false;
   const list = await withCopyState(rows.filter((r) => r && typeof r === 'object').map((r) => (typeof r.toObject === 'function' ? r.toObject() : r)));
   if (!list.length) return [];
-  const [slots, { patients: names, holders }] = await Promise.all([slotsOf(list), bookerNames(list, pharmacyId)]);
+  const [slots, { patients: names, holders }] = await Promise.all([slotsOf(list), bookerNames(list, ref)]);
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
   const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
   const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
   // r10c / r10d: how each booking of THIS pharmacy is paid, with the open Razorpay order of a card booking still waiting
   // for its payment (read only), so "pay now" works from any device (r14: the same helper serves lab bookings).
   const { bookerPayments } = await import('@/modules/assisted/cardPayments');
-  const payments = await bookerPayments('booking', list, pharmacyId);
+  const payments = await bookerPayments('booking', list, ref);
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -89,7 +96,7 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
     // of PUT /pharmacy-customers/:id/typed-name (null when it has no link), and the name typed on that link (r8 B6, null
     // when none). Never another pharmacy's link.
     const holder = holders.get(String(b.userId ?? '').toLowerCase());
-    v.holder = { pharmacyCustomerId: holder?.linkId ?? null, name: holder?.name ?? null, typedName: holder?.typedName ?? null };
+    v.holder = { ...(ref.kind === 'pharmacy' ? { pharmacyCustomerId: holder?.linkId ?? null } : {}), name: holder?.name ?? null, typedName: holder?.typedName ?? null };
     if (b.noShow?.at) v.noShow = { at: b.noShow.at };
     const lifecycle: Row = {};
     for (const e of LIFECYCLE_EVENTS) if (b.lifecycle?.[e]?.at) lifecycle[e] = { at: b.lifecycle[e].at };
@@ -129,8 +136,8 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
   });
 }
 
-export async function bookerView(row: Row, pharmacyId: string, opts: BookerViewOptions = {}): Promise<Row> {
-  return (await bookerViews([row], pharmacyId, opts))[0]!;
+export async function bookerView(row: Row, booker: BookerLike, opts: BookerViewOptions = {}): Promise<Row> {
+  return (await bookerViews([row], booker, opts))[0]!;
 }
 
 /**

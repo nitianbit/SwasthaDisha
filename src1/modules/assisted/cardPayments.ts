@@ -12,11 +12,12 @@ import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { BOOKING_PAYMENT_WINDOW_MS } from '@/modules/bookings/holds';
 import PartnerOrgModel from '@/modules/partners/model';
 import {
-  bookingModelOf, cardKindOf, kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf,
+  bookingModelOf, cardKindOf, kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf, recordPayerOf,
 } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { assistedFlags } from '@/modules/assisted/flags';
 import type { AssistedBookingKind } from '@/modules/assisted/types';
+import { refOf, type BookerLike } from '@/modules/assisted/bookers';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 
 /**
@@ -171,6 +172,11 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
   },
 };
 
+/** The audit's actor and organisation of a payer's booking (a pharmacy, or a lab member for its lab). */
+const auditActorOf = (payerKind: string, actorId: unknown, payerId: string) => ({
+  actorKind: (payerKind === 'pharmacy' ? 'pharmacy' : 'member') as 'pharmacy' | 'member', actorId: lower(actorId),
+  orgKind: payerKind as 'pharmacy' | 'lab', orgId: lower(payerId) });
+
 function viewOf(kind: AssistedBookingKind, r: IPaymentRecord, b: Row): CardPaymentView {
   return { paymentRequired: true, paymentTransactionId: String(r._id), razorpayOrderId: r.razorpayOrderId,
     razorpayKeyId: (payments() as unknown as { getRazorpayCredentials(): { keyId: string } }).getRazorpayCredentials().keyId,
@@ -190,9 +196,13 @@ export async function openCardOrderOf(kind: AssistedBookingKind, b: Row, opts: {
   if (stored) return stored.status === 'created' ? viewOf(kind, stored, b) : null;
   if (!opts.create) return null;
   try {
-    const out = await payments().createOrder({ recordId: f.paymentRecordId, userId: b.assisted.bookedBy.actorId, payerUserId: b.assisted.bookedBy.actorId,
-      payerPharmacyId: f.payerId, context: k.context, contextId: lower(b._id), baseAmount: f.amountMinor / 100, finalAmount: f.amountMinor / 100,
-      notes: { flow: k.context, pharmacyId: f.payerId, bookingId: lower(b._id) } });
+    // 2e: the paying organisation by its kind — a pharmacy (`payerPharmacyId`) or a lab and its booking member
+    // (`payerPartnerId`, `payerMemberId`); verification by organisation reads these (§6.1).
+    const actorId = b.assisted.bookedBy.actorId;
+    const payer = f.payerKind === 'lab' ? { payerPartnerId: lower(f.payerId), payerMemberId: lower(actorId) } : { payerPharmacyId: f.payerId };
+    const out = await payments().createOrder({ recordId: f.paymentRecordId, userId: actorId, payerUserId: actorId, ...payer,
+      context: k.context, contextId: lower(b._id), baseAmount: f.amountMinor / 100, finalAmount: f.amountMinor / 100,
+      notes: { flow: k.context, [f.payerKind === 'lab' ? 'partnerId' : 'pharmacyId']: f.payerId, bookingId: lower(b._id) } });
     return viewOf(kind, out.paymentRecord, b);
   } catch (e) {
     if (isDuplicateKeyError(e)) {
@@ -212,12 +222,13 @@ export const openCardOrder = (b: IBooking, opts?: { create: boolean }) => openCa
  * for its payment, `payBy` and the open order (`razorpayOrderId` / `razorpayKeyId`, null when none is open yet: replay
  * the create), so "pay now" works from any device. Read only. Never in a patient's, doctor's or lab's view.
  */
-export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], pharmacyId: string): Promise<Map<string, Row>> {
+export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], bookerLike: BookerLike): Promise<Map<string, Row>> {
   const k = KINDS[kind];
+  const booker = refOf(bookerLike);
   const out = new Map<string, Row>();
   for (const b of rows) {
     const f = b?.assisted?.funding;
-    if (!f || b.assisted.bookedBy?.kind !== 'pharmacy' || lower(b.assisted.bookedBy.id) !== lower(pharmacyId)) continue;
+    if (!f || b.assisted.bookedBy?.kind !== booker.kind || lower(b.assisted.bookedBy.id) !== booker.id) continue;
     const card = f.method === 'razorpay';
     const waiting = card && f.state === 'pending' && k.waiting(b);
     const order = waiting ? await openCardOrderOf(kind, b, { create: false }).catch(() => null) : null;
@@ -247,13 +258,14 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
     if (rec.status !== 'paid') throw err(409, 'PAYMENT_CHANGED', 'Payment changed; refresh before retrying');
     const b = await Model.findById(id).session(s).lean() as Row | null;
     const f = b?.assisted?.funding;
-    if (!b || !f || f.method !== 'razorpay' || lower(f.payerId) !== lower(rec.payerPharmacyId)) throw notFound();
+    const payer = recordPayerOf(rec);
+    if (!b || !f || f.method !== 'razorpay' || f.payerKind !== payer.kind || lower(f.payerId) !== payer.id) throw notFound();
     const amount = recordPaiseOf(rec);
     // r10b: this record already confirmed the booking (a crash or a racing call came between that and the follow-up):
     // nothing moves again; the follow-up below is resumed and only then is the record processed.
     if (lower(b.paymentTransactionId) === rid && lower(f.paymentRecordId) === rid && f.state !== 'pending' && f.state !== 'not_paid') return 'appliedBefore';
     const applicable = !blocked && k.waiting(b) && f.state === 'pending' && lower(f.paymentRecordId) === rid && amount === f.amountMinor;
-    const audit = { actorKind: 'pharmacy' as const, actorId: lower(b.assisted.bookedBy.actorId), orgKind: 'pharmacy' as const, orgId: lower(f.payerId), bookingId: id };
+    const audit = { ...auditActorOf(f.payerKind, b.assisted.bookedBy.actorId, f.payerId), bookingId: id };
     if (applicable) {
       const { filter, update } = k.confirm(id, rid, rec, amount);
       const moved = await Model.updateOne(filter, update, { session: s });
@@ -263,7 +275,7 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
       await auditIn({ ...audit, action: 'booking.paid', detail: { ...k.auditDetail, paymentRecordId: rid, amountMinor: amount } }, s);
       return 'applied';
     }
-    const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerId: f.payerId, record: rec, cause: 'late_capture', to: 'card' }, s);
+    const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerKind: f.payerKind, payerId: f.payerId, record: rec, cause: 'late_capture', to: 'card' }, s);
     if (q.created) await Model.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': q.row } }, { session: s });
     await auditIn({ ...audit, action: 'booking.late_capture', detail: { ...k.auditDetail, paymentRecordId: rid, amountMinor: amount, bookingStatus: b.status,
       [k.blockedKey]: blocked, refundState: q.refund.state } }, s);
@@ -313,15 +325,17 @@ export async function settleOtherAssistedCaptures(record: IPaymentRecord, captur
   const Model = bookingModelOf(kind);
   const id = lower(record.contextId);
   const b = Types.ObjectId.isValid(id) ? await Model.findById(id).select({ assisted: 1 }).lean() as Row | null : null;
-  const payerId = lower(b?.assisted?.funding?.payerId ?? record.payerPharmacyId);
+  const payer = b?.assisted?.funding ? { kind: b.assisted.funding.payerKind, id: lower(b.assisted.funding.payerId) } : recordPayerOf(record);
+  const payerId = payer.id;
   if (!payerId) return 0;
   let queued = 0;
   for (const p of others) {
     const created = await runLedgerTransaction(async (s) => {
-      const q = await queueExtraCaptureRefundIn({ bookingId: id, bookingKind: kind, payerId, recordId: lower(record._id), razorpayPaymentId: p.id, amountMinor: p.amount }, s);
+      const q = await queueExtraCaptureRefundIn({ bookingId: id, bookingKind: kind, payerKind: payer.kind, payerId, recordId: lower(record._id), razorpayPaymentId: p.id,
+        amountMinor: p.amount }, s);
       if (!q.created) return false;
       await Model.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': q.row } }, { session: s });
-      await auditIn({ actorKind: 'pharmacy', actorId: lower(b?.assisted?.bookedBy?.actorId ?? payerId), orgKind: 'pharmacy', orgId: payerId, bookingId: id,
+      await auditIn({ ...auditActorOf(payer.kind, b?.assisted?.bookedBy?.actorId ?? payerId, payerId), bookingId: id,
         action: 'booking.extra_capture', detail: { ...KINDS[kind].auditDetail, paymentRecordId: lower(record._id), razorpayPaymentId: p.id, amountMinor: p.amount } }, s);
       return true;
     });

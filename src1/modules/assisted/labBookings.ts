@@ -37,6 +37,7 @@ import {
   type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 import type { AssistedBlock } from '@/modules/assisted/types';
+import { labAdmissible } from '@/modules/assisted/labViews';
 
 /**
  * Assisted booking round 2a (ASSISTED_BOOKING_DESIGN.md §24.4): a PHARMACY books a partner-lab test for a walk-in patient
@@ -154,8 +155,8 @@ function validate(input: AssistedLabInput): void {
   }
 }
 
-/** §24.1 item 12: a lab takes assisted bookings only while it is an active, verified lab (the S5 pattern for providers). */
-export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
+/** §24.1 item 12 (S5 for labs): moved to assisted/bookers.ts (2e), re-exported for its callers. */
+export { labAdmissible };
 
 /**
  * §24.4.3 step 10, L24: lab coupons follow the diagnostics rules (against the PATIENT) plus the assisted rules — never a

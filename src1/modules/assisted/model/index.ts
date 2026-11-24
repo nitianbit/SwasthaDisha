@@ -27,7 +27,8 @@ export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {
   at: Date;
-  actorKind: 'pharmacy' | 'doctor' | 'admin' | 'customer';
+  /** 2e: `member` = a lab member booking for its lab (orgKind `lab`). */
+  actorKind: 'pharmacy' | 'doctor' | 'admin' | 'customer' | 'member';
   actorId: string;
   orgKind: 'pharmacy' | 'lab' | 'doctor';
   orgId: string;
@@ -40,7 +41,7 @@ export interface IAssistedAuditEvent {
 
 const auditSchema = new Schema<IAssistedAuditEvent>({
   at: { type: Date, required: true },
-  actorKind: { type: String, required: true, enum: ['pharmacy', 'doctor', 'admin', 'customer'] },
+  actorKind: { type: String, required: true, enum: ['pharmacy', 'doctor', 'admin', 'customer', 'member'] },
   actorId: { type: String, required: true },
   orgKind: { type: String, required: true, enum: ['pharmacy', 'lab', 'doctor'] },
   orgId: { type: String, required: true },
@@ -153,7 +154,8 @@ export interface IAssistedCardRefund {
   amountMinor: number;
   /** booker | patient | doctor | admin | late_capture | extra_capture (r10e: another capture on the same order) */
   cause: string;
-  payerKind: 'pharmacy';
+  /** 2e: the paying booker's kind (its wallet takes a to-wallet refund). */
+  payerKind: 'pharmacy' | 'lab' | 'doctor';
   payerId: string;
   method: 'razorpay' | 'wallet';
   state: 'pending' | 'processed' | 'failed' | 'manual_review';
@@ -186,7 +188,7 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   chargebackAt: { type: Date },
   amountMinor: { type: Number, required: true, min: 1 },
   cause: { type: String, required: true },
-  payerKind: { type: String, required: true, enum: ['pharmacy'] },
+  payerKind: { type: String, required: true, enum: ['pharmacy', 'lab'] },
   payerId: { type: String, required: true },
   method: { type: String, required: true, enum: ['razorpay', 'wallet'] },
   state: { type: String, required: true, enum: ['pending', 'processed', 'failed', 'manual_review'] },

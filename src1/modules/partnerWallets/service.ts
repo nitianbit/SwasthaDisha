@@ -11,6 +11,8 @@ import { PaymentService } from '@/modules/payment/services';
 import type { IPaymentRecord, VerifyPaymentRequest } from '@/modules/payment/types';
 import { adminTopup, checkTopup, setFrozenIn, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
 import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
+import MemberModel from '@/modules/partners/model/member';
+import type { PartnerPermission } from '@/modules/partners/types';
 import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
 import { assertPartnerWalletIndexes, LAB_WALLET_POLICY, labOrNotFound, labStore, labTopups } from '@/modules/partnerWallets/ledger';
 
@@ -140,11 +142,29 @@ export async function createLabTopup(m: LabMember, body: { amountMinor: number; 
   }
 }
 
-/** The lab's own top-up record, or the one 404 (another lab's, a pharmacy's, a customer's, a booking's). */
-async function ownTopup(partnerId: string, paymentTransactionId: string): Promise<void> {
+/**
+ * 2e: a payment this lab may settle on the two routes — its own top-up (`wallet.manage`), or the card payment of a
+ * consultation it booked (`assisted_booking`, paid by this lab: `payerPartnerId`; the member needs `assisted.book`).
+ * Anything else, or the member lacking that permission: the one 404 / 403.
+ */
+async function ownPayment(m: LabMember, paymentTransactionId: string): Promise<'topup' | 'booking'> {
   const r = /^[0-9a-fA-F]{24}$/.test(String(paymentTransactionId ?? ''))
     ? await PaymentRecordModel.findById(paymentTransactionId).lean() as Record<string, unknown> | null : null;
-  if (!r || !labTopups.isTopup(r) || labTopups.ownerOf(r) !== lower(partnerId)) throw recordNotFound();
+  if (r && labTopups.isTopup(r) && labTopups.ownerOf(r) === lower(m.partnerId)) return memberMay(m, 'wallet.manage', 'topup');
+  if (r?.context === 'assisted_booking' && lower(r.payerPartnerId) === lower(m.partnerId)) return memberMay(m, 'assisted.book', 'booking');
+  throw recordNotFound();
+}
+async function memberMay<T>(m: LabMember, perm: PartnerPermission, out: T): Promise<T> {
+  const member = await MemberModel.findById(m.memberId).select({ role: 1, permissions: 1 }).lean() as { role?: string; permissions?: string[] } | null;
+  if (member?.role !== 'owner' && !(member?.permissions ?? []).includes(perm)) throw err(403, 'INSUFFICIENT_PERMISSIONS', `Missing permissions: ${perm}`);
+  return out;
+}
+/** The entity of a settled payment, as this lab sees it: its wallet, or (2e) its booker view of the consultation. */
+async function entityView(kind: 'topup' | 'booking', m: LabMember, entity: unknown) {
+  if (kind === 'topup') return labWalletView(entity as IPartnerWallet);
+  const { bookerView } = await import('@/modules/assisted/bookerView');
+  const b = entity as Record<string, unknown> | null;
+  return b?._id ? bookerView(b, { kind: 'lab', id: lower(m.partnerId) }, { copies: 'queue' }) : b;
 }
 
 const requester = (m: LabMember) => ({ userId: m.memberId, requesterUserType: 'partner', requesterPartnerId: lower(m.partnerId) });
@@ -157,17 +177,17 @@ export async function checkLabTopup(m: LabMember, paymentTransactionId: string) 
 
 /** POST …/payments/verify — after Checkout (members with wallet.manage). */
 export async function verifyLabPayment(m: LabMember, body: Omit<VerifyPaymentRequest, 'userId'>) {
-  await ownTopup(m.partnerId, body.paymentTransactionId);
+  const kind = await ownPayment(m, body.paymentTransactionId);
   const out = await payments().verifyPaymentAndProcess({ ...body, ...requester(m) } as VerifyPaymentRequest);
-  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: labWalletView(out.entity as IPartnerWallet) };
+  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: await entityView(kind, m, out.entity) };
 }
 
 /** POST …/payments/reconcile — a lost answer or a closed Checkout: Razorpay's own record of the order decides. */
 export async function reconcileLabPayment(m: LabMember, paymentTransactionId: string) {
-  await ownTopup(m.partnerId, paymentTransactionId);
+  const kind = await ownPayment(m, paymentTransactionId);
   const out = await payments().reconcilePaymentAndProcess({ paymentTransactionId, ...requester(m) });
   if (out.state !== 'paid') return out;
-  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: labWalletView(out.entity as IPartnerWallet) };
+  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: await entityView(kind, m, out.entity) };
 }
 
 // ── Admin ──
