@@ -4340,3 +4340,560 @@ It is an alert only. The places:
 | 2 | "Consult now" is paid from the wallet only | §25.8 as written (DR18) |
 | 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays |
 | 4 | A doctor books lab tests for patients of its own consultations AND for walk-ins by phone | §25.5.3 as written (DR6) |
+
+## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
+
+Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
+rounds merge, so every `file:line` is under `src1/modules/` (or `src1/` for `index.ts` and `routes/index.ts`) at
+**`b1f8b726`** (`m0/r21-phase2e`: the stage line with 2a–2e, 3d and the r10g/r10h Meet retry), unless it says
+**`@02b4a0e0`** (`m0/r17-phase3e`, partner instant consults). The SMS, queue, OTP-limit, config and notice files are the
+same at `f5f171c9`. Where this section and §10, §13 or §16 differ, this one wins.
+
+Phase 5 adds one new piece: an outbox, `sms_notices`, with its drain loop. Everything else is reused:
+- the SMS gateway that already sends sign-in codes (`sms/services/index.ts:86-101`);
+- the Meet retry's lease, back-off and alert pattern (`meet/retry.ts:99-146`; `raiseAlertIn`, `assisted/limits.ts:89`);
+- `assertUniqueIndex` (`common/utils/requiredIndex.ts:19`), here failing closed to "no SMS", never to a 503;
+- the Mongo window counters of the OTP limits (`hit`, `otp/throttle.ts:41-50`) for the `/j/` limit;
+- `slotsOf`, `appointmentIntervalOf`, `hasPrescription` (`assisted/rxAccess.ts:22`, `:30-36`, `:83`);
+- the `shortRef` and `join.linkVersion` every assisted consultation already stores (`assisted/consultations.ts:82-85`,
+  `:271`).
+
+### 27.1 Owner decisions this section builds (not reopened)
+
+1. **Messages:** booking confirmed; prescription ready; lab report ready; reminder before the visit; cancelled or moved.
+   "Booked" and "reminder" have link variants for patients who join video on their own phone.
+2. **Templates** are registered on the DLT portal. A `.env` switch per message (and per language) turns each one on or
+   off.
+3. **SMS never affects a booking.** Not configured or failing → skipped. Sending happens after the commit, from a drain
+   loop.
+4. **Languages:** the language asked at booking (already stored). First wave: Hindi, English, Assamese, Bengali, Odia.
+   Mizo and other north-east languages come later. Per-language switches.
+5. **Video on the patient's own phone:** the app's Join, plus an SMS link once that template exists.
+6. **No PII in logs. No blocking limits** except phone lookups. A rate limit on the public `/j/` route is allowed: it
+   protects the link, not bookings.
+7. **The records-access code (§10.6)** belongs with the phase 3f grants. This section notes the seam only (§27.9).
+
+### 27.2 The code today, and what it means for phase 5
+
+| Fact | Where | Consequence |
+|---|---|---|
+| One SMS gateway: HTTP GET with `username`, `password`, `from`, `to` (`91` + 10 digits), `text`, `tmplId`, `peId`, optional cookie | `sms/services/index.ts:86-101`; `config/config.ts:53-66` | The adapter's one implementation: same account, same PE id |
+| No timeout; any 2xx counts as sent; a failure throws an `AppError` carrying the provider's text | `sms/services/index.ts:86`, `:104-117` | The adapter adds a timeout, never throws and returns codes only |
+| A missing template id falls back to the sign-in template (`tmplId: payload.templateId \|\| CONFIG.SMS_TEMPLATE_ID`) | `sms/services/index.ts:95` | The adapter never falls back: no id, no send |
+| Sign-in codes are sent inside the request; the walk-in bill and member-email notices after the commit, best effort | `auth/services/index.ts:275-283`; `partners/services/invoice.ts:538-545`; `partners/services/index.ts:201-207` | Unchanged by phase 5 |
+| `Job` queue: one cron every 10 s; each consumer takes **one** job per tick (120 s lease) | `queue/service/TaskQueue.ts:28`; `queue/service/JobConsumer.ts:15-36` | Too slow to drain a batch |
+| `publishUniqueNow` runs the consumer **inside the caller** | `queue/service/TaskQueue.ts:50-70` | It would make a booking answer wait for a send |
+| `publishUniqueLater` upserts and overwrites `processAfter` and `payload` | `queue/service/TaskQueue.ts:89-100` | A replayed enqueue would re-arm a job |
+| Customer reminders: two `Job`s per consultation (1 day, 30 min), in-app and push | `bookings/services/bookingReminderScheduler.ts:36-80`; `queue/service/BookingReminderConsumer.ts:17-100` | Unchanged; the SMS reminder is separate |
+| After-commit notices: `sendAssistedNotices`, best effort, idempotent keys | `assisted/support.ts:42-46`, `:87-89` | Every SMS hook sits beside one of these calls |
+| Meet retry: cron every 5 min, a per-row lease judged on the wall clock, back-off, one alert | `meet/retry.ts:99-146`, `:158-174` | The drain copies this pattern |
+| OTP limits: Mongo fixed-window counters, ids HMAC'd, TTL | `otp/throttle.ts:12`, `:41-50`; `otp/model/throttle.ts:9-14` | The `/j/` limit reuses `hit()` |
+| The request logger prints every path | `src1/index.ts:64-70` | It would log `/j/<token>`: 5d redacts it |
+| Languages stored: `assisted.preferredLanguage` (`^[a-z]{2,3}$`), `desk.preferredLanguage`; `User` and `Dependent` `preferredLanguage` | `assisted/validation/index.ts:57`, `:119`; `partners/model/labBooking.ts:39`; `user/model/index.ts:185`; `dependents/model/index.ts:46` | The SMS language is the booking's |
+| `shortRef`: 8 RFC 4648 base32 characters, unique partial index on consultations and partner-lab bookings. **Lab desk rows have none** | `assisted/consultations.ts:82-85`, `:139`; `assisted/labBookings.ts:127` | `/j/` looks up by `shortRef`; desk SMS need another Ref (SM12) |
+| `join.linkVersion` is 1 at create, bumped by the admin account move; a booker move keeps it | `assisted/consultations.ts:271`; `assisted/review.ts:247`; `assisted/pharmacyCommands.ts:420` | §6.6 holds. §16's "tokens die on a move" means the account move only |
+
+### 27.3 The split and the order
+
+| Round | Content | Depends on | Size |
+|---|---|---|---|
+| **5a** | Outbox `sms_notices`, the enqueue helper, the drain loop, the provider adapter (the existing gateway), templates and language choice, switches, admin read and test-send routes. No event enqueues yet, so 5a sends nothing by itself | — | M |
+| **5b** | Enqueue at every commented hook: booked, prescription ready, report ready, cancelled, moved, account move; the send-time checks per event | 5a | M |
+| **5c** | Visit reminders: due time, quiet hours, a new reminder on each move | 5b | S |
+| **5d** | Join links: the token, the link variants of "booked" and "reminder", the public `GET /j/:token` with its per-IP limit, the log redaction | 5a | S–M |
+
+- **Order: 5a → 5b → 5c.** 5d comes after 5a and can be built beside 5b or 5c. It changes only `smsNotices/joinLink.ts`,
+  the variant choice, one router mount and the logger line, so it does not collide with 5b's hook edits.
+- **Phase 5 writes no booking field.** Rounds that change booking files (3b, 3c, 3f) can run beside it. Once 5b is
+  merged, a later round calls the 5b helper at its hook instead of leaving a comment.
+- Each round is backend, an integration suite and an independent review (Opus xhigh). Commits stay local; stage only on
+  the owner's word (§13).
+
+### 27.4 Shared rules for every round
+
+- **Never affects a booking.**
+  - Enqueue only after the commit, never with a session.
+  - `enqueueSms` never throws. Any error (switch read, index check, insert) is logged by code and swallowed.
+  - No booking answer depends on SMS, and no booking route waits for the gateway. Replays enqueue nothing new (the
+    unique key).
+  - Phase 5 writes nothing to `bookings`, `partner_lab_bookings` or `instant_requests`.
+- **No PII.**
+  - The outbox stores ids and codes only: no phone, name, text, token or template variable. The text is built at send
+    time from the fresh booking.
+  - Logs carry `event`, `bookingKind`, `state`, `reason` and `attempts` only. Never the phone, name, text, token,
+    template id or the gateway's answer.
+- **Switches** are read on every call and are off unless exactly `"true"` (the rule of `assisted/flags.ts:14`). With
+  `SMS_NOTICES_ENABLED` off, nothing is enqueued, and rows already due are marked `skipped: switched_off`.
+- **Indexes.** The new model lives in `smsNotices/model/` (read by `npm run sync-indexes`). The enqueue and the drain
+  check the outbox's unique index with `assertUniqueIndex`; if it is missing, no row is written and no tick runs
+  (logged `indexes_outdated`). Failing closed means "no SMS", never a 503.
+- **No limits** on bookings or on SMS per number. The only new limit is per IP on `/j/` (5d).
+- **Scope.** Rows with an `assisted` block (consultations, instant consultations, partner-lab bookings) and lab desk rows
+  (`desk`). Never customer self-bookings, clinic desk bookings or legacy pharmacy bookings (§6.4, §10.2).
+
+### 27.5 Round 5a: outbox, drain, provider adapter, templates, switches
+
+#### 27.5.1 Data model (new module `smsNotices`, `src1/modules/smsNotices/model/index.ts`)
+
+**`sms_notices`**: one row is one SMS, and it is the idempotent marker of §10.4.
+
+| Field | Type | Notes |
+|---|---|---|
+| `bookingKind` | `'booking' \| 'lab_booking'` | `booking` includes instant consultations (the booking made at accept) |
+| `bookingId` | string | Lower-case hex |
+| `event` | `'booked' \| 'rx_ready' \| 'report_ready' \| 'reminder' \| 'cancelled' \| 'moved' \| 'moved_off'` | §27.6.1 |
+| `version` | string | Per event (§27.6.1). With the three fields above, the unique marker |
+| `recipientUserId?` | string | Only for `moved_off` (the previous holder). Otherwise the booking's `userId` at send time |
+| `state` | `'queued' \| 'sending' \| 'sent' \| 'failed' \| 'skipped'` | `sending` goes back to `queued` after a retryable failure |
+| `dueAt` | Date | Never sent before it (reminders: §27.7) |
+| `leaseUntil?` | Date | While `sending` |
+| `attempts` | number | Gateway calls made |
+| `message?`, `lang?` | string | Chosen at send (`BOOKED_LINK`, `hi`) |
+| `reason?` | string | Skip or failure code (§27.5.3) |
+| `providerStatus?` | number | HTTP status only |
+| `sentAt?`, `finishedAt?`, `expireAt?` | Date | `expireAt` = `finishedAt` + 180 days |
+| `createdAt`, `updatedAt` | Date | |
+
+**Indexes:**
+- `{ bookingKind: 1, bookingId: 1, event: 1, version: 1 }`, unique, no partial filter: the marker;
+- `{ state: 1, dueAt: 1 }`: the drain;
+- `{ expireAt: 1 }`, TTL `expireAfterSeconds: 0`.
+
+Schema options as `otp/model/throttle.ts:13` (`strict: 'throw'`, `autoIndex: false`, `autoCreate: false`).
+
+**Why not a `Job` plus a marker (§10.4).** One collection does both. The `Job` queue takes one job per consumer per 10 s
+tick, `publishUniqueNow` runs the consumer inside the caller, and `publishUniqueLater` re-arms an existing job (§27.2).
+`Job` has no state or attempts, so §10.4 needed a second collection anyway (SM1).
+
+#### 27.5.2 Enqueue
+
+`enqueueSms({ bookingKind, bookingId, event, version, dueAt?, recipientUserId? }): Promise<void>` in
+`smsNotices/enqueue.ts`:
+1. `SMS_NOTICES_ENABLED` is not `"true"` → return.
+2. `assertUniqueIndex(SmsNoticeModel, { bookingKind: 1, bookingId: 1, event: 1, version: 1 })`. Failure → log
+   `indexes_outdated`, return.
+3. `insertOne({ …, state: 'queued', dueAt: dueAt ?? now, attempts: 0 })`. Duplicate key (11000) → return: already
+   queued or done.
+4. Any other error → log `enqueue_failed`, return.
+
+It never throws and never sends. Only the 5b helpers (§27.6.1) call it.
+
+#### 27.5.3 The drain loop
+
+`runSmsNoticeScheduler()` in `smsNotices/drain.ts`, started in `src1/index.ts` beside `runMeetRetryScheduler()` (`:98`).
+A cron every 15 s with an in-process `running` guard, as `meet/retry.ts:158-174`. Several instances only contend for
+the per-row lease.
+
+One tick, `drainOnce(now)`:
+1. **Index.** Check the unique index as the enqueue does. Missing → no tick.
+2. **Read** up to 50 rows `{ state: { $in: ['queued', 'sending'] }, dueAt: { $lte: now } }`, oldest `dueAt` first.
+3. **Claim** each row with one compare-and-set judged on the wall clock (as `meet/retry.ts:112-116`):
+   - filter `{ _id, dueAt ≤ now, $or: [{ state: 'queued' }, { state: 'sending', leaseUntil ≤ wall-now }] }`;
+   - update `{ state: 'sending', leaseUntil: wall-now + 60 s, $inc: { attempts: 1 } }`;
+   - not claimed → next row.
+4. **Decide** on the fresh booking (one read, plus the recipient's `User` and the slot). The first match wins:
+   - master switch off → `skipped: switched_off`;
+   - gateway not configured → `skipped: provider_not_configured`;
+   - booking gone → `skipped: booking_missing`;
+   - the event is no longer true → `skipped: stale` (§27.6.2);
+   - an open "not mine" report → `skipped: disputed` (not for `moved_off`);
+   - no valid mobile (`canonicalMobile(User.phone)`, `common/utils/phone.ts:5`) → `skipped: no_phone`;
+   - `User.isActive === false` → `skipped: recipient_inactive`;
+   - no sendable message and language (§27.5.5) → `skipped: no_template`;
+   - non-Latin text while `SMS_UNICODE_PARAM` is empty → `skipped: unicode_not_configured`.
+5. **Send** through the adapter with `SMS_SEND_TIMEOUT_MS`, capped at 20 s (a third of the lease).
+6. **Record** with a compare-and-set on `{ _id, state: 'sending', leaseUntil: <this claim's lease> }`, so a worker whose
+   lease expired cannot overwrite:
+   - accepted → `sent`, `sentAt`, `message`, `lang`;
+   - retryable failure while `attempts < SMS_NOTICE_MAX_ATTEMPTS` → `queued`, `dueAt` = now + 2 min after the first
+     failure, + 10 min after the second;
+   - otherwise → `failed`, and one `sms_failed` alert a day: `raiseAlertIn({ kind: 'sms_failed', subject: 'sms' })`,
+     detail = the first failure's reason, no booking or person.
+7. **Gateway down.** After 3 retryable failures in a row the tick stops. Unclaimed rows wait for the next tick and use
+   no attempt.
+
+**Delivery is at least once.** A crash between the gateway's answer and step 6 can resend after the 60 s lease (§10.4
+accepted this). Everything else happens once per marker.
+
+**Failure codes.** Retryable: `timeout`, `network`, `http_5xx`, `http_429`. Final: `http_4xx`, `rejected` (a 2xx whose
+body the adapter recognises as a refusal, §27.5.4).
+
+#### 27.5.4 Provider adapter
+
+```ts
+// smsNotices/provider.ts: provider-neutral
+export interface SmsProvider {
+  configured(): boolean;
+  send(m: { to: string /* 10-digit Indian mobile */; text: string; templateId: string; unicode: boolean; signal: AbortSignal }):
+    Promise<{ ok: true } | { ok: false; retryable: boolean; status?: number;
+      code: 'timeout' | 'network' | 'http_5xx' | 'http_429' | 'http_4xx' | 'rejected' }>;
+}
+export function smsProvider(): SmsProvider;                   // the configured one
+export function setSmsProvider(p?: SmsProvider): SmsProvider; // tests, as setAssistedEffects (assisted/support.ts:79-84)
+```
+
+**The one implementation, `HttpGetSmsProvider`**, is the gateway that already sends sign-in codes, with the request of
+`sms/services/index.ts:86-101`:
+- `GET SMS_API_BASE_URL` with `username`, `password`, `from` (`SMS_NOTICES_FROM`, else `SMS_FROM`), `to` (`91` + 10
+  digits), `text`, `tmplId`, `peId` (`SMS_PE_ID`); `Cookie: SMS_COOKIE` when it is set;
+- `configured()`: base URL, username, password, sender and PE id are all set;
+- `unicode: true` (text outside the GSM 7-bit set) adds `SMS_UNICODE_PARAM` (`name=value`) to the query;
+- axios `timeout` and `signal`, `validateStatus: () => true`; it never throws;
+- **never** a template fallback (unlike `sms/services/index.ts:95`);
+- classification: 429 and 5xx retryable; other 4xx final; timeout and network errors retryable; 2xx accepted unless the
+  body matches the gateway's refusal shape, which the 5a builder records from a stage send (until then every 2xx is
+  accepted);
+- the body is read for that check only, never logged or stored.
+
+Sign-in codes, the walk-in bill and the member-email SMS keep using `SMSService` unchanged.
+
+#### 27.5.5 Templates, language and variables
+
+**Messages** (`<MSG>`): `BOOKED`, `BOOKED_LINK`, `RX_READY`, `REPORT_READY`, `REMINDER`, `REMINDER_LINK`,
+`CANCELLED_MOVED` (English drafts in §10.2). **First-wave languages** (`<LANG>`): `EN`, `HI`, `AS`, `BN`, `OR` (codes
+`en`, `hi`, `as`, `bn`, `or`, §11.1). That makes **35 DLT templates**.
+
+- **Text in the repo.** `smsNotices/templates/<lang>.ts` holds, byte for byte, the registered text with its `{#var#}`
+  placeholders in a fixed order per message, plus the fixed words of that language: the service names, "cancelled",
+  "moved to", "moved to another number", "your family member", "Jansetu app", "home", "the clinic".
+  - English ships final.
+  - `hi`, `as`, `bn` and `or` ship as drafts. A language becomes sendable only once its registered text replaces the
+    draft (SM18).
+- **Link templates** hold the fixed text `<SMS_JOIN_LINK_BASE_URL>/{#var#}`. The renderer writes the configured base
+  into that fixed part and the token into the variable (5d).
+- **Sendable** = `SMS_<MSG>_<LANG>_ENABLED` is `"true"`, `SMS_<MSG>_<LANG>_TEMPLATE` is set, and the repo has the final
+  text (a `final: true` mark in the template file).
+- **Language choice.** `L` = the booking's `assisted.preferredLanguage` (desk rows: `desk.preferredLanguage`). The first
+  sendable candidate wins (SM6):
+  1. the link variant in `L`;
+  2. the plain message in `L`;
+  3. the link variant in `SMS_FALLBACK_LANGUAGE` (default `en`);
+  4. the plain message in it.
+
+  The link variant is a candidate only where 5d says so. No candidate → `skipped: no_template`.
+- **Variables.** Each is at most 30 characters, cut after cleaning.
+  - `name`: the patient's first word: the family member's name, else the lab booking's `patient.name`, else the
+    account's `name`. Cleaned to letters (any script), combining marks and single spaces (§10.2). Empty → "your family
+    member" in `L`.
+  - `service`, in `L`, from the booking's mode: video consultation, phone consultation, clinic consultation, lab test,
+    home sample collection.
+  - `date` as `DD-MM-YYYY` and `time` as 24-hour `HH:mm`, India time, Latin digits in every language. An instant
+    consultation uses the acceptance time.
+  - `place`: §27.6.3.
+  - `ref`: `assisted.shortRef`. A desk row has none: the last 8 characters of its id, upper case (SM12).
+  - `what` (cancelled / moved), in `L`: "cancelled", "moved to <date> <time>" or "moved to another number".
+  - `token`: 5d.
+- **Never** doctor name or speciality, test names, diagnosis or amounts (§10.2).
+- **Length.** Unicode text is 70 characters a part, so a Hindi "booked" is about 3 parts (Q5).
+
+#### 27.5.6 `.env` (names as §10.1)
+
+```
+SMS_NOTICES_ENABLED=false            # master switch for booking notices
+SMS_SEND_TIMEOUT_MS=5000             # per gateway call (capped at 20000)
+SMS_NOTICE_MAX_ATTEMPTS=3            # gateway calls per notice
+SMS_FALLBACK_LANGUAGE=en             # ASSUMED D1
+SMS_UNICODE_PARAM=                   # the gateway's Unicode flag as name=value; empty = non-Latin notices skipped
+SMS_NOTICES_FROM=                    # NEW, optional: the DLT header for notices; empty = SMS_FROM
+
+# <MSG>  = BOOKED BOOKED_LINK RX_READY REPORT_READY REMINDER REMINDER_LINK CANCELLED_MOVED
+# <LANG> = EN HI AS BN OR (first wave; LUS MNI KHA GRT NE … later)
+SMS_<MSG>_<LANG>_TEMPLATE=           # DLT template id
+SMS_<MSG>_<LANG>_ENABLED=false       # the per-message, per-language switch
+```
+
+- Reused as they are: `SMS_API_BASE_URL`, `SMS_USERNAME`, `SMS_PASSWORD`, `SMS_FROM`, `SMS_PE_ID`, `SMS_COOKIE`
+  (`config/config.ts:53-66`).
+- Read from `process.env` on every call by `smsNotices/flags.ts` (the `assisted/flags.ts` pattern).
+- 5c adds `SMS_VISIT_REMINDER_MINUTES_BEFORE`. 5d adds `SMS_JOIN_LINK_BASE_URL`, `JOIN_LINK_SECRET` and
+  `SMS_JOIN_RATE_PER_MINUTE`.
+
+#### 27.5.7 Routes (admins only)
+
+`app.use('/api/v1/admin/sms-notices', authenticate, denyRoles('partner'), smsAdminRouter)` with `requireAdmin`,
+mounted before the general admin mount (`routes/index.ts:127`).
+
+| Route | Answer |
+|---|---|
+| `GET /api/v1/admin/sms-notices/summary` | `{ enabled, provider: { configured, unicode, noticesHeader }, pairs: [{ message, lang, enabled, templateSet, textFinal }], last24h: { sent, failed, queued, skipped: { <reason>: n } } }`. Booleans and counts only, never a secret |
+| `GET /api/v1/admin/sms-notices?bookingKind&bookingId` | That booking's rows: `{ event, version, state, message, lang, attempts, reason, dueAt, sentAt, createdAt }` |
+| `POST /api/v1/admin/sms-notices/test { message, lang, phone }` | Sends one text with fixed sample values to `phone` now, even while that pair's switch is off (to check a template before turning it on). 503 `SMS_NOTICES_DISABLED` when the master switch is off; 409 `SMS_TEMPLATE_NOT_SET`. Answer `{ ok, code? }`. Audited in `assisted_audit_events` (new action `sms.test_sent`, the phone stored as `throttleId`, `otp/throttle.ts:12`); 20 an hour per admin through `hit()` |
+
+#### 27.5.8 Tests (`test/sms/phase5a.integration.ts` and units; gateway stub through `setSmsProvider`)
+
+- **Double enqueue:** 10 parallel `enqueueSms` of one marker → one row. Again after `sent` → no new row.
+- **Two drains at once** (`Promise.all`) over 20 rows → 20 gateway calls; each row `sent` once.
+- **Lease:** a row left `sending` with an expired lease is claimed again; the old claim's outcome write is refused.
+- **Retries:** two 5xx then success → `sent`, `attempts: 3`, due times + 2 and + 10 min. A 4xx → `failed` at once.
+  Three failures → `failed`; two failed rows on one day → one `sms_failed` alert.
+- **Gateway down:** every call times out → the tick stops after 3; the other rows keep `attempts: 0`. A stub that never
+  answers is cut at `SMS_SEND_TIMEOUT_MS`.
+- **Switches:** master off → no row. Master turned off with rows due → `skipped: switched_off`, no call. The `hi` pair
+  off → English sent. Both off → `skipped: no_template`. Non-Latin text without the Unicode flag → skipped, no call.
+  Template id missing → no call (no fallback).
+- **Index missing** (dropped): the enqueue makes no row and does not throw; the drain does not tick.
+- **Adapter**, against a local HTTP stub: the query (`to=91…`, `tmplId`, `peId`, `from`); the Unicode flag only for
+  non-Latin text; the timeout; no throw.
+- **No PII:** the logger is captured for the whole suite; no 10-digit number, rendered text, name or template id
+  appears. The outbox rows hold none either.
+- **Templates:** placeholder count per message; cleaning (digits, emoji and punctuation removed; cut at 30; empty → "your
+  family member"); a rendered text equals its template with the values put in.
+
+#### 27.5.9 Deploy and rollback
+
+1. Deploy with `SMS_NOTICES_ENABLED` unset. 5a alone enqueues nothing.
+2. `npm run sync-indexes` (the new `sms_notices`).
+3. DLT (owner, §27.11): register the 35 templates from the repo text, English and Hindi first; the new header if one is
+   chosen (Q1); the join address (5d).
+4. If DLT changed any wording, commit the registered text before turning that pair on.
+5. Stage: set `SMS_UNICODE_PARAM`, `SMS_NOTICES_FROM`, the template ids and `SMS_NOTICES_ENABLED=true`; one admin test
+   send per pair to a staff phone; then the pair switches. Production only on the owner's word.
+
+**Rollback.** `SMS_NOTICES_ENABLED=false` stops every notice at once (due rows become `skipped`). A pair switch stops one
+message in one language. Older code ignores `sms_notices`.
+
+### 27.6 Round 5b: the events at the hooks
+
+#### 27.6.1 Events, versions and hooks
+
+Helpers in `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`,
+`smsMovedOff`. Each is one line at its hook, after the commit; each never throws and enqueues only for rows in scope
+(§27.4). The `// SMS phase 5` comment at each hook is replaced by the call.
+
+| Event → message | Version | Hook (after the commit) |
+|---|---|---|
+| `booked` → BOOKED (or BOOKED_LINK) | `1`; after an account move `move:<n>` (`n` = `assisted.moves.length`) | Wallet consultation, pharmacy or lab booker: `assisted/consultations.ts:335`. Card confirmation: `assisted/cardPayments.ts:136-145` (the follow-up runs again until done; the marker keeps one SMS). Instant accept: `doctors/services/instant.ts:682` @02b4a0e0. Pharmacy lab booking, wallet and card: `notifyLabBooked`, `assisted/labBookings.ts:264-273`. Lab desk, scheduled rows only: `assisted/labDesk.ts:250`. 3b's doctor lab create when it lands |
+| `rx_ready` → RX_READY | `1`: the first save only | `specialistPortal/services/index.ts:404-413`, after the dispensing copy, for rows with `assisted` |
+| `report_ready` → REPORT_READY | `1`: the first release only | `partners/services/labBookings.ts:1164-1171`, assisted and desk rows, when there was no release before |
+| `cancelled` → CANCELLED_MOVED ("cancelled") | `1` | Consultations, every path through `afterAssistedCancel` (`assisted/pharmacyCommands.ts:313-347`): booker `:372`; patient or admin `bookings/services/index.ts:1572`; doctor or admin `:1628`; admin moved no-show `:1669`. Not when `by === 'patient'`; not when `unannounced` (`assisted/pharmacyCommands.ts:329`). Instant, doctor or admin cancel: `doctors/services/instant.ts:927` @02b4a0e0. Lab: reject `partners/services/labBookings.ts:639` (desk) and `:646` (assisted); admin moved no-show `:666`; booker cancel `:833` (not for an unpaid card row, `:832`); desk cancel `:861` |
+| `moved` → CANCELLED_MOVED ("moved to <date> <time>") | The new start, epoch minutes | Booker move of a consultation: `assisted/pharmacyCommands.ts:420-431`. The booker accepts a lab's new time: `assisted/labBookings.ts:556-566`. The lab rebooks a no-show: `partners/services/labBookings.ts:944` |
+| `moved_off` → CANCELLED_MOVED ("moved to another number") | `move:<n>`; `recipientUserId` = the previous holder | Admin account move: `assisted/review.ts:280-296` (consultations; replaces "SMS waits for phase 5", `:281`) and `:445-455` (lab bookings). The new holder gets `booked` `move:<n>` at the same place. Not for an unpaid card booking (`:287`) |
+
+**No SMS** (the comment is replaced by a one-line reason):
+- the holder cancelled in the app (`partners/services/labBookings.ts:605`; consultations `by === 'patient'`) or accepted
+  a lab's new time in the app (`:759`): they did it themselves;
+- a desk row the patient cancelled (`:599`, "none to the lab");
+- a lab's **proposed** new time (`:751`): nothing has changed yet; the SMS goes once the booker accepts it;
+- an unpaid card booking cancelled or expired: it was never announced (C7, §23.2);
+- an instant request before acceptance (`assisted/instant.ts:233` @02b4a0e0).
+
+#### 27.6.2 Send-time checks (the drain reads the booking again)
+
+| Event | Sent only if | Otherwise |
+|---|---|---|
+| `booked` | Consultation `confirmed` and `paid`; lab `confirmed` or later and not cancelled; before the start (instant: within 60 min of acceptance) | `stale` |
+| `rx_ready` | `hasPrescription` (`assisted/rxAccess.ts:83`) still true (an admin clear withdraws it); within 3 days of the enqueue | `stale` |
+| `report_ready` | At least one release; within 3 days | `stale` |
+| `cancelled` | `status: 'cancelled'`; within 1 day | `stale` |
+| `moved` | Not cancelled; the current start equals the version; before it | `stale` (a later move has its own row) |
+| `moved_off` | Within 1 day | `stale` |
+
+The recipient is the booking's holder **at send time**, so a notice queued before an account move goes to the new
+holder. Only `moved_off` goes to the previous one.
+
+#### 27.6.3 `place` by booking and message
+
+| Booking | booked | rx_ready | report_ready | reminder |
+|---|---|---|---|---|
+| Consultation, `join.on: 'partner_device'` | Booker name | Booker name | — | Booker name |
+| Consultation, `join.on: 'patient_phone'` | Booker name | Booker name | — | "Jansetu app" |
+| Consultation in person | Booker name | Booker name | — | "the clinic" (no clinic name: it can name a speciality) |
+| Lab visit | Booker name (desk: lab name) | — | Lab name | Lab name |
+| Home collection | Booker name (desk: lab name) | — | Lab name | "home" |
+
+Names are cleaned as in §27.5.5; the fixed words are in `L`.
+
+#### 27.6.4 Routes, switches, indexes, deploy
+
+No new route, switch or index. A message starts in a language once its pair switch is on. Deploy, then turn the pairs
+on. Rollback: as 5a.
+
+#### 27.6.5 Tests (`test/sms/phase5b.integration.ts`)
+
+- **Booking unaffected.** For each create path (pharmacy wallet consultation, card confirmation, lab-booker
+  consultation, pharmacy lab booking, lab desk, instant accept), each cancel and each move, run with: SMS off; the
+  gateway failing; the gateway hanging 10 s; the gateway succeeding; the outbox index dropped. The HTTP answers are equal
+  (ids and times aside), the hanging gateway does not slow the answer (the drain sends later), and the booking documents
+  are identical.
+- **Double enqueue under races:**
+  - two identical creates under one request key → one `booked`;
+  - card verify, reconcile and the recovery sweep on one capture in parallel → one `booked`;
+  - booker cancel and patient cancel racing → one `cancelled`, or none when the patient won;
+  - two report releases → one `report_ready`; two prescription saves → one `rx_ready`.
+- **Stale:** booked then cancelled before the tick → `booked` skipped, `cancelled` sent. Moved twice before the tick →
+  the first `moved` skipped, the second sent. A prescription cleared by an admin → skipped.
+- **Recipient:** an account move between enqueue and send → `booked` goes to the new holder; `moved_off` to the previous
+  holder only.
+- **Dispute:** a "not mine" report → later notices skipped `disputed`.
+- **Out of scope:** a customer self-booking, a clinic desk booking and a legacy pharmacy booking enqueue nothing; an
+  unpaid card booking cancelled or expired enqueues nothing.
+
+### 27.7 Round 5c: visit reminders
+
+- **Which bookings:** scheduled consultations (video, call, in person) and scheduled lab bookings (lab visit, home
+  collection; assisted and desk). Not instant consultations, not desk walk-ins.
+- **Enqueue.** `smsBooked` and `smsMoved` also enqueue `reminder`, version = the start in epoch minutes, with `dueAt`:
+  1. the start − `SMS_VISIT_REMINDER_MINUTES_BEFORE` (default 120, allowed 30–1440);
+  2. a due time between 21:00 and 07:00 India time moves back to the latest 20:00 before it;
+  3. a due time less than 60 minutes from now → no reminder (the "booked" SMS has just gone).
+
+  An account move needs no new row: the recipient is read at send time.
+- **Start:** consultations `appointmentIntervalOf(b, slot).start` (`assisted/rxAccess.ts:30-36`, slot from `slotsOf`);
+  lab bookings `slot.startsAt`.
+- **Send-time:** consultation `confirmed` and `paid`, lab `confirmed`; the current start equals the version; now is
+  before the start; no open dispute. Otherwise `stale`. REMINDER_LINK under the 5d rule.
+- The customer in-app reminders (`bookings/services/bookingReminderScheduler.ts:36-80`) are unchanged.
+- **`.env`:** `SMS_VISIT_REMINDER_MINUTES_BEFORE=120`; the pairs `SMS_REMINDER_<LANG>_*` and `SMS_REMINDER_LINK_<LANG>_*`.
+- **Tests:**
+  - due times: a 10:00 slot → 08:00; a 07:30 slot → 20:00 the evening before; a 23:30 slot → 20:00 the same day;
+  - booked 50 minutes before the slot → no reminder; never sent before `dueAt`;
+  - a move → the old reminder `stale`, the new one sent; a cancel → `stale`;
+  - two enqueues of one reminder in parallel → one row;
+  - instant consultations and desk walk-ins → none.
+- **Deploy:** deploy, set the minutes, turn the REMINDER pairs on. Rollback: the pairs.
+
+### 27.8 Round 5d: join links and `/j/`
+
+#### 27.8.1 The token (`smsNotices/joinLink.ts`; §6.6)
+
+- `token` = `<ref>-<mac>`, 29 characters, `^[A-Z2-7]{8}-[A-Z2-7]{20}$`.
+- `ref` = `assisted.shortRef`.
+- `mac` = the first 100 bits of `HMAC-SHA256(JOIN_LINK_SECRET, bookingId + ':' + assisted.join.linkVersion)`, RFC 4648
+  base32, upper case, no padding. Nothing is stored.
+- `linkVersion` already exists. The admin account move bumps it (`assisted/review.ts:247`). A booker move does not, and
+  the window follows the current slot (§6.6). A cancelled booking fails the status check, so a cancel needs no bump.
+
+#### 27.8.2 Link variants
+
+BOOKED_LINK and REMINDER_LINK are candidates only when all hold:
+- a consultation with `consultationMode: 'video'` and `assisted.join.on: 'patient_phone'`;
+- `JOIN_LINK_SECRET` (at least 32 bytes) and `SMS_JOIN_LINK_BASE_URL` (`https://…/j`) are set.
+
+The link goes to the account phone like every notice, never to `join.phone` (SM15). The app's Join stays the first way
+in.
+
+#### 27.8.3 The route
+
+`GET /j/:token` and `HEAD /j/:token`, mounted at the root in `configureRoutes` (no `/api/v1`, no sign-in):
+1. **Limit per IP:** `hit('join-ip', throttleId('ip|' + req.ip), [{ seconds: 60, max: SMS_JOIN_RATE_PER_MINUTE }])`
+   (`otp/throttle.ts:12`, `:41-50`). Behind the proxy it needs `TRUST_PROXY` (`src1/index.ts:33-34`). Over the limit →
+   429 with the page and `Retry-After`. Counter store error → 503 with the page.
+2. Wrong token shape → the page.
+3. `BookingModel.findOne({ 'assisted.shortRef': ref })` on the existing unique index, minimal fields.
+4. The MAC is compared with `crypto.timingSafeEqual` on equal-length buffers.
+5. It redirects only if all hold:
+   - `status: 'confirmed'`, `paymentStatus: 'paid'`, video, `join.on: 'patient_phone'`, no open dispute;
+   - the doctor is eligible (`doctorExistsIneligible`, `specialists/eligibility.ts:125`);
+   - `virtualMeeting.status: 'active'` with an `https://meet.google.com/` `joinUrl`;
+   - now is inside the window. Scheduled: from the start − 10 min to the end (`appointmentIntervalOf`, as
+     `assisted/bookerView.ts:118-123`). Instant: from the acceptance to the later of + 60 min and the last extension.
+6. Yes → 302 to the `joinUrl`. No → the page.
+
+Every answer that is not a redirect, a 429 or a 503 is **the same page with status 200**: unknown, wrong, early, late,
+cancelled, moved account. The page, in English and Hindi: "This Jansetu link is not open now. It opens 10 minutes
+before the booked time. You can also sign in to the Jansetu app with this mobile number and tap Join." Every answer
+carries `Cache-Control: no-store`, `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex`.
+
+**Logs.** The request logger (`src1/index.ts:64-70`) prints `/j/:token` instead of the path. The route logs
+`{ outcome: 'redirect' | 'closed' | 'limited' }` only.
+
+#### 27.8.4 `.env`, deploy and rollback
+
+```
+SMS_JOIN_LINK_BASE_URL=          # e.g. https://<domain>/j, exactly the address in the registered link templates
+JOIN_LINK_SECRET=                # 48 random bytes, base64; changing it kills every link already sent
+SMS_JOIN_RATE_PER_MINUTE=30      # NEW: /j/ requests per IP per minute
+```
+
+**Deploy:**
+1. deploy;
+2. route `/j/` on the link domain to the API (nginx `location /j/`), and set `TRUST_PROXY` if it is not set;
+3. set `JOIN_LINK_SECRET` and `SMS_JOIN_LINK_BASE_URL`;
+4. whitelist the address on DLT (TRAI blocks SMS whose URL is not whitelisted) and register the `_LINK` templates;
+5. turn the `_LINK` pairs on.
+
+**Rollback:** the `_LINK` pairs (sends fall back to the plain message). With the secret unset the route answers the page.
+
+#### 27.8.5 Tests (`test/sms/phase5d.integration.ts`)
+
+- The token is 29 characters, stable for a booking, and changes with `linkVersion`.
+- Inside the window → redirect. 11 minutes before, after the end, after a cancel → the page. An unknown ref, a wrong
+  MAC and an early visit get the same body and status.
+- Admin account move: the old token gets the page, the new one redirects. Booker move: the same token works and the
+  window follows the new slot.
+- `partner_device`, call and in-person bookings never redirect; an ineligible doctor → the page.
+- The 31st request in a minute from one IP → 429; another IP is not affected; with `TRUST_PROXY` the client IP counts.
+- The logger output never holds the token; the route logs only the outcome.
+- Variant choice: `_LINK` only when eligible and its pair is on; otherwise the plain message in the same language.
+- HEAD answers as GET, without a body.
+
+### 27.9 The records-access code: the seam only (§10.6, §25.9.4)
+
+- 3f's `RecordsCodeSender` is a replaceable hook, "unavailable" in phase 3 (§25.9.4).
+- 5a supplies what it needs: `smsProvider()` and the renderer, with the §10.6 text in the template files as message
+  `RECORDS_CODE`, switched by `SMS_RECORDS_CODE_<LANG>_TEMPLATE` and `SMS_RECORDS_CODE_<LANG>_ENABLED`, **independent
+  of `SMS_NOTICES_ENABLED`**.
+- The code is sent at once, not through the outbox, because the doctor is waiting. A failure only means no approval;
+  `channels.sms` is `true` only when the gateway accepted it.
+- Making the code, storing its HMAC and setting the sender are a small 3f follow-up after 5a merges, not a phase 5
+  round. This replaces DR21's "wired in phase 5".
+
+### 27.10 ASSUMED (reversible)
+
+| # | Assumption (the safer default) | Where |
+|---|---|---|
+| SM1 | One outbox collection, `sms_notices`: a row is both the job and the marker. It replaces §10.4's `Job` + `sms_notices_sent` | §27.5.1 |
+| SM2 | Enqueue after the commit, best effort: a crash between the commit and the enqueue loses that SMS. Card confirmations run their follow-up again, so theirs is not lost | §27.5.2 |
+| SM3 | At least once: a crash between the gateway's answer and the outcome write can resend after the 60 s lease | §27.5.3 |
+| SM4 | Text, recipient, language and variant are decided at send time from the fresh booking; the outbox holds no personal data | §27.5.3 |
+| SM5 | The pair switch `SMS_<MSG>_<LANG>_ENABLED` is both the per-message and the per-language switch; the master switch stops everything | §27.5.6 |
+| SM6 | Language before link: the link in the patient's language, then the plain message in it, then the same two in English | §27.5.5 |
+| SM7 | Non-Latin text is skipped until `SMS_UNICODE_PARAM` is set, so no SMS arrives garbled | §27.5.3 |
+| SM8 | 3 attempts with back-off 2 and 10 min; a 4xx is final; one `sms_failed` alert a day; a tick stops after 3 failures in a row | §27.5.3 |
+| SM9 | Master off: nothing is enqueued and due rows are skipped, so turning it on later never sends old notices | §27.4 |
+| SM10 | No SMS for what the holder did in the app, for a lab's proposed time (only once accepted), or for unpaid card bookings | §27.6.1 |
+| SM11 | An open "not mine" report stops later notices to that number | §27.6.2 |
+| SM12 | Variables: first name only; `DD-MM-YYYY` and 24-hour `HH:mm` with Latin digits; `place` by §27.6.3; a desk row's Ref is the last 8 characters of its id | §27.5.5 |
+| SM13 | Stale limits: booked until the start; prescription and report 3 days; cancelled and moved 1 day. Prescription ready on the first save only; report ready on the first release only | §27.6.2 |
+| SM14 | Reminder 120 min before; 21:00–07:00 moves to 20:00 the evening before; none within 60 min of now; none for instant consultations and desk walk-ins | §27.7 |
+| SM15 | The join link goes to the account phone, never to `join.phone` | §27.8.2 |
+| SM16 | `/j/`: one page (status 200) for every closed outcome, in English and Hindi; 429 or 503 otherwise; the limit uses the OTP counter store | §27.8.3 |
+| SM17 | Admin account move: the old number gets "moved to another number", the new number "booked" | §27.6.1 |
+| SM18 | Hindi, Assamese, Bengali and Odia texts ship as drafts; a language is sent only once its registered text is in the repo | §27.5.5 |
+| SM19 | Outbox rows are kept 180 days after they finish | §27.5.1 |
+| SM20 | The gateway that sends sign-in codes is the one provider; sign-in codes, bills and member-email SMS are unchanged | §27.5.4 |
+| SM21 | No cap on SMS per number (owner: no limits except lookups) | §27.4 |
+| SM22 | An admin test send (audited, 20 an hour per admin) checks each template before its switch goes on | §27.5.7 |
+
+### 27.11 Questions for the owner (only the ones that change what is built)
+
+1. **Which SMS account and sender name should the notices use?**
+   Recommended: the gateway account that already sends sign-in codes, with a **new 6-letter sender name (header) for
+   Jansetu** under the same DLT entity (PE id), so the sender matches the "Jansetu" in every message. Until it is
+   approved, notices use the current header.
+2. **Which web address should the video link use (`https://<domain>/j/<code>`)?**
+   Recommended: the customer web domain patients already see, with `/j/` sent to the API. It must be whitelisted on DLT.
+3. **When should the reminder go?**
+   Recommended: 2 hours before the visit. When that falls between 9 pm and 7 am, at 8 pm the evening before (early home
+   collections). One reminder per visit.
+4. **Should patients who book for themselves in the app also get these SMS?**
+   Recommended: not now. Phase 5 covers partner-made and lab desk bookings, for people who often have no app.
+   Self-bookers keep their app notices. Revisit once the monthly SMS cost is known.
+5. **Who writes the Hindi, Assamese, Bengali and Odia texts?**
+   Recommended: the phase 6 translator with a native-speaker check, for these 7 short messages first (28 texts).
+   Register English and Hindi first so SMS can start; the others follow. A Hindi message is about 3 SMS parts, so it
+   costs about 3 times an English one.
+
+**`.env` values the owner must supply** (from the gateway account and the DLT portal; the operator sets everything
+else):
+
+| Variable | What |
+|---|---|
+| `SMS_API_BASE_URL`, `SMS_USERNAME`, `SMS_PASSWORD`, `SMS_FROM`, `SMS_PE_ID` (`SMS_COOKIE` only if the gateway needs it) | Already set for sign-in codes: confirm this is the account to use |
+| `SMS_NOTICES_FROM` | The new Jansetu header once approved (Q1); empty until then |
+| `SMS_UNICODE_PARAM` | The gateway's Unicode flag as `name=value`, from its API documentation |
+| `SMS_<MSG>_<LANG>_TEMPLATE`, 35 values | DLT template ids for `BOOKED`, `BOOKED_LINK`, `RX_READY`, `REPORT_READY`, `REMINDER`, `REMINDER_LINK`, `CANCELLED_MOVED` × `EN`, `HI`, `AS`, `BN`, `OR` |
+| `SMS_JOIN_LINK_BASE_URL` | The whitelisted link address (Q2), e.g. `https://<domain>/j` |
+| Later, for 3f: `SMS_RECORDS_CODE_<LANG>_TEMPLATE`, 5 values | The §10.6 security message per language |
+
+The operator generates `JOIN_LINK_SECRET` and sets the switches on the owner's word.
