@@ -30,6 +30,8 @@ export const partnerLabBookingQuerySchema = Joi.object({
   status: Joi.string().valid('pending_payment', 'confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
   branchId: objectId, from: date, to: date, limit: Joi.number().integer().min(1).max(500),
   cursor: Joi.string().max(64),
+  /** r12 (§24.6.6): online (`self`), pharmacy-booked or lab desk rows. */
+  source: Joi.string().valid('self', 'pharmacy_assisted', 'lab_desk'),
 });
 
 /** Q11 */

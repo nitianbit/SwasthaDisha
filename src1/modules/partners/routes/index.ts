@@ -73,6 +73,7 @@ import * as labV from '@/modules/partners/validation/labBooking';
 import Joi from 'joi';
 import { notMineSchema } from '@/modules/assisted/validation';
 import { labNotMine } from '@/modules/assisted/controller/phase2a';
+import { registerLabDeskRoutes } from '@/modules/assisted/routes/labDesk';
 
 /** Q9: page/limit for customer lists. */
 const customerPageQuerySchema = Joi.object({ page: Joi.number().integer().min(1).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
@@ -173,7 +174,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/branches/:branchId/reactivate', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(reactivateBranch));
 
   // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
-  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
+  // r12: the lab desk (bookings.manage) reads the tests it books.
+  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create', 'bookings.manage'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
   r.get('/catalogue/by-key/:key', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(catalogueItemByKey));
   r.post('/catalogue/by-key/:key/abandon', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(abandonCatalogueKey));
   r.post('/catalogue/:itemId/reactivate', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(reactivateCatalogueItem));
@@ -225,6 +227,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
   r.post('/lab-bookings/:bookingId/reports/remove-draft', ...guard('reports.upload'), id, validate(labV.removeDraftSchema, 'body'), catchAsync(lab.removeDraftLabReport));
+  // r12 (§24.6.2): the lab front desk (the lab's own tests for walk-in patients, paid at the lab).
+  registerLabDeskRoutes(r, guard);
 
   // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');

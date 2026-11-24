@@ -7,6 +7,8 @@ import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import type { PharmacyActor } from '@/modules/assisted/consultations';
+import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
+import { hitLookup } from '@/modules/assisted/limits';
 
 /**
  * r11 (§24.3): the patient steps an assisted lab booking shares with the 1a consultation create — the family member of
@@ -51,14 +53,14 @@ export async function assertDependentOfPhone(dependentId: string, phone: string)
  * ACCOUNT_OPENED_MEANWHILE (the caller books again on it). Owner, 23 Nov: no new-account cap on lab bookings.
  */
 export async function openOrPrepareAccountIn(a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
-  preferredLanguage: string }, s: ClientSession): Promise<void> {
+  preferredLanguage: string; /** r12: the lab desk opens accounts as `lab_desk`. */ createdSource?: 'assisted_booking' | 'lab_desk' }, s: ClientSession): Promise<void> {
   if (a.existingId) {
     await UserModel.updateOne({ _id: a.existingId, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
       { $set: { preferredLanguage: a.preferredLanguage } }, { session: s });
     return;
   }
   if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
-  await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: 'assisted_booking', otpVerified: false,
+  await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: a.createdSource ?? 'assisted_booking', otpVerified: false,
     ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
 }
 
@@ -105,4 +107,73 @@ export function spreadByPrice(prices: number[], discount: number): number[] {
   const order = exact.map((x, i) => ({ i, frac: x - Math.floor(x) })).sort((a, b) => b.frac - a.frac || a.i - b.i);
   for (const o of order) { if (left <= 0) break; out[o.i]! += 1; left -= 1; }
   return out;
+}
+
+/**
+ * r12: the patient of an assisted or desk booking, prepared BEFORE the transaction (review 4 of 1a: every refusable step
+ * runs before any account is opened and answers the same for a known and an unknown number). A family member named by
+ * id must belong to the phone's account; one named by relation and name reuses an active one with the same name and
+ * relation, else is created in the transaction with a pre-chosen id. Shared by the pharmacy lab create (2a) and the
+ * lab desk (2c).
+ */
+export interface PreparedPatient {
+  phone: string;
+  /** The account the booking is for: the existing one, or the id a new one opens with. */
+  userId: string;
+  existingId: string | null;
+  newUserId: string | null;
+  created: boolean;
+  /** The account holder's name as the partner typed it (the link's typed name; a new account's name). */
+  holderTyped: string;
+  dependentId?: string;
+  newDependent?: Record<string, unknown>;
+  /** The family member's or the typed self name (a family member chosen by id: their own name, `chosenById`). */
+  patientName: string;
+  chosenById: boolean;
+}
+
+export async function preparePatient(input: { phone: string; patient: AssistedPatientInput; holderName?: string; preferredLanguage: string }): Promise<PreparedPatient> {
+  if (!(await customerPhoneIndexReady())) throw err(503, 'CUSTOMER_LINKING_UNAVAILABLE', 'Customer linking is not available yet; try again later');
+  const phone = input.phone;
+  const p = input.patient;
+  const known = 'dependentId' in p ? await assertDependentOfPhone(String(p.dependentId), phone) : null;
+  const existing = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+  const newUserId = existing ? null : new Types.ObjectId().toHexString();
+  const userId = existing ? String(existing._id) : newUserId!;
+  const holderTyped = 'dependentId' in p ? cleanName(input.holderName) : p.relation === 'self' ? cleanName(p.name) : cleanName(input.holderName);
+  const out: PreparedPatient = { phone, userId, existingId: existing ? String(existing._id) : null, newUserId, created: !existing, holderTyped,
+    patientName: '', chosenById: !!known };
+  if ('dependentId' in p) { out.dependentId = lower(p.dependentId); out.patientName = known!.name; return out; }
+  out.patientName = cleanName(p.name);
+  if (p.relation === 'self') return out;
+  const same = existing ? await DependentModel.findOne({ userId, isActive: true, relationship: p.relation,
+    name: { $regex: `^${escapeRx(out.patientName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null : null;
+  if (same) { out.dependentId = String(same._id); return out; }
+  out.dependentId = new Types.ObjectId().toHexString();
+  const q = p as { gender?: string; dateOfBirth?: string };
+  out.newDependent = { _id: out.dependentId, userId, name: out.patientName, relationship: p.relation, isActive: true,
+    preferredLanguage: input.preferredLanguage, ...(q.gender ? { gender: q.gender } : {}), ...(q.dateOfBirth ? { dateOfBirth: q.dateOfBirth.replace(/-/g, '') } : {}) };
+  return out;
+}
+
+/** In the booking transaction: the account of a new number (or the language of an existing one), then the family member. */
+export async function writePatientIn(pp: PreparedPatient, opts: { preferredLanguage: string; createdSource?: 'assisted_booking' | 'lab_desk' }, s: ClientSession): Promise<void> {
+  await openOrPrepareAccountIn({ phone: pp.phone, newUserId: pp.newUserId, existingId: pp.existingId, holderTyped: pp.holderTyped,
+    preferredLanguage: opts.preferredLanguage, createdSource: opts.createdSource }, s);
+  if (pp.newDependent) await DependentModel.create([pp.newDependent], { session: s });
+  else if (pp.dependentId && !(await DependentModel.exists({ _id: pp.dependentId, userId: pp.userId, isActive: true }).session(s))) {
+    throw err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
+  }
+}
+
+/**
+ * Every lookup, and every create that is not a same-content replay, names a phone: it counts against the organisation's
+ * hourly lookup limit (the one limit the owner kept) and is audited by the caller with ids only. Returns the account.
+ */
+export async function countPhoneUse(orgKey: string, phone: string, audit: (seen: { exists: boolean; userId?: string }) => Promise<void>)
+  : Promise<{ _id: unknown; name?: string } | null> {
+  await hitLookup(orgKey);
+  const user = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1, name: 1 }).lean() as { _id: unknown; name?: string } | null;
+  await audit({ exists: !!user, ...(user ? { userId: String(user._id) } : {}) });
+  return user;
 }

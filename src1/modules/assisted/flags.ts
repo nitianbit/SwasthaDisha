@@ -33,6 +33,11 @@ export const assistedFlags = {
    * always work.
    */
   pharmacyLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_PHARMACY'),
+  /**
+   * r12 (§24.6.4): the lab front desk — patient lookups and new desk bookings. Desk cancels, lab steps, reports, bills
+   * and by-key always work.
+   */
+  labDesk: () => on('LAB_DESK_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {
@@ -69,4 +74,9 @@ export function assertAdminToolsOn(): void {
 /** r11: both switches must be on for the pharmacy lab-booking reads and new bookings. */
 export function assertPharmacyLabOn(): void {
   if (!assistedFlags.pharmacy() || !assistedFlags.pharmacyLab()) throw disabled('Lab test booking for patients');
+}
+
+/** r12: the lab front desk switch. */
+export function assertLabDeskOn(): void {
+  if (!assistedFlags.labDesk()) throw disabled('The lab front desk');
 }

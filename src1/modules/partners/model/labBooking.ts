@@ -21,7 +21,27 @@ export interface ILabBookingItem {
   reportTatHours?: number;
 }
 
-export interface ILabBookingSlot { slotId: string; date: string; startTime: string; endTime: string; startsAt: Date }
+/**
+ * r12 (§24.6.1): `walkIn` = a lab-desk walk-in tested now, with no seat: `startsAt` is the arrival time; `date` and
+ * `startTime` are filled for display; `slotId` and `endTime` are absent (the schema requires them only for seat rows).
+ */
+export interface ILabBookingSlot { slotId: string; date: string; startTime: string; endTime: string; startsAt: Date; walkIn?: boolean }
+
+/** r12 (§24.6.1): the lab front desk that booked a row (`source: 'lab_desk'`); paid at the lab, never through Jansetu. */
+export interface ILabDeskBlock {
+  memberId: string;
+  branchId: string;
+  /** `lab_desk:<partnerId>:<memberId>:<key>` (unique); the key namespace of the desk member at this lab. */
+  requestKey: string;
+  requestHash: string;
+  arrivedAt?: Date;
+  consent: { method: 'partner_attested'; statementVersion: string; statementLanguage: string; at: Date; actorId: string };
+  preferredLanguage: string;
+  payAtLab: true;
+  notes?: string;
+  /** The booking opened the patient's account (the desk's receipt says `newAccount`; its replay says it again). */
+  newAccount?: boolean;
+}
 
 /** r11 (§24.4.1): who made the booking. Rows written before r11 have no `source`; readers derive `self`. */
 export type LabBookingSource = 'self' | 'pharmacy_assisted' | 'doctor_assisted' | 'lab_desk';
@@ -46,6 +66,8 @@ export interface IPartnerLabBooking {
   source?: LabBookingSource;
   /** r11 (§24.4.1): the partner-paid block (`assisted/types.ts`) without `join`; written only by the assisted writers. */
   assisted?: Omit<AssistedBlock, 'join'>;
+  /** r12 (§24.6.1): written only by the lab desk create. */
+  desk?: ILabDeskBlock;
   createRequestKey?: string;
   /** Hash of the create request: a resent create with a different request under the same key is refused. */
   createRequestHash?: string;
@@ -55,18 +77,21 @@ export interface IPartnerLabBooking {
   slot: ILabBookingSlot;
   items: ILabBookingItem[];
   pricing: { subtotalMinor: number; couponCode?: string; discountMinor: number; payableMinor: number; commissionMinor: number; currency: 'INR' };
-  settlement: { settlementAccountId: string; beneficiaryName: string; settlementSystem: 'ledger' };
+  /** r12: `lab_desk` = paid at the lab; no payment deadline, earning, payout or refund through Jansetu (§5.5). */
+  settlement: { settlementAccountId: string; beneficiaryName: string; settlementSystem: 'ledger' | 'lab_desk' };
   status: LabBookingStatus;
   statusVersion: number;
   paymentStatus: 'pending' | 'paid' | 'refunded';
   paymentTransactionId?: string;
   walletFunding?: unknown;
+  /** Required unless `settlement.settlementSystem: 'lab_desk'` (desk rows store none). */
   paymentDeadline: Date;
   expiryNextAt?: Date;
   expiryChecks?: number;
   /** Q16a: 'admin_no_show' = a moved no-show cancelled by an admin; `refund` false = the money was kept (nobody earns it). */
   /** r11: `partner` / `booker` = the booking partner (pharmacy) cancelled an assisted booking (§24.4.4). */
-  cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner'; note?: string; by: string;
+  /** r12: `desk` = the lab desk cancelled its own desk booking (nothing to refund). */
+  cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show' | 'partner' | 'desk'; note?: string; by: string;
     byKind: 'customer' | 'member' | 'admin' | 'system' | 'booker'; at: Date;
     refund?: boolean; forfeitedMinor?: number };
   reschedule: { version: number; pending: boolean; previousSlot?: ILabBookingSlot; reason?: string; at?: Date; by?: string };
@@ -82,13 +107,16 @@ export interface IPartnerLabBooking {
   updatedAt?: Date;
 }
 
+/** r12: seat fields are required unless the row is a desk walk-in (no seat). */
+function unlessWalkIn(this: { walkIn?: boolean } | undefined): boolean { return this?.walkIn !== true; }
 const slotSnapshot = new Schema<ILabBookingSlot>(
   {
-    slotId: { type: String, required: true },
-    date: { type: String, required: true },
-    startTime: { type: String, required: true },
-    endTime: { type: String, required: true },
+    slotId: { type: String, required: unlessWalkIn },
+    date: { type: String, required: unlessWalkIn },
+    startTime: { type: String, required: unlessWalkIn },
+    endTime: { type: String, required: unlessWalkIn },
     startsAt: { type: Date, required: true },
+    walkIn: { type: Boolean },
   },
   { _id: false }
 );
@@ -115,6 +143,27 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     userId: { type: String, required: true },
     source: { type: String, enum: LAB_BOOKING_SOURCES },
     assisted: { type: Schema.Types.Mixed },
+    desk: {
+      type: new Schema<ILabDeskBlock>({
+        memberId: { type: String, required: true },
+        branchId: { type: String, required: true },
+        requestKey: { type: String, required: true },
+        requestHash: { type: String, required: true },
+        arrivedAt: { type: Date },
+        consent: {
+          method: { type: String, required: true, enum: ['partner_attested'] },
+          statementVersion: { type: String, required: true },
+          statementLanguage: { type: String, required: true },
+          at: { type: Date, required: true },
+          actorId: { type: String, required: true },
+        },
+        preferredLanguage: { type: String, required: true },
+        payAtLab: { type: Boolean, required: true },
+        notes: { type: String, trim: true },
+        newAccount: { type: Boolean },
+      }, { _id: false }),
+      default: undefined,
+    },
     createRequestKey: { type: String },
     createRequestHash: { type: String },
     patient: {
@@ -146,7 +195,7 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     settlement: {
       settlementAccountId: { type: String, required: true },
       beneficiaryName: { type: String, required: true },
-      settlementSystem: { type: String, required: true, enum: ['ledger'], default: 'ledger' },
+      settlementSystem: { type: String, required: true, enum: ['ledger', 'lab_desk'], default: 'ledger' },
     },
     status: { type: String, required: true, enum: [
       'pending_payment', 'confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show',
@@ -169,11 +218,12 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
       }, { _id: false }),
       default: undefined,
     },
-    paymentDeadline: { type: Date, required: true },
+    // r12 (§24.6.1): every row but a desk row (paid at the lab) has a payment deadline.
+    paymentDeadline: { type: Date, required: function (this: { settlement?: { settlementSystem?: string } }) { return this?.settlement?.settlementSystem !== 'lab_desk'; } },
     expiryNextAt: { type: Date },
     expiryChecks: { type: Number },
     cancellation: {
-      reason: { type: String, enum: ['timeout', 'customer', 'lab_reject', 'admin_no_show', 'partner'] },
+      reason: { type: String, enum: ['timeout', 'customer', 'lab_reject', 'admin_no_show', 'partner', 'desk'] },
       note: { type: String, trim: true },
       by: { type: String },
       byKind: { type: String, enum: ['customer', 'member', 'admin', 'system', 'booker'] },
@@ -240,6 +290,9 @@ labBookingSchema.index({ status: 1, paymentStatus: 1, paymentDeadline: 1, expiry
 labBookingSchema.index({ 'assisted.requestKey': 1 }, { unique: true, partialFilterExpression: { 'assisted.requestKey': { $type: 'string' } } });
 labBookingSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
 labBookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1, _id: -1 });
+// r12 (§24.6.1): one desk row per desk request key; a lab's rows by source.
+labBookingSchema.index({ 'desk.requestKey': 1 }, { unique: true, partialFilterExpression: { 'desk.requestKey': { $type: 'string' } } });
+labBookingSchema.index({ partnerId: 1, source: 1, createdAt: -1 });
 
 /** The model name is load-bearing: D1 file grants resolve `mongoose.models['PartnerLabBooking']`. */
 export const PartnerLabBookingModel: Model<IPartnerLabBooking> = model<IPartnerLabBooking>(

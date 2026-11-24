@@ -66,6 +66,10 @@ export interface IInvoice {
    * appointment (unique partial index). Bookkeeping only: not part of the checksum.
    */
   openAppointmentId?: string;
+  /** r12 (§24.6.3): the lab desk booking (lower-case hex) this bill is for; part of the document and its checksum when set. */
+  labBookingId?: string;
+  /** r12: equals labBookingId while the bill is not cancelled (unique partial index): at most one open bill per lab booking. */
+  openLabBookingId?: string;
   items: IInvoiceLine[];
   totals: IInvoiceTotals;
   lifecycleState: InvoiceLifecycleState;

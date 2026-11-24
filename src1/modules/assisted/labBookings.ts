@@ -7,7 +7,6 @@ import { canonicalMobile } from '@/modules/common/utils/phone';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import UserModel from '@/modules/user/model';
-import DependentModel from '@/modules/dependents/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
@@ -18,15 +17,13 @@ import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
 import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
-import CatalogueItemModel from '@/modules/partners/model/catalogueItem';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
 import type { VisitMode } from '@/modules/partners/model/slot';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { takeSeat } from '@/modules/partners/services/slots';
-import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
-import { LAB_MIN_LEAD_MS, LabBookingService } from '@/modules/partners/services/labBookings';
+import { LAB_MIN_LEAD_MS, LabBookingService, admitLabItems, branchOffers, itemSnapshot } from '@/modules/partners/services/labBookings';
 import { assertPharmacyLabOn } from '@/modules/assisted/flags';
-import { countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
+import { countPairBookingIn } from '@/modules/assisted/limits';
 import { auditIn } from '@/modules/assisted/support';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labDebitKey } from '@/modules/assisted/labRefunds';
@@ -34,7 +31,7 @@ import { bookerNames } from '@/modules/assisted/names';
 import { bookerReportWindowOpen, labSourceOf } from '@/modules/assisted/labViews';
 import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultations';
 import {
-  assertDependentOfPhone, cleanName, escapeRx, linkPharmacyCustomerIn, openOrPrepareAccountIn, patientIdentity, redeemCouponIn, spreadByPrice,
+  cleanName, countPhoneUse, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, spreadByPrice, writePatientIn,
   type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 import type { AssistedBlock } from '@/modules/assisted/types';
@@ -94,19 +91,25 @@ const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: c
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
 const uniqueIds = (ids: string[]) => [...new Set((ids ?? []).map(lower))].sort();
 
-/** The content a request key is bound to (§24.3): the payment method is excluded. */
-export function assistedLabRequestHash(input: AssistedLabInput): string {
-  return requestHashOf({
+/** The content every partner-made lab booking binds its request key to (§24.3): patient, service and notes. */
+export function labRequestContent(input: Pick<AssistedLabInput, 'phone' | 'patient' | 'holderName' | 'branchId' | 'visitMode' | 'itemIds' | 'address'
+  | 'preferredLanguage' | 'notes'> & { slotId?: string }) {
+  return {
     phone: canonicalMobile(input.phone) ?? input.phone,
     patient: patientIdentity(input.patient),
     holderName: input.holderName ? cleanName(input.holderName) : null,
-    service: { partnerId: lower(input.partnerId), branchId: lower(input.branchId), visitMode: input.visitMode, slotId: lower(input.slotId),
+    service: { branchId: lower(input.branchId), visitMode: input.visitMode, slotId: input.slotId ? lower(input.slotId) : null,
       itemIds: uniqueIds(input.itemIds), address: cleanAddress(input.address) },
-    couponCode: input.couponCode ? input.couponCode.trim().toUpperCase() : null,
     preferredLanguage: input.preferredLanguage,
     notes: input.notes?.trim() || null,
-    acceptedPriceMinor: input.acceptedPriceMinor,
-  });
+  };
+}
+
+/** The content a request key is bound to (§24.3): the payment method is excluded. */
+export function assistedLabRequestHash(input: AssistedLabInput): string {
+  const c = labRequestContent(input);
+  return requestHashOf({ ...c, service: { ...c.service, partnerId: lower(input.partnerId) },
+    couponCode: input.couponCode ? input.couponCode.trim().toUpperCase() : null, acceptedPriceMinor: input.acceptedPriceMinor });
 }
 
 /** §24.4.7: writers rely on these unique indexes (fail closed: 503 INDEXES_OUTDATED until sync-indexes has run). */
@@ -118,11 +121,12 @@ export async function assertAssistedLabIndexes(withCoupon: boolean): Promise<voi
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
 }
 
-function validate(input: AssistedLabInput): void {
+/**
+ * The request rules every partner-made lab booking shares (pharmacy 2a, lab desk 2c): consent ticked, a request key, the
+ * language, the phone, the visit mode with its address rule (home needs one, a lab visit has none), 1–20 different tests.
+ */
+export function validateLabRequest(input: Pick<AssistedLabInput, 'consent' | 'requestKey' | 'preferredLanguage' | 'phone' | 'visitMode' | 'address' | 'itemIds'>): void {
   if (!input.consent || input.consent.agreed !== true) throw err(400, 'CONSENT_REQUIRED', 'Tick "patient agreed" before booking for the patient');
-  if (input.paymentMethod !== 'wallet') {
-    throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Lab tests booked for a patient are paid from the Jansetu wallet for now');
-  }
   if (!ASSISTED_KEY.test(String(input.requestKey ?? ''))) throw err(400, 'REQUEST_KEY_REQUIRED', 'requestKey is required');
   if (!LANGUAGE.test(String(input.preferredLanguage ?? ''))) throw err(400, 'VALIDATION_ERROR', 'preferredLanguage must be a language code');
   if (!canonicalMobile(input.phone)) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
@@ -135,8 +139,15 @@ function validate(input: AssistedLabInput): void {
   }
 }
 
+function validate(input: AssistedLabInput): void {
+  validateLabRequest(input);
+  if (input.paymentMethod !== 'wallet') {
+    throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Lab tests booked for a patient are paid from the Jansetu wallet for now');
+  }
+}
+
 /** §24.1 item 12: a lab takes assisted bookings only while it is an active, verified lab (the S5 pattern for providers). */
-const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
+export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
 
 /**
  * §24.4.3 step 10, L24: lab coupons follow the diagnostics rules (against the PATIENT) plus the assisted rules — never a
@@ -251,10 +262,8 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   if (replay && replay.assisted?.requestHash === hash) return labReceipt(replay, pharmacyId, true);
   // Every other create names a phone like a lookup does: counted (the one limit the owner kept) and audited (ids only).
   if (attempt === 0) {
-    await hitLookup(orgKey(pharmacyId));
-    const seen = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
-    await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.attempted',
-      requestKey: input.requestKey, detail: { kind: 'lab_booking', exists: !!seen, ...(seen ? { userId: String(seen._id) } : {}) } }, null);
+    await countPhoneUse(orgKey(pharmacyId), phone, (seen) => auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId,
+      action: 'booking.attempted', requestKey: input.requestKey, detail: { kind: 'lab_booking', ...seen } }, null));
   }
   const prior = await replayOf(storedKey, hash);
   if (prior) return labReceipt(prior, pharmacyId, true);
@@ -268,47 +277,19 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
   const partner = await PartnerOrgModel.findById(input.partnerId).lean() as Record<string, any> | null;
   if (!labAdmissible(partner)) throw err(404, 'LAB_NOT_FOUND', 'This lab is not available');
   const branch = OBJECT_ID.test(input.branchId) ? await BranchModel.findById(input.branchId).lean() as Record<string, any> | null : null;
-  const offered = input.visitMode === 'home' ? branch?.services?.homeCollection : branch?.services?.inLab;
-  if (!branch || String(branch.partnerId) !== String(partner!._id) || branch.isActive === false || !offered) {
+  if (!branch || String(branch.partnerId) !== String(partner!._id) || branch.isActive === false || !branchOffers(branch, input.visitMode)) {
     throw err(404, 'BRANCH_NOT_AVAILABLE', 'This branch does not offer that visit type');
   }
-  const ids = uniqueIds(input.itemIds);
-  const items = await CatalogueItemModel.find({ _id: { $in: ids }, partnerId: String(partner!._id), isActive: true, adminDisabled: { $ne: true } }).lean() as Row[];
-  if (items.length !== ids.length) throw err(400, 'CATALOGUE_ITEM_NOT_AVAILABLE', 'A selected test is no longer available');
-  if (items.some((i) => !(i.visitModes ?? []).includes(input.visitMode))) throw err(400, 'VISIT_MODE_NOT_SUPPORTED', 'A selected test is not offered for this visit type');
   // Stable line order: the order the pharmacy listed the tests in.
-  const byId = new Map(items.map((i) => [lower(i._id), i]));
-  const ordered = [...new Set(input.itemIds.map(lower))].map((x) => byId.get(x)!) as (Row & { _id: unknown; kind: string })[];
+  const ordered = await admitLabItems(String(partner!._id), input.itemIds, input.visitMode) as (Row & { _id: unknown; kind: string })[];
 
   // The patient (review 4 of 1a: no create is an existence test): every refusable step runs BEFORE any account is
   // opened and answers the same for a known and an unknown number; a new number's account opens only in the transaction.
-  if (!(await customerPhoneIndexReady())) throw err(503, 'CUSTOMER_LINKING_UNAVAILABLE', 'Customer linking is not available yet; try again later');
-  const p = input.patient;
-  const dependentKnown = 'dependentId' in p ? await assertDependentOfPhone(String(p.dependentId), phone) : null;
-  const existing = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
-  const newUserId = existing ? null : new Types.ObjectId().toHexString();
-  const customer = { _id: existing ? String(existing._id) : newUserId!, created: !existing };
-  const holderTyped = 'dependentId' in p ? cleanName(input.holderName) : p.relation === 'self' ? cleanName(p.name) : cleanName(input.holderName);
-  let dependentId: string | undefined;
-  let newDependent: Record<string, unknown> | undefined;
+  const pp = await preparePatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const customer = { _id: pp.userId, created: pp.created };
+  const { dependentId, newDependent, holderTyped } = pp;
   // The names rule (§24.3): the stored patient name is the family member's or the TYPED holder name, never the account name.
-  let patientName: string;
-  if ('dependentId' in p) { dependentId = lower(p.dependentId); patientName = dependentKnown!.name; }
-  else if (p.relation === 'self') patientName = cleanName(p.name);
-  else {
-    const depName = cleanName(p.name);
-    patientName = depName;
-    const same = existing ? await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
-      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null : null;
-    if (same) dependentId = String(same._id);
-    else {
-      dependentId = new Types.ObjectId().toHexString();
-      const q = p as { gender?: string; dateOfBirth?: string };
-      newDependent = { _id: dependentId, userId: customer._id, name: depName, relationship: p.relation, isActive: true,
-        preferredLanguage: input.preferredLanguage, ...(q.gender ? { gender: q.gender } : {}),
-        ...(q.dateOfBirth ? { dateOfBirth: q.dateOfBirth.replace(/-/g, '') } : {}) };
-    }
-  }
+  const patientName = pp.patientName;
 
   const listMinor = ordered.reduce((x, i) => x + Number(i.priceMinor || 0), 0);
   const coupon = await labCouponFor(input.couponCode, { userId: customer._id, dependentId, partnerId: String(partner!._id), items: ordered, listMinor });
@@ -351,11 +332,7 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
       const again = await replayOf(storedKey, hash, s);
       if (again) return { booking: again, replayed: true };
       await claimRequestKey(labKeyScope(actor), input.requestKey, s);
-      await openOrPrepareAccountIn({ phone, newUserId, existingId: existing ? String(existing._id) : null, holderTyped, preferredLanguage: input.preferredLanguage }, s);
-      if (newDependent) await DependentModel.create([newDependent], { session: s });
-      else if (dependentId && !(await DependentModel.exists({ _id: dependentId, userId: customer._id, isActive: true }).session(s))) {
-        throw err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
-      }
+      await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
       await linkPharmacyCustomerIn(actor, customer._id, holderTyped, s);
       // P10, alert only: the same pharmacy–lab pair at N bookings a day.
       await countPairBookingIn('pharmacy', pharmacyId, `lab:${lower(partner!._id)}`, s);
@@ -372,8 +349,7 @@ export async function createPharmacyLabBooking(actor: PharmacyActor, input: Assi
         patient: { kind: dependentId ? 'dependent' : 'self', ...(dependentId ? { dependentId } : {}), name: patientName || 'Patient' },
         visitMode: input.visitMode, ...(input.visitMode === 'home' ? { address: input.address } : {}),
         slot: { slotId: String(slot._id), date: slot.date, startTime: slot.startTime, endTime: slot.endTime, startsAt: slot.startsAt },
-        items: ordered.map((i) => ({ catalogItemId: String(i._id), kind: i.kind, name: i.name, code: i.code, priceMinor: i.priceMinor,
-          mrpMinor: i.mrpMinor, gstRate: i.gstRate, sac: i.sac, reportTatHours: i.reportTatHours })),
+        items: ordered.map(itemSnapshot),
         pricing: { subtotalMinor: listMinor, ...(coupon ? { couponCode: coupon.code } : {}), discountMinor, payableMinor: payMinor, commissionMinor: 0, currency: 'INR' },
         settlement: { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName, settlementSystem: 'ledger' },
         status: 'confirmed', statusVersion: 0, paymentStatus: 'paid',

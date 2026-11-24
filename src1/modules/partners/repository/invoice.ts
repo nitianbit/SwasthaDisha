@@ -40,7 +40,9 @@ export class InvoiceRepository extends BaseRepository<IInvoice> {
     return InvoiceModel.findOneAndUpdate(
       { _id: invoiceId, partnerId, lifecycleVersion: expectedVersion, lifecycleState: expectedState },
       // Q14: a cancelled bill no longer holds its appointment (a new bill may be issued for it); payments set paidMinor.
-      { $set: { lifecycleVersion: expectedVersion + 1, lifecycleState: newState, ...extraSet }, ...(newState === 'cancelled' ? { $unset: { openAppointmentId: 1 } } : {}) },
+      // r12: nor its lab desk booking.
+      { $set: { lifecycleVersion: expectedVersion + 1, lifecycleState: newState, ...extraSet },
+        ...(newState === 'cancelled' ? { $unset: { openAppointmentId: 1, openLabBookingId: 1 } } : {}) },
       { new: true, session }
     ).lean();
   }

@@ -50,6 +50,9 @@ const invoiceSchema = new Schema<IInvoice>(
     // Q14: the appointment this bill is for; openAppointmentId is set only while the bill is not cancelled.
     appointmentId: { type: String },
     openAppointmentId: { type: String },
+    // r12 (§24.6.3): the lab desk booking this bill is for; openLabBookingId is set only while the bill is not cancelled.
+    labBookingId: { type: String },
+    openLabBookingId: { type: String },
     items: { type: [invoiceLineSchema], required: true },
     totals: {
       subtotalMinor: { type: Number, required: true },
@@ -87,6 +90,9 @@ invoiceSchema.index({ 'customer.phone': 1, lifecycleState: 1 });
 // Q14: one open (issued or paid) bill per appointment; bills of an appointment are listed by partner.
 invoiceSchema.index({ openAppointmentId: 1 }, { unique: true, partialFilterExpression: { openAppointmentId: { $type: 'string' } } });
 invoiceSchema.index({ partnerId: 1, appointmentId: 1, issuedAt: -1 }, { partialFilterExpression: { appointmentId: { $type: 'string' } } });
+// r12 (§24.6.1): one open bill per lab desk booking; the bills of a lab booking by partner.
+invoiceSchema.index({ openLabBookingId: 1 }, { unique: true, partialFilterExpression: { openLabBookingId: { $type: 'string' } } });
+invoiceSchema.index({ partnerId: 1, labBookingId: 1, issuedAt: -1 }, { partialFilterExpression: { labBookingId: { $type: 'string' } } });
 
 export const InvoiceModel: Model<IInvoice> = model<IInvoice>('PartnerInvoice', invoiceSchema, 'partner_invoices');
 

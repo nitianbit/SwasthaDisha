@@ -41,7 +41,7 @@ export interface IUser {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking' | 'lab_desk';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
@@ -84,7 +84,7 @@ export interface CreateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking' | 'lab_desk';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
@@ -123,7 +123,7 @@ export interface UpdateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice' | 'clinic_desk' | 'assisted_booking' | 'lab_desk';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;

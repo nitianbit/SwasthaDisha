@@ -16,6 +16,8 @@ export const createInvoiceSchema = Joi.object({
   doctorId: Joi.string().pattern(objectIdPattern).optional(),
   /** Q14: the clinic appointment (booking id) this bill is for. */
   appointmentId: Joi.string().pattern(objectIdPattern).optional(),
+  /** r12 (§24.6.3): the lab desk booking this bill is for (not with appointmentId). */
+  labBookingId: Joi.string().pattern(objectIdPattern).optional(),
   items: Joi.array().items(
     Joi.object({
       catalogItemId: Joi.string().pattern(objectIdPattern).optional(),
@@ -29,7 +31,7 @@ export const createInvoiceSchema = Joi.object({
     })
   ).min(1).max(100).required(),
   idempotencyKey: Joi.string().trim().min(1).max(100).required(),
-});
+}).oxor('appointmentId', 'labBookingId');
 
 const paymentMode = Joi.string().valid('cash', 'upi', 'card', 'bank', 'other');
 /**
