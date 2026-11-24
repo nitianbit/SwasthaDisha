@@ -44,6 +44,40 @@ export interface AssistedFunding {
   refunds: AssistedRefundRow[];
 }
 
+/**
+ * r17 (§25.8.1): the booking a doctor's acceptance makes from a partner's instant request holds only this pointer. The
+ * money (debit, quote return, refunds) lives on the request (`IInstantRequest.assisted.funding`), so no booking money
+ * path can move it a second time.
+ */
+export interface InstantFundingPointer { instantRequestId: string }
+export const isInstantFunding = (f: unknown): f is InstantFundingPointer =>
+  !!f && typeof f === 'object' && typeof (f as InstantFundingPointer).instantRequestId === 'string';
+
+/**
+ * r17 (§25.8.1): what a partner put into an instant request, wallet-only in phase 3 (DR18). `held` at create (the
+ * debit), then `allocated` at acceptance (the quote difference back to the booker) or `refunded` before it.
+ */
+export interface InstantAssistedFunding {
+  method: 'wallet';
+  payerKind: BookerKind;
+  payerId: string;
+  /** What the booker paid: quote − coupon. */
+  amountMinor: number;
+  state: 'held' | 'allocated' | 'refunded';
+  walletEntryId?: string;
+  /** Every credit back to the booker wallet: the quote difference, a refund before acceptance, a cancel refund after it. */
+  refunds: { kind: 'quote_return' | 'refund' | 'cancel_refund'; cause: string; amountMinor: number; walletEntryId: string; at: Date }[];
+}
+
+/** r17: the `assisted` block of an instant request a partner made (the booking made at acceptance copies it, §25.8.1). */
+export interface InstantAssistedBlock extends Omit<AssistedBlock, 'funding' | 'split' | 'reschedules' | 'moves' | 'recommendationId'> {
+  funding: InstantAssistedFunding;
+  /** Who funds the coupon (the split at acceptance needs it: provider-funded lowers the base, platform-funded does not). */
+  couponFundedBy?: 'provider' | 'platform';
+  /** What the patient came for, as the booker typed it; the booking made at acceptance carries it for the doctor. */
+  primaryConcern?: string;
+}
+
 export interface AssistedSplit {
   listMinor: number;
   couponCode?: string;
@@ -66,6 +100,10 @@ export interface AssistedBlock {
   preferredLanguage: string;
   identity: { attested: true; newAccount: boolean; disputed?: { at: Date; state: 'open' | 'moved' | 'dismissed'; resolvedAt?: Date } };
   join?: { on: 'partner_device' | 'patient_phone'; phone?: string; linkVersion: number };
+  /**
+   * r17: an instant booking (`bookingKind: 'instant'`) stores `{ instantRequestId }` here instead (`isInstantFunding`);
+   * every booking money path filters on `funding.method` / `funding.state`, so none of them matches that pointer.
+   */
   funding: AssistedFunding;
   split: AssistedSplit;
   /** null until phase 4 (cuts), §17.1 P5. */

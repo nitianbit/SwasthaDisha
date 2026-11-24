@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { ClientSession, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -14,8 +14,6 @@ import SpecialistModel from '@/modules/specialists/model';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
 import PharmacyModel from '@/modules/pharmacies/model';
-import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
-import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
 import { CouponRepository } from '@/modules/coupon/repository';
@@ -23,7 +21,6 @@ import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { claimRequestKey } from '@/modules/requestKeys';
-import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
 import { countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
@@ -31,6 +28,11 @@ import type { AssistedBlock } from '@/modules/assisted/types';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { assertCardGatewayReady, openCardOrder, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
+import {
+  applyPatientPlanIn, cleanName, linkPharmacyCustomerIn, patientIdentity, planAssistedPatient, redeemCouponIn, type AssistedPatientInput,
+} from '@/modules/assisted/patient';
+
+export type { AssistedPatientInput } from '@/modules/assisted/patient';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -52,15 +54,8 @@ export const asDoctorUnavailable = (e: unknown): unknown =>
   (['SPECIALIST_NOT_VERIFIED', 'SPECIALIST_NOT_ACTIVE'].includes(String((e as { code?: string } | null)?.code))
     ? err(409, 'DOCTOR_NOT_AVAILABLE', 'This doctor is not taking bookings') : e);
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
-const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const cleanName = (s: unknown) => String(s ?? '').trim().replace(/\s+/g, ' ');
 
 export interface PharmacyActor { pharmacyId: string; actorId: string }
-
-export type AssistedPatientInput =
-  | { relation: 'self'; name: string }
-  | { dependentId: string }
-  | { relation: string; name: string; gender?: 'Male' | 'Female' | 'Other'; dateOfBirth?: string };
 
 export interface AssistedConsultInput {
   requestKey: string;
@@ -89,12 +84,6 @@ const orgKey = (pharmacyId: string) => `pharmacy:${lower(pharmacyId)}`;
 export function newShortRef(): string {
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   return Array.from(randomBytes(8)).map((b) => ALPHABET[b & 31]).join('');
-}
-
-function patientIdentity(p: AssistedPatientInput) {
-  if ('dependentId' in p) return { dependentId: lower(p.dependentId) };
-  return { relation: p.relation, name: cleanName(p.name), gender: (p as { gender?: string }).gender ?? null,
-    dateOfBirth: (p as { dateOfBirth?: string }).dateOfBirth ?? null };
 }
 
 /** The content a request key is bound to (§6.3): the payment method is excluded (Q3). */
@@ -171,36 +160,30 @@ function validate(input: AssistedConsultInput): void {
   }
 }
 
-/** §6.3 (decisions 11, B, E): coupons are validated against the PATIENT, with the assisted rules on top. */
-async function couponFor(input: AssistedConsultInput, ctx: { userId: string; dependentId?: string; doctorId: string; listMinor: number }) {
-  if (!input.couponCode || !(ctx.listMinor > 0)) return null;
+/**
+ * §6.3 (decisions 11, B, E): coupons are validated against the PATIENT, with the assisted rules on top. r17: shared by
+ * the instant create (no doctor yet for "any doctor"; it also needs the coupon itself, to freeze its terms).
+ */
+export async function assistedCouponFor(code: string | undefined, ctx: { userId: string; dependentId?: string; doctorId?: string; listMinor: number }) {
+  if (!code || !(ctx.listMinor > 0)) return null;
   const repo = new CouponRepository();
   const notForAssisted = () => err(400, 'COUPON_NOT_FOR_ASSISTED', 'This coupon cannot be used on a booking made for a patient');
   const fundedByOf = (c: { fundedBy?: string; corporateIds?: string[] }) => c.fundedBy ?? ((c.corporateIds ?? []).length > 0 ? 'platform' : 'provider');
   // Decided on the coupon itself first: E — a per-user-limited coupon is never used on a partner booking (the patient
   // never sees it); N1 — a platform-funded coupon only when an admin allowed it on partner bookings.
-  const known = await repo.findByCode(input.couponCode);
+  const known = await repo.findByCode(code);
   if (known && (known.usageLimitPerUser || (fundedByOf(known) === 'platform' && known.partnerUsable !== true))) throw notForAssisted();
   // Then the existing rules, against the PATIENT: account, family member and the account's corporate.
   const patient = await UserModel.findById(ctx.userId).select({ corporateId: 1 }).lean() as { corporateId?: string } | null;
-  const v = await new CouponService(repo).validateCoupon({ code: input.couponCode, userId: ctx.userId, bookingType: 'consultation', bookingId: ctx.doctorId,
+  const v = await new CouponService(repo).validateCoupon({ code, userId: ctx.userId, bookingType: 'consultation', bookingId: ctx.doctorId,
     dependentId: ctx.dependentId, ...(patient?.corporateId ? { corporateId: String(patient.corporateId) } : {}), purchaseAmount: ctx.listMinor / 100 });
   if (!v.isValid || !v.coupon) throw err(400, 'INVALID_COUPON', v.message || 'Invalid coupon code');
   const c = v.coupon;
   if (c.usageLimitPerUser || (fundedByOf(c) === 'platform' && c.partnerUsable !== true)) throw notForAssisted();
   const fundedBy = fundedByOf(c);
   const money = normalizeCouponDiscount(ctx.listMinor / 100, v.discountAmount, 'BOOKING_RECONCILIATION_REQUIRED');
-  return { code: c.code, fundedBy: fundedBy as 'provider' | 'platform', discountMinor: Math.round(money.discountAmount * 100), totalUsageLimit: c.totalUsageLimit };
-}
-
-/** A family member named by id must belong to the account of this phone (checked before any account is created). */
-async function assertDependentOfPhone(dependentId: string, phone: string) {
-  const notFound = () => err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
-  if (!Types.ObjectId.isValid(dependentId)) throw notFound();
-  const dep = await DependentModel.findOne({ _id: dependentId, isActive: true }).select({ userId: 1 }).lean() as { userId?: string } | null;
-  if (!dep?.userId || !Types.ObjectId.isValid(String(dep.userId))) throw notFound();
-  const u = await UserModel.findOne({ _id: dep.userId, userType: 'user' }).select({ phone: 1 }).lean() as { phone?: string } | null;
-  if (!u?.phone || canonicalMobile(u.phone) !== canonicalMobile(phone)) throw notFound();
+  return { code: c.code, fundedBy: fundedBy as 'provider' | 'platform', discountMinor: Math.round(money.discountAmount * 100), totalUsageLimit: c.totalUsageLimit,
+    coupon: c };
 }
 
 async function replayOf(storedKey: string, hash: string): Promise<IBooking | null> {
@@ -264,35 +247,10 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   // The patient (review 4: no create is an existence test). Every step that can refuse runs BEFORE any account is
   // counted or opened, and gives the same answer for a known and an unknown number; the account of a new number is
   // opened only inside the booking transaction (a refused or failed booking leaves no account behind).
-  if (!(await customerPhoneIndexReady())) {
-    throw err(503, 'CUSTOMER_LINKING_UNAVAILABLE', 'Customer linking is not available yet; try again later');
-  }
-  const p = input.patient;
-  if ('dependentId' in p) await assertDependentOfPhone(String(p.dependentId), phone);
-  const existing = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
-  const newUserId = existing ? null : new Types.ObjectId().toHexString();
-  const customer = { _id: existing ? String(existing._id) : newUserId!, created: !existing };
-  const holderTyped = 'dependentId' in p ? cleanName(input.holderName) : p.relation === 'self' ? cleanName(p.name) : cleanName(input.holderName);
+  const plan = await planAssistedPatient({ phone, patient: input.patient, holderName: input.holderName, preferredLanguage: input.preferredLanguage });
+  const { customer, dependentId, holderTyped } = plan;
 
-  // Family member: an active one with the same name and relation is used as it is; otherwise created in the transaction.
-  let dependentId: string | undefined;
-  let newDependent: Record<string, unknown> | undefined;
-  if ('dependentId' in p) dependentId = lower(p.dependentId);
-  else if (p.relation !== 'self') {
-    const depName = cleanName(p.name);
-    const same = existing ? await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
-      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null : null;
-    if (same) dependentId = String(same._id);
-    else {
-      dependentId = new Types.ObjectId().toHexString();
-      const q = p as { gender?: string; dateOfBirth?: string };
-      newDependent = { _id: dependentId, userId: customer._id, name: depName, relationship: p.relation, isActive: true,
-        preferredLanguage: input.preferredLanguage, ...(q.gender ? { gender: q.gender } : {}),
-        ...(q.dateOfBirth ? { dateOfBirth: q.dateOfBirth.replace(/-/g, '') } : {}) };
-    }
-  }
-
-  const coupon = await couponFor(input, { userId: customer._id, dependentId, doctorId: String(slot.specialistId), listMinor });
+  const coupon = await assistedCouponFor(input.couponCode, { userId: customer._id, dependentId, doctorId: String(slot.specialistId), listMinor });
   const discountMinor = coupon?.discountMinor ?? 0;
   const payMinor = listMinor - discountMinor;
   if (input.acceptedPriceMinor !== payMinor) {
@@ -342,15 +300,10 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
         : { created: { at, by: pharmacyId }, paid: { at, by: 'pharmacy_wallet', amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
       await claimRequestKey(assistedKeyScope(actor), input.requestKey, s);
-      await openOrPrepareAccountIn(actor, { phone, newUserId, existingId: existing ? String(existing._id) : null, holderTyped,
-        preferredLanguage: input.preferredLanguage }, s);
-      if (newDependent) await DependentModel.create([newDependent], { session: s });
-      else if (dependentId && !(await DependentModel.exists({ _id: dependentId, userId: customer._id, isActive: true }).session(s))) {
-        throw err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
-      }
-      await linkCustomerIn(actor, customer._id, holderTyped, s);
+      await applyPatientPlanIn(plan, input.preferredLanguage, s);
+      await linkPharmacyCustomerIn(actor, customer._id, holderTyped, s);
       await countPairBookingIn('pharmacy', pharmacyId, lower(slot.specialistId), s);
-      if (coupon) await redeemCouponIn(coupon, { bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
+      if (coupon) await redeemCouponIn(coupon, { bookingKind: 'booking', payerKind: 'pharmacy', bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
       if (payMinor > 0 && !card) {
         await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);
@@ -358,7 +311,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
       await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.created',
         bookingId: String(b._id), requestKey: input.requestKey,
         detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: customer.created,
-          ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
+          ...(dependentId ? { dependentId, dependentCreated: !!plan.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
     });
   } catch (e) {
     // A racing identical request may have committed first: answer with its receipt.
@@ -381,52 +334,6 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   await sendAssistedNotices(await bookedNotices(withMeet));
   const fresh = await BookingModel.findById(booking._id).lean() as IBooking | null;
   return assistedReceipt(fresh ?? withMeet, false, customer.created);
-}
-
-/**
- * In the booking transaction: a new number's account is inserted here (typed name, language, never signed in; r10g: no
- * new-account limit any more); an existing account only gets an empty `preferredLanguage` filled. A
- * number whose account appeared meanwhile aborts with ACCOUNT_OPENED_MEANWHILE (the caller books again on it).
- */
-async function openOrPrepareAccountIn(_actor: PharmacyActor, a: { phone: string; newUserId: string | null; existingId: string | null; holderTyped: string;
-  preferredLanguage: string }, s: ClientSession): Promise<void> {
-  if (a.existingId) {
-    await UserModel.updateOne({ _id: a.existingId, $or: [{ preferredLanguage: { $exists: false } }, { preferredLanguage: null }, { preferredLanguage: '' }] },
-      { $set: { preferredLanguage: a.preferredLanguage } }, { session: s });
-    return;
-  }
-  if (await UserModel.exists({ phone: a.phone, userType: 'user' }).session(s)) throw err(409, 'ACCOUNT_OPENED_MEANWHILE', 'Please try again');
-  await UserModel.create([{ _id: a.newUserId, phone: a.phone, userType: 'user', createdSource: 'assisted_booking', otpVerified: false,
-    ...(a.holderTyped ? { name: a.holderTyped } : {}), preferredLanguage: a.preferredLanguage }], { session: s });
-}
-
-/** §17.4 / S3: the pharmacy's link to the account holder, with consent and the first typed name. */
-async function linkCustomerIn(actor: PharmacyActor, userId: string, typedName: string, s: ClientSession): Promise<void> {
-  const pid = new Types.ObjectId(actor.pharmacyId);
-  const uid = new Types.ObjectId(userId);
-  const link = await PharmacyCustomerModel.findOne({ pharmacyId: pid, userId: uid }).session(s).lean() as Record<string, any> | null;
-  const consent = { consent: 'patient_agreed', consentRecordedAt: new Date(), consentRecordedById: lower(actor.actorId) };
-  if (!link) {
-    await PharmacyCustomerModel.create([{ pharmacyId: pid, userId: uid, createdByRole: 'pharmacy', ...consent, ...(typedName ? { typedName } : {}) }], { session: s });
-    return;
-  }
-  const set: Record<string, unknown> = {};
-  // A link the customer made by ordering (`customer_order`) keeps that record: the pharmacy's tick never replaces it.
-  if (link.consent !== 'patient_agreed' && link.consent !== 'customer_order') Object.assign(set, consent);
-  if (typedName && !(typeof link.typedName === 'string' && link.typedName.trim())) set.typedName = typedName;
-  if (Object.keys(set).length) await PharmacyCustomerModel.updateOne({ _id: link._id }, { $set: set }, { session: s });
-}
-
-/** §5.7: the redemption row and the guarded total count, in the booking transaction. */
-async function redeemCouponIn(c: { code: string; discountMinor: number; totalUsageLimit?: number },
-  ctx: { bookingId: string; patientUserId: string; dependentId?: string; payerId: string }, s: ClientSession): Promise<void> {
-  const r = await CouponModel.updateOne({ code: c.code, isActive: true,
-    $or: [{ totalUsageLimit: { $exists: false } }, { totalUsageLimit: null }, { $expr: { $lt: ['$currentUsageCount', '$totalUsageLimit'] } }] },
-  { $inc: { currentUsageCount: 1 } }, { session: s });
-  if (r.modifiedCount !== 1) throw err(409, 'COUPON_EXHAUSTED', 'This coupon has been fully used');
-  await CouponRedemptionModel.create([{ couponCode: c.code, patientUserId: ctx.patientUserId, ...(ctx.dependentId ? { dependentId: ctx.dependentId } : {}),
-    bookingKind: 'booking', bookingId: lower(ctx.bookingId), payerKind: 'pharmacy', payerId: ctx.payerId, discountMinor: c.discountMinor,
-    state: 'counted', at: new Date() }], { session: s });
 }
 
 const shownDate = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : String(d ?? ''));

@@ -1,5 +1,5 @@
 import { unpaidCardBooking } from '@/modules/assisted/views';
-import { Types } from 'mongoose';
+import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -159,6 +159,17 @@ export interface MoveInput {
   expectedUpdatedAt?: string | Date;
 }
 
+/** r17: the moved instant booking's request follows it — the account, the patient (typed or family name), the redemption. */
+async function moveInstantRequestIn(requestId: string, toUserId: string, dependentId: string | undefined, input: MoveInput, s: ClientSession): Promise<void> {
+  const holder = cleanName(input.holderName);
+  const set: Record<string, unknown> = { userId: toUserId, 'patient.kind': dependentId ? 'dependent' : 'self' };
+  if (dependentId) Object.assign(set, { 'patient.dependentId': dependentId, 'patient.name': cleanName(input.asFamily?.name) });
+  else if (holder) set['patient.name'] = holder;
+  await InstantRequestModel.updateOne({ _id: requestId }, { $set: set, ...(dependentId ? {} : { $unset: { 'patient.dependentId': 1 } }) }, { session: s });
+  await CouponRedemptionModel.updateMany({ bookingKind: 'instant_request', bookingId: requestId },
+    dependentId ? { $set: { patientUserId: toUserId, dependentId } } : { $set: { patientUserId: toUserId }, $unset: { dependentId: 1 } }, { session: s });
+}
+
 const moveHash = (input: MoveInput) => requestHashOf({ toPhone: canonicalMobile(input.toPhone) ?? input.toPhone,
   asFamily: input.asFamily ? { name: cleanName(input.asFamily.name), relation: input.asFamily.relation, gender: input.asFamily.gender ?? null,
     dateOfBirth: input.asFamily.dateOfBirth ?? null } : null, holderName: input.holderName ? cleanName(input.holderName) : null, reason: String(input.reason ?? '').trim() });
@@ -254,6 +265,8 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
       if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, String(b._id), fromUserId, target._id, cleanName(input.holderName), s);
       await CouponRedemptionModel.updateMany({ bookingKind: 'booking', bookingId: lower(b._id) },
         dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
+      // r17 (§25.8.4): an instant consultation's request (its patient and its coupon redemption) moves with its booking.
+      if (b.bookingKind === 'instant' && b.instantRequestId) await moveInstantRequestIn(lower(b.instantRequestId), target._id, dependentId, input, s);
       await AssistedReviewItemModel.updateOne({ bookingKind: 'booking', bookingId: lower(b._id), state: 'open' },
         { $set: { state: 'moved', resolvedAt: at, resolvedBy: adminId, resolution: String(input.reason).trim().slice(0, 500) } }, { session: s });
       await auditIn({ actorKind: 'admin', actorId: adminId, orgKind: a.bookedBy.kind, orgId: a.bookedBy.id, action: 'booking.moved', bookingId: lower(b._id),

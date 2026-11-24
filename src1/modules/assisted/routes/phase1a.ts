@@ -6,6 +6,7 @@ import { requireAdmin, requireOperationalPharmacy } from '@/modules/middleware/a
 import * as c from '@/modules/assisted/controller/phase1a';
 import * as v from '@/modules/assisted/validation';
 import * as lab from '@/modules/assisted/controller/phase2a';
+import * as instant from '@/modules/assisted/controller/phase3e';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -38,6 +39,18 @@ pharmacyAssistedRouter.get('/lab-bookings/:id', validate(v.idParamSchema, 'param
 pharmacyAssistedRouter.post('/lab-bookings/:id/cancel', validate(v.idParamSchema, 'params'), validate(v.labBookerCancelSchema, 'body'), catchAsync(lab.cancelLab));
 pharmacyAssistedRouter.post('/lab-bookings/:id/accept-reschedule', validate(v.idParamSchema, 'params'), validate(v.labAcceptRescheduleSchema, 'body'),
   catchAsync(lab.acceptLabReschedule));
+// r17 (§25.8.3): instant "Consult now" for a patient, paid from the pharmacy wallet. Static paths before `/:id`.
+pharmacyAssistedRouter.get('/instant/specialities', validate(v.instantSpecialitiesQuerySchema, 'query'), catchAsync(instant.specialities));
+pharmacyAssistedRouter.get('/instant/doctors', validate(v.instantDoctorsQuerySchema, 'query'), catchAsync(instant.doctors));
+pharmacyAssistedRouter.get('/instant/quote', validate(v.instantQuoteQuerySchema, 'query'), catchAsync(instant.quote));
+pharmacyAssistedRouter.post('/instant/requests', validate(v.instantRequestSchema, 'body'), catchAsync(instant.createRequest));
+pharmacyAssistedRouter.get('/instant/requests', validate(v.instantListQuerySchema, 'query'), catchAsync(instant.listRequests));
+pharmacyAssistedRouter.get('/instant/requests/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(instant.byKey));
+pharmacyAssistedRouter.post('/instant/requests/by-key/:key/abandon', validate(v.keyParamSchema, 'params'), catchAsync(instant.abandonKey));
+pharmacyAssistedRouter.get('/instant/requests/:id', validate(v.idParamSchema, 'params'), catchAsync(instant.getRequest));
+pharmacyAssistedRouter.post('/instant/requests/:id/reoffer', validate(v.idParamSchema, 'params'), validate(v.instantReofferSchema, 'body'), catchAsync(instant.reoffer));
+pharmacyAssistedRouter.post('/instant/requests/:id/activity', validate(v.idParamSchema, 'params'), catchAsync(instant.activity));
+pharmacyAssistedRouter.post('/instant/requests/:id/refund', validate(v.idParamSchema, 'params'), validate(v.instantRefundSchema, 'body'), catchAsync(instant.refund));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);

@@ -3,9 +3,14 @@ import { CustomError } from '@/modules/common/types';
 import logger from '@/services/logger';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 
-/** PRICE_CHANGED: the three integer paise amounts, nothing else. */
-const priceDetails = (d: Record<string, unknown>) => Object.fromEntries(['priceMinor', 'listMinor', 'discountMinor']
+/** The integer paise amounts a code may name, nothing else. */
+const paiseDetails = (d: Record<string, unknown>, keys: string[]) => Object.fromEntries(keys
   .filter((k) => Number.isSafeInteger(d[k])).map((k) => [k, d[k]]));
+/** PRICE_CHANGED: the price, list price and discount; r17 QUOTE_CHANGED (partner instant): the quote and discount. */
+const DETAIL_KEYS: Record<string, string[]> = {
+  PRICE_CHANGED: ['priceMinor', 'listMinor', 'discountMinor'],
+  QUOTE_CHANGED: ['quotedAmountMinor', 'discountMinor'],
+};
 
 export const errorHandler = (
   err: CustomError,
@@ -31,7 +36,8 @@ export const errorHandler = (
   const details = (err as { details?: unknown }).details;
   const extra = {
     ...(err?.code === 'ASSISTED_LIMIT_REACHED' && typeof limit === 'string' ? { limit } : {}),
-    ...(err?.code === 'PRICE_CHANGED' && details && typeof details === 'object' ? { details: priceDetails(details as Record<string, unknown>) } : {}),
+    ...(err?.code && DETAIL_KEYS[err.code] && details && typeof details === 'object'
+      ? { details: paiseDetails(details as Record<string, unknown>, DETAIL_KEYS[err.code]!) } : {}),
   };
 
   // O1: limits tell the client when to try again.

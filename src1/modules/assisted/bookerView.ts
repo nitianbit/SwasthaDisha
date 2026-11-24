@@ -3,6 +3,8 @@ import BookingModel from '@/modules/bookings/model';
 import { bookerNames } from '@/modules/assisted/names';
 import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
 import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
+import { isInstantFunding } from '@/modules/assisted/types';
 
 type Row = Record<string, any>;
 
@@ -76,6 +78,11 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
   const slotOf = (b: Row) => slots.get(String(b.slotId ?? ''));
   const open = (b: Row) => clinical && rxWindowOpen(b, slotOf(b), now);
   const copies = await dispensingUrls(list, open, opts.copies ?? 'queue');
+  // r17 (§25.8.3): an instant consultation's call runs from the acceptance to the end of the doctor's held interval
+  // (extensions included), not a slot.
+  const instantIds = list.filter((b) => b.bookingKind === 'instant').map((b) => String(b._id).toLowerCase());
+  const held = new Map((instantIds.length ? await DoctorReservationModel.find({ kind: 'instant', refId: { $in: instantIds } }).select({ refId: 1, endTime: 1 }).lean() : [])
+    .map((x) => [String(x.refId).toLowerCase(), new Date(x.endTime)]));
   // r10d: the open Razorpay order of each card booking of THIS pharmacy still waiting for its payment (read only), so
   // "pay now" works from any device.
   const waitingOwn = list.filter((b) => b.assisted?.funding?.method === 'razorpay' && b.assisted.funding.state === 'pending' && b.status === 'pending'
@@ -114,7 +121,9 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
       // r10c: how this booking is paid, for its OWN booker only (pay now / refund choice on any device). Never in the
       // patient's or the doctor's views (they strip `assisted.funding`); never another pharmacy's.
       const f = b.assisted.funding;
-      if (f && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase()) {
+      // r17: an instant booking's money lives on its request (the booker reads it at /instant/requests/:id).
+      if (isInstantFunding(f)) v.instantRequestId = f.instantRequestId;
+      else if (f && b.assisted.bookedBy?.kind === 'pharmacy' && String(b.assisted.bookedBy.id).toLowerCase() === String(pharmacyId).toLowerCase()) {
         const card = f.method === 'razorpay';
         const waiting = card && f.state === 'pending' && b.status === 'pending' && b.createdAt;
         v.payment = { method: card ? 'razorpay' : 'wallet', state: f.state,
@@ -124,8 +133,12 @@ export async function bookerViews(rows: Row[], pharmacyId: string, opts: BookerV
           ...(waiting ? { razorpayOrderId: orders.get(String(b._id))?.razorpayOrderId ?? null, razorpayKeyId: orders.get(String(b._id))?.razorpayKeyId ?? null } : {}) };
       }
     }
-    // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end.
-    const interval = appointmentIntervalOf(b, slotOf(b));
+    // Join call: only when the partner's device joins (phase 1a bookings), from 10 minutes before the slot to its end;
+    // r17: an instant consultation from its acceptance to the end of the doctor's held interval.
+    const heldEnd = b.bookingKind === 'instant' ? held.get(String(b._id).toLowerCase()) : undefined;
+    const interval = b.bookingKind === 'instant'
+      ? (heldEnd && b.createdAt ? { start: new Date(b.createdAt), end: heldEnd } : null)
+      : appointmentIntervalOf(b, slotOf(b));
     if (b.assisted?.join?.on === 'partner_device' && b.virtualMeeting?.joinUrl && interval
         && now.getTime() >= interval.start.getTime() - JOIN_OPENS_BEFORE_MS && now.getTime() <= interval.end.getTime()) {
       v.virtualMeeting = { joinUrl: b.virtualMeeting.joinUrl };
