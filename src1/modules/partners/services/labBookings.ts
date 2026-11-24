@@ -476,9 +476,9 @@ export class LabBookingService {
 
   /** Scheduler sweep: reconcile each due booking's payments first; back off while the gateway state is unknown. */
   async expireDue(now = new Date(), limit = 100): Promise<{ examined: number; expired: number; deferred: number; failed: number }> {
-    // r12 (§5.5): only rows paid through Jansetu expire (a desk row is never pending_payment anyway).
+    // r12 (§5.5): a desk row (paid at the lab) never expires; it is never pending_payment anyway. Every other row as before.
     const due = await PartnerLabBookingModel.find({
-      status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now }, 'settlement.settlementSystem': 'ledger',
+      status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now }, 'settlement.settlementSystem': { $ne: 'lab_desk' },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
     }).sort({ paymentDeadline: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1 }).lean();
     let expired = 0; let deferred = 0; let failed = 0;
