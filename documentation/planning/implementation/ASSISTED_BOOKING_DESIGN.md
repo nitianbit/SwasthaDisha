@@ -7017,3 +7017,6 @@ rule fails it; awaiting a hook again fails the slow-outbox check.
 
 **Single suites** on `c962a415` (own mongod): `r31-phase5b` 20/20, `r25-phase5a` 11/11, `r29-phase3c` 21/21,
 `r26-phase3b` 14/14, `r21-phase2e` 18/18, `r14-phase2b` 24/24, `r10-phase1b` 19/19, `r10b-phase1b-fixes` 23/23. `tsc` 17.
+
+**Full regression** (`prun.sh … 2` on `3007027f`): 82 entries, 82 passed (`r29-phase3c` and `r31-phase5b` among them),
+`tsc` 17.
