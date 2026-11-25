@@ -20,7 +20,9 @@ import { rebindStored } from '@/modules/file/access';
  */
 export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout' | 'lab_booking_create' | 'instant_request_create'
   /** Assisted booking phase 0: a pharmacy's medicine order from a booking's prescription (pharmacy-owned). */
-  | 'pharmacy_rx_order';
+  | 'pharmacy_rx_order'
+  /** r36 (WQ50): a pharmacy's keyed in-store sale (pharmacy-owned). */
+  | 'pharmacy_sale';
 
 /**
  * Inside the operation's transaction: refuses a key that was abandoned, and claims it as used. The claim is written in
@@ -56,6 +58,7 @@ export const requestKeyRouter = Router();
 /** Q9: the record a used key produced, in the caller's scope (exact key). */
 async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
   return kind === 'pharmacy_rx_order' ? rxOrderFor(owner, key)
+    : kind === 'pharmacy_sale' ? saleFor(owner, key)
     : kind === 'customer_return' ? CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'supplier_return' ? SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'pharmacy_checkout'
@@ -68,10 +71,13 @@ async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
 }
 
 const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create',
-  'pharmacy_rx_order'];
+  'pharmacy_rx_order', 'pharmacy_sale'];
 const rxOrderFor = (pharmacyId: string, key: string) => (/^[0-9a-fA-F]{24}$/.test(pharmacyId)
   ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'prescriptionFromBooking.requestKey': { $eq: key } })
     .select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+  : Promise.resolve(null));
+const saleFor = (pharmacyId: string, key: string) => (/^[0-9a-fA-F]{24}$/.test(pharmacyId)
+  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'saleRequest.requestKey': { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
   : Promise.resolve(null));
 const CUSTOMER_KINDS: OnceOnlyKind[] = ['booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
 
@@ -122,16 +128,7 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
   if (state === 'abandoned') { res.status(200).json({ success: true, data: { state } }); return; }
   // Used: the record was written in the same transaction as the claim, so it exists; return it (exact key, caller's
   // scope) so the client can always resolve the request, however far back it is in any list.
-  const record = kind === 'pharmacy_rx_order' ? await rxOrderFor(owner, key)
-    : kind === 'customer_return' ? await CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
-    : kind === 'supplier_return' ? await SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
-    : kind === 'pharmacy_checkout'
-      ? await PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
-    : kind === 'instant_request_create'
-      ? await InstantRequestModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
-    : kind === 'lab_booking_create'
-      ? await PartnerLabBookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
-    : await BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
+  const record = await recordFor(kind, owner, key); // r36b: the lookup's one reader (it was a copy)
   // P9: the customer's prescription files of a checkout whose first request died before binding are bound now.
   if (kind === 'pharmacy_checkout' && record?._id) await rebindStored(user, 'PharmacyOrder', record._id);
   res.status(200).json({ success: true, data: { state, record } });

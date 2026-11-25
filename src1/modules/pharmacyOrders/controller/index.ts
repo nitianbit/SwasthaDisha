@@ -82,6 +82,8 @@ export class PharmacyOrderController {
     );
     // r36 (WQ50): a pharmacy reads the customer as its order list shows it (populated, the pharmacy-facing name).
     const data = req.user?.userType === 'pharmacy' ? await this.service.pharmacyView(result, req.user?.pharmacyId || '') : result;
+    // r36b: the pharmacy's answer carries its customer's name and phone.
+    if (req.user?.userType === 'pharmacy') res.setHeader('Cache-Control', 'private, no-store');
     res.status(200).json({ success: true, data });
   };
 

@@ -158,7 +158,16 @@ export interface PharmacyPaymentDetails {
 }
 
 /** r36 (WQ50): the request-key scope of a pharmacy's in-store sales. */
-const saleKeyScope = (pharmacyId: string) => `pharmacy_sale:${String(pharmacyId).toLowerCase()}`;
+const saleKeyScope = (pharmacyId: string) => scopeOf('pharmacy_sale', String(pharmacyId));
+/**
+ * r36b: the content hash of a keyed in-store sale — lines sorted by medicine, ids lower-cased, a missing `isWalkIn` as
+ * false and missing `prescriptionUrls` as [] — so the same sale sent another way is the same request.
+ */
+const lowerId = (v: unknown) => (v === undefined || v === null ? v : String(v).toLowerCase());
+const saleHashOf = (content: Omit<CreateOrderRequest, 'requestKey'>) => requestHashOf({ kind: 'in_store_sale', ...content,
+  customerId: lowerId(content.customerId), buyerPharmacyId: lowerId(content.buyerPharmacyId), isWalkIn: content.isWalkIn ?? false,
+  prescriptionUrls: content.prescriptionUrls ?? [],
+  items: [...content.items].map((i) => ({ ...i, medicineId: String(i.medicineId).toLowerCase() })).sort((a, b) => (a.medicineId < b.medicineId ? -1 : a.medicineId > b.medicineId ? 1 : 0)) });
 
 @Service()
 export class PharmacyOrderService {
@@ -623,12 +632,15 @@ export class PharmacyOrderService {
     if (data.prescriptionFromBookingId !== undefined && !options.rxOrder) {
       return this.createFromPrescription(pharmacyId, data, createdById, createdByRole);
     }
-    // r36 (WQ50): a pharmacy's in-store sale may carry a request key (exactly once); without one, nothing changes.
-    if (data.requestKey !== undefined && !options.rxOrder && data.orderType === 'in_store' && createdByRole === 'pharmacy') {
+    // r36 (WQ50): a pharmacy's in-store sale may carry a request key (exactly once); without one, nothing changes. r36b: not
+    // an online-paid sale without a customer (a B2B sale: its replay could not answer the payment).
+    if (data.requestKey !== undefined && !options.rxOrder && data.orderType === 'in_store' && createdByRole === 'pharmacy'
+      && !(data.paymentMode === 'online_payment' && !data.customerId)) {
       return this.createInStoreSale(pharmacyId, data, createdById, createdByRole);
     }
     if (data.requestKey !== undefined && !options.rxOrder) {
-      throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'A requestKey is for orders made from a prescription' });
+      throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED',
+        message: 'A requestKey is for orders made from a prescription, or for an in-store sale (not one paid online without a customer)' });
     }
     this.validateOrderParty(data);
     this.assertUniqueMedicines(data.items);
@@ -986,27 +998,41 @@ export class PharmacyOrderService {
     const requestKey = assertRxOrderRequest(data);
     const { requestKey: _key, ...content } = data;
     const requestHash = requestHashOf({ kind: 'rx_order', ...content });
-    await assertUniqueIndex(PharmacyOrderModel, { pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 });
-    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
-    const replay = async () => {
-      const prior = await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId),
-        'prescriptionFromBooking.requestKey': { $eq: requestKey } }).lean() as IPharmacyOrder | null;
-      if (!prior) return null;
-      if (prior.prescriptionFromBooking?.requestHash !== requestHash) {
-        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different order' });
-      }
-      await bindRxOrderFile(prior);
-      return this.checkoutReplay(prior);
-    };
-    const prior = await replay();
-    if (prior) return prior;
-    const terms = await prepareRxOrder(pharmacyId, data);
-    try {
+    return this.keyedOnce({ index: { pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 }, requestHash, onReplay: bindRxOrderFile,
+      prior: async () => await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId),
+        'prescriptionFromBooking.requestKey': { $eq: requestKey } }).lean() as IPharmacyOrder | null,
+      hashOf: (o) => o.prescriptionFromBooking?.requestHash }, async () => {
+      const terms = await prepareRxOrder(pharmacyId, data);
       const result = await this.create(pharmacyId, { ...content, prescriptionFromBookingId: undefined, prescriptionUrls: [],
         customerId: terms.customerId, linkedConsultationId: terms.bookingId }, createdById, createdByRole,
       { rxOrder: { ...terms, requestKey, requestHash } });
       await bindRxOrderFile(result.order);
       return result;
+    });
+  }
+
+  /**
+   * r36b: the ONE keyed order create (the rx order's and the in-store sale's): fails closed without its unique indexes; the
+   * first order under the key answers again (`replayed: true`) when the content hash matches, else 409
+   * IDEMPOTENCY_KEY_REUSED; a concurrent first request that committed first is answered the same way.
+   */
+  private async keyedOnce<T>(k: { index: Record<string, 1>; requestHash: string; prior: () => Promise<IPharmacyOrder | null>;
+    hashOf: (o: IPharmacyOrder) => string | undefined; onReplay?: (o: IPharmacyOrder) => Promise<unknown> }, make: () => Promise<T>) {
+    await assertUniqueIndex(PharmacyOrderModel, k.index);
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
+    const replay = async () => {
+      const prior = await k.prior();
+      if (!prior) return null;
+      if (k.hashOf(prior) !== k.requestHash) {
+        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different order' });
+      }
+      if (k.onReplay) await k.onReplay(prior);
+      return this.checkoutReplay(prior);
+    };
+    const first = await replay();
+    if (first) return first;
+    try {
+      return await make();
     } catch (error) {
       // A concurrent first request under the same key committed first: answer with its order.
       if ((error as { code?: number })?.code === 11000) {
@@ -1025,29 +1051,9 @@ export class PharmacyOrderService {
   private async createInStoreSale(pharmacyId: string, data: CreateOrderRequest, createdById: string, createdByRole: string) {
     const requestKey = String(data.requestKey);
     const { requestKey: _key, ...content } = data;
-    const requestHash = requestHashOf({ kind: 'in_store_sale', ...content });
-    await assertUniqueIndex(PharmacyOrderModel, { pharmacyId: 1, 'saleRequest.requestKey': 1 });
-    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
-    const replay = async () => {
-      const prior = await this.saleByKey(pharmacyId, requestKey);
-      if (!prior) return null;
-      if (prior.saleRequest?.requestHash !== requestHash) {
-        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different order' });
-      }
-      return this.checkoutReplay(prior);
-    };
-    const prior = await replay();
-    if (prior) return prior;
-    try {
-      return await this.create(pharmacyId, content, createdById, createdByRole, { saleRequest: { requestKey, requestHash } });
-    } catch (error) {
-      // A concurrent first request under the same key committed first: answer with its order.
-      if ((error as { code?: number })?.code === 11000) {
-        const again = await replay();
-        if (again) return again;
-      }
-      throw error;
-    }
+    return this.keyedOnce({ index: { pharmacyId: 1, 'saleRequest.requestKey': 1 }, requestHash: saleHashOf(content),
+      prior: () => this.saleByKey(pharmacyId, requestKey), hashOf: (o) => o.saleRequest?.requestHash },
+    () => this.create(pharmacyId, content, createdById, createdByRole, { saleRequest: { requestKey, requestHash: saleHashOf(content) } }));
   }
 
   private async saleByKey(pharmacyId: string, key: string): Promise<IPharmacyOrder | null> {
@@ -1228,7 +1234,8 @@ export class PharmacyOrderService {
     const partyFields = ['customerId', 'buyerPharmacyId', 'orderType'] as const;
     const changesOrderParty = partyFields.some((field) => Object.prototype.hasOwnProperty.call(data, field));
     // P8: a customer's keyed checkout order keeps its customer (the key's identity; replay and recovery find it by it).
-    if (changesOrderParty && order.checkoutRequestKey) {
+    // r36b: so does a keyed in-store sale (its replay answers the order the key made).
+    if (changesOrderParty && (order.checkoutRequestKey || order.saleRequest)) {
       throw new AppError({ status: 409, code: 'ORDER_CHECKOUT_PARTY_LOCKED', message: 'The customer of an app order cannot be changed' });
     }
     // Assisted booking phase 0: an order made from a booking's prescription keeps that booking's patient (the bound

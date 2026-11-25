@@ -6732,7 +6732,7 @@ every answer is as before.
 |---|---|---|
 | 1 | `POST /api/v1/pharmacy-orders` with `orderType: 'in_store'` refused a `requestKey` (400 `REQUEST_KEY_UNSUPPORTED`) | A pharmacy's in-store sale may carry `requestKey` (8–64 of `A-Za-z0-9_-`): exactly once per (pharmacy, key), with the rx order's pattern (`createInStoreSale`). The key is claimed in the order's transaction (scope `pharmacy_sale:<pharmacyId>`). The order stores `saleRequest: { requestKey, requestHash }` (the hash of the body without the key), with the unique partial index `{ pharmacyId, saleRequest.requestKey }`. The same key and body answer the first order (`replayed: true`); another body is 409 `IDEMPOTENCY_KEY_REUSED`; an abandoned key is 409 `REQUEST_ABANDONED`. Racing repeats make one order. A key on any other order is still 400 `REQUEST_KEY_UNSUPPORTED` |
 | 1b | Finding a sale whose answer was lost | `GET /api/v1/pharmacy-orders/by-key/:key` → `{ state: 'used', order } \| { state: 'abandoned' } \| { state: 'unknown' }`; `POST …/by-key/:key/abandon` → the same (`abandoned`, or `used` when the sale committed). Operational pharmacy; its own keys only (another pharmacy's key is `unknown`, uniform) |
-| 2 | The web learnt that a medicine needs a prescription only from the create's refusal | `GET /api/v1/pharmacy-inventory` rows: `medicineId.prescriptionRequired` (boolean, from the medicine; the create's own rule). Pharmacy and admin views; the customer view is unchanged |
+| 2 | The web learnt that a medicine needs a prescription only from the create's refusal | `GET /api/v1/pharmacy-inventory` rows: **`medicineId.rx`** (boolean, the medicine's `prescriptionRequired`; absent when the medicine has none). Pharmacy and admin views; the customer view is unchanged. r36b: renamed from `medicineId.prescriptionRequired`, which the released app reads (`CreatePharmacyOrderScreen.tsx`) to block every prescription-medicine counter sale without an upload, against the owner's 15 Nov "upload optional" decision |
 | 4 | The customer search put a phone or name into the URL (proxy logs) | `POST /api/v1/pharmacy-customers/search { search?, page?, limit≤100 }` → exactly the `GET /pharmacy-customers?search` answer (one handler, `listOf`), same guard (operational pharmacy), `Cache-Control: private, no-store`. The GET stays for the released app |
 | 5 | The cash memo lacked the seller and the payment | The pharmacy's order detail (and by-key's `order`) adds `bill: { pharmacy: { name, address, city, state, pincode, gstNumber, drugLicenseNumber } \| null, paymentMethod, paidAt }`; `paymentMethod` / `paidAt` only once `paymentStatus` is `paid` (`paymentSource` as marked paid, else the payment mode). Each line's batches were already on the order: `items[].batchAllocations: [{ batchId, batchNumber, expiryDate (YYYYMMDD), quantity }]` |
 | 3 | `GET /api/v1/pharmacy-orders/:id` showed the pharmacy a bare customer id | For a pharmacy caller: `customerId` populated `{ _id, name, phone }`, the name by the list's pharmacy-facing rule (`withPharmacyFacingCustomerNames`: the name the pharmacy typed, else masked). One reader, `PharmacyOrderService.pharmacyView`, also used by by-key. Admins and customers read it as before |
@@ -6744,8 +6744,7 @@ every answer is as before.
   keyed sale.
 - `GET …/by-key/:key` and `POST …/by-key/:key/abandon` → 200 `{ success, data: { state: 'used', order } | { state: 'abandoned' |
   'unknown' } }`, `Cache-Control: private, no-store`; 400 on a malformed key.
-- `GET /api/v1/pharmacy-inventory` → each row's `medicineId: { _id, name, genericName, brandName, dosageForm, strength,
-  prescriptionRequired }`.
+- `GET /api/v1/pharmacy-inventory` → each row's `medicineId: { _id, name, genericName, brandName, dosageForm, strength, rx }`.
 - `GET /api/v1/pharmacy-orders/:id` (pharmacy) → `customerId: { _id, name | null, phone }` (null: no customer, or a masked
   name is all the rule allows).
 
@@ -6759,13 +6758,29 @@ every answer is as before.
 | S5 | `bill.pharmacy` adds the drug licence number and the city, state and pincode (a pharmacy cash memo prints them); `paymentMethod` is the free text the pharmacy gave when marking paid (`cash`, `upi`, …), else the order's `paymentMode` | One read of the seller; nothing new stored |
 | S4 | The pharmacy's order detail populates the customer (the list already did); the released app reads `customerId` as text or `{ name, phone, _id }` alike (`ordersShared.ts` `toDisplayText`) and never sends it back | Checked in `pharmacy-app` |
 
+**r36b (review follow-ups, branch `m0/r36b-fixes` from stage `135b5639`):**
+
+| # | Fix |
+|---|---|
+| 1 | The inventory flag is `medicineId.rx` (above); the released app reads none of `prescriptionRequired`, `isPrescriptionRequired` or a row-level `prescriptionRequired` from these rows |
+| 2 | A keyed `in_store` sale paid online without a customer (a B2B sale: `buyerPharmacyId` + `online_payment`) is refused, 400 `REQUEST_KEY_UNSUPPORTED` (its replay could not answer the payment). The simpler of the two choices |
+| 3 | A keyed sale's customer is locked like a keyed checkout's: a party change is 409 `ORDER_CHECKOUT_PARTY_LOCKED` |
+| 4 | The sale's content hash (`saleHashOf`) sorts the lines by medicine, lower-cases the ids (`items[].medicineId`, `customerId`, `buyerPharmacyId`), and treats a missing `isWalkIn` as `false` and missing `prescriptionUrls` as `[]`. Keyed sales made on stage before r36b keep their old hash: a replay of one answers 409 `IDEMPOTENCY_KEY_REUSED` (stage test data only) |
+| 5 | `GET /pharmacy-orders/:id` answers a pharmacy with `Cache-Control: private, no-store` |
+| 6 | No copies: `pharmacy_sale` is a `OnceOnlyKind` (so `GET /api/v1/request-keys/lookup?kind=pharmacy_sale&key` and `POST /request-keys/abandon { kind: 'pharmacy_sale', key }` work, `record: { _id, status, paymentStatus }`); the sale's scope is `scopeOf('pharmacy_sale', …)` (the same string as before); one `keyedOnce(...)` serves the rx order and the sale; the generic abandon's record lookup now reuses `recordFor` (it was a copy). The sale's own `by-key` routes stay: their shape (`order`, the full pharmacy view with `bill`) is richer than the generic `record`, and the web uses it |
+| 7 | The refusal's message names both keyed creates |
+
+Unchanged on purpose: a replay after a cancel answers the current order (the web checks `order.status`).
+
 **Deploy:** run `sync-indexes` (builds `pharmacyorders` `pharmacyId_1_saleRequest.requestKey_1`, unique partial). Until then a
 keyed sale answers 503 `INDEXES_OUTDATED` (`assertUniqueIndex`); sales without a key are unaffected.
 
 **GST:** order prices are GST-inclusive (`computeTotals`): `grandTotal = subtotal − discountTotal`; `taxTotal` (and each line's
 `taxAmount`, `lineTotal × gst / (100 + gst)` rounded per line) is the GST already inside the total, never added on top.
 
-**Checks:** `test/pharmacy-orders/r36-pharmacy-sale.integration.ts`, 6 checks:
+**Checks:** `test/pharmacy-orders/r36-pharmacy-sale.integration.ts`, 6 checks (r36b adds to them: the same sale with
+swapped lines, upper-case ids and no `isWalkIn` replays; the B2B online key 400 writes nothing; the party lock 409; the
+generic lookup; `Cache-Control`; `rx` and never `prescriptionRequired` on inventory rows):
 - without a key nothing changes; an `online` order with a key is still 400 and writes nothing;
 - the keyed sale (first, replay, another body 409, three racing repeats make one order, another pharmacy's same key is its own);
 - by-key (used with the pharmacy view, unknown, abandoned then 409 `REQUEST_ABANDONED`, abandoning a used key, another
@@ -6773,7 +6788,7 @@ keyed sale answers 503 `INDEXES_OUTDATED` (`assertUniqueIndex`); sales without a
 - the order detail names the customer as the list does, the customer's own read unchanged (no `bill`), another pharmacy 403;
   its `bill` (the seller; payment null until paid, then `upi` and the time) and the lines' batch numbers and expiry;
 - `POST /pharmacy-customers/search` equals the GET answer (with and without a search), a customer 403, a bad limit 400;
-- `prescriptionRequired` on inventory rows with and without search.
+- `medicineId.rx` on inventory rows with and without search.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 

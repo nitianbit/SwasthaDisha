@@ -507,8 +507,9 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
             brandName: '$medicine.brandName',
             dosageForm: '$medicine.dosageForm',
             strength: '$medicine.strength',
-            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering.
-            prescriptionRequired: '$medicine.prescriptionRequired',
+            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering. r36b:
+            // named `rx`, a name the released app does not read (it blocks a counter sale on `prescriptionRequired`).
+            rx: '$medicine.prescriptionRequired',
           },
         },
       });
@@ -532,8 +533,9 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
             brandName: '$medicine.brandName',
             dosageForm: '$medicine.dosageForm',
             strength: '$medicine.strength',
-            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering.
-            prescriptionRequired: '$medicine.prescriptionRequired',
+            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering. r36b:
+            // named `rx`, a name the released app does not read (it blocks a counter sale on `prescriptionRequired`).
+            rx: '$medicine.prescriptionRequired',
           },
         },
       });

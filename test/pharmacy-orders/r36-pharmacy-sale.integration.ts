@@ -5,7 +5,10 @@
  *   REQUEST_ABANDONED; `GET …/by-key/:key` and `POST …/by-key/:key/abandon` (this pharmacy's keys only). Without a key,
  *   nothing changes; a key on any other order is still 400 REQUEST_KEY_UNSUPPORTED.
  * - `GET /pharmacy-orders/:id` for a pharmacy: the customer populated and named as the list names it.
- * - `GET /pharmacy-inventory` rows: `medicineId.prescriptionRequired` from the medicine.
+ * - `GET /pharmacy-inventory` rows: `medicineId.rx` from the medicine (r36b: not `prescriptionRequired`, which the released
+ *   app reads to block a counter sale).
+ * - r36b: no key on an online-paid sale without a customer; a keyed sale's customer is locked; the hash ignores line order,
+ *   id case, a missing `isWalkIn` / `prescriptionUrls`; the generic `/request-keys/lookup` knows `pharmacy_sale`.
  * - `POST /pharmacy-customers/search { search }`: the GET list's answer and guards, the search never in the URL.
  * - The pharmacy's order detail `bill`: the seller's name, address, GST and licence numbers, how and when it was paid; the
  *   lines' batches (batch number, expiry) on the order.
@@ -80,7 +83,7 @@ async function main() {
     returnStockBulk: async () => [], releaseOrderStockBulk: async () => undefined, consumeOrderReservedStockBulk: async () => undefined,
   };
   const medicines = {
-    findById: async () => ({ _id: MED, name: 'Vitamin D', isActive: true, prescriptionRequired: false, gstPercent: 0 }),
+    findById: async (id?: string) => ({ _id: id ?? MED, name: 'Vitamin D', isActive: true, prescriptionRequired: false, gstPercent: 0 }),
     findAll: async () => [{ _id: MED, name: 'Vitamin D', isActive: true, prescriptionRequired: false }],
   };
   const sideEffects = { queueNotification: async () => undefined, queueSubscriptionSync: async () => undefined };
@@ -95,6 +98,8 @@ async function main() {
   app.use(express.json());
   app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
   app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
+  const { requestKeyRouter } = await import('@/modules/requestKeys');
+  app.use('/api/v1/request-keys', authenticate, requestKeyRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/v1`;
@@ -155,6 +160,23 @@ async function main() {
       // Another pharmacy's same key is its own.
       await expect('Q', 'POST', '/pharmacy-orders', 201, sale({ requestKey: 'sale-key-0001' }));
       assert.equal(await keyed('sale-key-0001'), 2);
+      // r36b: the same sale sent another way is the same request (id case, a missing isWalkIn, an empty prescriptionUrls).
+      const { isWalkIn: _w, ...noWalkIn } = sale({ requestKey: 'sale-key-0001', prescriptionUrls: [], items: [{ medicineId: MED.toUpperCase(), orderedQty: 1 }] });
+      assert.equal((await expect('P', 'POST', '/pharmacy-orders', 201, noWalkIn)).json.data.replayed, true);
+      const MED2 = oid();
+      const two = (items: unknown[]) => sale({ requestKey: 'sale-key-two-01', items });
+      const made = (await expect('P', 'POST', '/pharmacy-orders', 201, two([{ medicineId: MED, orderedQty: 1 }, { medicineId: MED2, orderedQty: 3 }]))).json.data;
+      const swapped = (await expect('P', 'POST', '/pharmacy-orders', 201, two([{ medicineId: MED2, orderedQty: 3 }, { medicineId: MED, orderedQty: 1 }]))).json.data;
+      assert.deepEqual([swapped.replayed, swapped.order._id], [true, made.order._id], 'the line order does not change the request');
+      // r36b: an online-paid sale without a customer takes no key (its replay could not answer the payment).
+      const before = await PharmacyOrderModel.countDocuments();
+      await expect('P', 'POST', '/pharmacy-orders', 400, sale({ requestKey: 'sale-key-b2b-01', customerId: undefined, buyerPharmacyId: Q,
+        paymentMode: 'online_payment' }), 'REQUEST_KEY_UNSUPPORTED');
+      assert.equal(await PharmacyOrderModel.countDocuments(), before);
+      // r36b: a keyed sale keeps its customer; the generic lookup knows the kind.
+      await expect('P', 'PUT', `/pharmacy-orders/${order._id}`, 409, { customerId: oid() }, 'ORDER_CHECKOUT_PARTY_LOCKED');
+      const look = (await expect('P', 'GET', '/request-keys/lookup?kind=pharmacy_sale&key=sale-key-0001', 200)).json.data;
+      assert.deepEqual([look.state, String(look.record._id)], ['used', order._id]);
     });
 
     await check('by-key: used (the order as the pharmacy reads it), unknown, abandoned; an abandoned key never makes a sale; another pharmacy sees only its own keys', async () => {
@@ -179,6 +201,8 @@ async function main() {
     await check('GET /pharmacy-orders/:id for the pharmacy names the customer as its list does (populated); the customer\'s own read is unchanged', async () => {
       const id = (await expect('P', 'POST', '/pharmacy-orders', 201, sale())).json.data.order._id;
       const one = (await expect('P', 'GET', `/pharmacy-orders/${id}`, 200)).json.data;
+      const raw = await fetch(`${base}/pharmacy-orders/${id}`, { headers: { authorization: 'Bearer ' + tokens.P } });
+      assert.equal(raw.headers.get('cache-control'), 'private, no-store', 'r36b');
       const listed = (await expect('P', 'GET', '/pharmacy-orders?limit=50', 200)).json.data.find((o: any) => o._id === id);
       assert.equal(one.customerId._id, L);
       assert.deepEqual([one.customerId.name, one.customerId.phone], [listed.customerId.name, listed.customerId.phone]);
@@ -207,14 +231,17 @@ async function main() {
       await expect('P', 'POST', '/pharmacy-customers/search', 400, { search: 'x', limit: 0 });
     });
 
-    await check('GET /pharmacy-inventory rows carry medicineId.prescriptionRequired from the medicine (with and without search)', async () => {
+    await check('GET /pharmacy-inventory rows carry medicineId.rx from the medicine (with and without search), never medicineId.prescriptionRequired', async () => {
       const rx = new Types.ObjectId(); const plain = new Types.ObjectId();
       await MedicineModel.collection.insertMany([{ _id: rx, name: 'Amoxicillin 500', prescriptionRequired: true },
         { _id: plain, name: 'Vitamin C', prescriptionRequired: false }] as never);
       await InventoryItemModel.collection.insertMany([rx, plain].map((m) => ({ pharmacyId: new Types.ObjectId(P), medicineId: m, availableQty: 5, isActive: true,
         updatedAt: new Date() })) as never);
       const repo = new InventoryItemRepository();
-      const flags = (rows: any[]) => Object.fromEntries(rows.map((r) => [String(r.medicineId._id), r.medicineId.prescriptionRequired]));
+      const flags = (rows: any[]) => Object.fromEntries(rows.map((r) => {
+        assert.equal('prescriptionRequired' in r.medicineId || 'isPrescriptionRequired' in r.medicineId || 'prescriptionRequired' in r, false, 'never a name the released app reads');
+        return [String(r.medicineId._id), r.medicineId.rx];
+      }));
       assert.deepEqual(flags((await repo.findWithPagination({ pharmacyId: P } as never, 1, 20)).data), { [String(rx)]: true, [String(plain)]: false });
       assert.deepEqual(flags((await repo.findWithPagination({ pharmacyId: P, search: 'amox' } as never, 1, 20)).data), { [String(rx)]: true });
     });
