@@ -18,7 +18,7 @@ export interface IPaymentRecord {
   /** r13 (§24.7.2): a partner-paid record (a lab top-up): the paying partner and member. */
   payerPartnerId?: string;
   payerMemberId?: string;
-  /** r20 (§25.4.1): a doctor-paid record (a doctor top-up): the paying doctor. */
+  /** r20 (§25.4.1): a doctor-paid record (a doctor top-up; r29: a card payment of a lab booking the doctor made): the paying doctor. */
   payerSpecialistId?: string;
   /** r13: a keyed order (a lab top-up): the scoped request key and its content hash (exactly one order per key). */
   requestKey?: string;
