@@ -20,6 +20,7 @@ import { runPartnerLabSchedulers } from '@/modules/partners/services/labSchedule
 import { runAssistedSchedulers } from '@/modules/assisted/schedulers';
 import { runMeetRetryScheduler } from '@/modules/meet/retry';
 import { runSmsNoticeScheduler } from '@/modules/smsNotices/drain';
+import { registerSmsComposers } from '@/modules/smsNotices/events';
 import { runDoctorSchedulers } from '@/modules/doctors/services/schedulers';
 import { checkSettlementCutoverConfig } from '@/modules/partners/services/cutover';
 import { runLowStockAlertScheduler } from '@/modules/pharmacyInventory/lowStockScheduler';
@@ -97,7 +98,8 @@ connectDB()
     runPartnerLabSchedulers();
     runAssistedSchedulers();
     runMeetRetryScheduler();
-    // Phase 5a (§27.5.3): the SMS notice drain (sends nothing while SMS_NOTICES_ENABLED is off).
+    // Phase 5a (§27.5.3): the SMS notice drain (sends nothing while SMS_NOTICES_ENABLED is off); 5b: what each event says.
+    registerSmsComposers();
     runSmsNoticeScheduler();
     runDoctorSchedulers();
     runLowStockAlertScheduler();

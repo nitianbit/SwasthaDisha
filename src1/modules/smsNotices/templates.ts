@@ -25,6 +25,25 @@ const TEXTS: Record<string, Partial<Record<SmsMessage, string>>> = {
   },
 };
 
+/**
+ * r31 (§27.5.5): the fixed words a notice puts into its variables, in the language of the text chosen (a language
+ * without its own words uses English, as its texts do). `service` is keyed by the booking's mode.
+ */
+export interface SmsWords {
+  service: { video: string; call: string; 'in-person': string; lab: string; home: string };
+  cancelled: string;
+  movedTo: string;
+  movedOff: string;
+  familyMember: string;
+}
+const WORDS: Record<string, SmsWords> = {
+  en: {
+    service: { video: 'video consultation', call: 'phone consultation', 'in-person': 'clinic consultation', lab: 'lab test', home: 'home sample collection' },
+    cancelled: 'cancelled', movedTo: 'moved to', movedOff: 'moved to another number', familyMember: 'your family member',
+  },
+};
+export const wordsFor = (lang: string): SmsWords => WORDS[lang] ?? WORDS.en!;
+
 const VAR = /\{#([a-z]+)#\}/g;
 const JOIN = '<JOIN_BASE>';
 

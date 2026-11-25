@@ -230,7 +230,7 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
     if (request.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different request');
     return instantReceipt(request, pharmacyId, true);
   }
-  // After the commit: the offers go out (SMS phase 5: nothing to the patient until a doctor accepts).
+  // After the commit: the offers go out. No SMS to the patient until a doctor accepts (§27.6.1).
   await svc.notifyOffer(request);
   return instantReceipt(request, pharmacyId, false);
 }

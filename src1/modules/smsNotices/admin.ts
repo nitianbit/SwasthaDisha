@@ -19,6 +19,7 @@ import { dltText, FIRST_WAVE, sendable, SMS_MESSAGES, type SmsMessage } from '@/
  *   last 24 hours by state. Booleans and counts only, never a secret or a phone number.
  * - `POST /test { message, lang, phone }`: one text with sample values, now, even while that pair's switch is off (to
  *   check a registered template before turning it on). Recorded as an `admin_test` row (no phone); 20 an hour per admin.
+ * - r31 (5b): `GET /?bookingKind&bookingId`: that booking's notices (codes and times only, never a phone or a text).
  */
 const SAMPLE: Record<string, string> = { name: 'Rina', service: 'video consultation', date: '01-12-2026', time: '10:30', place: 'Jansetu Pharmacy',
   ref: 'ABCD2345', token: 'ABCD2345-ABCDEFGHIJKLMNOPQRST', what: 'cancelled', code: '123456' };
@@ -72,6 +73,17 @@ async function testSend(adminId: string, input: { message: SmsMessage; lang: str
   return r.ok ? { ok: true } : { ok: false, code: r.code };
 }
 
+/** r31: one booking's notices, oldest first (§27.5.7). */
+async function bookingNotices(q: { bookingKind: string; bookingId: string }) {
+  const rows = await SmsNoticeModel.find({ bookingKind: q.bookingKind, bookingId: q.bookingId.toLowerCase() }).sort({ createdAt: 1, _id: 1 }).lean();
+  return rows.map((r) => ({ event: r.event, version: r.version, state: r.state, message: r.message ?? null, lang: r.lang ?? null, attempts: r.attempts,
+    reason: r.reason ?? null, dueAt: r.dueAt, sentAt: r.sentAt ?? null, createdAt: r.createdAt }));
+}
+const listSchema = Joi.object({
+  bookingKind: Joi.string().valid('booking', 'lab_booking').required(),
+  bookingId: Joi.string().trim().hex().length(24).required(),
+});
+
 const testSchema = Joi.object({
   message: Joi.string().valid(...SMS_MESSAGES).required(),
   lang: Joi.string().trim().lowercase().pattern(/^[a-z]{2,3}$/).required(),
@@ -81,5 +93,7 @@ const testSchema = Joi.object({
 export const smsAdminRouter = Router();
 smsAdminRouter.use(requireAdmin);
 smsAdminRouter.get('/summary', catchAsync(async (_req: AuthRequest, res: Response) => send(res, await summary())));
+smsAdminRouter.get('/', validate(listSchema, 'query'), catchAsync(async (req: AuthRequest, res: Response) =>
+  send(res, await bookingNotices(req.query as { bookingKind: string; bookingId: string }))));
 smsAdminRouter.post('/test', validate(testSchema), catchAsync(async (req: AuthRequest, res: Response) =>
   send(res, await testSend(String(req.user?._id), req.body))));

@@ -33,6 +33,7 @@ import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { auditIn, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 import { bookerNoticeUserId } from '@/modules/assisted/bookers';
+import { smsCancelled, smsMoved, smsReportReady } from '@/modules/smsNotices/events';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
 
@@ -613,13 +614,13 @@ export class LabBookingService {
     if (isDeskRow(after)) {
       await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: 'Your lab booking was cancelled. Nothing was paid through Jansetu.',
         bookingId: id, key: `plb:${id}:cancelled` });
-      // L12: the desk member who booked it is told (in-app, no health details). SMS phase 5: none to the lab.
+      // L12: the desk member who booked it is told (in-app, no health details). No SMS: the patient cancelled in the app.
       await this.tellDeskMember(after, 'Cancelled by the patient', `The patient cancelled the desk booking of ${shownSlot(after)}.`, `labdesk:${id}:cancelled:member`);
       return { booking: customerView(after), refunded: 0 };
     }
     if (isAssisted(after)) {
       // r11 (decision 4): the patient cancelled a partner-paid booking; the refund went to the partner, which is told.
-      // SMS phase 5: "Lab test Ref <ref> cancelled; the refund goes to <partner>"
+      // No SMS: the patient cancelled in the app (§27.6.1).
       await kickCardRefunds(id);
       await this.notify({ userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `Cancelled. The refund goes to ${after.assisted!.bookedBy.name}, who paid for this booking.`, bookingId: id, key: `plb:${id}:cancelled` });
@@ -652,15 +653,16 @@ export class LabBookingService {
       return this.cancelIn(b, records, { reason: 'lab_reject', note, actor: { kind: 'partner', actor } }, s, now);
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    // Phase 5b: the patient's SMS (partner-made and desk rows; the helper leaves the others out).
+    await smsCancelled('lab_booking', after);
     if (isDeskRow(after)) {
-      // r12: a desk row refunds nothing through Jansetu (paid at the lab). SMS phase 5: "The lab cancelled your lab test"
+      // r12: a desk row refunds nothing through Jansetu (paid at the lab).
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking', message: `${note}.`,
         bookingId: id, key: `plb:${id}:cancelled` });
       return { booking: partnerView(after), refunded };
     }
     if (isAssisted(after)) {
       // r11 (L8): the partner that paid is refunded in full; the patient is told without the wallet line.
-      // SMS phase 5: "The lab could not take lab test Ref <ref>"
       await kickCardRefunds(id);
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking',
         message: `${note}. ${after.assisted!.bookedBy.name} has been refunded.`, bookingId: id, key: `plb:${id}:cancelled` });
@@ -715,6 +717,7 @@ export class LabBookingService {
       return 0;
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    await smsCancelled('lab_booking', after);
     if (isAssisted(after)) {
       await kickCardRefunds(id);
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: `${note}.`, bookingId: id,
@@ -765,7 +768,7 @@ export class LabBookingService {
       bookingId: id, key: `plb:${id}:reschedule:${after.reschedule.version}` });
     if (isAssisted(after)) {
       // r11 (§24.4.4, L7): the booker may accept the new time for the patient, or cancel for a refund to its wallet.
-      // SMS phase 5: "The lab proposed a new time for lab test Ref <ref>: <date time>"
+      // No SMS for a proposal: nothing has changed yet; it goes once the booker accepts it (§27.6.1).
       await tellBooker(after, { type: 'general', title: 'New time proposed',
         message: `The lab proposed a new time for booking Ref ${after.assisted!.shortRef}: ${shownSlot(after)}. Accept it or cancel.`,
         key: `assisted:lab:${id}:reschedule:${after.reschedule.version}:booker` });
@@ -782,6 +785,7 @@ export class LabBookingService {
     const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }, bookingId, version, async (b, s) => {
       if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.reschedule_accepted', { version: Number(version) }, s);
     });
+    // No SMS: the patient accepted in the app (§27.6.1).
     if (isAssisted(updated)) {
       await tellBooker(updated, { type: 'general', title: 'The patient accepted the new time',
         message: `The patient accepted the new time for lab booking Ref ${updated.assisted!.shortRef}: ${shownSlot(updated)}.`,
@@ -848,10 +852,10 @@ export class LabBookingService {
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     // r14 (C7): a card booking cancelled before its payment was never announced to the patient; nobody is told.
     if (!out.alreadyCancelled && !isUnpaidCardLab(after)) {
-      // SMS phase 5: "Lab test Ref <ref> on <date> was cancelled by <partner>"
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `The lab test on ${shownSlot(after)} (Ref ${after.assisted?.shortRef}) was cancelled.${out.refunded > 0 ? ` ${after.assisted?.bookedBy.name} has been refunded.` : ''}`,
         bookingId: id, key: `plb:${id}:cancelled` });
+      await smsCancelled('lab_booking', after);
     }
     return { booking: after, refunded: out.refunded, alreadyCancelled: out.alreadyCancelled };
   }
@@ -876,9 +880,9 @@ export class LabBookingService {
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     if (!out.alreadyCancelled) {
-      // SMS phase 5: "Your lab test at <lab> on <date time> was cancelled"
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `Your lab booking of ${shownSlot(after)} was cancelled by the lab.`, bookingId: id, key: `plb:${id}:cancelled` });
+      await smsCancelled('lab_booking', after);
     }
     return { booking: (await withDeskBills(actor.partnerId, [after], [partnerView(after)]))[0]!, alreadyCancelled: out.alreadyCancelled };
   }
@@ -961,6 +965,7 @@ export class LabBookingService {
     if (!replayed) {
       await this.notify({ userId: after.userId, type: 'general', title: 'Your missed lab slot has a new time',
         message: `New time: ${after.slot.date} ${after.slot.startTime}.`, bookingId: id, key: `plb:${id}:no_show_rescheduled` });
+      await smsMoved('lab_booking', after);
     }
     return { ...partnerView(after), replayed };
   }
@@ -1185,12 +1190,14 @@ export class LabBookingService {
       });
       await this.notify({ userId: after.userId, type: 'general', title: 'Your lab report is ready',
         message: 'Open the app to view your report.', bookingId: id, key: `plb:${id}:report:${path}` });
-      if (isAssisted(after) && (before.report?.releases ?? []).length === 0) {
+      const firstRelease = (before.report?.releases ?? []).length === 0;
+      if (isAssisted(after) && firstRelease) {
         // r11 (L4): the booker's "report ready" badge, no content; one per booking (first release).
-        // SMS phase 5: "Lab report ready, Ref <ref>"
         await tellBooker(after, { type: 'general', title: 'Lab report ready', message: `Lab report ready, Ref ${after.assisted!.shortRef}.`,
           key: `assisted:lab:${id}:report_ready:booker` });
       }
+      // Phase 5b: the patient's SMS on the first release (partner-made and desk rows).
+      if (firstRelease) await smsReportReady(after);
     }
     await grantFiles(readerOf(actor), [path], 'partner_lab_report', { model: 'PartnerLabBooking', resourceId: id, field: 'report.releasedFiles' });
     return partnerView(after);

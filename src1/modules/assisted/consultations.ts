@@ -33,6 +33,7 @@ import {
 } from '@/modules/assisted/patient';
 
 import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
+import { smsBooked } from '@/modules/smsNotices/events';
 
 /**
  * Assisted booking phase 1a (design §6.2–§6.4, §7.1, §17): a PHARMACY books a doctor consultation for a walk-in patient
@@ -352,6 +353,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
   await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
   await sendAssistedNotices(await bookedNotices(withMeet));
+  await smsBooked('booking', withMeet);
   const fresh = await BookingModel.findById(booking._id).lean() as IBooking | null;
   return assistedReceipt(fresh ?? withMeet, false, customer.created);
 }
