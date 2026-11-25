@@ -34,7 +34,8 @@ export async function enqueueSms(n: { bookingKind: Exclude<SmsBookingKind, 'admi
  */
 export type SmsValues = Record<string, string> | ((lang: string) => Record<string, string>);
 export type SmsComposition = { userId: string; lang: string; messages: SmsMessage[]; values: SmsValues };
-export type SmsComposer = (row: ISmsNotice, now: Date) => Promise<SmsComposition | { skip: string }>;
+/** r34b: `{ later }` = not now (a reminder in the quiet hours): the row waits until then, without using an attempt. */
+export type SmsComposer = (row: ISmsNotice, now: Date) => Promise<SmsComposition | { skip: string } | { later: Date }>;
 const composers = new Map<SmsEvent, SmsComposer>();
 export function setSmsComposer(event: SmsEvent, c?: SmsComposer): void {
   if (c) composers.set(event, c); else composers.delete(event);

@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import SlotModel from '@/modules/slots/model';
 import PharmacyModel from '@/modules/pharmacies/model';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 
@@ -33,6 +34,28 @@ export function appointmentIntervalOf(b: Row, slot?: SlotTimes | null): { start:
   const start = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime })?.at;
   if (!start) return null;
   return { start, end: new Date(start.getTime() + DEFAULT_CONSULTATION_MS) };
+}
+
+/** §6.6: the Join call opens 10 minutes before the appointment (the treating window opens with it, §25.9.1). */
+export const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
+
+/**
+ * The Join window of a consultation: the partner's device (booker view, phase 1a, r17) and the SMS link (5d, §27.8.3). A
+ * scheduled one from its start − 10 min to its end; an instant one from its acceptance − 10 min to the end of the
+ * doctor's held interval, `heldEnd` (the acceptance + CONSULT_MS, moved by every extension). Both ends inclusive.
+ */
+export function joinWindowOf(b: Row, slot?: SlotTimes | null, heldEnd?: Date | null): { opensAt: Date; closesAt: Date } | null {
+  const interval = b.bookingKind === 'instant' ? (heldEnd && b.createdAt ? { start: new Date(b.createdAt), end: heldEnd } : null) : appointmentIntervalOf(b, slot);
+  return interval ? { opensAt: new Date(interval.start.getTime() - JOIN_OPENS_BEFORE_MS), closesAt: interval.end } : null;
+}
+export const joinOpenAt = (w: { opensAt: Date; closesAt: Date } | null, now: Date) =>
+  !!w && now.getTime() >= w.opensAt.getTime() && now.getTime() <= w.closesAt.getTime();
+
+/** The end of the doctor's held interval of each instant consultation (r17: extensions included), by booking id. */
+export async function instantHeldEnds(bookingIds: string[]): Promise<Map<string, Date>> {
+  const ids = bookingIds.map((x) => String(x).toLowerCase());
+  const rows = ids.length ? await DoctorReservationModel.find({ kind: 'instant', refId: { $in: ids } }).select({ refId: 1, endTime: 1 }).lean() : [];
+  return new Map(rows.map((x) => [String(x.refId).toLowerCase(), new Date(x.endTime)]));
 }
 
 /**

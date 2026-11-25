@@ -23,8 +23,14 @@ export const smsFlags = {
   },
   /** SMS_NOTICES_FROM: the DLT header of notices; empty = SMS_FROM. */
   noticesFrom: () => text('SMS_NOTICES_FROM'),
-  /** SMS_JOIN_LINK_BASE_URL (https only): the fixed address part of the link templates (round 5d). */
-  joinBase: () => (/^https:\/\/\S+$/.test(text('SMS_JOIN_LINK_BASE_URL')) ? text('SMS_JOIN_LINK_BASE_URL').replace(/\/+$/, '') : ''),
+  /**
+   * SMS_JOIN_LINK_BASE_URL: the fixed address part of the link templates (round 5d), https and ending in `/j` (the route);
+   * anything else counts as unset (the plain texts are sent).
+   */
+  joinBase: () => {
+    const v = text('SMS_JOIN_LINK_BASE_URL').replace(/\/+$/, '');
+    return /^https:\/\/\S+\/j$/.test(v) ? v : '';
+  },
   /** r34 (§27.7): SMS_VISIT_REMINDER_MINUTES_BEFORE, the reminder's lead time (30–1440, default 120, SM14). */
   reminderMinutesBefore: () => int('SMS_VISIT_REMINDER_MINUTES_BEFORE', 120, 30, 1440),
   /** r34 (§27.8.1): JOIN_LINK_SECRET, at least 32 bytes; empty = no join links (the `_LINK` texts are not used, /j/ shows the page). */

@@ -35,6 +35,9 @@ import { drainSmsOnce } from '@/modules/smsNotices/drain';
 import { setSmsProvider } from '@/modules/smsNotices/provider';
 import { registerSmsComposers, reminderDueAt, smsBooked, smsCancelled, smsMoved } from '@/modules/smsNotices/events';
 import { joinTokenOf, joinUrlFor } from '@/modules/smsNotices/joinLink';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
+import { OtpThrottleModel } from '@/modules/otp/model/throttle';
+import { CONSULT_MS } from '@/modules/doctors/services/instant';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r34_phase5cd_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -145,6 +148,15 @@ async function main() {
       assert.equal(due('08:59'), `${dayBefore} 20:00`, 'due 06:59 is quiet');
       assert.equal(due('22:59'), `${day} 20:59`);
       // SMS_VISIT_REMINDER_MINUTES_BEFORE: 30–1440, else 120.
+      // r34b: when the 20:00 of the night rule is under 60 minutes away, 07:00 on the visit's day if it is still an hour
+      // before the visit (and an hour from now); else none.
+      const at = (ymd: string, hm: string, start: string, sday = day) => { const d = reminderDueAt(istAt(sday, start), istAt(ymd, hm)); return d ? `${istYmd(d)} ${hhmm(d)}` : null; };
+      assert.equal(at(dayBefore, '19:30', '08:30'), `${day} 07:00`);
+      assert.equal(at(dayBefore, '18:30', '08:30'), `${dayBefore} 20:00`, '20:00 still an hour away');
+      assert.equal(at(dayBefore, '19:30', '07:30'), null, '07:00 is under an hour before the visit');
+      assert.equal(at(dayBefore, '19:30', '06:00'), null);
+      assert.equal(at(day, '19:30', '23:30'), null, 'the visit day\'s 07:00 has passed');
+      assert.equal(at(day, '06:30', '08:30'), null, '07:00 is under an hour from now');
       process.env.SMS_VISIT_REMINDER_MINUTES_BEFORE = '60';
       try { assert.equal(due('10:00'), `${day} 09:00`); } finally { delete process.env.SMS_VISIT_REMINDER_MINUTES_BEFORE; }
       process.env.SMS_VISIT_REMINDER_MINUTES_BEFORE = '5';
@@ -264,6 +276,30 @@ async function main() {
       }
       process.env.JOIN_LINK_SECRET = 'too-short-secret';
       try { assert.equal(joinTokenOf(await doc(a)), null, 'a secret under 32 bytes is no secret'); } finally { smsOn(); }
+      // r34b: a link address that does not end in /j is no address: the plain texts.
+      const c = await consult(istAt(day, '18:45'));
+      process.env.SMS_JOIN_LINK_BASE_URL = 'https://app.jansetu.test/join';
+      try {
+        await smsBooked('booking', await doc(c));
+        const out = await drain(istAt(day, '16:45'));
+        assert.deepEqual(out.sent.filter((x) => x.text.includes('18:45')).map((x) => x.templateId).sort(), [T.BOOKED, T.REMINDER].sort());
+      } finally { smsOn(); }
+    });
+
+    await check('quiet hours at send: a reminder due in the night waits for 07:00 (no attempt used) if that is an hour before the visit, else it is skipped "quiet"', async () => {
+      const ok = await consult(istAt(day, '10:15'));
+      const tight = await consult(istAt(day, '07:30'), { status: 'confirmed' });
+      for (const id of [ok, tight]) await smsBooked('booking', await doc(id));
+      // A backlog: both rows came due before the night (a drain that was down).
+      await SmsNoticeModel.updateMany({ bookingId: { $in: [ok, tight] }, event: 'reminder' }, { $set: { dueAt: istAt(dayBefore, '19:00') } });
+      const night = await drain(istAt(dayBefore, '22:30'));
+      assert.ok(!night.sent.some((x) => x.text.startsWith('Jansetu reminder')), 'nothing sent in the night');
+      const [r1] = await reminderOf(ok); const [r2] = await reminderOf(tight);
+      assert.deepEqual([r1.state, new Date(r1.dueAt).getTime(), r1.attempts], ['queued', istAt(day, '07:00').getTime(), 0]);
+      assert.deepEqual([r2.state, r2.reason], ['skipped', 'quiet']);
+      const morning = await drain(istAt(day, '07:00'));
+      assert.ok(morning.sent.some((x) => x.text.startsWith('Jansetu reminder') && x.text.includes('at 10:15')));
+      assert.equal((await reminderOf(ok))[0].state, 'sent');
     });
 
     await check('switch off: smsBooked and smsMoved queue nothing (no reminder)', async () => {
@@ -336,7 +372,7 @@ async function main() {
       assert.equal((await hitJ(tok)).status, 302);
     });
 
-    await check('/j/: never for the partner device, a call, an unpaid or disputed booking, an ineligible doctor, a Meet link not active or not Google; an instant one from acceptance to +60 min or its last extension', async () => {
+    await check('/j/: never for the partner device, a call, an unpaid or disputed booking, an ineligible doctor, a Meet link not active or not Google; an instant one inside the doctor\'s held interval', async () => {
       const now = () => new Date(Math.floor(Date.now() / MIN) * MIN + 2 * MIN);
       const cases: [string, Record<string, unknown>, Record<string, unknown>][] = [
         ['partner device', {}, { join: { on: 'partner_device', linkVersion: 1 } }],
@@ -351,15 +387,19 @@ async function main() {
         const id = await consult(now(), extra, assisted);
         assert.equal((await hitJ(joinTokenOf(await doc(id))!)).status, 200, why);
       }
-      const accepted = new Date(Date.now() - 50 * MIN);
+      // r34b: an instant consultation follows the partner's device: from its acceptance to the end of the doctor's held
+      // interval (acceptance + CONSULT_MS, moved by each extension).
+      const accepted = new Date(Date.now() - 20 * MIN);
       const inst = await consult(accepted, { bookingKind: 'instant', instantRequestId: oid(), createdAt: accepted });
       const it = joinTokenOf(await doc(inst))!;
-      assert.equal((await hitJ(it)).status, 302, 'within 60 minutes of acceptance');
-      await BookingModel.collection.updateOne({ _id: new Types.ObjectId(inst) }, { $set: { createdAt: new Date(Date.now() - 70 * MIN) } });
-      assert.equal((await hitJ(it)).status, 200, 'after 60 minutes');
-      await BookingModel.updateOne({ _id: inst }, { $set: { instantExtensions: [{ minutes: 20, endTime: new Date(Date.now() + 5 * MIN), at: new Date() }] } });
-      assert.equal((await hitJ(it)).status, 302, 'extended');
-      assert.equal(await joinUrlFor(it, new Date(Date.now() + 6 * MIN)), null, 'after the extension');
+      assert.equal((await hitJ(it)).status, 200, 'no held interval: closed');
+      await DoctorReservationModel.collection.insertOne({ doctorId: D, kind: 'instant', refId: inst, startTime: accepted,
+        endTime: new Date(accepted.getTime() + CONSULT_MS), isActive: true } as never);
+      assert.equal((await hitJ(it)).status, 302, 'inside the held interval');
+      assert.equal(await joinUrlFor(it, new Date(accepted.getTime() + CONSULT_MS)), MEET, 'its end is inclusive');
+      assert.equal(await joinUrlFor(it, new Date(accepted.getTime() + CONSULT_MS + 1)), null, 'after it');
+      await DoctorReservationModel.collection.updateOne({ refId: inst }, { $set: { endTime: new Date(accepted.getTime() + CONSULT_MS + 20 * MIN) } });
+      assert.equal(await joinUrlFor(it, new Date(accepted.getTime() + CONSULT_MS + 10 * MIN)), MEET, 'extended');
     });
 
     await check('/j/: the 31st request in a minute from one IP → 429 with the page and Retry-After; another IP is not affected; a failing counter store → 503', async () => {
@@ -384,12 +424,32 @@ async function main() {
       } finally { await db.command({ collMod: 'otp_throttles', validator: {}, validationLevel: 'off' }); }
     });
 
-    await check('switch off: without JOIN_LINK_SECRET a valid token gets the page', async () => {
+    await check('switch off: without JOIN_LINK_SECRET /j/ answers exactly as before 5d (the app\'s 404) and counts nothing; a database error shows the page', async () => {
       const id = await consult(new Date(Math.floor(Date.now() / MIN) * MIN + 5 * MIN));
       const t = joinTokenOf(await doc(id))!;
       assert.equal((await hitJ(t)).status, 302);
+      const unknown = await fetch(`${base}/no-such-route`);
+      const before = { status: unknown.status, body: await unknown.text() };
       delete process.env.JOIN_LINK_SECRET;
-      try { assert.equal((await hitJ(t)).status, 200); } finally { smsOn(); }
+      try {
+        const counters = await OtpThrottleModel.countDocuments();
+        for (const method of ['GET', 'HEAD']) {
+          const r = await hitJ(t, { method });
+          assert.equal(r.status, 404, method);
+          if (method === 'GET') assert.equal(r.body, before.body);
+          assert.equal(r.headers.get('x-robots-tag'), null);
+        }
+        assert.equal(await OtpThrottleModel.countDocuments(), counters, 'no throttle write');
+      } finally { smsOn(); }
+      // A database error while reading the booking: the page, logged as `error`.
+      const realFind = BookingModel.findOne;
+      (BookingModel as any).findOne = () => ({ select: () => ({ lean: () => Promise.reject(new Error('db down')) }) });
+      const mark = logged.length;
+      try {
+        const r = await hitJ(t);
+        assert.deepEqual([r.status, r.body.includes('This Jansetu link is not open now')], [200, true]);
+      } finally { (BookingModel as any).findOne = realFind; }
+      assert.ok(logged.slice(mark).some((l) => l.includes('"outcome":"error"')));
     });
 
     await check('logs: the request logger prints /j/:token (any case), the route logs its outcome only; no token, phone or text in any log line or outbox row', async () => {

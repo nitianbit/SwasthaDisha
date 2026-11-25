@@ -10,7 +10,7 @@ import { isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { isDeskRow, isWalkIn, partnerOriginOf } from '@/modules/assisted/deskViews';
 import { IST_OFFSET_MS, istDateIso, istTimeHhmm } from '@/modules/common/utils/istDate';
 import { SmsNoticeModel, type ISmsNotice, type SmsEvent } from '@/modules/smsNotices/model';
-import { enqueueSms, setSmsComposer, type SmsComposition } from '@/modules/smsNotices/outbox';
+import { enqueueSms, setSmsComposer, type SmsComposer } from '@/modules/smsNotices/outbox';
 import { smsFlags } from '@/modules/smsNotices/flags';
 import { wordsFor, type SmsMessage, type SmsWords } from '@/modules/smsNotices/templates';
 import { linkTokenFor } from '@/modules/smsNotices/joinLink';
@@ -95,31 +95,46 @@ function queue(kind: Kind, b: Row | null | undefined, event: NoticeEvent, versio
   return p;
 }
 
+/** India-time hour of `t`, and `t`'s India day at `hour`:00 (`days` later). */
+const istHourOf = (t: number) => Math.floor((((t + IST_OFFSET_MS) % DAY_MS) + DAY_MS) % DAY_MS / (60 * MIN_MS));
+const istDayAt = (t: number, hour: number, days = 0) => t - ((((t + IST_OFFSET_MS) % DAY_MS) + DAY_MS) % DAY_MS) + days * DAY_MS + hour * 60 * MIN_MS;
+/** No reminder SMS from 21:00 to before 07:00 India time (SM14). */
+const quietHour = (t: number) => istHourOf(t) >= 21 || istHourOf(t) < 7;
+const HOUR_MS = 60 * MIN_MS;
+
 /**
  * r34 (§27.7, SM14): when a visit's reminder is due — SMS_VISIT_REMINDER_MINUTES_BEFORE (120) before the start; a due
- * time in the quiet hours (21:00 to 07:00 India time) moves back to the 20:00 before it; none (null) when that is less
- * than 60 minutes from now (the "booked" SMS has just gone).
+ * time in the quiet hours (21:00 to before 07:00 India time) moves back to the 20:00 before it. A due time under 60
+ * minutes from now gives no reminder (the "booked" SMS has just gone), except (r34b, coordinator): when the 20:00 of the
+ * night rule is under 60 minutes away, 07:00 on the visit's day is used if it is at least 60 minutes from now and at
+ * least 60 minutes before the visit.
  */
 export function reminderDueAt(start: Date, now: Date): Date | null {
+  const soon = now.getTime() + HOUR_MS;
   let due = start.getTime() - smsFlags.reminderMinutesBefore() * MIN_MS;
-  const sinceMidnight = (((due + IST_OFFSET_MS) % DAY_MS) + DAY_MS) % DAY_MS;
-  const hour = Math.floor(sinceMidnight / (60 * MIN_MS));
-  if (hour >= 21 || hour < 7) due = due - sinceMidnight - (hour >= 21 ? 0 : DAY_MS) + 20 * 60 * MIN_MS;
-  return due - now.getTime() < 60 * MIN_MS ? null : new Date(due);
+  if (quietHour(due)) {
+    due = istDayAt(due, 20, istHourOf(due) >= 21 ? 0 : -1);
+    if (due < soon) {
+      const morning = istDayAt(start.getTime(), 7);
+      return morning >= soon && start.getTime() - morning >= HOUR_MS ? new Date(morning) : null;
+    }
+  }
+  return due < soon ? null : new Date(due);
 }
 
 /**
  * r34 (§27.7): one reminder per visit, queued with "booked" and with every move (version = the start in epoch minutes,
  * so a move queues a new one and the old one is stale when due). Never for an instant consultation or a desk walk-in.
+ * r34b: also on its own where a new time needs no "moved" SMS (the patient accepted a lab's new time in the app).
  */
-const queueReminder = (kind: Kind, b: Row | null | undefined) => (b?.bookingKind === 'instant' ? undefined : queue(kind, b, 'reminder', async () => {
+export const smsReminder = (kind: Kind, b: Row | null | undefined) => (b?.bookingKind === 'instant' ? Promise.resolve() : queue(kind, b, 'reminder', async () => {
   const start = await startOf(kind, b!);
   const dueAt = start ? reminderDueAt(start, new Date()) : null;
   return start && dueAt ? { version: minutesOf(start), dueAt } : null;
 }));
 
 /** Booked and paid (a wallet create, a card confirmation, an instant acceptance, a desk booking with a slot); r34: its reminder. */
-export const smsBooked = (kind: Kind, b: Row | null | undefined) => Promise.all([queue(kind, b, 'booked', () => '1'), queueReminder(kind, b)]).then(() => undefined);
+export const smsBooked = (kind: Kind, b: Row | null | undefined) => Promise.all([queue(kind, b, 'booked', () => '1'), smsReminder(kind, b)]).then(() => undefined);
 /** The doctor's first prescription save (the caller checks "first"). */
 export const smsRxReady = (b: Row | null | undefined) => queue('booking', b, 'rx_ready', () => '1');
 /** The lab's first report release (the caller checks "first"). */
@@ -135,7 +150,7 @@ export const smsMoved = (kind: Kind, b: Row | null | undefined) => Promise.all([
     const start = await startOf(kind, b!);
     return start ? moveVersionOf(start, b!) : null;
   }),
-  queueReminder(kind, b),
+  smsReminder(kind, b),
 ]).then(() => undefined);
 /**
  * The admin account move (SM17): the previous holder hears "moved to another number"; the new holder is told it is
@@ -228,7 +243,7 @@ const MESSAGE: Record<NoticeEvent, SmsMessage> = {
 const LINK: Partial<Record<NoticeEvent, SmsMessage>> = { booked: 'BOOKED_LINK', reminder: 'REMINDER_LINK' };
 
 /** The one composer: every event, both booking kinds. */
-async function compose(row: ISmsNotice, now: Date): Promise<SmsComposition | { skip: string }> {
+async function compose(row: ISmsNotice, now: Date): ReturnType<SmsComposer> {
   const kind = row.bookingKind as Kind;
   const event = row.event as NoticeEvent;
   const b = (kind === 'booking' ? await BookingModel.findById(row.bookingId).lean() : await PartnerLabBookingModel.findById(row.bookingId).lean()) as Row | null;
@@ -237,6 +252,12 @@ async function compose(row: ISmsNotice, now: Date): Promise<SmsComposition | { s
   const start = o ? await startOf(kind, b) : null;
   if (!o || !await stillTrue(kind, b, o, row, start, now)) return { skip: 'stale' };
   if (event !== 'moved_off' && o.disputed?.state === 'open') return { skip: 'disputed' };
+  // r34b: a reminder that comes due in the quiet hours (a late drain, a retry) waits for 07:00 if that is still at
+  // least an hour before the visit; otherwise it is not sent.
+  if (event === 'reminder' && quietHour(now.getTime())) {
+    const morning = istDayAt(now.getTime(), 7, istHourOf(now.getTime()) >= 21 ? 1 : 0);
+    return start!.getTime() - morning >= HOUR_MS ? { later: new Date(morning) } : { skip: 'quiet' };
+  }
   const [name, place] = await Promise.all([patientName(kind, b, row), placeOf(kind, b, event)]);
   const mode = kind === 'booking' ? b.consultationMode : b.visitMode;
   const token = LINK[event] ? linkTokenFor(kind, b) : null;

@@ -91,9 +91,12 @@ export const limits = {
   ipVerify: (): Window[] => [{ seconds: 3600, max: CONFIG.OTP_IP_VERIFY_PER_HOUR }],
 };
 
-/** Per-address limit for public OTP routes; a no-op unless OTP_IP_LIMITS=true. */
-export async function hitClient(kind: 'ip-send' | 'ip-verify', req: Request): Promise<void> {
-  if (!CONFIG.OTP_IP_LIMITS) return;
+/**
+ * Per-address limit for public routes. The OTP routes (`ip-send`, `ip-verify`) are a no-op unless OTP_IP_LIMITS=true;
+ * r34: another public route passes its own kind and windows and `always` (its limit does not depend on that switch).
+ */
+export async function hitClient(kind: string, req: Request, windows?: readonly Window[], opts: { always?: boolean } = {}): Promise<void> {
+  if (!opts.always && !CONFIG.OTP_IP_LIMITS) return;
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-  await hit(kind, throttleId(`ip|${ip}`), kind === 'ip-send' ? limits.ipSend() : limits.ipVerify());
+  await hit(kind, throttleId(`ip|${ip}`), windows ?? (kind === 'ip-send' ? limits.ipSend() : limits.ipVerify()));
 }

@@ -76,7 +76,8 @@ import { resetIndexChecks } from '@/modules/common/utils/requiredIndex';
 import { SmsNoticeModel } from '@/modules/smsNotices/model';
 import { drainSmsOnce } from '@/modules/smsNotices/drain';
 import { setSmsProvider } from '@/modules/smsNotices/provider';
-import { registerSmsComposers, smsBooked, smsHooksSettled } from '@/modules/smsNotices/events';
+import { registerSmsComposers, reminderDueAt, smsBooked, smsHooksSettled } from '@/modules/smsNotices/events';
+import { appointmentIntervalOf, slotsOf } from '@/modules/assisted/rxAccess';
 import type { IMember, PartnerPermission } from '@/modules/partners/types';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r31_phase5b_check?directConnection=true';
@@ -314,8 +315,25 @@ async function main() {
 
     // ── The outbox and the drain ──
     // The hooks are fire and forget: every read of the outbox first waits for the enqueues still running.
-    const rowsOf = async (id: string) => { await smsHooksSettled();
+    const allRows = async (id: string) => { await smsHooksSettled();
       return await SmsNoticeModel.find({ bookingId: String(id).toLowerCase() }).sort({ createdAt: 1, _id: 1 }).lean() as any[]; };
+    // r34b: the visit reminder (5c) is queued at the same moment as "booked" or "moved", so its place among a booking's
+    // notices is not fixed: `rowsOf` lists the notices, and every create and move path checks its reminders with
+    // `reminders` (each version with its due time, §27.7).
+    const rowsOf = async (id: string) => (await allRows(id)).filter((r) => r.event !== 'reminder');
+    const reminders = async (id: string) => {
+      const rows = (await allRows(id)).filter((r) => r.event === 'reminder');
+      for (const r of rows) {
+        assert.equal(new Date(r.dueAt).getTime(), reminderDueAt(new Date(Number(r.version) * MIN), new Date(r.createdAt))?.getTime(), `reminder ${r.version}: its due time`);
+      }
+      return rows.map((r) => r.version);
+    };
+    /** The booking's start now, in epoch minutes, as the app reads it (the consultation's slot; the lab row's slot). */
+    const startMin = async (kind: 'booking' | 'lab_booking', id: string) => {
+      const b = (kind === 'booking' ? await BookingModel.findById(id).lean() : await PartnerLabBookingModel.findById(id).lean()) as any;
+      const start = kind === 'lab_booking' ? new Date(b.slot.startsAt) : appointmentIntervalOf(b, (await slotsOf([b])).get(String(b.slotId)))!.start;
+      return String(Math.floor(start.getTime() / MIN));
+    };
     const events = async (id: string) => (await rowsOf(id)).map((r) => `${r.event}:${r.version}`);
     /** One drain tick; the messages the gateway received in it. */
     const drain = async (now?: Date) => { await smsHooksSettled(); const before = sms.sent.length; const out = await drainSmsOnce(now); return { out, sent: sms.sent.slice(before) }; };
@@ -337,6 +355,7 @@ async function main() {
       const r = (await expect('P', 'POST', `${PA}/consultations`, 201, body)).json.data;
       const id = r.booking._id;
       assert.deepEqual(await events(id), ['booked:1']);
+      assert.deepEqual(await reminders(id), [await startMin('booking', id)]);
       assert.equal((await expect('P', 'POST', `${PA}/consultations`, 200, body)).json.data.replayed, true);
       const race = consultBody(await docSlot());
       const outs = await Promise.all([1, 2, 3].map(() => call('P', 'POST', `${PA}/consultations`, race)));
@@ -344,6 +363,8 @@ async function main() {
       assert.equal(raced.size, 1);
       assert.deepEqual(await events(id), ['booked:1']);
       assert.deepEqual(await events([...raced][0] as string), ['booked:1']);
+      assert.deepEqual(await reminders(id), [await startMin('booking', id)], 'a replay adds no reminder');
+      assert.deepEqual(await reminders([...raced][0] as string), [await startMin('booking', [...raced][0] as string)], 'racing creates: one reminder');
       const { sent } = await drain();
       record(sent);
       assert.equal(sent.length, 2);
@@ -361,11 +382,13 @@ async function main() {
       const r = await consultP({ paymentMethod: 'razorpay' });
       const id = r.booking._id;
       assert.deepEqual(await events(id), []);
+      assert.deepEqual(await reminders(id), [], 'none while unpaid');
       const v = capture(r);
       await Promise.all([call('P', 'POST', '/api/v1/payments/verify', v), call('P', 'POST', '/api/v1/payments/reconcile', { paymentTransactionId: v.paymentTransactionId })]);
       await call('P', 'POST', '/api/v1/payments/verify', v);
       assert.equal((await BookingModel.findById(id).lean() as any).status, 'confirmed');
       assert.deepEqual(await events(id), ['booked:1']);
+      assert.deepEqual(await reminders(id), [await startMin('booking', id)]);
       const { sent } = await drain();
       record(sent);
       assert.equal(sent.length, 1);
@@ -375,6 +398,7 @@ async function main() {
     await check('2e lab-booked consultation: one "booked" row; the place is the lab', async () => {
       const r = (await expect('LB', 'POST', `${WS}/assisted/consultations`, 201, consultBody(await docSlot(), { branchId: A, consultationMode: 'call' }))).json.data;
       assert.deepEqual(await events(r.booking._id), ['booked:1']);
+      assert.deepEqual(await reminders(r.booking._id), [await startMin('booking', r.booking._id)]);
       const { sent } = await drain();
       record(sent);
       assert.equal(sent[0]!.text, BOOKED('Rina', 'phone consultation', dmy(r.booking.bookingDate), r.booking.bookingTime, 'Metro Labs', r.booking.assisted.shortRef));
@@ -383,12 +407,15 @@ async function main() {
     await check('2a/2b pharmacy lab booking: wallet → one "booked" (a family member\'s first name; "kha" falls back to English); card → none until paid, then one', async () => {
       const w = await labP({ patient: { dependentId: depX } });
       assert.deepEqual(await events(w.booking._id), ['booked:1']);
+      assert.deepEqual(await reminders(w.booking._id), [await startMin('lab_booking', w.booking._id)]);
       const c = await labP({ paymentMethod: 'razorpay' });
       assert.deepEqual(await events(c.booking._id), []);
+      assert.deepEqual(await reminders(c.booking._id), [], 'none while unpaid');
       const v = capture(c);
       await expect('P', 'POST', '/api/v1/payments/verify', 200, v);
       await call('P', 'POST', '/api/v1/payments/verify', v);
       assert.deepEqual(await events(c.booking._id), ['booked:1']);
+      assert.deepEqual(await reminders(c.booking._id), [await startMin('lab_booking', c.booking._id)]);
       const { sent } = await drain();
       record(sent);
       assert.equal(sent.length, 2);
@@ -404,8 +431,10 @@ async function main() {
       const s = await deskBook({ slotId: await labSlot() });
       const id = s.booking._id;
       assert.deepEqual(await events(id), ['booked:1']);
+      assert.deepEqual(await reminders(id), [await startMin('lab_booking', id)]);
       const walkIn = await deskBook();
       assert.deepEqual(await events(walkIn.booking._id), []);
+      assert.deepEqual(await reminders(walkIn.booking._id), [], 'a walk-in: none');
       const { sent } = await drain();
       record(sent);
       const b = await PartnerLabBookingModel.findById(id).lean() as any;
@@ -416,6 +445,7 @@ async function main() {
     await check('3b doctor lab booking: one "booked"; the place is the lab, never the doctor', async () => {
       const r = (await expect('D', 'POST', `${ME}/lab-bookings`, 201, labBody(await labSlot()))).json.data;
       assert.deepEqual(await events(r.booking._id), ['booked:1']);
+      assert.deepEqual(await reminders(r.booking._id), [await startMin('lab_booking', r.booking._id)]);
       const { sent } = await drain();
       record(sent);
       assert.equal(sent[0]!.text, BOOKED('Rina', 'lab test', dmy(r.booking.slot.date), r.booking.slot.startTime, 'Metro Labs', r.booking.assisted.shortRef));
@@ -435,6 +465,7 @@ async function main() {
       assert.deepEqual(await events(id), ['booked:1']);
       await instantSvc.accept(D, created.request._id); // the doctor's replay
       assert.deepEqual(await events(id), ['booked:1']);
+      assert.deepEqual(await reminders(id), [], 'an instant consultation: no reminder');
       const b = await BookingModel.findById(id).lean() as any;
       const { sent } = await drain();
       record(sent);
@@ -539,6 +570,7 @@ async function main() {
       const l = await labP();
       const n = await labP();
       await drain();
+      const [cOld, lOld, nOld] = [await startMin('booking', c.booking._id), await startMin('lab_booking', l.booking._id), await startMin('lab_booking', n.booking._id)];
       const to = await docSlot();
       const moved = (await expect('P', 'POST', `${PA}/bookings/${c.booking._id}/reschedule`, 200, { slotId: to, requestKey: newKey() })).json.data.booking;
       const slot = await SlotModel.findById(to).lean() as any;
@@ -546,6 +578,7 @@ async function main() {
       const cm = (await rowsOf(c.booking._id)).map((r) => [r.event, r.event === 'moved' ? startMinutes(r.version) : r.version]);
       assert.deepEqual(cm, [['booked', '1'], ['moved', String(Math.floor(start / MIN))]]);
       assert.match((await rowsOf(c.booking._id))[1].version, /^\d+:\d{13}$/);
+      assert.deepEqual(await reminders(c.booking._id), [cOld, String(Math.floor(start / MIN))], 'the old time\'s reminder and the new one');
       // A lab proposal sends nothing; the booker's accept does.
       const ls = await labSlot();
       await expect('PATH', 'POST', `${WS}/lab-bookings/${l.booking._id}/reschedule`, 200, { slotId: ls, reason: 'Machine down' });
@@ -555,12 +588,14 @@ async function main() {
       const lStart = new Date(acc.slot.startsAt).getTime();
       assert.deepEqual((await rowsOf(l.booking._id)).map((r) => [r.event, r.event === 'moved' ? startMinutes(r.version) : r.version]),
         [['booked', '1'], ['moved', String(Math.floor(lStart / MIN))]]);
+      assert.deepEqual(await reminders(l.booking._id), [lOld, String(Math.floor(lStart / MIN))]);
       // The lab rebooks a no-show (once; its replay adds nothing).
       await PartnerLabBookingModel.updateOne({ _id: n.booking._id }, { $set: { status: 'no_show', 'lifecycle.noShowAt': new Date() }, $inc: { statusVersion: 1 } });
       const ns = await labSlot(); const key = newKey();
       await expect('PATH', 'POST', `${WS}/lab-bookings/${n.booking._id}/reschedule-no-show`, 200, { slotId: ns, requestKey: key });
       await expect('PATH', 'POST', `${WS}/lab-bookings/${n.booking._id}/reschedule-no-show`, 200, { slotId: ns, requestKey: key });
       assert.equal((await rowsOf(n.booking._id)).filter((r) => r.event === 'moved').length, 1);
+      assert.deepEqual(await reminders(n.booking._id), [nOld, await startMin('lab_booking', n.booking._id)]);
       const { sent } = await drain();
       record(sent);
       assert.equal(sent.length, 3);
@@ -588,6 +623,7 @@ async function main() {
       const c = (await expect('P', 'POST', `${PA}/consultations`, 201, consultBody(B))).json.data;
       const id = c.booking._id;
       await drain();
+      const atB = await startMin('booking', id);
       const C = await docSlot();
       const toC = (await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: C, requestKey: newKey() })).json.data.booking;
       const first = await drain();
@@ -610,6 +646,11 @@ async function main() {
       const last3 = (await rowsOf(id)).filter((r) => r.event === 'moved').slice(-3);
       assert.deepEqual(last3.map((r) => [r.state, r.reason ?? null]), [['skipped', 'stale'], ['skipped', 'stale'], ['sent', null]]);
       assert.equal(new Set((await rowsOf(id)).map((r) => r.version)).size, (await rowsOf(id)).length);
+      // One reminder per visit time: B, C, D (back to B and to C again reuse theirs).
+      const atC = String(Math.floor(Date.parse(`${toC.bookingDate.slice(0, 4)}-${toC.bookingDate.slice(4, 6)}-${toC.bookingDate.slice(6, 8)}T${toC.bookingTime}:00+05:30`) / MIN));
+      const atD = await (async () => { const sl = await SlotModel.findById(D).lean() as any;
+        return String(Math.floor(Date.parse(`${sl.date.slice(0, 4)}-${sl.date.slice(4, 6)}-${sl.date.slice(6, 8)}T${sl.startTime}:00+05:30`) / MIN)); })();
+      assert.deepEqual(await reminders(id), [atB, atC, atD]);
     });
 
     // ───────────────────────── The admin account move ─────────────────────────
@@ -639,10 +680,13 @@ async function main() {
       await drain();
       await expect('X', 'POST', `/api/v1/bookings/${c.booking._id}/cancel`, 200, {});
       await expect('X', 'POST', `/api/v1/lab-bookings/${l.booking._id}/cancel`, 200, {});
+      const pOld = await startMin('lab_booking', p.booking._id);
       await expect('PATH', 'POST', `${WS}/lab-bookings/${p.booking._id}/reschedule`, 200, { slotId: await labSlot(), reason: 'Machine down' });
       const version = (await PartnerLabBookingModel.findById(p.booking._id).lean() as any).reschedule.version;
       await expect('X', 'POST', `/api/v1/lab-bookings/${p.booking._id}/accept-reschedule`, 200, { version });
       for (const x of [c, l, p]) assert.deepEqual(await events(x.booking._id), ['booked:1'], x.booking._id);
+      // r34b: the new time the patient accepted still gets its reminder (no "moved" SMS).
+      assert.deepEqual(await reminders(p.booking._id), [pOld, await startMin('lab_booking', p.booking._id)]);
       // Unpaid card bookings, cancelled by the booker: never announced.
       const cc = await consultP({ paymentMethod: 'razorpay' }); const lc = await labP({ paymentMethod: 'razorpay' });
       await expect('P', 'POST', `${PA}/bookings/${cc.booking._id}/cancel`, 200, {});
@@ -754,10 +798,11 @@ async function main() {
       const r = await consultP();
       record((await drain()).sent);
       const list = (await expect('ADMIN', 'GET', `/api/v1/admin/sms-notices?bookingKind=booking&bookingId=${r.booking._id}`, 200)).json.data;
-      // r34: the pharmacy create also queued the visit reminder (5c), due 2 h before the slot.
-      assert.deepEqual(list.map((x: any) => [x.event, x.state]), [['booked', 'sent'], ['reminder', 'queued']]);
-      assert.deepEqual(Object.keys(list[0]).sort(), ['attempts', 'createdAt', 'dueAt', 'event', 'lang', 'message', 'reason', 'sentAt', 'state', 'version']);
-      assert.deepEqual([list[0].event, list[0].state, list[0].message], ['booked', 'sent', 'BOOKED']);
+      // r34: the pharmacy create also queued the visit reminder (5c; queued beside "booked", in either order).
+      assert.deepEqual(list.map((x: any) => `${x.event}:${x.state}`).sort(), ['booked:sent', 'reminder:queued']);
+      const booked = list.find((x: any) => x.event === 'booked');
+      assert.deepEqual(Object.keys(booked).sort(), ['attempts', 'createdAt', 'dueAt', 'event', 'lang', 'message', 'reason', 'sentAt', 'state', 'version']);
+      assert.deepEqual([booked.event, booked.state, booked.message], ['booked', 'sent', 'BOOKED']);
       await expect('ADMIN', 'GET', '/api/v1/admin/sms-notices?bookingKind=booking&bookingId=nope', 400, undefined, 'VALIDATION_ERROR');
       await expect('P', 'GET', `/api/v1/admin/sms-notices?bookingKind=booking&bookingId=${r.booking._id}`, 403);
     });

@@ -33,7 +33,7 @@ import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { auditIn, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 import { bookerNoticeUserId } from '@/modules/assisted/bookers';
-import { smsCancelled, smsMoved, smsReportReady } from '@/modules/smsNotices/events';
+import { smsCancelled, smsMoved, smsReminder, smsReportReady } from '@/modules/smsNotices/events';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
 
@@ -785,7 +785,8 @@ export class LabBookingService {
     const updated = await this.acceptRescheduleAsBooker({ userId: { $eq: userId }, $nor: [LAB_UNPAID_CARD_QUERY] }, bookingId, version, async (b, s) => {
       if (isAssisted(b)) await auditPatientIn(b, userId, 'booking.reschedule_accepted', { version: Number(version) }, s);
     });
-    // No SMS: the patient accepted in the app (§27.6.1).
+    // No "moved" SMS: the patient accepted in the app (§27.6.1). r34b: the new time still gets its reminder.
+    void smsReminder('lab_booking', updated);
     if (isAssisted(updated)) {
       await tellBooker(updated, { type: 'general', title: 'The patient accepted the new time',
         message: `The patient accepted the new time for lab booking Ref ${updated.assisted!.shortRef}: ${shownSlot(updated)}.`,
