@@ -279,6 +279,11 @@ async function main() {
           { earnedMinor: 70_000, paidMinor: 0, setOffMinor: 18_000, dueMinor: 52_000, cutsEnabled: false, payoutsEnabled: true });
         const rows = (await expect(W, 'GET', '/api/v1/pharmacy-assisted/finance/statement?kind=wallet', 200)).json.data.filter((t: any) => t.movementType === 'receivable_setoff');
         assert.deepEqual(rows.map((t: any) => [t.transactionType, t.amount, t.amountPaise, t.signedAmountPaise]).sort(), [['adjustment', 0, 12_000, 0], ['adjustment', 0, 6000, 0]].sort());
+        // r35b (WQ48): the admin's wallet read carries the owner's referral line (the set-off's maximum and switch); the
+        // pharmacy's own read is unchanged.
+        const aw = (await expect('ADMIN', 'GET', `/api/v1/pharmacy-wallet?pharmacyId=${W}`, 200)).json.data;
+        assert.deepEqual([aw.referral, aw.receivableMinor], [{ dueMinor: 52_000, payoutsEnabled: true }, 12_000]);
+        assert.equal((await expect(W, 'GET', '/api/v1/pharmacy-wallet', 200)).json.data.referral, undefined);
         await expect('ADMIN', 'POST', `/api/v1/admin/wallets/pharmacy/${oid()}/receivable/setoff-from-referral`, 404, { amountMinor: 100, requestKey: newKey() }, 'WALLET_NOT_FOUND');
       } finally { delete process.env.REFERRAL_PAYOUTS_ENABLED; }
     });
@@ -349,6 +354,8 @@ async function main() {
     });
 
     await check('4f lab /finance and doctor /me/finance add the referral and withdrawals blocks; the existing fields stay', async () => {
+      assert.deepEqual((await expect('ADMIN', 'GET', `/api/v1/admin/labs/${L}/wallet`, 200)).json.data.referral, { dueMinor: 25_000, payoutsEnabled: false }, 'r35b: the admin wallet read');
+      assert.deepEqual((await expect('ADMIN', 'GET', `/api/v1/admin/doctors/${D}/wallet`, 200)).json.data.referral, { dueMinor: 7000, payoutsEnabled: false });
       const lab = (await expect('LAB', 'GET', '/api/v1/partner-workspace/finance', 200)).json.data;
       assert.ok('balanceMinor' in lab && 'totals' in lab && 'account' in lab, 'the existing summary');
       assert.deepEqual(lab.referral, { earnedMinor: 40_000, paidMinor: 15_000, setOffMinor: 0, dueMinor: 25_000, cutsEnabled: false, payoutsEnabled: false });
@@ -390,7 +397,13 @@ async function main() {
         assert.equal((await expect('ADMIN', 'GET', '/api/v1/admin/wallet-disputes?walletKind=lab', 200)).json.data.length, 0);
         const lots = (await expect('ADMIN', 'GET', `/api/v1/admin/wallets/pharmacy/${X2}/topups-without-lot`, 200)).json.data;
         assert.deepEqual(lots.map((r: any) => [r.paymentRecordId, r.amountMinor, r.walletKind, r.ownerId]), [[lotless, 9000, 'pharmacy', X2]]);
-        assert.deepEqual(Object.keys(lots[0]).sort(), ['amountMinor', 'chargebackAt', 'creditedAt', 'ownerId', 'paidAt', 'paymentRecordId', 'razorpayPaymentId', 'walletKind']);
+        assert.deepEqual(Object.keys(lots[0]).sort(), ['amountMinor', 'chargebackAt', 'creditedAt', 'ownerId', 'paidAt', 'paymentRecordId', 'razorpayPaymentId', 'recoveredAt',
+          'walletKind']);
+        assert.equal(lots[0].recoveredAt, null);
+        // r35b (WQ48): recovered by its payment id, it stays listed with `recoveredAt` (Recover is not offered again).
+        await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${old}/recover`, 200, { reason: 'recover the old one', requestKey: newKey() });
+        const after = (await expect('ADMIN', 'GET', `/api/v1/admin/wallets/pharmacy/${X1}/topups-without-lot`, 200)).json.data;
+        assert.deepEqual(after.map((r: any) => [r.paymentRecordId, r.amountMinor, typeof r.recoveredAt]), [[old, 7000, 'string']]);
         assert.equal(await WalletTopupLotModel.countDocuments({ paymentRecordId: lotless }), 0);
         await expect('P', 'GET', '/api/v1/admin/wallet-disputes', 403);
       } finally { delete process.env.WALLET_CHARGEBACK_FLAG_ONLY; }
@@ -506,6 +519,8 @@ async function main() {
         assert.equal((await expect('WIDE', 'GET', `${LWW}/withdrawable`, 200)).json.data.destination.details, null, 'partner-wide without finance.view: the masked line only');
         assert.equal((await expect('LAB', 'GET', `${LWW}/withdrawable`, 200)).json.data.destination.details.accountName, 'Holder', 'the owner (finance.view, partner-wide)');
         const w = (await expect('LAB', 'POST', `${LWW}/withdrawals`, 201, body)).json.data.withdrawal;
+        assert.equal(w.requestedByMe, true);
+        assert.equal((await expect('STAFF', 'GET', `${LWW}/withdrawals/${w._id}`, 200)).json.data.requestedByMe, false, 'r35b: not the staff member\'s own');
         await expect('STAFF', 'POST', `${LWW}/withdrawals/${w._id}/cancel`, 403, { expectedVersion: 0 }, 'FINANCE_SCOPE_REQUIRED');
         await expect('STAFF', 'POST', `${LWW}/withdrawals/by-key/${body.requestKey}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');
         await expect('STAFF', 'POST', `${LWW}/withdrawals/by-key/${newKey()}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');
@@ -515,6 +530,9 @@ async function main() {
         const mine = { amountMinor: 50_000, requestKey: newKey(), detailsVersion: lv.version };
         const w2 = (await expect('WIDE', 'POST', `${LWW}/withdrawals`, 201, mine)).json.data.withdrawal;
         await MemberModel.updateOne({ _id: wide._id }, { $set: { branchIds: [branch._id] } });
+        const listed = (await expect('WIDE', 'GET', `${LWW}/withdrawals?state=requested`, 200)).json.data;
+        assert.deepEqual(listed.map((x: any) => [x._id, x.requestedByMe]), [[w2._id, true]]);
+        assert.equal((await expect('LAB', 'GET', `${LWW}/withdrawals/${w2._id}`, 200)).json.data.requestedByMe, false);
         await expect('WIDE', 'POST', `${LWW}/withdrawals`, 403, { ...mine, requestKey: newKey() }, 'FINANCE_SCOPE_REQUIRED');
         assert.equal((await expect('WIDE', 'POST', `${LWW}/withdrawals/by-key/${mine.requestKey}/abandon`, 200)).json.data.state, 'used');
         await expect('WIDE', 'POST', `${LWW}/withdrawals/by-key/${newKey()}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');

@@ -6586,7 +6586,9 @@ not a lab). The doctor's and lab's destination stay on their existing finance re
   walletKind, ownerId, lotId | null, amountMinor, remainingMinor | null, state, chargebackAt | null, recoveredAt | null, at
   }]`, newest first. `flagged`: recorded, nothing taken (Recover); `recovered`: taken; `blocked`: never credited.
 - `GET /api/v1/admin/wallets/:kind/:id/topups-without-lot` → `[{ paymentRecordId, walletKind, ownerId, razorpayPaymentId,
-  amountMinor, paidAt, creditedAt, chargebackAt }]` (recover one with `POST /api/v1/admin/wallet-payments/:paymentId/recover`).
+  amountMinor, paidAt, creditedAt, chargebackAt, recoveredAt }]` (recover one with `POST
+  /api/v1/admin/wallet-payments/:paymentId/recover`; r35b: a recovered one stays listed, `recoveredAt` set — null: not
+  recovered).
 - `POST /api/v1/admin/wallet-withdrawals/:id/paid` (r32, now) takes `disputeAcknowledged?: true`; the withdrawal's
   `paid` adds `disputeAcknowledged`, `disputedMinor` when used.
 - Lab withdrawal request / cancel / abandon: 403 `FINANCE_SCOPE_REQUIRED` for a branch-limited member (r35b: after the
@@ -6657,6 +6659,14 @@ that): the app shows "−₹0" under the title that names the amount. The web (W
 | B4 | `setOffMinor` sums the referral account's `receivable_setoff` adjustments; `earnedMinor` and `paidMinor` keep r33's meaning, so other admin adjustments and voided payouts (both statement rows) are outside the identity | No change to r33's fields |
 | B5 | The set-off row's `amount` is 0 in the view (stored unchanged) | The released app reads `amount` for its sign (above) |
 
+**WQ48 API gaps (coordinator, r35b):**
+
+| # | Gap | Built |
+|---|---|---|
+| G1 | The admin's set-off section had to infer the switch and learn the maximum from a refusal | The admin wallet reads add `referral: { dueMinor, payoutsEnabled }` for the wallet's owner: `GET /api/v1/pharmacy-wallet?pharmacyId=` (admin only; the pharmacy's own read and a missing wallet's `null` unchanged) and `GET /api/v1/admin/{labs\|doctors}/:id/wallet`. One reader, `referralDueOf` (from `referralSummary`). The set-off's maximum is the smaller of `dueMinor` and the wallet's `receivableMinor` |
+| G2 | A branch-limited lab manager was offered Cancel on others' withdrawals | Every owner withdrawal answer (list, get, by-key, request, cancel) adds `requestedByMe: boolean` (the caller made the request: the same member, pharmacy login or doctor); the admin's views do not (they carry `requestedBy`) |
+| G3 | Recover was offered again after a recovery | `topups-without-lot` rows add `recoveredAt` (null: not recovered); a recovered one (its take opened a closed lot, `openedAtChargeback`) stays listed instead of dropping out |
+
 **New codes and reasons for the web:** quote reasons `LAB_NOT_VERIFIED` and `WALLET_INACTIVE`; request 409 `WALLET_INACTIVE`
 and 403 `PARTNER_NOT_VERIFIED` (a lab, now after the switch); 409 `REFERRAL_ACCOUNT_USES_HOME`.
 
@@ -6675,7 +6685,10 @@ two new). They cover:
 - `WALLET_INACTIVE` and `LAB_NOT_VERIFIED` (quote and request agree; 503 first while off; through once verified);
 - the CSV opening balance from a legacy row and a paise row (a pending row not counted); `cell()` on `-cmd`, `-12`,
   `=1+1`, `-1+2`;
-- `lastPaidAt` null after a void, then the next paid one.
+- `lastPaidAt` null after a void, then the next paid one;
+- WQ48: the admin wallet reads' `referral` (pharmacy 52,000 due with payouts on, its own read without it; lab 25,000; doctor
+  7,000); `requestedByMe` true for the requester, false for another member (get and list); a recovered top-up without a lot
+  still listed with `recoveredAt`.
 
 The `r24-phase4ab` and `r33-referral-gaps` referral-block assertions gain `setOffMinor: 0`.
 

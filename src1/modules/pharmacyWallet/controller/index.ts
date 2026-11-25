@@ -5,6 +5,7 @@ import { PharmacyWalletService, walletView } from '@/modules/pharmacyWallet/serv
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { ADMIN_TOPUP_KEY } from '@/modules/pharmacyWallet/validation';
+import { referralDueOf } from '@/modules/referralCuts/payouts';
 
 export class PharmacyWalletController {
   private service: PharmacyWalletService;
@@ -37,7 +38,9 @@ export class PharmacyWalletController {
     const pharmacyId = this.resolvePharmacyId(req);
     const shouldCreate = req.user?.userType !== 'admin';
     const result = await this.service.getWallet(pharmacyId, shouldCreate);
-    res.status(200).json({ success: true, data: result ? walletView(result) : result });
+    // r35b (WQ48): an admin's read adds the pharmacy's referral line for the set-off (its maximum and switch).
+    const referral = result && !shouldCreate ? { referral: await referralDueOf('pharmacy', pharmacyId) } : {};
+    res.status(200).json({ success: true, data: result ? { ...walletView(result), ...referral } : result });
   };
 
   getTransactions = async (req: AuthRequest, res: Response, _next: NextFunction) => {

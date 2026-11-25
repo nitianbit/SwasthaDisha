@@ -19,6 +19,7 @@ import type { PartnerPermission } from '@/modules/partners/types';
 import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
 import { assertPartnerWalletIndexes, partnerStore, type PartnerOwner } from '@/modules/partnerWallets/ledger';
 import { doctorIsEligible } from '@/modules/specialists/eligibility';
+import { referralDueOf } from '@/modules/referralCuts/payouts';
 
 /**
  * r13 (round 2d, §24.7.3) and r20 (round 3a, §25.4.2): the partner wallets' reads and commands — the lab workspace
@@ -224,7 +225,8 @@ export async function reconcileLabPayment(owner: PartnerOwner, m: LabMember, pay
 // ── Admin (any owner; writes behind the admin tools switch) ──
 export async function adminWallet(owner: PartnerOwner, ownerId: string) {
   await owner.assertExists(ownerId);
-  return adminWalletView(await partnerStore(owner.kind, ownerId).findIn(null));
+  // r35b (WQ48): the owner's referral line for the set-off (its maximum and switch).
+  return { ...adminWalletView(await partnerStore(owner.kind, ownerId).findIn(null)), referral: await referralDueOf(owner.kind, ownerId) };
 }
 export async function adminEntries(owner: PartnerOwner, ownerId: string, q: { cursor?: string; limit?: number }) {
   await owner.assertExists(ownerId);

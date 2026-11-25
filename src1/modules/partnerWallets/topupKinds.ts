@@ -61,23 +61,25 @@ export async function topupDisputes(q: { state?: 'flagged' | 'recovered' | 'bloc
 /**
  * r35 (WQ29): an owner's card top-ups credited WITHOUT a lot (before phase 1a, with the lot switch off or before
  * sync-indexes): never withdrawable, and found by nothing else, so a lost dispute on one is recorded and recovered by its
- * payment id. Newest first, at most 200. Ids, amounts and times only.
+ * payment id. Newest first, at most 200. Ids, amounts and times only. r35b (WQ48): one recovered since (its take opened a
+ * closed lot, `openedAtChargeback`) stays listed with `recoveredAt` (null: not recovered).
  */
 export async function topupsWithoutLot(walletKind: 'pharmacy' | 'lab' | 'doctor', ownerIdIn: string) {
   const kind = topupKindOfWallet(walletKind)!;
   const raw = String(ownerIdIn);
   const records = await PaymentRecordModel.find({ [kind.payerField]: { $in: [...new Set([raw, raw.toLowerCase()])] }, context: 'wallet_recharge',
     'notes.flow': kind.flow, status: { $in: ['paid', 'refunded'] } }).sort({ createdAt: -1 }).limit(500).lean() as Record<string, any>[];
-  const withLot = new Set((await WalletTopupLotModel.find({ paymentRecordId: { $in: records.map((r) => String(r._id)) } }).select({ paymentRecordId: 1 })
-    .lean()).map((l) => l.paymentRecordId));
+  const lotOf = new Map((await WalletTopupLotModel.find({ paymentRecordId: { $in: records.map((r) => String(r._id)) } })
+    .select({ paymentRecordId: 1, openedAtChargeback: 1, chargedBackAt: 1 }).lean()).map((l) => [l.paymentRecordId, l]));
   const rows: Record<string, unknown>[] = [];
   for (const r of records) {
-    if (withLot.has(String(r._id))) continue;
+    const lot = lotOf.get(String(r._id));
+    if (lot && lot.openedAtChargeback !== true) continue;
     const credit = r.walletCreditedAt ? null : await kind.storeFor(r).rechargeCreditIn(String(r._id), null);
     if (!r.walletCreditedAt && !credit) continue;
     rows.push({ paymentRecordId: String(r._id), walletKind, ownerId: kind.ownerOf(r), razorpayPaymentId: r.razorpayPaymentId ?? null,
       amountMinor: credit?.amountMinor ?? recordPaiseOf(r),
-      paidAt: r.paidAt ?? null, creditedAt: r.walletCreditedAt ?? null, chargebackAt: r.chargebackAt ?? null });
+      paidAt: r.paidAt ?? null, creditedAt: r.walletCreditedAt ?? null, chargebackAt: r.chargebackAt ?? null, recoveredAt: lot?.chargedBackAt ?? null });
     if (rows.length >= 200) break;
   }
   return rows;

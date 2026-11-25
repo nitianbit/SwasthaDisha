@@ -57,8 +57,10 @@ export interface WithdrawalOwner { kind: WithdrawalWalletKind; id: string; actor
  * holding `finance.view` (owners hold all); others read the masked line only.
  */
 function assertActs(o: WithdrawalOwner, w?: Pick<IWalletWithdrawal, 'requestedBy'> | null): void {
-  if (o.member && !(w?.requestedBy.kind === 'member' && w.requestedBy.id === lower(o.actor.id))) assertPartnerFinanceReader(o.member);
+  if (o.member && !(w && byMe(w, o.actor))) assertPartnerFinanceReader(o.member);
 }
+/** The withdrawal was requested by this actor (the same person acting for the owner). */
+const byMe = (w: Pick<IWalletWithdrawal, 'requestedBy'>, me: { kind: string; id: string }) => w.requestedBy.kind === me.kind && w.requestedBy.id === lower(me.id);
 const seesDetails = (o: WithdrawalOwner) => !o.member || (hasGlobalScope(o.member) && (o.member.role === 'owner' || o.member.permissions.includes('finance.view')));
 
 /** §5.4: where an owner's withdrawals go (`HOME_KIND`, the one map). */
@@ -93,12 +95,13 @@ async function assertWithdrawalIndexes(kind: WithdrawalWalletKind): Promise<void
 const feeLine = (w: Pick<IWalletWithdrawal, 'grossMinor' | 'feeMinor' | 'transferMinor'>) => (w.feeMinor > 0
   ? `Card fee on unspent card money: ₹${rupees(w.feeMinor)}. You receive ₹${rupees(w.transferMinor)} of ₹${rupees(w.grossMinor)}.`
   : `No card fee. You receive ₹${rupees(w.transferMinor)}.`);
-export function withdrawalView(w: IWalletWithdrawal) {
+/** r35b (WQ48): to its owner, `requestedByMe` — the caller made this request (a branch-limited lab member may cancel only those). */
+export function withdrawalView(w: IWalletWithdrawal, me?: { kind: string; id: string }) {
   return { _id: String(w._id), walletKind: w.walletRef.kind, state: w.state, grossMinor: w.grossMinor, feeMinor: w.feeMinor, transferMinor: w.transferMinor,
     feeLine: feeLine(w), lots: w.lotAllocations.map((l) => ({ lotId: l.lotId, amountMinor: l.amountMinor, feeMinor: l.feeMinor })),
     destination: { masked: w.destination.masked, detailsVersion: w.destination.detailsVersion },
     paid: w.paid ? { method: w.paid.method, reference: w.paid.reference, paidOn: w.paid.paidOn, at: w.paid.at } : null,
-    reason: w.reason ?? null, version: w.version, createdAt: w.createdAt, updatedAt: w.updatedAt };
+    reason: w.reason ?? null, version: w.version, createdAt: w.createdAt, updatedAt: w.updatedAt, ...(me ? { requestedByMe: byMe(w, me) } : {}) };
 }
 const adminView = (w: IWalletWithdrawal) => ({ ...withdrawalView(w), walletRef: w.walletRef, requestedBy: w.requestedBy,
   destination: w.destination, holdEntryId: w.holdEntryId, releaseEntryId: w.releaseEntryId ?? null, voidEntryId: w.voidEntryId ?? null,
@@ -260,7 +263,7 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
     const w = await WalletWithdrawalModel.findOne({ ...refOf(o.kind, o.id), requestKey: { $eq: body.requestKey } }).session(s).lean() as IWalletWithdrawal | null;
     if (!w) return null;
     if (w.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different withdrawal');
-    return { withdrawal: withdrawalView(w), wallet: walletOut(store, await store.findIn(s)), replayed: true };
+    return { withdrawal: withdrawalView(w, o.actor), wallet: walletOut(store, await store.findIn(s)), replayed: true };
   };
   const prior = await replay(null);
   if (prior) return prior;
@@ -300,7 +303,7 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
         destination: { homeAccountId: String(a._id), detailsVersion: a.payoutDetailsVersion ?? 0, masked: destinationLabel(a.payoutDetails) },
         holdEntryId: String(entry._id), requestKey: body.requestKey, requestHash, version: 0 }], { session: s });
       await audit(o.kind, o.id, o.actor, 'withdrawal.requested', String(id), { grossMinor: amount, feeMinor: plan.feeMinor, transferMinor: transfer }, s, body.requestKey);
-      return { withdrawal: withdrawalView(row!.toObject() as IWalletWithdrawal), wallet: walletOut(store, posted.wallet), replayed: false };
+      return { withdrawal: withdrawalView(row!.toObject() as IWalletWithdrawal, o.actor), wallet: walletOut(store, posted.wallet), replayed: false };
     });
   } catch (e) {
     if (isDuplicateKeyError(e)) {
@@ -329,7 +332,7 @@ async function pageOf(filter: Record<string, unknown>, q: Page, dir: 1 | -1) {
 /** GET …/wallet/withdrawals — the owner's, newest first. */
 export async function listOwn(o: WithdrawalOwner, q: Page) {
   const p = await pageOf(refOf(o.kind, o.id), q, -1);
-  return { items: p.items.map(withdrawalView), nextCursor: p.nextCursor };
+  return { items: p.items.map((w) => withdrawalView(w, o.actor)), nextCursor: p.nextCursor };
 }
 async function ownRow(o: WithdrawalOwner, id: string, s: ClientSession | null = null) {
   if (!Types.ObjectId.isValid(id)) throw notFound();
@@ -338,12 +341,12 @@ async function ownRow(o: WithdrawalOwner, id: string, s: ClientSession | null = 
   return w;
 }
 /** GET …/wallet/withdrawals/:id — another owner's row is the one 404. */
-export const getOwn = async (o: WithdrawalOwner, id: string) => withdrawalView(await ownRow(o, id));
+export const getOwn = async (o: WithdrawalOwner, id: string) => withdrawalView(await ownRow(o, id), o.actor);
 
 /** GET …/withdrawals/by-key/:key and POST …/by-key/:key/abandon (Q13 shape). */
 export async function ownByKey(o: WithdrawalOwner, key: string) {
   const w = await WalletWithdrawalModel.findOne({ ...refOf(o.kind, o.id), requestKey: { $eq: key } }).lean() as IWalletWithdrawal | null;
-  if (w) return { state: 'used' as const, withdrawal: withdrawalView(w) };
+  if (w) return { state: 'used' as const, withdrawal: withdrawalView(w, o.actor) };
   const k = await RequestKeyModel.findOne({ scope: keyScope(o.kind, o.id), key }).lean();
   return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
 }
@@ -370,7 +373,7 @@ async function audit(kind: WithdrawalWalletKind, ownerId: string, actor: { kind:
 async function release(w0: IWalletWithdrawal, to: 'cancelled' | 'rejected', expectedVersion: number, actor: { kind: string; id: string }, reason: string | undefined,
   s: ClientSession) {
   const store = storeOf(w0.walletRef.kind, w0.walletRef.id);
-  if (w0.state === to) return { withdrawal: withdrawalView(w0), wallet: walletOut(store, await store.findIn(s)), replayed: true };
+  if (w0.state === to) return { withdrawal: withdrawalView(w0, actor), wallet: walletOut(store, await store.findIn(s)), replayed: true };
   if (w0.state !== 'requested') throw err(409, 'WITHDRAWAL_NOT_REQUESTED', `This withdrawal is ${w0.state}`);
   if (w0.version !== expectedVersion) throw err(409, 'WITHDRAWAL_CHANGED', 'This withdrawal changed since it was loaded; review it again');
   const moved = await WalletWithdrawalModel.updateOne({ _id: w0._id, state: 'requested', version: w0.version },
@@ -383,7 +386,7 @@ async function release(w0: IWalletWithdrawal, to: 'cancelled' | 'rejected', expe
   await audit(w0.walletRef.kind, w0.walletRef.id, actor, to === 'cancelled' ? 'withdrawal.cancelled' : 'withdrawal.rejected', String(w0._id),
     { grossMinor: w0.grossMinor, ...(reason ? { reason } : {}) }, s);
   const after = await WalletWithdrawalModel.findById(w0._id).session(s).lean() as IWalletWithdrawal;
-  return { withdrawal: withdrawalView(after), wallet: walletOut(store, posted.wallet), replayed: false };
+  return { withdrawal: withdrawalView(after, actor), wallet: walletOut(store, posted.wallet), replayed: false };
 }
 
 /** POST …/wallet/withdrawals/:id/cancel { expectedVersion } — only while `requested`; the owner's money comes back at once. */

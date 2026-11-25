@@ -37,6 +37,15 @@ export async function referralSummary(kind: BookerKind, id: string) {
     cutsEnabled: assistedFlags.referralCuts(), payoutsEnabled: assistedFlags.referralPayouts() };
 }
 
+/**
+ * r35b (WQ48): the admin wallet reads' referral line — what the owner's referral earnings could pay now (a set-off's
+ * maximum, with the wallet's receivable) and whether set-offs are on (REFERRAL_PAYOUTS_ENABLED).
+ */
+export async function referralDueOf(kind: BookerKind, id: string) {
+  const r = await referralSummary(kind, id);
+  return { dueMinor: r.dueMinor, payoutsEnabled: r.payoutsEnabled };
+}
+
 const storeOf = (kind: BookerKind, id: string): WalletStore => (kind === 'pharmacy' ? pharmacyStore(id) : partnerStore(kind, id));
 const keyScope = (kind: BookerKind, id: string) => `referral_setoff:${kind}:${lower(id)}`;
 const viewOf = (e: ILedgerEntry, walletEntryId: string | null, replayed: boolean, wallet: { receivableMinor: number; frozen: boolean } | null) => ({
