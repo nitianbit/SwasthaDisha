@@ -7153,3 +7153,9 @@ rule fails it; awaiting a hook again fails the slow-outbox check.
 
 **Full regression** (`prun.sh … 2` on `3007027f`): 82 entries, 82 passed (`r29-phase3c` and `r31-phase5b` among them),
 `tsc` 17.
+
+**Stage merge 2** (`622912a7`: r33 referral gaps, r30 phase 3f). The only conflict was the imports of
+`bookings/services/index.ts`; both are kept. 3f's read-then-cancel alert (`alertReadThenCancelIn`) stays inside the
+transactions of `cancelBookingSettlement`, `cancelAccepted` and `markNoShow`; the `void sms…` hooks stay after the
+commit. Single suites on the merge (`ce2d108b`, own mongod): `r31-phase5b` 20/20, `r30-phase3f` 22/22, `r25-phase5a`
+11/11, `r29-phase3c` 21/21, `r26-phase3b` 14/14, `q16a-bookings-money` 41/41, `q4b-instant` 25/25. `tsc` 17.
