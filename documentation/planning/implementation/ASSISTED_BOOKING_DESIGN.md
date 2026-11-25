@@ -6029,6 +6029,26 @@ bookers (M17).
 - Lab desk rows never snapshot (§5.5).
 - 4c to 4f are not built.
 
+### 26.16 r33: referral API gaps closed (2026-11-25)
+
+Branch `m0/r33-referral-gaps` from stage `6a8574e9`. Local commits only. The gaps the WQ26 web screens found:
+
+| Gap | Built |
+|---|---|
+| No answer said whether cuts or payouts are on | The rule lists (admin `GET /admin/referral-rules`, booker `…/referral-rules`) add a top-level `switches: { cutsEnabled, payoutsEnabled }` next to `data` (the list stays an array); the totals (`…/referral`) add `cutsEnabled` beside `payoutsEnabled` in `data`. `cutsEnabled` = `REFERRAL_CUTS_ENABLED`, `payoutsEnabled` = `REFERRAL_PAYOUTS_ENABLED` |
+| Statement rows had the short ref and category only inside `description` (§26.6.2) | Referral rows (`referral_consultation`, `referral_lab_booking`) add `shortRef` and `category`. A lab booking stays **one row** (one ledger entry, so balances and cursors are unchanged) with `lines: [{ category, baseMinor, cutMinor }]` (its cut lines) and `category` = their one category, or `mixed` when they differ (M21). Provider rows are unchanged. No patient name |
+| No referral statement CSV | `GET …/referral/statement.csv?from&to`: the finance CSV (`statementCsv`, same columns as M16, opening and closing balance), file `pharmacy-referral-statement….csv` / `lab-referral-statement….csv`; the CSV answer helpers (`sendCsv`, `csvName`, `period`) are exported from `partners/controller/finance.ts` and shared |
+| M17: labs had no referral reads | `GET /api/v1/partner-workspace/assisted/referral-rules`, `…/referral`, `…/referral/statement`, `…/referral/statement.csv` (and the admin-as-owner twins under `/partner-workspace/admin/:partnerId/workspace/assisted/…`): `finance.view` with partner-wide scope (`assertPartnerFinanceReader`, 403 FINANCE_SCOPE_REQUIRED), labs only (403 LAB_PARTNER_REQUIRED). The same handlers serve the pharmacy and the lab (`referralReads` in `referralCuts/controller.ts`). No doctor routes (doctor cuts stay off) |
+
+**ASSUMED:** M21 — one statement row per lab booking with its cut lines listed, rather than one row per line (simpler: no
+change to the ledger, the running balance or the cursor). M22 — the lab reads sit under `/partner-workspace/assisted/`,
+mirroring the pharmacy's `/pharmacy-assisted/` paths, rather than §26.6.2's `/partner-workspace/finance/referral`; the
+permission is the finance one, as §26.6.2 says.
+
+**Tests:** `test/assisted/r33-referral-gaps.integration.ts` (5 checks: the switches on every answer, the row fields with
+mixed and single-category lab bookings and unchanged provider rows, the pharmacy CSV, the lab reads incl. admin as owner,
+the refusals); `r24-phase4ab` updated for `cutsEnabled` in the totals.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
