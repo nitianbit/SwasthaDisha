@@ -6849,7 +6849,7 @@ master switch and a message's English pair are on (§27.13.5).
 
 | Part | Where | Notes |
 |---|---|---|
-| Hooks | `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`, `smsMovedOff` | One line at each hook, after the commit. Never throw; read nothing while `SMS_NOTICES_ENABLED` is off; queue only rows in scope (below) |
+| Hooks | `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`, `smsMovedOff` | One line at each hook, after the commit, called with `void` (r31b: fire and forget, no added latency). Never throw; read nothing while `SMS_NOTICES_ENABLED` is off; queue only rows in scope (below) |
 | Composer | `smsNotices/events.ts` `compose`, registered by `registerSmsComposers()` (`src1/index.ts`, before the drain starts) | One function for every event and both booking kinds: reads the booking again, checks the event (§27.6.2), builds the variables (§27.5.5, §27.6.3) |
 | Scope | `inScope` in `events.ts` | A consultation with an `assisted` block (instant ones too), a partner-made lab booking, a lab desk row. Never a customer's own booking, a clinic desk booking, a legacy pharmacy booking or an unpaid card booking. A desk walk-in only hears of its report (and of an account move) |
 | Fixed words | `smsNotices/templates.ts` `wordsFor(lang)` | Service names, "cancelled", "moved to", "moved to another number", "your family member"; English only (other languages fall back with their texts) |
@@ -6862,8 +6862,8 @@ master switch and a message's English pair are on (§27.13.5).
 | Event (version) | Path | Hook |
 |---|---|---|
 | `booked` (`1`) | Pharmacy (1a) and lab (2e) consultation, wallet | `assisted/consultations.ts:356` |
-| | The same, card confirmation (1b, 2e); the follow-up runs again until done, the marker keeps one | `assisted/cardPayments.ts:144` |
-| | Pharmacy lab booking, wallet (2a) and card confirmation (2b); doctor lab booking (3b) | `notifyLabBooked`, `assisted/labBookings.ts:303` |
+| | The same, card confirmation (1b, 2e); the follow-up runs again until done, the marker keeps one | `assisted/cardPayments.ts:149` |
+| | Pharmacy lab booking, wallet (2a) and card confirmation (2b); doctor lab booking, wallet (3b) and card (3c, r29) | `notifyLabBooked`, `assisted/labBookings.ts:304` |
 | | Lab desk, rows with a slot (2c) | `assisted/labDesk.ts:258` |
 | | Partner Consult now: the doctor accepts (3e) | `doctors/services/instant.ts:706` |
 | `rx_ready` (`1`) | The doctor's first prescription save (no doctor's prescription before it) | `specialistPortal/services/index.ts:417` |
@@ -6874,8 +6874,8 @@ master switch and a message's English pair are on (§27.13.5).
 | | Admin cancel of a moved lab no-show | `partners/services/labBookings.ts:720` |
 | | The booker cancels its lab booking (never an unpaid card row) | `partners/services/labBookings.ts:858` |
 | | The lab desk cancels a desk row | `partners/services/labBookings.ts:885` |
-| `moved` (new start, epoch minutes) | The booker moves a consultation | `assisted/pharmacyCommands.ts:438` |
-| | The booker accepts a lab's new time | `assisted/labBookings.ts:663` |
+| `moved` (`<new start, epoch minutes>:<the move's write, epoch ms>`, r31b) | The booker moves a consultation | `assisted/pharmacyCommands.ts:438` |
+| | The booker accepts a lab's new time | `assisted/labBookings.ts:665` |
 | | The lab rebooks a no-show | `partners/services/labBookings.ts:968` |
 | | The doctor or an admin moves a consultation's no-show (r31, ASSUMED 5) | `bookings/services/index.ts:1751` |
 | | An admin moves a consultation (r31, ASSUMED 5) | `bookings/services/index.ts:1868` |
@@ -6992,3 +6992,28 @@ notice twice per save changes nothing (the marker), so "first" is a cost saving 
 
 **Full regression** (`prun.sh … 2` on `ddf6aacc`): 81 entries, 81 passed (`r25-phase5a` and `r31-phase5b` among them),
 `tsc` 17 as before.
+
+#### 27.13.7 Review follow-ups (r31b, 2026-11-25)
+
+The r31 review (Opus xhigh) found it safe for stage with no must-fix. Merged `origin/stage` (`88e152ed`: r29, phase 3c
+doctor card lab bookings and the "Jansetu" prescription heading) without conflict: a doctor's card lab booking is
+confirmed through the same lab follow-up, so `notifyLabBooked` queues its "booked" too. Then the two later items:
+
+1. **A move back to an earlier time is told.** The "moved" version was the new start alone, so B → C → B was silent
+   (the key `(moved, B)` already existed). It is now `<new start, epoch minutes>:<the move's write, epoch ms>`
+   (`moveVersionOf`, `smsNotices/events.ts`): every move writes the booking, so every move has its own key, and phase
+   5 still stores nothing on a booking. At send time a "moved" is true while the booking still starts at that time,
+   before it, not cancelled, **and no later "moved" row exists for the booking** (`stillTrue`), so several moves before
+   one tick send only the latest (C → D → C: one SMS, the earlier two `stale`).
+2. **Hooks are fire and forget.** Every hook call is `void smsX(...)`: a request never waits for the outbox (they never
+   throw). `smsHooksSettled()` waits for the enqueues still running (the suite reads the outbox after it).
+   Consequence for SM2: a card confirmation's follow-up may now finish a few milliseconds before its enqueue, so a crash
+   in that window loses that SMS like any other (best effort); the marker still keeps one when the follow-up runs again.
+
+**Checks.** The suite has 20 checks: the new one moves a consultation B → C (sent), back to B (its own row, sent), then
+C → D → C before one tick (one SMS, the latest); and a 3 s outbox insert no longer delays an answer (answered before it
+ends, the row queued after). Mutations: the old minutes-only version fails the new check; dropping the "latest move"
+rule fails it; awaiting a hook again fails the slow-outbox check.
+
+**Single suites** on `c962a415` (own mongod): `r31-phase5b` 20/20, `r25-phase5a` 11/11, `r29-phase3c` 21/21,
+`r26-phase3b` 14/14, `r21-phase2e` 18/18, `r14-phase2b` 24/24, `r10-phase1b` 19/19, `r10b-phase1b-fixes` 23/23. `tsc` 17.
