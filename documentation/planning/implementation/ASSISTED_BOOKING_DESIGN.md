@@ -6547,8 +6547,9 @@ only gain fields. Check: `test/assisted/r35-phase4ef.integration.ts` (13 checks)
 - `GET …/finance/statement?kind=wallet|referral&before&limit≤200&from&to` → `data`: for `wallet`, the wallet rows as the
   released app reads them (`transactionView`: every stored field plus `transactionType: 'credit'|'debit'|'refund'` by sign
   and `movementType` = the stored kind, e.g. `booking_debit`, `withdrawal_hold`, `receivable_setoff`; amounts in
-  `amountPaise`, `signedAmountPaise`, `balanceAfterPaise`; r35b: a `receivable_setoff` row answers `transactionType:
-  'adjustment'` and `amount: 0`, §26.18.6), newest first; for `referral`, r33's referral statement lines
+  `amountPaise`, `signedAmountPaise`, `balanceAfterPaise`; r35b: a referral set-off row — `receivable_setoff` with
+  `referenceType: 'referral_setoff'` — answers `transactionType: 'adjustment'` and `amount: 0`, §26.18.6; a credit's own
+  set-off stays a `debit`), newest first; for `referral`, r33's referral statement lines
   `{ _id, at, kind, source, sourceId, description, reference?, note?, amountMinor, balanceAfterMinor, grossMinor?,
   commissionMinor?, shortRef?, category?, lines? }`. Top level `pagination: { nextCursor }` (send it as `before`).
 - `GET …/finance/statement.csv?kind&from&to` → `text/csv`, columns `Date (IST), Type, Description, Reference, Note,
@@ -6634,7 +6635,7 @@ code: each fix reuses or exports the one existing helper.
 | 4 | One home-account map: `HOME_KIND` and `homeKindOf` | `partners/model/settlement.ts`, used by `finance.ts` (`homeAccountIn`, the accounts list, item 6) and the withdrawals |
 | 5 | `walletCore.recordPaiseOf` exported and reused | `topupKinds.ts` (both reads) |
 | 6 | Referral rows: `home: { accountId, masked, detailsVersion, state } \| null` on `lab_referral` / `doctor_referral` rows (one query per page); payout-details changes and verification on those accounts: 409 `REFERRAL_ACCOUNT_USES_HOME` | `finance.ts` `adminListAccounts`, `setPayoutDetails`, `verifyPayoutDetails`; `destinationOf` moved here (one reader for the withdrawal reads and the home block) |
-| 7 | `referral.setOffMinor` (earned − paid − set off = due); the wallet's set-off row answers `transactionType: 'adjustment'`, `movementType: 'receivable_setoff'`, `amount: 0` | `referralCuts/payouts.ts` `referralSummary`; `pharmacyWallet/services` `transactionView` |
+| 7 | `referral.setOffMinor` (earned − paid − set off = due); the wallet's referral set-off row (`referenceType: 'referral_setoff'`) answers `transactionType: 'adjustment'`, `movementType: 'receivable_setoff'`, `amount: 0`. A credit's own set-off ("Owed amount cleared from this credit", signed −x: it takes balance) stays a `debit` with its amount, as before | `referralCuts/payouts.ts` `referralSummary`; `pharmacyWallet/services` `transactionView` |
 | 8 | The wallet CSV's opening balance: one `$sum` aggregate (a row without `signedAmountPaise`: its rupee balances' difference, rounded as `signedPaiseOf`) | `pharmacyWallet/services` `walletBalanceBefore` |
 | 9 | The disputes read: a partial index `{ chargebackAt: -1 }` (where `chargebackAt` exists) on payment records, declared on the model and built by `sync-indexes`; the read works without it (a scan). Checked: the read's plan is an `IXSCAN` on it | `payment/model` |
 | 10 | `lastPaidAt` counts `paid` only (a voided transfer is not the last paid one) | `withdrawalsSummary` |
@@ -6645,7 +6646,7 @@ code: each fix reuses or exports the one existing helper.
 (lines 404–440, as copied in phase1a-review check 8b): an unknown `transactionType` does not break it. It falls to the
 title ("Owed amount of ₹x paid from your referral earnings" holds none of `payment`, `booking`, `used for`, `recharge`,
 `added`, `refilled`) and then to the sign of `amount`, which would have shown "+₹x" in green, as if money was added. So
-the view answers `amount: 0` on that row only (the balance did not move; `amountPaise` keeps the amount, and the web reads
+the view answers `amount: 0` on the referral set-off row only (the balance did not move; `amountPaise` keeps the amount, and the web reads
 that): the app shows "−₹0" under the title that names the amount. The web (WQ48) already reads `transactionType:
 'adjustment'` + `movementType: 'receivable_setoff'` as a set-off.
 
@@ -6657,23 +6658,26 @@ that): the app shows "−₹0" under the title that names the amount. The web (W
 | B2 | In the request, the destination's version check (409 `PAYOUT_DETAILS_CHANGED`) now follows the eligibility checks (it came before the wallet checks) | One rule first; both are 409s that reload the screen |
 | B3 | A lab member who requested and was later limited to a branch may cancel that request and look up its key; abandoning a key with no withdrawal needs partner-wide scope (no one "made" it) | Nobody is left unable to undo their own request |
 | B4 | `setOffMinor` sums the referral account's `receivable_setoff` adjustments; `earnedMinor` and `paidMinor` keep r33's meaning, so other admin adjustments and voided payouts (both statement rows) are outside the identity | No change to r33's fields |
-| B5 | The set-off row's `amount` is 0 in the view (stored unchanged) | The released app reads `amount` for its sign (above) |
+| B5 | The referral set-off row's `amount` is 0 in the view (stored unchanged) | The released app reads `amount` for its sign (above) |
 
-**WQ48 API gaps (coordinator, r35b):**
+**WQ48 API gaps and review (coordinator, r35b):**
 
 | # | Gap | Built |
 |---|---|---|
 | G1 | The admin's set-off section had to infer the switch and learn the maximum from a refusal | The admin wallet reads add `referral: { dueMinor, payoutsEnabled }` for the wallet's owner: `GET /api/v1/pharmacy-wallet?pharmacyId=` (admin only; the pharmacy's own read and a missing wallet's `null` unchanged) and `GET /api/v1/admin/{labs\|doctors}/:id/wallet`. One reader, `referralDueOf` (from `referralSummary`). The set-off's maximum is the smaller of `dueMinor` and the wallet's `receivableMinor` |
 | G2 | A branch-limited lab manager was offered Cancel on others' withdrawals | Every owner withdrawal answer (list, get, by-key, request, cancel) adds `requestedByMe: boolean` (the caller made the request: the same member, pharmacy login or doctor); the admin's views do not (they carry `requestedBy`) |
 | G3 | Recover was offered again after a recovery | `topups-without-lot` rows add `recoveredAt` (null: not recovered); a recovered one (its take opened a closed lot, `openedAtChargeback`) stays listed instead of dropping out |
+| G4 | (review) item 7 had turned every `receivable_setoff` row into `adjustment` / 0, including a credit's own set-off, a real debit | Only `referenceType: 'referral_setoff'` rows; the others answer as before r35b (a `debit` with its amount) |
+| G5 | A lab's or doctor's owner wallet rows lacked what a referral set-off cleared | The owner's entries (`…/wallet/entries`, lab and doctor) add `receivableDeltaMinor` (the admin's rows had it; now one view) |
+| G6 | The admin's account read lacked the referral account's home | `GET /api/v1/settlements/accounts/:id` → `account.home` (the list rows' `home`, one reader `homesOf`) for `lab_referral` / `doctor_referral` |
 
 **New codes and reasons for the web:** quote reasons `LAB_NOT_VERIFIED` and `WALLET_INACTIVE`; request 409 `WALLET_INACTIVE`
 and 403 `PARTNER_NOT_VERIFIED` (a lab, now after the switch); 409 `REFERRAL_ACCOUNT_USES_HOME`.
 
 **Deploy:** run `sync-indexes` (builds `paymentrecords` `chargebackAt_-1`, partial); nothing fails closed without it.
 
-**Checks:** `test/assisted/r35-phase4ef.integration.ts` now has 15 checks (r35's 13 with the lab scope check rewritten, plus
-two new). They cover:
+**Checks:** `test/assisted/r35-phase4ef.integration.ts` now has 16 checks (r35's 13 with the lab scope check rewritten, plus
+three new). They cover:
 - the old credited top-up `flagged`;
 - the referral `home` block (lab; doctor null; partner and pharmacy rows without one) and `REFERRAL_ACCOUNT_USES_HOME` on
   set and verify;
@@ -6688,7 +6692,9 @@ two new). They cover:
 - `lastPaidAt` null after a void, then the next paid one;
 - WQ48: the admin wallet reads' `referral` (pharmacy 52,000 due with payouts on, its own read without it; lab 25,000; doctor
   7,000); `requestedByMe` true for the requester, false for another member (get and list); a recovered top-up without a lot
-  still listed with `recoveredAt`.
+  still listed with `recoveredAt`; the admin account read's `account.home` (a partner account none); owed ₹500 and a ₹1,000
+  top-up: the "Owed amount cleared from this credit" row is a `debit` of ₹500 in the released app's read; a lab's referral
+  set-off row in its owner entries: `amountMinor` 0, `receivableDeltaMinor` −3,000. A 16th check.
 
 The `r24-phase4ab` and `r33-referral-gaps` referral-block assertions gain `setOffMinor: 0`.
 

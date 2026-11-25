@@ -719,23 +719,38 @@ export async function adminListAccounts(q: { ownerKind?: SettlementOwnerKind | '
   ]);
   const meta = out?.meta?.[0] ?? { total: 0, totalDueMinor: 0 };
   const rows = (out?.rows ?? []) as (ISettlementAccount & { balanceMinor: number })[];
-  // r35b (§5.4): a lab's or a doctor's referral row shows its HOME account's destination (masked), read in one query.
-  const away = rows.filter((a) => homeKindOf(a.ownerKind) !== a.ownerKind);
-  const homes = away.length ? await SettlementAccountModel.find({ $or: away.map((a) => ({ ownerKind: homeKindOf(a.ownerKind), ownerId: canon(a.ownerId) })) })
-    .lean() as ISettlementAccount[] : [];
-  const homeOf = (a: ISettlementAccount) => {
-    const h = homes.find((x) => x.ownerKind === homeKindOf(a.ownerKind) && x.ownerId === canon(a.ownerId));
-    if (!h) return null;
-    const { state, masked, detailsVersion } = destinationOf(h, false);
-    return { accountId: String(h._id), masked, detailsVersion, state };
-  };
+  const homeOf = await homesOf(rows);
   return {
     total: meta.total, totalDueMinor: meta.totalDueMinor,
     // r35 (§26.9): a referral account's payouts are paused while REFERRAL_PAYOUTS_ENABLED is off (O1).
     rows: rows.map((a) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor,
-      ...(isReferralOwnerKind(a.ownerKind) ? { payoutsPaused: !assistedFlags.referralPayouts() } : {}),
-      ...(homeKindOf(a.ownerKind) !== a.ownerKind ? { home: homeOf(a) } : {}) })),
+      ...(isReferralOwnerKind(a.ownerKind) ? { payoutsPaused: !assistedFlags.referralPayouts() } : {}), ...homeOf(a) })),
   };
+}
+
+/**
+ * r35b (§5.4): `home` of a lab's or a doctor's referral account — its HOME account's destination (masked), `{ accountId,
+ * masked, detailsVersion, state }`, null while there is none — for the admin's list rows and account read, in one query.
+ * Any other account has no `home`.
+ */
+async function homesOf(accounts: ISettlementAccount[]): Promise<(a: ISettlementAccount) => Record<string, unknown>> {
+  const away = accounts.filter((a) => homeKindOf(a.ownerKind) !== a.ownerKind);
+  const homes = away.length ? await SettlementAccountModel.find({ $or: away.map((a) => ({ ownerKind: homeKindOf(a.ownerKind), ownerId: canon(a.ownerId) })) })
+    .lean() as ISettlementAccount[] : [];
+  return (a) => {
+    if (homeKindOf(a.ownerKind) === a.ownerKind) return {};
+    const h = homes.find((x) => x.ownerKind === homeKindOf(a.ownerKind) && x.ownerId === canon(a.ownerId));
+    if (!h) return { home: null };
+    const { state, masked, detailsVersion } = destinationOf(h, false);
+    return { home: { accountId: String(h._id), masked, detailsVersion, state } };
+  };
+}
+
+/** GET /api/v1/settlements/accounts/:id — the admin's account read (`financeSummary`, full); r35b: its `account.home` as the list rows. */
+export async function adminAccountSummary(rawAccountId: string) {
+  const a = await accountById(rawAccountId);
+  const [summary, homeOf] = await Promise.all([financeSummary(a, true), homesOf([a])]);
+  return { ...summary, account: summary.account ? { ...summary.account, ...homeOf(a) } : null };
 }
 
 type PayoutQuery = { accountId?: string; from?: string; to?: string; state?: 'recorded' | 'voided'; limit?: number };

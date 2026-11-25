@@ -303,6 +303,9 @@ async function main() {
       assert.equal(all.rows.find((r: any) => r.ownerKind === 'doctor_referral').home, null, 'the doctor has no account yet');
       assert.ok(ph.rows.every((r: any) => !('home' in r)));
       // Its own details cannot be set or verified (409 REFERRAL_ACCOUNT_USES_HOME).
+      // The admin's account read carries the same `home` on its account; a partner account none.
+      assert.deepEqual((await expect('ADMIN', 'GET', `/api/v1/settlements/accounts/${labRow._id}`, 200)).json.data.account.home, labRow.home);
+      assert.equal('home' in (await expect('ADMIN', 'GET', `/api/v1/settlements/accounts/${labHome._id}`, 200)).json.data.account, false);
       await expect('ADMIN', 'PUT', `/api/v1/settlements/accounts/${labRow._id}/payout-details`, 409, { method: 'upi', upiId: 'ref@okbank' }, 'REFERRAL_ACCOUNT_USES_HOME');
       await expect('ADMIN', 'POST', `/api/v1/settlements/accounts/${labRow._id}/payout-details/verify`, 409, { version: 1 }, 'REFERRAL_ACCOUNT_USES_HOME');
       process.env.REFERRAL_PAYOUTS_ENABLED = 'true';
@@ -605,6 +608,30 @@ async function main() {
         const second = await pay();
         assert.equal(await lastPaid(), second.paid.at);
       } finally { delete process.env.WALLET_WITHDRAWALS_ENABLED; }
+    });
+
+    await check('r35b set-off rows: a credit clearing what is owed stays a debit with its amount (owed ₹500, top-up ₹1,000: −₹500 shown); a lab\'s owner rows carry receivableDeltaMinor', async () => {
+      const id = oid();
+      await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(id), name: `Owing ${id.slice(-4)}`, phone: nextPhone(), isActive: true, isVerified: true } as never);
+      tokens[id] = sign({ _id: id, pharmacyId: id, userType: 'pharmacy' });
+      await pharmacyStore(id).ensure();
+      await PharmacyWalletModel.updateOne({ pharmacyId: id }, { $set: { receivableMinor: 50_000 } });
+      await cardTopup('pharmacy', id, 100_000);
+      const rows = (await expect(id, 'GET', '/api/v1/pharmacy-wallet/transactions?limit=50', 200)).json.data;
+      const cleared = rows.filter((t: any) => t.movementType === 'receivable_setoff');
+      assert.deepEqual(cleared.map((t: any) => [t.transactionType, t.amount, t.amountPaise, t.signedAmountPaise, t.description]),
+        [['debit', 500, 50_000, -50_000, 'Owed amount cleared from this credit']], 'the released app reads it as −₹500');
+      assert.equal((await PharmacyWalletModel.findOne({ pharmacyId: id }).lean() as any).balancePaise, 50_000);
+      // A lab's referral set-off: its owner row shows what it cleared (`receivableDeltaMinor`), the balance unmoved.
+      await PartnerWalletModel.updateOne({ ownerKind: 'lab', ownerId: L.toLowerCase() }, { $set: { receivableMinor: 3000 } });
+      process.env.REFERRAL_PAYOUTS_ENABLED = 'true';
+      try {
+        await expect('ADMIN', 'POST', `/api/v1/admin/wallets/lab/${L}/receivable/setoff-from-referral`, 201, { amountMinor: 3000, requestKey: newKey() });
+      } finally { delete process.env.REFERRAL_PAYOUTS_ENABLED; }
+      const ents = (await expect('LAB', 'GET', '/api/v1/partner-workspace/assisted/wallet/entries?limit=50', 200)).json.data;
+      assert.ok(ents.every((e: any) => typeof e.receivableDeltaMinor === 'number'));
+      assert.deepEqual(ents.filter((e: any) => e.kind === 'receivable_setoff').map((e: any) => [e.amountMinor, e.receivableDeltaMinor, e.referenceType]),
+        [[0, -3000, 'referral_setoff']]);
     });
   } finally {
     server.close();

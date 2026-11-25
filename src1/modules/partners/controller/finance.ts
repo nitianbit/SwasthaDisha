@@ -73,7 +73,7 @@ const adminId = (req: Request) => String((req as AuthRequest).user!._id);
 export const adminAccounts = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.adminListAccounts({ ...(req.query as any), due: req.query.due === 'true' }));
 export const adminAccount = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await f.financeSummary(await f.accountById(req.params.accountId), true));
+  ok(res, await f.adminAccountSummary(req.params.accountId));
 export const adminStatement = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.statementPage(await f.accountById(req.params.accountId), req.query as any));
 export const adminStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>

@@ -27,20 +27,22 @@ import { CSV_MAX_LINES, inSnapshot, parseCursor, range, statementCsvOf } from '@
  * of a "booking" would read as a debit). So every row answers with an app type by its sign, and the stored kind as
  * `movementType`. `credit`, `debit` and `refund` rows are unchanged.
  *
- * r35b: an owed amount paid from referral earnings (`receivable_setoff`) moves no wallet money: it answers as its own
- * type, `adjustment`. The released app does not break on it: an unknown type falls to the title ("Owed amount of ₹x paid
- * from your referral earnings" names none of its words) and then to the sign of `amount` — so `amount` is 0 on that row
- * (the balance did not move; `amountPaise` keeps the amount): the app shows "−₹0" under that title, never "+₹x".
+ * r35b: an owed amount paid from referral earnings (a `receivable_setoff` row of `referenceType: 'referral_setoff'`)
+ * moves no wallet money: it answers as its own type, `adjustment`. The released app does not break on it: an unknown type
+ * falls to the title ("Owed amount of ₹x paid from your referral earnings" names none of its words) and then to the sign
+ * of `amount` — so `amount` is 0 on that row (the balance did not move; `amountPaise` keeps the amount): the app shows
+ * "−₹0" under that title, never "+₹x". A credit's own set-off ("Owed amount cleared from this credit") takes money from
+ * the balance and stays a `debit` with its amount.
  */
 const APP_TYPES = ['credit', 'debit', 'refund'];
-const ZERO_DEBIT_KINDS = ['chargeback', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
+const ZERO_DEBIT_KINDS = ['chargeback', 'receivable_setoff', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
 /** A row's signed paise (rows from before phase 1a: from the rupee balances). */
 const signedPaiseOf = (t: IPharmacyWalletTransaction) => (Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
   : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100));
 export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletTransaction & { movementType: string } {
   const kind = String(t.transactionType);
   if (APP_TYPES.includes(kind)) return { ...t, movementType: kind };
-  if (kind === 'receivable_setoff') return { ...t, transactionType: 'adjustment', amount: 0, movementType: kind };
+  if (kind === 'receivable_setoff' && t.referenceType === 'referral_setoff') return { ...t, transactionType: 'adjustment', amount: 0, movementType: kind };
   const signed = signedPaiseOf(t);
   // A zero-amount row (a chargeback the balance could not cover) reads as what its kind is.
   const credit = signed > 0 || (signed === 0 && !ZERO_DEBIT_KINDS.includes(kind));

@@ -40,9 +40,10 @@ export function walletView(w: IPartnerWallet | null | undefined) {
 }
 const adminWalletView = (w: IPartnerWallet | null) => ({ ...walletView(w), exists: !!w, frozenReason: w?.frozenReason ?? null,
   frozenAt: w?.frozenAt ?? null, version: w?.version ?? 0, createdAt: w?.createdAt ?? null });
+// r35b (WQ48): the owner's rows carry `receivableDeltaMinor` too (a referral set-off moves only what is owed).
 const entryView = (e: IPartnerWalletEntry) => ({ _id: String(e._id), kind: e.kind, amountMinor: e.amountMinor, balanceAfterMinor: e.balanceAfterMinor,
-  description: e.description, referenceType: e.referenceType, referenceId: e.referenceId, at: e.at });
-const adminEntryView = (e: IPartnerWalletEntry) => ({ ...entryView(e), withdrawableDeltaMinor: e.withdrawableDeltaMinor, receivableDeltaMinor: e.receivableDeltaMinor,
+  receivableDeltaMinor: e.receivableDeltaMinor, description: e.description, referenceType: e.referenceType, referenceId: e.referenceId, at: e.at });
+const adminEntryView = (e: IPartnerWalletEntry) => ({ ...entryView(e), withdrawableDeltaMinor: e.withdrawableDeltaMinor,
   operationKey: e.operationKey, notes: e.notes ?? null, lotAllocations: e.lotAllocations ?? [], actor: e.actor ?? null });
 const recordPaise = (r: IPaymentRecord) => (Number.isSafeInteger(r.finalAmountPaise) ? Number(r.finalAmountPaise) : Math.round(Number(r.finalAmount) * 100));
 const recordView = (r: IPaymentRecord) => ({ _id: String(r._id), status: r.status, amountMinor: recordPaise(r), currency: r.currency,
