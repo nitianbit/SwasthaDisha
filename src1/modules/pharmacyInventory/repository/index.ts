@@ -507,6 +507,8 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
             brandName: '$medicine.brandName',
             dosageForm: '$medicine.dosageForm',
             strength: '$medicine.strength',
+            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering.
+            prescriptionRequired: '$medicine.prescriptionRequired',
           },
         },
       });
@@ -530,6 +532,8 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
             brandName: '$medicine.brandName',
             dosageForm: '$medicine.dosageForm',
             strength: '$medicine.strength',
+            // r36 (WQ50): whether selling it needs a prescription (the order create's rule), known before ordering.
+            prescriptionRequired: '$medicine.prescriptionRequired',
           },
         },
       });

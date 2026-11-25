@@ -80,7 +80,19 @@ export class PharmacyOrderController {
         : (req.user?._id || ''),
       req.user?.userType || ''
     );
-    res.status(200).json({ success: true, data: result });
+    // r36 (WQ50): a pharmacy reads the customer as its order list shows it (populated, the pharmacy-facing name).
+    const data = req.user?.userType === 'pharmacy' ? await this.service.pharmacyView(result, req.user?.pharmacyId || '') : result;
+    res.status(200).json({ success: true, data });
+  };
+
+  /** r36 (WQ50): GET /pharmacy-orders/by-key/:key and POST …/by-key/:key/abandon — this pharmacy's in-store sale keys. */
+  saleByKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: await this.service.inStoreSaleByKey(req.user?.pharmacyId || '', req.params.key) });
+  };
+  abandonSaleKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: await this.service.abandonInStoreSaleKey(req.user?.pharmacyId || '', req.params.key) });
   };
 
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {

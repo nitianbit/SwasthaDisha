@@ -21,6 +21,7 @@ import {
   recoveryWorklistQuerySchema,
   prescriptionReviewQueueQuerySchema,
   idParamSchema,
+  saleKeyParamSchema,
 } from '@/modules/pharmacyOrders/validation';
 
 const pharmacyOrderRouter = Router();
@@ -32,6 +33,10 @@ pharmacyOrderRouter.post(
   validate(createOrderSchema, 'body'),
   catchAsync(controller.create)
 );
+
+// r36 (WQ50): what a keyed in-store sale made (this pharmacy's own keys), and giving a key up.
+pharmacyOrderRouter.get('/by-key/:key', requireOperationalPharmacy, validate(saleKeyParamSchema, 'params'), catchAsync(controller.saleByKey));
+pharmacyOrderRouter.post('/by-key/:key/abandon', requireOperationalPharmacy, validate(saleKeyParamSchema, 'params'), catchAsync(controller.abandonSaleKey));
 
 pharmacyOrderRouter.get(
   '/',

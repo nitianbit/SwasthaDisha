@@ -131,6 +131,9 @@ export const recoveryWorklistQuerySchema = Joi.object({
   pharmacyId: Joi.forbidden(),
 });
 
+/** r36 (WQ50): the request key of a keyed in-store sale (as `createOrderSchema.requestKey`). */
+export const saleKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).required() });
+
 export const idParamSchema = Joi.object({
   id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
     'string.pattern.base': 'Invalid ID format',

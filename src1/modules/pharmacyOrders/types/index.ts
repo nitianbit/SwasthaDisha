@@ -143,6 +143,8 @@ export interface IPharmacyOrder {
   checkoutRequestKey?: string;
   /** Assisted booking phase 0 (§9.3): made from a booking's prescription; the dispensing copy bound by the server. */
   prescriptionFromBooking?: { bookingId: string; fileUrl: string; bindingExpiresAt: Date; requestKey: string; requestHash: string; dispensedAt?: Date };
+  /** r36 (WQ50): an in-store sale made with a request key (once per pharmacy and key). */
+  saleRequest?: { requestKey: string; requestHash: string };
   /** P8: the cart a keyed checkout came from (id + version). */
   checkoutCart?: { id: string; updatedAt: Date };
   _id?: string;

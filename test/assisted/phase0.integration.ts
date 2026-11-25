@@ -506,7 +506,8 @@ async function main() {
       await FileUploadModel.create({ path: own, uploaderType: 'pharmacy', uploaderId: P, createdAt: new Date() });
       await expect('P', 'POST', '/pharmacy-orders', 400, rxOrder(b1, 'rx-key-shape-01', { prescriptionUrls: ['/api/static/' + own] }), 'PRESCRIPTION_SOURCE_CONFLICT');
       await expect('P', 'POST', '/pharmacy-orders', 400, rxOrder(b1, 'rx-key-shape-09', { prescriptionUrls: [b1Copy] }), 'FILE_NOT_ATTACHABLE');
-      await expect('P', 'POST', '/pharmacy-orders', 400, { ...rxOrder(b1, 'rx-key-shape-02'), prescriptionFromBookingId: undefined, customerId: L },
+      // r36: a key on an in-store sale is now accepted (WQ50); on any other order it is still refused.
+      await expect('P', 'POST', '/pharmacy-orders', 400, { ...rxOrder(b1, 'rx-key-shape-02'), prescriptionFromBookingId: undefined, customerId: L, orderType: 'online' },
         'REQUEST_KEY_UNSUPPORTED');
       const other = await expect('P', 'POST', '/pharmacy-orders', 404, rxOrder(bQ, 'rx-key-shape-03'), 'BOOKING_NOT_FOUND');
       const missing = await expect('P', 'POST', '/pharmacy-orders', 404, rxOrder(oid(), 'rx-key-shape-04'), 'BOOKING_NOT_FOUND');

@@ -296,6 +296,11 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       }, { _id: false }),
       default: undefined,
     },
+    // r36 (WQ50): an in-store sale made with a request key — once per (pharmacy, key), with the request's content hash.
+    saleRequest: {
+      type: new Schema({ requestKey: { type: String, required: true }, requestHash: { type: String, required: true } }, { _id: false }),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
@@ -309,6 +314,9 @@ pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
 // Assisted booking phase 0: one order per (pharmacy, prescription-order request key).
 pharmacyOrderSchema.index({ pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 }, { unique: true,
   partialFilterExpression: { 'prescriptionFromBooking.requestKey': { $type: 'string' } } });
+// r36 (WQ50): one in-store sale per (pharmacy, request key).
+pharmacyOrderSchema.index({ pharmacyId: 1, 'saleRequest.requestKey': 1 }, { unique: true,
+  partialFilterExpression: { 'saleRequest.requestKey': { $type: 'string' } } });
 pharmacyOrderSchema.index({ 'refill.paymentDueBy': 1, status: 1 }, { sparse: true });
 // Pharmacist review queue: pending prescriptions per pharmacy, oldest first.
 pharmacyOrderSchema.index({ pharmacyId: 1, prescriptionStatus: 1, createdAt: 1 });

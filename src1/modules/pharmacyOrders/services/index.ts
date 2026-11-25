@@ -38,7 +38,8 @@ export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
 }
 import logger from '@/services/logger';
 import PharmacyModel from '@/modules/pharmacies/model';
-import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
+import { abandonRequestKey, claimRequestKey, scopeOf } from '@/modules/requestKeys';
+import { withPharmacyFacingCustomerNames } from '@/modules/assisted/names';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
@@ -155,6 +156,9 @@ export interface PharmacyPaymentDetails {
   paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number; currency: string;
   baseAmount: number; discountAmount: number;
 }
+
+/** r36 (WQ50): the request-key scope of a pharmacy's in-store sales. */
+const saleKeyScope = (pharmacyId: string) => `pharmacy_sale:${String(pharmacyId).toLowerCase()}`;
 
 @Service()
 export class PharmacyOrderService {
@@ -600,6 +604,8 @@ export class PharmacyOrderService {
       checkoutCart?: { id: string; updatedAt: Date };
       /** Assisted booking phase 0: an order from a booking's prescription (checked terms, key and content hash). */
       rxOrder?: RxOrderTerms & { requestKey: string; requestHash: string };
+      /** r36 (WQ50): a keyed in-store sale (its key and content hash), claimed in the order's transaction. */
+      saleRequest?: { requestKey: string; requestHash: string };
     } = {}
   ): Promise<{
     order: IPharmacyOrder;
@@ -616,6 +622,10 @@ export class PharmacyOrderService {
   }> {
     if (data.prescriptionFromBookingId !== undefined && !options.rxOrder) {
       return this.createFromPrescription(pharmacyId, data, createdById, createdByRole);
+    }
+    // r36 (WQ50): a pharmacy's in-store sale may carry a request key (exactly once); without one, nothing changes.
+    if (data.requestKey !== undefined && !options.rxOrder && data.orderType === 'in_store' && createdByRole === 'pharmacy') {
+      return this.createInStoreSale(pharmacyId, data, createdById, createdByRole);
     }
     if (data.requestKey !== undefined && !options.rxOrder) {
       throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'A requestKey is for orders made from a prescription' });
@@ -698,6 +708,8 @@ export class PharmacyOrderService {
       // Assisted booking phase 0: the prescription order's key is claimed with the order (abandoned keys refuse); the
       // unique {pharmacyId, prescriptionFromBooking.requestKey} makes a second order under it impossible.
       if (options.rxOrder) await claimRequestKey(scopeOf('pharmacy_rx_order', pharmacyId), options.rxOrder.requestKey, session);
+      // r36: likewise a keyed in-store sale (unique {pharmacyId, saleRequest.requestKey}).
+      if (options.saleRequest) await claimRequestKey(saleKeyScope(pharmacyId), options.saleRequest.requestKey, session);
       const allocations = await this.inventoryService.reserveOrderStockBulk(
         pharmacyId,
         inventoryItems,
@@ -715,6 +727,7 @@ export class PharmacyOrderService {
           ...(options.refill ? { refill: options.refill } : {}),
           ...(options.checkoutRequestKey ? { checkoutRequestKey: options.checkoutRequestKey } : {}),
           ...(options.checkoutCart ? { checkoutCart: options.checkoutCart } : {}),
+          ...(options.saleRequest ? { saleRequest: options.saleRequest } : {}),
           orderNumber: this.generateOrderNumber(),
           pharmacyId,
           orderType: data.orderType,
@@ -1002,6 +1015,69 @@ export class PharmacyOrderService {
       }
       throw error;
     }
+  }
+
+  /**
+   * r36 (WQ50): a pharmacy's in-store sale with a request key, exactly once per (pharmacy, key) — the rx order's pattern: the
+   * key claimed in the order's transaction, the content hashed; the same key and content answer the first order again
+   * (`replayed: true`), other content 409 IDEMPOTENCY_KEY_REUSED, an abandoned key 409 REQUEST_ABANDONED.
+   */
+  private async createInStoreSale(pharmacyId: string, data: CreateOrderRequest, createdById: string, createdByRole: string) {
+    const requestKey = String(data.requestKey);
+    const { requestKey: _key, ...content } = data;
+    const requestHash = requestHashOf({ kind: 'in_store_sale', ...content });
+    await assertUniqueIndex(PharmacyOrderModel, { pharmacyId: 1, 'saleRequest.requestKey': 1 });
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
+    const replay = async () => {
+      const prior = await this.saleByKey(pharmacyId, requestKey);
+      if (!prior) return null;
+      if (prior.saleRequest?.requestHash !== requestHash) {
+        throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different order' });
+      }
+      return this.checkoutReplay(prior);
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    try {
+      return await this.create(pharmacyId, content, createdById, createdByRole, { saleRequest: { requestKey, requestHash } });
+    } catch (error) {
+      // A concurrent first request under the same key committed first: answer with its order.
+      if ((error as { code?: number })?.code === 11000) {
+        const again = await replay();
+        if (again) return again;
+      }
+      throw error;
+    }
+  }
+
+  private async saleByKey(pharmacyId: string, key: string): Promise<IPharmacyOrder | null> {
+    if (!Types.ObjectId.isValid(pharmacyId)) return null;
+    return await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId), 'saleRequest.requestKey': { $eq: key } }).lean() as IPharmacyOrder | null;
+  }
+
+  /** r36: GET /pharmacy-orders/by-key/:key — the order a sale key made (this pharmacy's own keys only), Q13 shape. */
+  async inStoreSaleByKey(pharmacyId: string, key: string) {
+    const order = await this.saleByKey(pharmacyId, key);
+    if (order) return { state: 'used' as const, order: await this.pharmacyView(order, pharmacyId) };
+    const k = await RequestKeyModel.findOne({ scope: saleKeyScope(pharmacyId), key }).lean();
+    return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
+  }
+
+  /** r36: POST /pharmacy-orders/by-key/:key/abandon — a key whose sale never committed can never make one. */
+  async abandonInStoreSaleKey(pharmacyId: string, key: string) {
+    const found = await this.inStoreSaleByKey(pharmacyId, key);
+    if (found.state === 'used') return found;
+    const state = await abandonRequestKey(saleKeyScope(pharmacyId), key);
+    return state === 'abandoned' ? { state } : this.inStoreSaleByKey(pharmacyId, key);
+  }
+
+  /**
+   * r36 (WQ50): an order as its pharmacy reads it — the customer populated (`name`, `phone`) and named by the pharmacy-facing
+   * rule the order list applies (the name the pharmacy typed, else masked).
+   */
+  async pharmacyView(order: IPharmacyOrder, viewerPharmacyId: string): Promise<IPharmacyOrder> {
+    const populated = await PharmacyOrderModel.populate(order, { path: 'customerId', select: 'name phone', options: { lean: true } }) as unknown as IPharmacyOrder;
+    return (await withPharmacyFacingCustomerNames([populated], viewerPharmacyId))[0]!;
   }
 
   /** P8: the answer to a repeated keyed checkout: the order the key produced, payable again if it is still unpaid. */

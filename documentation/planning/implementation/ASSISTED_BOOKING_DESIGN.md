@@ -6722,6 +6722,51 @@ Each suite alone on its own database (on the final code): `r35-phase4ef` 16/16, 
 16/16, `r13-phase2d` 18/18, `r20-phase3a` 15/15. The full regression (`prun.sh … 2`, at `49b5ed2b`): 87 of 87 pass,
 tsc 17, no failures.
 
+### 26.19 r36: backend for the web pharmacy counter sale (WQ50, 2026-11-26)
+
+Branch `m0/r36-pharmacy-sale` from stage `43f46f57`. Local commits only. Owner-approved; the owner was asleep, so the small
+choices below are the builder's (ASSUMED). The released mobile pharmacy app calls these routes: without a request key
+every answer is as before.
+
+| # | Gap | Built |
+|---|---|---|
+| 1 | `POST /api/v1/pharmacy-orders` with `orderType: 'in_store'` refused a `requestKey` (400 `REQUEST_KEY_UNSUPPORTED`) | A pharmacy's in-store sale may carry `requestKey` (8–64 of `A-Za-z0-9_-`): exactly once per (pharmacy, key), with the rx order's pattern (`createInStoreSale`). The key is claimed in the order's transaction (scope `pharmacy_sale:<pharmacyId>`). The order stores `saleRequest: { requestKey, requestHash }` (the hash of the body without the key), with the unique partial index `{ pharmacyId, saleRequest.requestKey }`. The same key and body answer the first order (`replayed: true`); another body is 409 `IDEMPOTENCY_KEY_REUSED`; an abandoned key is 409 `REQUEST_ABANDONED`. Racing repeats make one order. A key on any other order is still 400 `REQUEST_KEY_UNSUPPORTED` |
+| 1b | Finding a sale whose answer was lost | `GET /api/v1/pharmacy-orders/by-key/:key` → `{ state: 'used', order } \| { state: 'abandoned' } \| { state: 'unknown' }`; `POST …/by-key/:key/abandon` → the same (`abandoned`, or `used` when the sale committed). Operational pharmacy; its own keys only (another pharmacy's key is `unknown`, uniform) |
+| 2 | The web learnt that a medicine needs a prescription only from the create's refusal | `GET /api/v1/pharmacy-inventory` rows: `medicineId.prescriptionRequired` (boolean, from the medicine; the create's own rule). Pharmacy and admin views; the customer view is unchanged |
+| 3 | `GET /api/v1/pharmacy-orders/:id` showed the pharmacy a bare customer id | For a pharmacy caller: `customerId` populated `{ _id, name, phone }`, the name by the list's pharmacy-facing rule (`withPharmacyFacingCustomerNames`: the name the pharmacy typed, else masked). One reader, `PharmacyOrderService.pharmacyView`, also used by by-key. Admins and customers read it as before |
+
+**Exact shapes:**
+- `POST /api/v1/pharmacy-orders` `{ orderType: 'in_store', customerId? | buyerPharmacyId?, items, paymentMode, deliveryMode, isWalkIn?,
+  prescriptionUrls?, notes?, requestKey? }` → 201 `{ success, message, data: { order, paymentRequired, payment? } }`; a replay
+  adds `replayed: true` to `data` (still 201, as the rx order's replay). `order.saleRequest: { requestKey, requestHash }` on a
+  keyed sale.
+- `GET …/by-key/:key` and `POST …/by-key/:key/abandon` → 200 `{ success, data: { state: 'used', order } | { state: 'abandoned' |
+  'unknown' } }`, `Cache-Control: private, no-store`; 400 on a malformed key.
+- `GET /api/v1/pharmacy-inventory` → each row's `medicineId: { _id, name, genericName, brandName, dosageForm, strength,
+  prescriptionRequired }`.
+- `GET /api/v1/pharmacy-orders/:id` (pharmacy) → `customerId: { _id, name | null, phone }` (null: no customer, or a masked
+  name is all the rule allows).
+
+**ASSUMED (r36, reversible):**
+
+| # | Choice | Why |
+|---|---|---|
+| S1 | A replay answers 201 with `replayed: true`, and for an online-paid order the rx order's `checkoutReplay` (its payment resumed when still payable) | The existing keyed order create does exactly this |
+| S2 | Only `orderType: 'in_store'` created by a pharmacy takes a key; a pharmacy's `online` order with a key stays 400 | The ask was the counter sale; `phase0`'s refusal check now sends `orderType: 'online'` |
+| S3 | `GET /pharmacy-orders/:id` for another pharmacy stays 403 `FORBIDDEN` (not the uniform 404) | Zero change for the released app; the new by-key routes are uniform (`unknown`) |
+| S4 | The pharmacy's order detail populates the customer (the list already did); the released app reads `customerId` as text or `{ name, phone, _id }` alike (`ordersShared.ts` `toDisplayText`) and never sends it back | Checked in `pharmacy-app` |
+
+**Deploy:** run `sync-indexes` (builds `pharmacyorders` `pharmacyId_1_saleRequest.requestKey_1`, unique partial). Until then a
+keyed sale answers 503 `INDEXES_OUTDATED` (`assertUniqueIndex`); sales without a key are unaffected.
+
+**Checks:** `test/pharmacy-orders/r36-pharmacy-sale.integration.ts`, 5 checks:
+- without a key nothing changes; an `online` order with a key is still 400 and writes nothing;
+- the keyed sale (first, replay, another body 409, three racing repeats make one order, another pharmacy's same key is its own);
+- by-key (used with the pharmacy view, unknown, abandoned then 409 `REQUEST_ABANDONED`, abandoning a used key, another
+  pharmacy's scope, a malformed key 400, a customer 403);
+- the order detail names the customer as the list does, the customer's own read unchanged, another pharmacy 403;
+- `prescriptionRequired` on inventory rows with and without search.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
