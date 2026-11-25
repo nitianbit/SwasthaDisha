@@ -6606,6 +6606,13 @@ pharmacy's own; the pharmacy statement (wallet paging, from/to, referral kind, b
 the lab and doctor blocks; the disputes and top-ups without a lot; the quote's reasons; WQ29: the fee fence, the details
 lock, paid after a dispute (then Recover and set-off), the lab scope (13 checks in all).
 
+Merged `8b1f6c35` and then `origin/stage` `21496500` (r32 + r32b on stage; the same tree). Each suite alone on its own
+database: `r35-phase4ef` 13/13, `r33-referral-gaps` 5/5, `r24-phase4ab` 15/15, `r32-phase4cd` 18/18 (its quote assertion
+gains `reason: null`), `q5-finance` 19/19. The full regression (`prun.sh … 2`): 83 of 87 pass, tsc 17; the four failures
+were the runner's mongod stalling under load (`PoolClearedOnNetworkError … server monitor timeout` in
+`a2b-external-cancel`, `q4b-instant`, `q4a-scheduled`; an OTP read in `c1r-session-revoke`) and each passes alone
+(18/18, 25/25, 24/24 with its clock shim, 7/7).
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
