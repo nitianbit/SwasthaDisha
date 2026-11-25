@@ -6,7 +6,7 @@ import DependentModel from '@/modules/dependents/model';
 import PharmacyCustomerModel from '@/modules/pharmacyCustomers/model';
 import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
-import type { PharmacyActor } from '@/modules/assisted/consultations';
+import type { PharmacyActor } from '@/modules/assisted/bookers';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { hitLookup } from '@/modules/assisted/limits';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
@@ -16,8 +16,9 @@ import { AssistedLinkModel } from '@/modules/assisted/model/links';
  * of a new number (opened only in the booking transaction), the pharmacy-customer link with consent and the typed name,
  * and the coupon redemption row.
  *
- * r17 / r24: every assisted create (the 1a consultation, the 2a lab booking, the 2c lab desk, the 3e instant request)
- * prepares its patient with `preparePatient` / `writePatientIn` below; the 1a create's private copies are gone.
+ * r17 / r24: every assisted create (the 1a consultation and its 2e lab booker, the 2a lab booking, the 2c lab desk, the
+ * 3e instant request) prepares its patient with `preparePatient` / `writePatientIn` below; the 1a create's private
+ * copies are gone.
  */
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();

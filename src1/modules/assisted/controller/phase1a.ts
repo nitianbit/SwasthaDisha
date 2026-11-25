@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { Types } from 'mongoose';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
-import { createPharmacyConsultation, type PharmacyActor } from '@/modules/assisted/consultations';
+import { createAssistedConsultation, type PharmacyActor } from '@/modules/assisted/consultations';
 import { abandonByKey, cancelByBooker, findByKey, listDoctors, listDoctorSlots, lookupPatient, rescheduleByBooker } from '@/modules/assisted/pharmacyCommands';
 import { dismissReviewItem, listReviewItems, moveAssistedBooking, reportNotMine } from '@/modules/assisted/review';
 import { runReconciliation, stuckMoney, uncreditedTopups } from '@/modules/assisted/reconciliation';
@@ -38,7 +38,7 @@ export const doctors = async (req: AuthRequest, res: Response) => send(res, awai
 export const doctorSlots = async (req: AuthRequest, res: Response) =>
   send(res, await listDoctorSlots(actorOf(req), req.params.doctorId, req.query as never));
 export const createConsultation = async (req: AuthRequest, res: Response) => {
-  const out = await createPharmacyConsultation(actorOf(req), req.body);
+  const out = await createAssistedConsultation(actorOf(req), req.body);
   send(res, out, out.replayed ? 200 : 201);
 };
 export const cancel = async (req: AuthRequest, res: Response) => send(res, await cancelByBooker(actorOf(req), req.params.id, req.body ?? {}));

@@ -10,6 +10,12 @@ type Row = Record<string, any>;
 export const BOOKER_REPORT_DAYS = 90;
 const DAY_MS = 86_400_000;
 
+/**
+ * §24.1 item 12 (S5 for labs): a lab takes or makes assisted bookings only while it is an active, verified lab. A pure
+ * predicate (file access and the booker admission both use it).
+ */
+export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
+
 /** §5.1: rows written before `source` existed derive it. */
 export const labSourceOf = (b: Row): string => (typeof b?.source === 'string' ? b.source : 'self');
 

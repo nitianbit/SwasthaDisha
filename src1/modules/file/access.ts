@@ -9,7 +9,7 @@ import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import PartnerMemberModel from '@/modules/partners/model/member';
 import PartnerOrgModel from '@/modules/partners/model';
 import { hasPrescription, isOperationalPharmacy, rxWindowOpenFor } from '@/modules/assisted/rxAccess';
-import { bookerReportWindowOpen, labNotDisputed } from '@/modules/assisted/labViews';
+import { bookerReportWindowOpen, labAdmissible, labNotDisputed } from '@/modules/assisted/labViews';
 import { dispensingHashOf, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
@@ -105,14 +105,28 @@ async function canReadDispensingCopy(r: Reader, bookingId: string, rel: string):
     case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r) && hasPrescription(b) && await doctorIsEligible(specialistOf(r));
     case 'pharmacy': {
       if (!b.pharmacyId || id(b.pharmacyId) !== pharmacyOf(r)) return false;
-      const copy = b.prescription?.dispensingCopy;
-      if (uploadPathOf(copy?.url) !== rel || !hasPrescription(b) || copy?.hash !== dispensingHashOf(b)) return false;
-      if (!(await isOperationalPharmacy(pharmacyOf(r)))) return false;
+      if (!currentCopy(b, rel) || !(await isOperationalPharmacy(pharmacyOf(r)))) return false;
+      return (await rxWindowOpenFor(b)).open;
+    }
+    // 2e (decision G): the lab that booked the consultation reads the dispensing copy as a pharmacy does — its member
+    // holding `assisted.book` with the booking's branch in scope, while the lab is active and verified, the current copy,
+    // within 90 days. Never the full PDF, the documents or the report (canReadBooking admits no partner).
+    case 'partner': {
+      const by = b.assisted?.bookedBy;
+      if (by?.kind !== 'lab' || !currentCopy(b, rel)) return false;
+      if (!(await partnerMemberMayRead(r, { partnerId: by.id, branchId: by.branchId }, ['assisted.book']))) return false;
+      if (!labAdmissible(await PartnerOrgModel.findById(id(by.id)).select({ kind: 1, isActive: 1, verification: 1 }).lean())) return false;
       return (await rxWindowOpenFor(b)).open;
     }
     default: return false;
   }
 }
+
+/** The booking's current dispensing copy is this file (review finding 7: an older copy is not the booker's to read). */
+const currentCopy = (b: Record<string, any>, rel: string) => {
+  const copy = b.prescription?.dispensingCopy;
+  return uploadPathOf(copy?.url) === rel && hasPrescription(b) && copy?.hash === dispensingHashOf(b);
+};
 
 /** Order statuses that count as dispensed (N12): the medicines were packed or handed over. */
 export const DISPENSED_ORDER_STATUSES = ['packed', 'ready_for_pickup', 'out_for_delivery', 'completed'];

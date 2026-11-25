@@ -478,9 +478,14 @@ export function meetEventTextFor(booking: Pick<IBooking, 'assisted'>, p: { speci
   };
 }
 
-/** The booker's contact email for the invite (pharmacy in 1a); null when none. */
+/** The booker's contact email for the invite (pharmacy in 1a; 2e: a lab's contact email); null when none. */
 export async function assistedBookerEmail(booking: Pick<IBooking, 'assisted'>): Promise<string | null> {
   const by = booking.assisted?.bookedBy;
+  if (by?.kind === 'lab') {
+    const { default: PartnerOrgModel } = await import('@/modules/partners/model');
+    const p = await PartnerOrgModel.findById(by.id).select({ 'contact.email': 1 }).lean() as { contact?: { email?: string } } | null;
+    return p?.contact?.email ?? null;
+  }
   if (by?.kind !== 'pharmacy') return null;
   const { default: PharmacyModel } = await import('@/modules/pharmacies/model');
   const p = await PharmacyModel.findById(by.id).select({ email: 1 }).lean() as { email?: string } | null;

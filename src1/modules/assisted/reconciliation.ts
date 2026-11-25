@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { bookerEntriesOf } from '@/modules/assisted/bookerWallet';
 import logger from '@/services/logger';
 import { istDateIso } from '@/modules/common/utils/istDate';
 import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
@@ -24,7 +25,6 @@ import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { upcomingMeetsMissing } from '@/modules/meet/retry';
 import { InstantRequestModel, type IInstantRequest } from '@/modules/doctors/model/instant';
 import type { AssistedReferral } from '@/modules/assisted/types';
-import { bookerEntriesOf } from '@/modules/assisted/bookerWallet';
 
 /**
  * Assisted booking phase 1a (design §8.2, §8.8, P10): the daily reconciliation and the stuck-money report. Mismatches are
@@ -99,15 +99,16 @@ async function bookingChecks(scope: { since: Date | null; flagged: string[] }): 
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      const debits = await PharmacyWalletTransactionModel.find({ operationKey: `assisted:${id}:debit` }).select({ amountPaise: 1, pharmacyId: 1 }).lean();
-      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+      // 2e: the payer's own wallet store (a pharmacy's or a lab's).
+      const debits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted:${id}:debit`);
+      if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
     const refunded = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
     if (refunded > 0) {
-      const credit = await PharmacyWalletTransactionModel.findOne({ operationKey: `assisted:${id}:refund` }).select({ amountPaise: 1 }).lean();
-      if (!credit || Number(credit.amountPaise) !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
+      const [credit] = await bookerEntriesOf(f.payerKind, f.payerId, `assisted:${id}:refund`);
+      if (!credit || credit.amountPaise !== refunded) mismatches.push({ check: 'refund_posted', ref: id, detail: { refundedMinor: refunded } });
     }
     if (b.status === 'cancelled' && f.state === 'captured' && f.amountMinor > 0) mismatches.push({ check: 'cancelled_not_refunded', ref: id, detail: {} });
     if (b.status !== 'cancelled' && f.state === 'refunded') mismatches.push({ check: 'refunded_not_cancelled', ref: id, detail: { status: b.status } });
@@ -144,9 +145,9 @@ async function labBookingChecks(scope: { since: Date | null; flagged: string[] }
     const a = b.assisted!;
     const f = a.funding;
     if (f.amountMinor > 0) {
-      // r26: the payer's own wallet entries (a doctor's are in the partner store).
+      // The payer's own wallet entries (r26: a doctor's, 2e: a lab's are in the partner store).
       const debits = await bookerEntriesOf(f.payerKind, f.payerId, `assisted_lab:${id}:debit`);
-      if (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor || lower(debits[0]!.pharmacyId) !== lower(f.payerId)) {
+      if (debits.length !== 1 || debits[0]!.amountPaise !== f.amountMinor || lower(debits[0]!.payerId) !== lower(f.payerId)) {
         mismatches.push({ check: 'lab_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor } });
       }
     }
@@ -216,7 +217,7 @@ async function instantChecks(scope: { since: Date | null; flagged: string[] }): 
     const entries = (kind: string) => bookerEntriesOf(f.payerKind, f.payerId, `assisted_instant:${id}:${kind}`);
     const [debits, refunds, returns, cancels] = await Promise.all([entries('debit'), entries('refund'), entries('quote_return'), entries('cancel_refund')]);
     if (held !== f.amountMinor || (f.amountMinor > 0 && (debits.length !== 1 || Number(debits[0]!.amountPaise) !== f.amountMinor
-      || lower(debits[0]!.pharmacyId) !== lower(f.payerId)))) {
+      || lower(debits[0]!.payerId) !== lower(f.payerId)))) {
       mismatches.push({ check: 'instant_one_funding', ref: id, detail: { debits: debits.length, amountMinor: f.amountMinor, heldMinor: held } });
     }
     if (r.acceptedBy) {

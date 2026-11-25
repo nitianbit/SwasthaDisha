@@ -3,8 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import { CouponModel } from '@/modules/coupon/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
-import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
+import { bookerEntryLotsIn, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import type { AssistedBookingKind, AssistedFunding, AssistedRefundRow } from '@/modules/assisted/types';
 import PaymentRecordModel from '@/modules/payment/model';
 import type { IPaymentRecord } from '@/modules/payment/types';
@@ -54,8 +53,27 @@ export async function settleCardFundingIn(kind: AssistedBookingKind, bookingId: 
   const record = f.state === 'captured' && f.paymentRecordId && Types.ObjectId.isValid(f.paymentRecordId)
     ? await PaymentRecordModel.findById(f.paymentRecordId).session(s).lean() as unknown as IPaymentRecord | null : null;
   if (!record) return { state: 'not_paid', push: null, refundedMinor: 0 };
-  const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerId: f.payerId, record, cause: p.cause, to: p.refundTo === 'wallet' ? 'wallet' : 'card' }, s);
+  const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerKind: f.payerKind, payerId: f.payerId, record, cause: p.cause, to: p.refundTo === 'wallet' ? 'wallet' : 'card' }, s);
   return { state: 'refunded', push: q.created ? q.row : null, refundedMinor: q.created ? q.row.amountMinor : 0 };
+}
+
+/**
+ * The money step of cancelling a WALLET-funded assisted booking (consultation or lab booking, any payer kind: 2e routes
+ * it through the booker wallet dispatcher): one `refund_credit` of the remaining budget (`amountMinor − Σ refunds`) to
+ * the payer's wallet, exactly once (operation key), restoring the debit's lot allocations on a full refund. It ALWAYS
+ * posts: an inactive, frozen or suspended wallet or booker included. Returns the refund row to push (none: nothing left).
+ */
+export async function refundWalletFundingIn(f: AssistedFunding, p: { cause: string; operationKey: string; referenceType: string; referenceId: string;
+  description: string }, s: ClientSession): Promise<{ push: AssistedRefundRow | null; refundedMinor: number }> {
+  const already = (f.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
+  const budget = Number(f.amountMinor || 0) - already;
+  if (!(budget > 0) || f.method !== 'wallet') return { push: null, refundedMinor: 0 };
+  const restore = already === 0 ? await bookerEntryLotsIn(f.payerKind, f.walletEntryId, s) : [];
+  const posted = await postBookerMovementIn({ payerKind: f.payerKind, payerId: f.payerId, kind: 'refund_credit', amountPaise: budget,
+    operationKey: p.operationKey, referenceType: p.referenceType, referenceId: p.referenceId, description: p.description, ...(restore.length ? { restore } : {}) }, s);
+  const attemptId = new Types.ObjectId().toHexString();
+  return { refundedMinor: budget, push: { refundId: attemptId, cause: p.cause, amountMinor: budget, method: 'wallet', sourceRef: String(f.walletEntryId ?? ''),
+    state: 'processed', walletEntryId: String(posted.entry._id), attemptId, at: new Date() } };
 }
 
 /** The refund of a cancellation (not a late or extra capture's return), newest first. */
@@ -85,22 +103,8 @@ export async function settleAssistedFundingIn(booking: IBooking, p: { cause: str
     refundedMinor = card.refundedMinor;
   } else {
     await reverseRedemptionIn('booking', id, s);
-    const already = (a.funding.refunds ?? []).reduce((x, r) => x + Number(r.amountMinor || 0), 0);
-    const budget = Number(a.funding.amountMinor || 0) - already;
-    if (budget > 0 && a.funding.method === 'wallet' && a.funding.payerKind === 'pharmacy') {
-      const debit = a.funding.walletEntryId && Types.ObjectId.isValid(a.funding.walletEntryId)
-        ? await PharmacyWalletTransactionModel.findById(a.funding.walletEntryId).select({ lotAllocations: 1 }).session(s).lean() : null;
-      const posted = await postPharmacyMovementIn({
-        pharmacyId: a.funding.payerId, kind: 'refund_credit', amountPaise: budget, operationKey: `assisted:${id}:refund`,
-        referenceType: 'assisted_booking', referenceId: `${id}:refund`, description: 'Refund of an assisted booking',
-        // A full refund restores exactly the lots the booking used (only full refunds exist in phase 1a).
-        ...(already === 0 && debit?.lotAllocations?.length ? { restore: debit.lotAllocations } : {}),
-      }, s);
-      refundedMinor = budget;
-      const attemptId = new Types.ObjectId().toHexString();
-      push = { refundId: attemptId, cause: p.cause, amountMinor: budget, method: 'wallet', sourceRef: String(a.funding.walletEntryId ?? ''),
-        state: 'processed', walletEntryId: String(posted.entry._id), attemptId, at: new Date() };
-    }
+    ({ push, refundedMinor } = await refundWalletFundingIn(a.funding, { cause: p.cause, operationKey: `assisted:${id}:refund`,
+      referenceType: 'assisted_booking', referenceId: `${id}:refund`, description: 'Refund of an assisted booking' }, s));
     set['assisted.funding.state'] = 'refunded';
   }
   await BookingModel.updateOne({ _id: id, status: 'cancelled' }, {

@@ -7,6 +7,7 @@ import { canonicalJson } from '@/modules/common/utils/canonicalJson';
 import { ageFromDob, bookingPdfExists, escapeHtml, formatDisplayDate, recommendationBoxHtml, removeBookingPdf, writeBookingPdf } from '@/modules/specialistPortal/pdf';
 import { formatRecommendationCode } from '@/modules/testRecommendations/code';
 import { bookerPatientNames, maskName } from '@/modules/assisted/names';
+import type { BookerRef } from '@/modules/assisted/bookers';
 import { hasPrescription } from '@/modules/assisted/rxAccess';
 import { Job } from '@/modules/queue/model';
 import JobConsumer from '@/modules/queue/service/JobConsumer';
@@ -109,6 +110,10 @@ export function buildDispensingHtml(input: { booking: Row; doctorName: string; r
 </html>`;
 }
 
+/** The booker a dispensing copy is made for: the lab that booked it (2e), or the booking pharmacy (assisted or legacy). */
+export const bookerOfBooking = (b: Row): BookerRef | null => (b?.assisted?.bookedBy?.kind === 'lab'
+  ? { kind: 'lab', id: String(b.assisted.bookedBy.id).toLowerCase() } : b?.pharmacyId ? { kind: 'pharmacy', id: String(b.pharmacyId).toLowerCase() } : null);
+
 /** Writes a fresh copy for the booking as it is now (no store). */
 async function renderDispensingCopy(b: Row): Promise<string> {
   const [doctor, dependent, holder] = await Promise.all([
@@ -117,9 +122,10 @@ async function renderDispensingCopy(b: Row): Promise<string> {
     UserModel.findById(String(b.userId)).select({ name: 1, gender: 1, dateOfBirth: 1 }).lean() as unknown as Promise<Row | null>,
   ]);
   const person = b.dependentId ? (dependent && String(dependent.userId).toLowerCase() === String(b.userId).toLowerCase() ? dependent : null) : holder;
-  // The name the booking pharmacy may see (§17.2); a booking without a booker names the patient masked as well.
-  const patientName = b.pharmacyId
-    ? (await bookerPatientNames([b], String(b.pharmacyId))).get(String(b._id).toLowerCase()) ?? null
+  // The name the booker may see (§17.2; 2e: a lab booker's names rule); a booking without a booker names the patient masked.
+  const booker = bookerOfBooking(b);
+  const patientName = booker
+    ? (await bookerPatientNames([b], booker)).get(String(b._id).toLowerCase()) ?? null
     : maskName(holder?.name);
   const age = ageFromDob(person?.dateOfBirth) ?? (typeof person?.age === 'number' ? person.age : null);
   const html = buildDispensingHtml({ booking: b, doctorName: String(doctor?.name || b.prescription?.prescribedBySpecialistName || b.doctorName || ''),

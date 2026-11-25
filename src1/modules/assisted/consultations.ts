@@ -13,24 +13,25 @@ import SlotModel from '@/modules/slots/model';
 import SpecialistModel from '@/modules/specialists/model';
 import UserModel from '@/modules/user/model';
 import DependentModel from '@/modules/dependents/model';
-import PharmacyModel from '@/modules/pharmacies/model';
 import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
 import { CouponRepository } from '@/modules/coupon/repository';
-import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { postPharmacyMovementIn } from '@/modules/pharmacyWallet/ledger';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
+import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { claimRequestKey } from '@/modules/requestKeys';
-import { assertPharmacyAssistedOn } from '@/modules/assisted/flags';
-import { countPairBookingIn, hitLookup } from '@/modules/assisted/limits';
-import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { countPairBookingIn } from '@/modules/assisted/limits';
+import { assistedEffects, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import type { AssistedBlock } from '@/modules/assisted/types';
 import { assertCardPaymentAvailable, openCardOrder, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import {
-  cleanName, linkPharmacyCustomerIn, patientIdentity, preparePatient, redeemCouponIn, writePatientIn, type AssistedPatientInput,
+  asBooker, assertBookerOn, auditBookerIn, bookedByOf, bookerOrigin, bookerRefOf, consultKeyScope, linkBookerIn, orgKeyOf, storedConsultKey,
+  type BookerActor, type PharmacyActor,
+} from '@/modules/assisted/bookers';
+import { assertBookerWalletIndexes, postBookerMovementIn } from '@/modules/assisted/bookerWallet';
+import {
+  cleanName, countPhoneUse, patientIdentity, preparePatient, redeemCouponIn, writePatientIn, type AssistedPatientInput,
 } from '@/modules/assisted/patient';
 
-export type { AssistedPatientInput } from '@/modules/assisted/patient';
 import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 
 /**
@@ -39,7 +40,7 @@ import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/serv
  * idempotent, as the clinic desk) → ONE transaction: request key claim, family member, pharmacy-customer link with the
  * typed name and consent, seat and doctor interval, coupon redemption, wallet debit (lots consumed),
  * the booking with its `assisted` block and split, audit. No payment record is written (P3). Exactly once per (booker,
- * actor, request key) with a content hash.
+ * actor, request key) with a content hash. Round 2e: the same create for a LAB booker (`createAssistedConsultation`).
  */
 export const ASSISTED_KEY = /^[A-Za-z0-9_-]{8,100}$/;
 const LANGUAGE = /^[a-z]{2,3}$/;
@@ -54,7 +55,8 @@ export const asDoctorUnavailable = (e: unknown): unknown =>
     ? err(409, 'DOCTOR_NOT_AVAILABLE', 'This doctor is not taking bookings') : e);
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
 
-export interface PharmacyActor { pharmacyId: string; actorId: string }
+/** Kept for their callers: phase 1a's pharmacy actor and the patient part of the body (now shared, `assisted/patient.ts`). */
+export type { PharmacyActor, AssistedPatientInput };
 
 export interface AssistedConsultInput {
   requestKey: string;
@@ -73,11 +75,13 @@ export interface AssistedConsultInput {
   primaryConcern?: string;
   notes?: string;
   paymentMethod: 'wallet' | 'razorpay';
+  /** 2e: a lab member books at one of its branches (required for a lab; "nearby" and `bookedBy.branchId`). */
+  branchId?: string;
 }
 
-export const storedAssistedKey = (a: PharmacyActor, key: string) => `assisted:pharmacy:${lower(a.pharmacyId)}:${lower(a.actorId)}:${key}`;
-export const assistedKeyScope = (a: PharmacyActor) => `assisted_consult_create:${lower(a.pharmacyId)}:${lower(a.actorId)}`;
-const orgKey = (pharmacyId: string) => `pharmacy:${lower(pharmacyId)}`;
+/** The stored key and claim scope of a create (1a's pharmacy strings unchanged; 2e: labs, `assisted/bookers.ts`). */
+export const storedAssistedKey = (a: PharmacyActor | BookerActor, key: string) => storedConsultKey(asBooker(a), key);
+export const assistedKeyScope = (a: PharmacyActor | BookerActor) => consultKeyScope(asBooker(a));
 
 /** §5.1: 8 characters, RFC 4648 base32 (upper case, no padding). */
 export function newShortRef(): string {
@@ -91,7 +95,9 @@ export function assistedRequestHash(input: AssistedConsultInput): string {
     phone: canonicalMobile(input.phone) ?? input.phone,
     patient: patientIdentity(input.patient),
     holderName: input.holderName ? cleanName(input.holderName) : null,
-    service: { slotId: lower(input.slotId), mode: input.consultationMode, join: input.join ? { on: input.join.on, phone: input.join.phone ? canonicalMobile(input.join.phone) : null } : null },
+    service: { slotId: lower(input.slotId), mode: input.consultationMode, join: input.join ? { on: input.join.on, phone: input.join.phone ? canonicalMobile(input.join.phone) : null } : null,
+      // 2e: a lab's branch (absent for a pharmacy, so 1a hashes are unchanged: canonicalJson drops nulls).
+      branchId: input.branchId ? lower(input.branchId) : null },
     couponCode: input.couponCode ? input.couponCode.trim().toUpperCase() : null,
     preferredLanguage: input.preferredLanguage,
     primaryConcern: input.primaryConcern?.trim() || null,
@@ -132,18 +138,21 @@ async function receiptOf(b: IBooking, replayed: boolean, newAccount: boolean) {
   return assistedReceipt(b, replayed, newAccount, await openCardOrder(b));
 }
 
-/** Writers rely on these unique indexes (fail closed: 503 INDEXES_OUTDATED until sync-indexes has run). */
-export async function assertAssistedIndexes(withCoupon: boolean): Promise<void> {
+/** Writers rely on these unique indexes (fail closed: 503 INDEXES_OUTDATED until sync-indexes has run); 2e: the payer's wallet store. */
+export async function assertAssistedIndexes(withCoupon: boolean, payerKind: BookerActor['kind'] = 'pharmacy'): Promise<void> {
   await assertUniqueIndex(BookingModel, { 'assisted.requestKey': 1 });
   await assertUniqueIndex(BookingModel, { 'assisted.shortRef': 1 });
-  await assertUniqueIndex(PharmacyWalletTransactionModel, { pharmacyId: 1, operationKey: 1 });
+  await assertBookerWalletIndexes(payerKind);
+  // r21b: a lab's link to the holder is one row per (lab, holder) (`linkLabIn` upserts on it).
+  if (payerKind === 'lab') await assertUniqueIndex(AssistedLinkModel, { bookerKind: 1, bookerId: 1, userId: 1 });
   await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   if (withCoupon) await assertUniqueIndex(CouponRedemptionModel, { couponCode: 1, bookingKind: 1, bookingId: 1 });
   await assertReferralIndexes();
 }
 
-function validate(input: AssistedConsultInput): void {
+function validate(input: AssistedConsultInput, booker: BookerActor): void {
   if (!input.consent || input.consent.agreed !== true) throw err(400, 'CONSENT_REQUIRED', 'Tick "patient agreed" before booking for the patient');
+  if (booker.kind === 'lab' && !/^[0-9a-fA-F]{24}$/.test(String(input.branchId ?? ''))) throw err(400, 'VALIDATION_ERROR', 'branchId is required');
   if (input.paymentMethod !== 'wallet' && input.paymentMethod !== 'razorpay') {
     throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Assisted bookings are paid from the Jansetu wallet for now');
   }
@@ -193,13 +202,22 @@ async function replayOf(storedKey: string, hash: string): Promise<IBooking | nul
   return prior;
 }
 
-export async function createPharmacyConsultation(actor: PharmacyActor, input: AssistedConsultInput, clock: () => Date = () => new Date(), attempt = 0) {
-  assertPharmacyAssistedOn();
-  validate(input);
+/**
+ * POST /pharmacy-assisted/consultations (1a/1b) and, 2e (§24.8), POST /partner-workspace/assisted/consultations: a
+ * booker — a pharmacy, or a lab member at one of its branches — books a doctor consultation for a walk-in patient and
+ * pays from its wallet or by card/UPI. One code path for both: only the booker's keys, admission, `bookedBy`, link,
+ * audit and wallet store differ (`assisted/bookers.ts`, `assisted/bookerWallet.ts`). The pharmacy behaviour and its
+ * stored strings are those of 1a/1b.
+ */
+export async function createAssistedConsultation(bookerIn: PharmacyActor | BookerActor, input: AssistedConsultInput, clock: () => Date = () => new Date(),
+  attempt = 0): Promise<ReturnType<typeof assistedReceipt>> {
+  const booker = asBooker(bookerIn);
+  assertBookerOn(booker.kind);
+  validate(input, booker);
   const phone = canonicalMobile(input.phone)!;
-  const storedKey = storedAssistedKey(actor, input.requestKey);
+  const storedKey = storedConsultKey(booker, input.requestKey);
   const hash = assistedRequestHash(input);
-  await assertAssistedIndexes(!!input.couponCode);
+  await assertAssistedIndexes(!!input.couponCode, booker.kind);
   // Review of 800dfc0 (item 4): the replay of a booking already made under this key with the same content answers its
   // receipt first and is not counted, so a retried request never meets a 429 instead of its receipt. That answer depends
   // only on this booker's own key and content, never on whether the number has an account.
@@ -209,21 +227,20 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   // is counted or held, the same answer for every number).
   const card = input.paymentMethod === 'razorpay';
   if (card) await assertCardPaymentAvailable();
-  // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit and is audited
-  // (a key reused for other content too: it is counted, then refused below).
+  // 2e / r21b: a lab books only while it is an active, verified lab (never a clinic), at a branch of it in the member's
+  // scope — decided before the phone is counted or audited.
+  const origin = await bookerOrigin(booker);
+  // Review 4: every other create names a phone like a lookup does, so it counts against the lookup limit (the one limit
+  // the owner kept) and is audited (a key reused for other content too: it is counted, then refused below).
   if (attempt === 0) {
-    await hitLookup(orgKey(actor.pharmacyId));
-    const seen = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
-    await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: lower(actor.pharmacyId), action: 'booking.attempted',
-      requestKey: input.requestKey, detail: { exists: !!seen, ...(seen ? { userId: String(seen._id) } : {}) } }, null);
+    await countPhoneUse(orgKeyOf(booker), phone, (seen) => auditBookerIn(booker, 'booking.attempted', { requestKey: input.requestKey, detail: seen }, null));
   }
   const prior = await replayOf(storedKey, hash);
   if (prior) return receiptOf(prior, true, !!prior.assisted?.identity?.newAccount);
-  if (await RequestKeyModel.exists({ scope: assistedKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
+  if (await RequestKeyModel.exists({ scope: consultKeyScope(booker), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
-  // r10g (owner, 23 Nov): no booking limits besides the hourly lookup limit (P7's daily stop, per-phone, new-account and
-  // pending-card limits are removed); the cancellation and same-pair alerts remain alerts only.
+  // r10g (owner, 23 Nov): no booking limits besides the hourly lookup limit; cancellation and same-pair counts are alerts.
 
   // The service: an active, verified doctor's bookable slot in the chosen mode.
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
@@ -236,7 +253,6 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   if (!until || until.getTime() <= clock().getTime()) {
     throw err(409, 'SLOT_STARTED', isWindowSlot(slot) ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
   }
-  const pharmacy = await PharmacyModel.findById(actor.pharmacyId).select({ name: 1 }).lean() as { name?: string } | null;
   const listMinor = sp.isConsultationFree === true ? 0 : Math.round(Number(sp.consultationFee || 0) * 100);
 
   // The patient (review 4: no create is an existence test). Every step that can refuse runs BEFORE any account is
@@ -254,26 +270,27 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   }
   // Phase 1b: a card payment needs an amount (Razorpay refuses 0); a free consultation is booked with the wallet method.
   if (card && payMinor <= 0) throw err(400, 'NOTHING_TO_PAY', 'Nothing to pay for this consultation; book it with paymentMethod "wallet"');
-  // provider_coupon_v2 (§8.3, P5): coupon first, then the cut (0 in 1a). Provider-funded: the base is what was paid.
+  // provider_coupon_v2 (§8.3, P5): coupon first, then the cut (0 until phase 4). Provider-funded: the base is what was paid.
   const baseMinor = coupon?.fundedBy === 'platform' ? listMinor : payMinor;
   const now = clock();
   const shortRef = newShortRef();
   const entryId = new Types.ObjectId();
   // Phase 1b: the card booking's one payment record id, stored on the funding before the order exists.
   const paymentRecordId = card ? new Types.ObjectId().toHexString() : undefined;
-  const pharmacyId = lower(actor.pharmacyId);
-  // Phase 4a (§26.5.3): the pharmacy's referral cut, snapshotted now (0 while the switch is off or no rule applies).
-  const cut = await snapshotCuts({ kind: 'pharmacy', id: pharmacyId, name: pharmacy?.name ?? 'Pharmacy' }, [{ category: 'consultation', baseMinor }]);
+  const payer = bookerRefOf(booker);
+  // Phase 4a (§26.5.3): the booker's referral cut (a pharmacy's or a lab's: owner, lab cuts on consultations allowed),
+  // snapshotted now (0 while the switch is off or no rule applies).
+  const cut = await snapshotCuts({ kind: payer.kind, id: payer.id, name: origin.name }, [{ category: 'consultation', baseMinor }]);
   const assisted: AssistedBlock = {
-    bookedBy: { kind: 'pharmacy', id: pharmacyId, actorKind: 'pharmacy', actorId: lower(actor.actorId), name: pharmacy?.name ?? 'Pharmacy' },
+    bookedBy: bookedByOf(booker, origin.name),
     consent: { method: 'partner_attested', statementVersion: input.consent.statementVersion, statementLanguage: input.consent.statementLanguage,
-      at: now, actorId: lower(actor.actorId) },
+      at: now, actorId: bookedByOf(booker, origin.name).actorId },
     preferredLanguage: input.preferredLanguage,
     identity: { attested: true, newAccount: customer.created },
     ...(input.join ? { join: { on: input.join.on, ...(input.join.phone ? { phone: canonicalMobile(input.join.phone)! } : {}), linkVersion: 1 } } : {}),
     funding: card
-      ? { method: 'razorpay', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
-      : { method: 'wallet', payerKind: 'pharmacy', payerId: pharmacyId, amountMinor: payMinor, state: 'captured',
+      ? { method: 'razorpay', payerKind: payer.kind, payerId: payer.id, amountMinor: payMinor, state: 'pending', paymentRecordId, refunds: [] }
+      : { method: 'wallet', payerKind: payer.kind, payerId: payer.id, amountMinor: payMinor, state: 'captured',
         ...(payMinor > 0 ? { walletEntryId: String(entryId) } : {}), refunds: [] },
     split: { listMinor, ...(coupon ? { couponCode: coupon.code, couponFundedBy: coupon.fundedBy } : {}), discountMinor, baseMinor,
       cutMinor: cut.totalCutMinor, providerMinor: baseMinor - cut.totalCutMinor, rule: 'provider_coupon_v2', ...(cut.lines[0] ? { referral: cut.lines[0] } : {}) },
@@ -286,29 +303,34 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   let booking: IBooking;
   try {
     booking = await createBookingWithHolds({
-      bookingType: 'consultation', userId: customer._id, ...(dependentId ? { dependentId } : {}), pharmacyId,
+      bookingType: 'consultation', userId: customer._id, ...(dependentId ? { dependentId } : {}),
+      // S2 readers find a pharmacy's bookings by `pharmacyId`; a lab's rely on `assisted.bookedBy` (a lab never reads /bookings).
+      ...(booker.kind === 'pharmacy' ? { pharmacyId: payer.id } : {}),
       specialistId: String(slot.specialistId), doctorName: sp.name, slotId: String(slot._id), bookingDate: slot.date, bookingTime: slot.startTime,
       consultationMode: input.consultationMode, serviceMode: input.consultationMode, price: payMinor / 100, originalPrice: listMinor / 100,
       // Phase 1b: a card booking holds its seat as pending payment (expired by the existing sweep after 30 minutes).
       status: card ? 'pending' : 'confirmed', paymentStatus: card ? 'pending' : 'paid', contactNo: phone,
       ...(input.primaryConcern?.trim() ? { primaryConcern: input.primaryConcern.trim() } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
-      source: 'pharmacy_assisted', earningRule: 'provider_coupon_v2', assisted,
-      lifecycle: card ? { created: { at, by: pharmacyId } }
-        : { created: { at, by: pharmacyId }, paid: { at, by: 'pharmacy_wallet', amount: payMinor / 100 }, confirmed: { at } },
+      source: booker.kind === 'pharmacy' ? 'pharmacy_assisted' : 'lab_assisted', earningRule: 'provider_coupon_v2', assisted,
+      lifecycle: card ? { created: { at, by: payer.id } }
+        : { created: { at, by: payer.id }, paid: { at, by: `${payer.kind}_wallet`, amount: payMinor / 100 }, confirmed: { at } },
     } as IBooking, async (b, s) => {
-      await claimRequestKey(assistedKeyScope(actor), input.requestKey, s);
+      await claimRequestKey(consultKeyScope(booker), input.requestKey, s);
       await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
-      await linkPharmacyCustomerIn(actor, customer._id, holderTyped, s);
-      await countPairBookingIn('pharmacy', pharmacyId, lower(slot.specialistId), s);
-      if (coupon) await redeemCouponIn(coupon, { bookingKind: 'booking', payerKind: 'pharmacy', bookingId: String(b._id), patientUserId: customer._id, dependentId, payerId: pharmacyId }, s);
+      await linkBookerIn(booker, customer._id, holderTyped, s);
+      await countPairBookingIn(payer.kind, payer.id, lower(slot.specialistId), s);
+      if (coupon) {
+        await redeemCouponIn(coupon, { bookingKind: 'booking', payerKind: payer.kind, bookingId: String(b._id), patientUserId: customer._id,
+          dependentId, payerId: payer.id }, s);
+      }
       if (payMinor > 0 && !card) {
-        await postPharmacyMovementIn({ pharmacyId, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
+        await postBookerMovementIn({ payerKind: payer.kind, payerId: payer.id, kind: 'booking_debit', amountPaise: payMinor, operationKey: `assisted:${lower(b._id)}:debit`,
           referenceType: 'assisted_booking', referenceId: `${lower(b._id)}:debit`, description: 'Assisted consultation booking', entryId }, s);
       }
-      await auditIn({ actorKind: 'pharmacy', actorId: lower(actor.actorId), orgKind: 'pharmacy', orgId: pharmacyId, action: 'booking.created',
-        bookingId: String(b._id), requestKey: input.requestKey,
+      await auditBookerIn(booker, 'booking.created', { bookingId: String(b._id), requestKey: input.requestKey,
         detail: { doctorId: lower(slot.specialistId), slotId: String(slot._id), amountMinor: payMinor, method: card ? 'razorpay' : 'wallet', accountCreated: customer.created,
+          ...(booker.kind === 'lab' ? { branchId: lower(booker.branchId) } : {}),
           ...(dependentId ? { dependentId, dependentCreated: !!pp.newDependent } : {}), ...(coupon ? { couponCode: coupon.code } : {}) } }, s);
     });
   } catch (e) {
@@ -316,7 +338,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
     const raced = await replayOf(storedKey, hash);
     if (raced) return receiptOf(raced, true, !!raced.assisted?.identity?.newAccount);
     // Another booking or desk opened this number's account meanwhile: book again once, on that account.
-    if ((e as { code?: string }).code === 'ACCOUNT_OPENED_MEANWHILE' && attempt === 0) return createPharmacyConsultation(actor, input, clock, 1);
+    if ((e as { code?: string }).code === 'ACCOUNT_OPENED_MEANWHILE' && attempt === 0) return createAssistedConsultation(booker, input, clock, 1);
     throw asDoctorUnavailable(e);
   }
   if (isReplayedBooking(booking)) {
@@ -325,7 +347,7 @@ export async function createPharmacyConsultation(actor: PharmacyActor, input: As
   }
   // Phase 1b: a card booking opens its Razorpay order now; Meet, reminders and the notices follow its confirmation.
   if (card) return assistedReceipt(booking, false, customer.created, await openCardOrder(booking));
-  // After the commit, best effort: Meet (neutral text), reminders, notices to the patient, the doctor and the booker.
+  // After the commit, best effort: Meet (neutral text), reminders, notices to the patient and the doctor.
   const fx = assistedEffects();
   const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
   await bestEffort('reminders', () => fx.reminders(withMeet), undefined);

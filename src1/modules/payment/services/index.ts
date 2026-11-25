@@ -804,8 +804,12 @@ export class PaymentService {
     // r13 (§24.7.2): a lab top-up is verified by any member of its paying lab (the partner-workspace routes, which admit
     // members holding wallet.manage).
     const topupKind = topupKindOf(paymentRecord);
-    const partnerCanVerify = !belongsToRequester && data.requesterUserType === 'partner' && !!data.requesterPartnerId
-      && topupKind?.kind === 'lab' && topupKind.ownerOf(paymentRecord) === String(data.requesterPartnerId).toLowerCase();
+    // 2e (§6.1): an assisted card payment a LAB made (`payerPartnerId`) is verified by that lab, whoever of it acts (the
+    // partner-workspace routes admit members holding `assisted.book`).
+    const requesterLab = String(data.requesterPartnerId ?? '').toLowerCase();
+    const partnerCanVerify = !belongsToRequester && data.requesterUserType === 'partner' && !!requesterLab
+      && ((topupKind?.kind === 'lab' && topupKind.ownerOf(paymentRecord) === requesterLab)
+        || (isAssistedCardContext(paymentRecord.context) && String(paymentRecord.payerPartnerId ?? '').toLowerCase() === requesterLab));
 
     // r20 (§25.4.3): a doctor top-up is verified only by its doctor (`payerSpecialistId`) or an admin; the internal sweep
     // and the doctor's check (as the payer) are unchanged.

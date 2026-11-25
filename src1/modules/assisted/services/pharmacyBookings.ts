@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import BookingModel from '@/modules/bookings/model';
 import { AppError } from '@/modules/common/types';
 import { bookerView, bookerViews } from '@/modules/assisted/bookerView';
+import { bookerBookingsFilter, bookerRefOf, type BookerActor, type BookerRef } from '@/modules/assisted/bookers';
 
 type Row = Record<string, any>;
 
@@ -47,7 +48,19 @@ const cursorOf = (row: Row) => {
  * each in the booker view.
  */
 export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookingQuery): Promise<{ items: Row[]; total: number; nextCursor: string | null }> {
-  const filter: Row = { pharmacyId: { $eq: pharmacyId } };
+  return listBookings({ pharmacyId: { $eq: pharmacyId } }, { kind: 'pharmacy', id: pharmacyId }, q);
+}
+
+/** 2e (§24.8.2): a lab's consultations booked by its members, at branches in this member's scope; the same booker view. */
+export async function listBookerBookings(booker: BookerActor, q: PharmacyBookingQuery) {
+  return listBookings(bookerBookingsFilter(booker), bookerRefOf(booker), q);
+}
+export async function getBookerBooking(booker: BookerActor, bookingId: unknown): Promise<Row> {
+  return getBooking(bookerBookingsFilter(booker), bookerRefOf(booker), bookingId);
+}
+
+async function listBookings(owner: Row, ref: BookerRef, q: PharmacyBookingQuery): Promise<{ items: Row[]; total: number; nextCursor: string | null }> {
+  const filter: Row = { ...owner };
   if (q.status) filter.status = { $eq: q.status };
   if (q.from || q.to) {
     if (q.from && q.to && q.from > q.to) throw new AppError({ status: 400, code: 'INVALID_DATE_RANGE', message: 'from must not be after to' });
@@ -64,7 +77,7 @@ export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookin
   const last = items[items.length - 1];
   return {
     // A list never converts copies in the request (review finding 6): missing ones are queued.
-    items: await bookerViews(items, pharmacyId, { copies: 'queue' }),
+    items: await bookerViews(items, ref, { copies: 'queue' }),
     total,
     nextCursor: rows.length > limit && last ? cursorOf(last) : null,
   };
@@ -72,8 +85,12 @@ export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookin
 
 /** One booking this pharmacy made, in the booker view; any other booking (or a malformed id) is 404 like a missing one. */
 export async function getPharmacyBooking(pharmacyId: string, bookingId: unknown): Promise<Row> {
+  return getBooking({ pharmacyId: { $eq: pharmacyId } }, { kind: 'pharmacy', id: pharmacyId }, bookingId);
+}
+
+async function getBooking(owner: Row, ref: BookerRef, bookingId: unknown): Promise<Row> {
   if (typeof bookingId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(bookingId)) throw notFound();
-  const b = await BookingModel.findOne({ _id: bookingId, pharmacyId: { $eq: pharmacyId } }).lean() as Row | null;
+  const b = await BookingModel.findOne({ _id: bookingId, ...owner }).lean() as Row | null;
   if (!b) throw notFound();
-  return bookerView(b, pharmacyId, { copies: 'inline' });
+  return bookerView(b, ref, { copies: 'inline' });
 }

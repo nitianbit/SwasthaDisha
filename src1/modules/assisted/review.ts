@@ -25,6 +25,7 @@ import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices } from '@/modules/assisted/support';
+import { bookerNoticeUserId } from '@/modules/assisted/bookers';
 import { isDeskRow } from '@/modules/assisted/deskViews';
 import { linkLabIn } from '@/modules/assisted/patient';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
@@ -64,7 +65,7 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
   });
   // The booker's "reported as not mine" badge (§6.5); no health details.
   const a = out.booking.assisted!;
-  await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'general', title: 'Reported as not mine',
+  await sendAssistedNotices([{ audience: 'booker', userId: bookerNoticeUserId(a.bookedBy), type: 'general', title: 'Reported as not mine',
     message: `The account holder reported booking Ref ${a.shortRef} as not theirs. The Jansetu team will review it.`, bookingId: String(out.booking._id),
     key: `assisted:${out.booking._id}:not_mine:booker` }]);
   return { reported: true, reviewItemId: out.itemId };
@@ -298,6 +299,8 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
       const familyDeactivated = b.dependentId && lower(b.dependentId) !== lower(dependentId)
         ? await deactivateBookingDependentIn(String(b._id), lower(b.dependentId), s, b.bookingKind === 'instant' ? b.instantRequestId : undefined) : false;
       if (a.bookedBy.kind === 'pharmacy') await moveBookerLinkIn(a.bookedBy.id, String(b._id), fromUserId, target._id, cleanName(input.holderName), s);
+      // 2e: a lab-made consultation moves the lab's own link (`assisted_links`).
+      if (a.bookedBy.kind === 'lab') await moveLabLinkIn(a.bookedBy.id, String(b._id), fromUserId, target._id, cleanName(input.holderName), at, s);
       await CouponRedemptionModel.updateMany({ bookingKind: 'booking', bookingId: lower(b._id) },
         dependentId ? { $set: { patientUserId: target._id, dependentId } } : { $set: { patientUserId: target._id }, $unset: { dependentId: 1 } }, { session: s });
       // r17 (§25.8.4): an instant consultation's request (its patient and its coupon redemption) moves with its booking.
@@ -332,7 +335,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
       message: `Booking Ref ${ref} was moved to the right account after a review.`, bookingId: id, key: `assisted:${id}:moved_off:${fromUserId}` },
     { audience: 'customer' as const, userId: target._id, type: 'general' as const, title: 'A booking was added to your account',
       message: `Booking Ref ${ref} made by ${moved.assisted!.bookedBy.name} is now on your account.`, bookingId: id, key: `assisted:${id}:moved_to:${target._id}` }]),
-    { audience: 'booker', userId: moved.assisted!.bookedBy.id, type: 'general', title: 'Booking moved to another account',
+    { audience: 'booker', userId: bookerNoticeUserId(moved.assisted!.bookedBy), type: 'general', title: 'Booking moved to another account',
       message: `Booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId: id, key: `assisted:${id}:moved:booker:${input.requestKey}` },
   ]);
   const { __fromUserId: _f, ...clean } = moved as IBooking & { __fromUserId?: string };
@@ -517,15 +520,19 @@ function labMoveView(b: IPartnerLabBooking) {
     shortRef: o?.ref, disputed: o?.disputed ?? null, statusVersion: b.statusVersion, updatedAt: b.updatedAt };
 }
 
-/** r12b: the lab's link follows a desk booking: the target link is ensured; the old one goes when no other desk row of this lab names that holder. */
+/**
+ * r12b / 2e: the lab's link follows a move of a desk booking or of a consultation the lab booked: the target link is
+ * ensured; the old one goes when no other desk row or lab-made consultation of this lab names that holder.
+ */
 async function moveLabLinkIn(partnerId: string, bookingId: string, fromUserId: string, toUserId: string, holderName: string, at: Date,
   s: import('mongoose').ClientSession): Promise<void> {
   const old = await AssistedLinkModel.findOne({ bookerKind: 'lab', bookerId: partnerId, userId: fromUserId }).session(s).lean();
   await linkLabIn({ partnerId, userId: toUserId, typedName: holderName || old?.typedName || '', recordedById: 'admin_move', at }, s);
   if (!old || fromUserId === toUserId) return;
-  if (!(await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, partnerId, 'desk.memberId': { $exists: true }, userId: { $eq: fromUserId } }).session(s))) {
-    await AssistedLinkModel.deleteOne({ _id: old._id }, { session: s });
-  }
+  const otherDesk = await PartnerLabBookingModel.exists({ _id: { $ne: bookingId }, partnerId, 'desk.memberId': { $exists: true }, userId: { $eq: fromUserId } }).session(s);
+  const otherConsult = await BookingModel.exists({ _id: { $ne: bookingId }, 'assisted.bookedBy.kind': 'lab', 'assisted.bookedBy.id': { $eq: lower(partnerId) },
+    userId: { $eq: fromUserId } }).session(s);
+  if (!otherDesk && !otherConsult) await AssistedLinkModel.deleteOne({ _id: old._id }, { session: s });
 }
 
 function moveView(b: IBooking) {

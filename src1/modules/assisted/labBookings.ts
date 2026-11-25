@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
@@ -40,7 +39,7 @@ import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labDebitKey } from '@/modules/assisted/labRefunds';
 import { bookerNames } from '@/modules/assisted/names';
 import { bookerReportWindowOpen, labSourceOf } from '@/modules/assisted/labViews';
-import { ASSISTED_KEY, type PharmacyActor } from '@/modules/assisted/consultations';
+import { ASSISTED_KEY, newShortRef, type PharmacyActor } from '@/modules/assisted/consultations';
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import {
@@ -49,6 +48,7 @@ import {
 } from '@/modules/assisted/patient';
 import { assertReferralIndexes, labCategoryOf, snapshotCuts } from '@/modules/referralCuts/service';
 import type { AssistedBlock } from '@/modules/assisted/types';
+import { labAdmissible } from '@/modules/assisted/labViews';
 
 /**
  * Assisted booking round 2a (ASSISTED_BOOKING_DESIGN.md §24.4): a PHARMACY books a partner-lab test for a walk-in patient
@@ -111,12 +111,6 @@ export interface AssistedLabInput {
 /** The stored key (unique `assisted.requestKey` on `partner_lab_bookings`) and the claim scope of a pharmacy's lab create. */
 export const storedLabKey = (b: LabBooker, key: string) => `assisted_lab:${b.kind}:${bookerIdOf(b)}:${actorIdOf(b)}:${key}`;
 export const labKeyScope = (b: LabBooker) => (b.kind === 'pharmacy' ? `assisted_lab_create:${bookerIdOf(b)}:${actorIdOf(b)}` : `assisted_lab_create:doctor:${bookerIdOf(b)}`);
-
-/** §5.1: 8 characters, RFC 4648 base32 (upper case, no padding). */
-function newShortRef(): string {
-  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  return Array.from(randomBytes(8)).map((b) => ALPHABET[b & 31]).join('');
-}
 
 const cleanAddress = (x?: Address) => (x ? { line1: cleanName(x.line1), line2: cleanName(x.line2) || null, city: cleanName(x.city),
   state: cleanName(x.state) || null, pincode: cleanName(x.pincode), landmark: cleanName(x.landmark) || null } : null);
@@ -188,8 +182,8 @@ function validate(input: AssistedLabInput): void {
   }
 }
 
-/** §24.1 item 12: a lab takes assisted bookings only while it is an active, verified lab (the S5 pattern for providers). */
-export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
+/** §24.1 item 12 (S5 for labs): moved to assisted/labViews.ts (2e), re-exported for its callers. */
+export { labAdmissible };
 
 /**
  * §24.4.3 step 10, L24: lab coupons follow the diagnostics rules (against the PATIENT) plus the assisted rules — never a
@@ -233,7 +227,7 @@ export async function bookerLabViews(rows: Row[], bookerIn: LabBooker | string, 
   const [partners, branches, names, payments] = await Promise.all([
     PartnerOrgModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.partnerId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1 }).lean() as unknown as Promise<Row[]>,
     BranchModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.branchId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1, address: 1, phone: 1 }).lean() as unknown as Promise<Row[]>,
-    bookerNames(list.map((r) => ({ _id: r._id, userId: r.userId, dependentId: r.patient?.dependentId })), bookerId, booker.kind),
+    bookerNames(list.map((r) => ({ _id: r._id, userId: r.userId, dependentId: r.patient?.dependentId })), { kind: booker.kind, id: bookerId }),
     booker.kind === 'pharmacy' ? bookerPayments('lab_booking', list, bookerId) : Promise.resolve(new Map<string, Row>()),
   ]);
   const pBy = new Map(partners.map((x) => [String(x._id), x]));

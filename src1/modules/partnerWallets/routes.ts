@@ -3,7 +3,10 @@ import { Router, type NextFunction, type Response } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { AppError } from '@/modules/common/types';
-import { requireAdmin, requirePartnerPermission, requirePartnerPermissionUnverified, requireSpecialist, type AuthRequest } from '@/modules/middleware/auth';
+import {
+  requireAdmin, requireAnyPartnerPermission, requireAnyPartnerPermissionUnverified, requirePartnerPermission, requirePartnerPermissionUnverified,
+  requireSpecialist, type AuthRequest,
+} from '@/modules/middleware/auth';
 import { requireEligibleDoctor } from '@/modules/specialists/eligibility';
 import { DOCTOR, LAB, type PartnerOwner } from '@/modules/partnerWallets/ledger';
 import PartnerModel from '@/modules/partners/model';
@@ -33,8 +36,14 @@ const labOnly = catchAsync(async (req: AuthRequest, _res: Response, next: NextFu
   if (partner?.kind !== 'lab') throw fail(404, 'WALLET_NOT_FOUND', 'This workspace has no lab wallet');
   next();
 });
-const labMember = (perm: PartnerPermission, opts: { operational?: boolean } = {}) =>
-  [opts.operational ? requirePartnerPermission(perm) : requirePartnerPermissionUnverified(perm), labOnly];
+const labMember = (perm: PartnerPermission | PartnerPermission[], opts: { operational?: boolean } = {}) => {
+  // 2e: several permissions mean any one of them (the service then checks the one its record needs).
+  const any = Array.isArray(perm);
+  const perms = any ? perm : [perm];
+  const guard = opts.operational ? (any ? requireAnyPartnerPermission : requirePartnerPermission)
+    : (any ? requireAnyPartnerPermissionUnverified : requirePartnerPermissionUnverified);
+  return [guard(...perms), labOnly];
+};
 
 const memberOf = (req: AuthRequest): svc.LabMember => ({ partnerId: String(req.user!.partnerId).toLowerCase(), memberId: String(req.user!.memberId) });
 const send = (res: Response, data: unknown, extra: Record<string, unknown> = {}) => {
@@ -56,9 +65,10 @@ labWalletWorkspaceRouter.post('/wallet/topups', ...labMember('wallet.manage', { 
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.createTopup(LAB, labOf(req), memberOf(req).memberId, req.body))));
 labWalletWorkspaceRouter.post('/wallet/topups/:paymentTransactionId/check', ...labMember('wallet.view'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.checkLabTopup(LAB, memberOf(req), req.params.paymentTransactionId))));
-labWalletWorkspaceRouter.post('/payments/verify', ...labMember('wallet.manage'), validate(verifyPaymentSchema, 'body'),
+// 2e: the same two routes settle a card payment of a consultation the lab booked (members with `assisted.book`).
+labWalletWorkspaceRouter.post('/payments/verify', ...labMember(['wallet.manage', 'assisted.book']), validate(verifyPaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.verifyLabPayment(LAB, memberOf(req), req.body))));
-labWalletWorkspaceRouter.post('/payments/reconcile', ...labMember('wallet.manage'), validate(reconcilePaymentSchema, 'body'),
+labWalletWorkspaceRouter.post('/payments/reconcile', ...labMember(['wallet.manage', 'assisted.book']), validate(reconcilePaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.reconcileLabPayment(LAB, memberOf(req), String(req.body.paymentTransactionId)))));
 
 /**

@@ -531,6 +531,8 @@ export const requirePartnerPermission = (...perms: PartnerPermission[]) => partn
 export const requireAnyPartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('any', perms);
 /** r20: every listed permission, for an active member of an active partner whether verified or not (its own money). */
 export const requirePartnerPermissionUnverified = (...perms: PartnerPermission[]) => partnerPermissionGuard('all', perms, { verified: false });
+/** r28 (2e on r20): at least one of the listed permissions, verified or not (a lab settling its own payments). */
+export const requireAnyPartnerPermissionUnverified = (...perms: PartnerPermission[]) => partnerPermissionGuard('any', perms, { verified: false });
 
 /**
  * r9 (owner decision): a partner member linked to a doctor (`doctorId`: the owner of a doctor's own practice, or a

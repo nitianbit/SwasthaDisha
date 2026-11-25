@@ -3681,6 +3681,168 @@ On `m0/r19-stage-next` before the stage push. Check: the r19b check of `test/ass
 | 1 (patient data) | The holder of a DESK row with an open "this isn't mine" (r12b) could still read its released report files: the report access looked at the `assisted` block only | `file/access.ts` `canReadPartnerLabReport` also selects `desk.identity.disputed`; the holder reads only while neither block has an open report (`labNotDisputed`, the row form of `LAB_NOT_DISPUTED_QUERY`). The lab keeps its access; a dismissal gives it back |
 | 2 (patient data) | A desk row moved to another account showed the new holder the bill made out to the old one | The admin move of a desk row is refused while it has an OPEN bill: 409 `LAB_BOOKING_BILLED_CANCEL_FIRST` ("cancel the bill first"). The patient's lab-booking views show `bill` only when the bill's `customer.userId` is the reader (otherwise `bill: null`); the lab's views are unchanged |
 
+### 24.17 Round 2e build record: a lab books a doctor consultation (r21, 2026-11-25)
+
+Branch `m0/r21-phase2e` from `b0b9589c` (the stage line `m0/r19-stage-next`: r10h with r10g, 2c, 2b, 2d and 3d), then
+aligned with the stage line (§24.17.5): `m0/r19-stage-next` at `037bd9fb`, the stage merge of round 3e `f7f57ad2` and
+r17b `bea93b02`. Local commits only. Built §24.8 under the owner's rules of
+25 Nov:
+- **no duplicated code:** the pharmacy consultation booking is generalised over a booker, not copied;
+- **no blocking limits** except the hourly lookups;
+- **a minimal API.**
+
+Where this section and §24.8 differ, this one wins.
+
+Check: `test/assisted/r21-phase2e.integration.ts` (16 checks over HTTP with the real routes, a stand-in Razorpay and refund
+gateway, and a stand-in PDF converter). The pharmacy behaviour is proven unchanged by the 1a, 1b, r10*, 2a, 2b, 2c, 2d and 3d
+suites (full regression below).
+
+A mutation run, one break at a time:
+- the wallet refund paying pharmacies only fails the six lab refund checks;
+- booker notices sent to the lab id instead of the member fail "patient cancel";
+- no lab case in the copy rule fails "dispensing copy";
+- the payment service not admitting the paying lab fails "card".
+
+#### 24.17.1 What was built
+
+| Area | Where | What |
+|---|---|---|
+| The booker | `assisted/bookers.ts` (new) | `BookerActor` = a pharmacy (1a) or a lab member at one of its branches (`kind: 'lab'`, `partnerId`, `memberId`, `branchId`, the admitted `PartnerActor`). Everything that differs lives here: request keys and claim scopes (pharmacy strings byte-identical; lab `assisted:lab:<partner>:<member>:<key>`, scope `assisted_consult_create:lab:<partner>:<member>`); the switch (`assertBookerOn`); the admission and "nearby" origin (`bookerOrigin`: a lab must be active and verified, the branch active, of this lab, in the member's scope); the `bookedBy` block (`actorKind: 'member'`, `branchId`); the audit (`auditBookerIn`); the link to the holder (`linkBookerIn`: pharmacy-customer link, or the lab's `assisted_links` row); the booker-notice recipient (`bookerNoticeUserId`: the pharmacy, or the booking member, because partner notices are read per member); which bookings a booker acts on (`bookerBookingsFilter`: a lab's, at branches in the member's scope) |
+| Wallet dispatcher | `assisted/bookerWallet.ts` (3e's file, extended) | 3e's `postBookerMovementIn({ payerKind, payerId, kind, amountPaise, … })` with its signature kept (2d D12): a booker's debit and refund go to the pharmacy store or, new, the lab store (`debitLabWalletIn` with its S5 check, `refundLabWalletIn`); it answers the posted entry. A doctor payer still answers 501 `PAYER_NOT_SUPPORTED` (3e). 3e's `bookerEntryLotsIn` (the lots a debit used) and r17b's `bookerEntriesOf(payerKind, payerId, operationKey)` (reconciliation: `{ amountPaise, payerId }`, index reads only) read the lab store too; `assertBookerWalletIndexes` is new. Every caller uses it: the consultation create, 3e's instant create and refunds, the wallet refund of consultations and lab bookings, the card refund to the wallet (booker's choice and admin fallback) |
+| One consultation create | `assisted/consultations.ts` | `createAssistedConsultation(booker, input)` replaces `createPharmacyConsultation`. It uses the shared patient steps of `assisted/patient.ts` (`preparePatient`, `writePatientIn`, `countPhoneUse`, `redeemCouponIn`, `patientIdentity`, `cleanName`) and 3e's coupon check (`assistedCouponFor`). A lab row: `source: 'lab_assisted'`, no `pharmacyId`, funding `payerKind: 'lab'`, `lifecycle.paid.by: 'lab_wallet'`. The request hash adds `branchId` only for a lab (pharmacy hashes unchanged) |
+| Commands | `assisted/pharmacyCommands.ts` | The masked lookup, doctor list (nearby = the member's branch), doctor slots, booker cancel and reschedule, by-key and abandon take any booker (a 1a pharmacy actor still works). `bookings/holds.ts`: `assistedBooker: 'pharmacy' \| 'lab'` |
+| Views and names | `assisted/bookerView.ts`, `assisted/names.ts`, `assisted/services/pharmacyBookings.ts` | The booker view takes a booker (`BookerLike`: a pharmacy id as before, or `{ kind, id }`). A lab's names rule (`labFacingHolders`): the name typed on its `assisted_links` row, else masked; never the account name (L15). `holder` has no pharmacy-customer id for a lab. One list and detail service (`listBookerBookings`, `getBookerBooking`) for any booker |
+| Refunds | `assisted/refunds.ts`, `assisted/labRefunds.ts`, `assisted/cardRefunds.ts`, `assisted/model` | One wallet refund step for consultations and lab bookings (`refundWalletFundingIn`, any payer kind; always posts). Card refund rows store `payerKind` (`'pharmacy' \| 'lab'`; older rows read as pharmacy). Admin rows and stuck money's card chargebacks add `payerKind`, `payerId`, `payerName` (pharmacy rows keep `pharmacyId` / `pharmacyName`). The card dispute alert and audit name the paying organisation |
+| Card payments | `assisted/cardPayments.ts`, `payment/services` | The order names the payer by kind (`payerPartnerId` + `payerMemberId` for a lab). The capture checks the payer by kind (`recordPayerOf`). Late and extra captures queue rows for the right payer. `bookerPayments` serves any booker. The payment service lets the paying lab verify an assisted card record (`payerPartnerId`) |
+| Verify and reconcile | `partnerWallets/routes.ts`, `partnerWallets/service.ts` | 2d's `POST /partner-workspace/assisted/payments/verify` and `/reconcile` also settle a consultation card payment of this lab. The guard admits `wallet.manage` or `assisted.book`, and the service checks the one the record needs. A top-up answers the wallet; a booking answers the lab's booker view |
+| Prescription (decision G) | `file/access.ts`, `assisted/dispensingCopy.ts`, `specialistPortal/services` | The doctor's save makes the dispensing copy for a lab-made consultation too (`bookerOfBooking`), naming the patient by the lab's names rule. `canReadDispensingCopy` case `partner`: a member of the booking lab holding `assisted.book` with the booking's branch in scope, while the lab is active and verified, only the current copy, within 90 days of the consultation. The full PDF, documents and report: never (`canReadBooking` admits no partner) |
+| Elsewhere | `meet/service`, `assisted/review.ts`, `assisted/reconciliation.ts`, `assisted/labViews.ts`, `partners/services/labBookings.ts`, `partners/types` | Meet invites the lab's `contact.email` when the lab's device joins. The admin move carries the lab's link (`moveLabLinkIn`). Every booker notice goes to `bookerNoticeUserId`. Reconciliation reads the payer's own store. `labAdmissible` moved to the pure `labViews.ts` (re-exported from `labBookings.ts` for its callers). The link helper is shared by the desk and 2e (r12b's `linkLabIn`, §24.17.5). New permission `assisted.book` |
+| Routes | `assisted/routes/labBooker.ts` (new), `assisted/controller/phase2e.ts` (new), `partners/routes/index.ts`, `assisted/validation` | Registered inside the partner workspace like the desk (members, and admins acting as owner). Lab bodies add `branchId` (`labConsultationSchema`, `labDoctorQuerySchema`, `labDoctorSlotsQuerySchema`); the pharmacy schemas are unchanged |
+
+#### 24.17.2 Choices made while building (ASSUMED r21, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| F1 | A lab member's actions are audited in `assisted_audit_events` (`actorKind: 'member'`, `orgKind: 'lab'`), not in `PartnerAuditEvent` as §24.8.1 said | One trail for every booker; reconciliation and admin reads already use it; as 2d D6 |
+| F2 | `branchId` is required on the create and the doctor reads, even for a member with one branch | Explicit is safer than a guessed branch; "nearby" and `bookedBy.branchId` depend on it |
+| F3 | Admins acting as a lab's owner can use the same routes (the workspace mirror, as the desk) | One registration; an admin booking records `actorId: admin:<id>` |
+| F4 | Booker notices (cancelled, not mine, moved) go to the booking member only (L17); other members see the list | Partner notices are per member |
+| F5 | A member lists and acts on bookings made at branches in its scope; owners see all | §24.8.2 branch scope |
+| F6 | A lab sees the typed or the masked name; there is no typed-name edit route for labs | Names rule (L15); a minimal API |
+| F7 | Every 2e route needs an operational (verified) lab, cancel and reads included, as every pharmacy route needs an operational pharmacy. Patient, doctor and admin cancels still refund the lab, and the refund always posts | The S5 pattern of the pharmacy side |
+| F8 | One verify/reconcile route pair for top-ups and booking payments; a top-up needs `wallet.manage`, a booking payment `assisted.book` | A minimal API |
+| F9 | A lab never books another lab's tests: the lab-test booking routes stay pharmacy-only (a lab member gets 403) | Decision |
+| F10 | The request hash adds `branchId` only when present | 1a hashes and keys stay byte-identical |
+| F11 | Card money returned to a lab's wallet opens no lot (not withdrawable), as for pharmacies (C3) | C3 |
+
+#### 24.17.3 API for the web
+
+Lab workspace (partner member token holding `assisted.book`; the lab must be active and verified; `{ success, data }`,
+`Cache-Control: private, no-store`; money in paise). The same bodies and answers as the pharmacy routes of §19.3,
+§20.2, §21.2 and §23.3, with `branchId` where noted:
+
+| Route | Request | `data` |
+|---|---|---|
+| `POST /api/v1/partner-workspace/assisted/patients/lookup` | `{ phone }` | `{ exists, holderNameMasked }` (counted against the lab's hourly lookups) |
+| `GET …/assisted/doctors` | `?branchId (required)&speciality&mode&language&date&limit` | as §19.3; `nearby` against that branch's pincode and city |
+| `GET …/assisted/doctors/:doctorId/slots` | `?branchId (required)&from&days&mode` | as §20.2 |
+| `POST …/assisted/consultations` | §19.3 body + `branchId` (required); `paymentMethod: 'wallet' \| 'razorpay'` | 201 (replay 200) `{ booking, funding, split, payment?, newAccount, replayed }` as §19.3 / §23.3 |
+| `GET …/assisted/bookings`, `GET …/assisted/bookings/:id` | `?status&from&to&cursor&limit` | the booker view (as §17.2 / §23.3: `patientName`, `holder: { name, typedName }`, `assisted`, `payment`, the Join call window, `prescription` with the dispensing copy for 90 days); list `pagination: { total, nextCursor }` |
+| `GET …/assisted/bookings/by-key/:key`, `POST …/by-key/:key/abandon` | — | Q13 shape |
+| `POST …/assisted/bookings/:id/cancel` | `{ reason?, expectedUpdatedAt?, refundTo?: 'card' \| 'wallet' }` | `{ booking, refundedMinor, alreadyCancelled, refund? }` (any time before the start) |
+| `POST …/assisted/bookings/:id/reschedule` | `{ slotId, requestKey, expectedUpdatedAt? }` | `{ booking, replayed }` |
+| `POST …/assisted/payments/verify`, `/reconcile` (2d's) | as §24.13 | a consultation payment: `{ context: 'assisted_booking', paymentRecord, entity: <booker view> }` |
+
+**Errors** (besides the pharmacy ones):
+- 400 `VALIDATION_ERROR` (no `branchId`);
+- 403:
+  - `INSUFFICIENT_PERMISSIONS` (no `assisted.book`);
+  - `BRANCH_SCOPE_EXCEEDED`;
+  - `LAB_PARTNER_REQUIRED` (a clinic);
+  - `PARTNER_NOT_VERIFIED`, `PARTNER_INACTIVE`;
+- 404 `BRANCH_NOT_AVAILABLE`;
+- 409 `INSUFFICIENT_BALANCE`, `WALLET_FROZEN`, `WALLET_RECEIVABLE` (the lab wallet);
+- 503 `ASSISTED_BOOKING_DISABLED` (lab switch off).
+
+The dispensing copy opens through `/api/static/…` with the member's token.
+
+**Patient app:** "Booked and paid by <lab>". A patient's cancel refunds the lab.
+
+**Doctor app:** unchanged; the doctor sees "Booked by <lab>" and the identity note.
+
+**Admin:** card refund rows and stuck-money card chargebacks add `payerKind`, `payerId` and `payerName` (pharmacy rows
+keep `pharmacyId` / `pharmacyName`).
+
+#### 24.17.4 Switches, indexes, deploy, rollback
+
+- **Switches.**
+  - `ASSISTED_BOOKING_ENABLED_LAB` (2d's lab switch, off unless exactly `"true"`) now also gates the lab's lookup, doctor
+    reads and new consultations (503 when off).
+  - A card booking also needs `ASSISTED_CARD_PAYMENT_ENABLED`.
+  - Reads, cancel, reschedule, refunds, verify, reconcile and the sweeps always run.
+- **Indexes.** No new index. A lab create checks the partner-wallet indexes (2d) instead of the pharmacy ledger's, plus
+  the 1a booking indexes.
+- **Migration:** none.
+- **Permissions.** Owners hold `assisted.book`; they grant it to staff (never by migration).
+- **Order:**
+  1. deploy;
+  2. `npm run sync-indexes` (2d's, if not yet run);
+  3. owners grant `assisted.book`;
+  4. `ASSISTED_BOOKING_ENABLED_LAB=true` (already on where 2d top-ups are live: then lab bookings are live at the restart);
+  5. restart.
+- **Rollback:** the switch. Never roll the code back below r21 while a lab-made consultation is open:
+  - older code refunds a lab-paid booking to nobody (its refund step pays pharmacies only);
+  - older code cannot verify a lab's card payment.
+
+  Check: `db.bookings.countDocuments({ source: 'lab_assisted', status: { $in: ['pending', 'confirmed'] } })` = 0.
+
+#### 24.17.5 Alignment with the stage line and round 3e
+
+Merged, in order: `m0/r17-phase3e` (`b32f0007`, first, then superseded where it differs), `m0/r19-stage-next` at
+`037bd9fb` (r14b, r16b, r11b, r12b, r10i), `f7f57ad2` (the stage merge of round 3e, which push 2 and 3b build on) and
+`bea93b02` (r17b). Where two rounds made the same helper, ONE copy is kept, in `f7f57ad2`'s direction:
+
+| What | Kept | Changed for it |
+|---|---|---|
+| Patient steps | r12's `preparePatient` / `writePatientIn` (they already carry `chosenById` and `createdSource`), as `f7f57ad2` | 3e's `planAssistedPatient` / `applyPatientPlanIn` are gone. Every create uses r12's: the 1a/2e consultation, the 2a lab booking, the 2c desk and the 3e instant request (`f7f57ad2`'s `instant.ts`) |
+| Lab link to the holder | r12b's `linkLabIn` (`assisted/patient.ts`) | 2e's `linkAssistedIn` is gone; `linkBookerIn` (2e) calls `linkLabIn`. One `moveLabLinkIn` (`assisted/review.ts`) serves desk rows (r12b) and lab-made consultations (2e): the old link goes when no other desk row or lab-made consultation of that lab names the holder |
+| Wallet dispatcher | 3e's names and signature (`postBookerMovementIn`, `bookerEntryLotsIn`, `bookerEntriesOf`) plus the lab store; `BookerMovement` names only `booking_debit` and `refund_credit` | 2e's callers pass `amountPaise` and read `posted.entry._id`. `bookerEntriesOf(payerKind, payerId, operationKey)` as r17b, answering `{ amountPaise, payerId }` with index reads only: the pharmacy's `{ pharmacyId, operationKey }`; the lab's wallet by `{ ownerKind, ownerId }`, then `{ walletId, operationKey }`. Every reconciliation check passes the payer. 2e's `bookerDebitAllocationsIn`, `bookerEntriesByKey`, `PayerKind` and 500 `UNSUPPORTED_PAYER` are gone |
+| Coupon check | 3e's `assistedCouponFor(code, ctx)` | The consultation create calls it for every booker |
+| Short reference | `consultations.ts`'s `newShortRef` | The 2a lab create's private copy is gone (`aa3016ed`) |
+| Wallet refund of lab bookings | 2e's `refundWalletFundingIn` (any payer kind) | 3e's "`labRefunds.ts` credits pharmacies only" is settled |
+| Everything else | Both sides: 3e's instant routes, switch, audit action, reconciliation and error details; r16b's POST recommendation lookup; r12b's notice recipients of lab rows (`labOrigin`) | — |
+
+Doc numbering: r11b's record keeps §24.15 and r19b's §24.16, so this record is §24.17; r16b's §25.12.7 stays in the 3d record (§25.12) and
+3e's record is §25.13.
+
+#### 24.17.6 Checks after the alignment
+
+- On `19c33187` (after all three merges), each suite alone on its own database: `r21-phase2e` 16/16, `r17-phase3e`
+  25/25, `r11-phase2a` 26/26, `r12-phase2c` 26/26, `phase1a` 30/30. tsc 17 (unchanged).
+- Before the alignment, the full regression on the first 3e merge `b32f0007` (`prun.sh … 2`) passed 74 of 75; the one
+  failure, `r8-before-production`, was a load flake (503 `AUTH_STATE_UNAVAILABLE`, the 2-second sign-in state read) and
+  passes alone (7/7).
+- The full regression on `19c33187` (`prun.sh … 2`): 75 of 76 pass; tsc 17. The one failure, `s2-booking-read-scope`,
+  was the same load flake (503 `AUTH_STATE_UNAVAILABLE`) and passes alone (12/12).
+
+#### 24.17.7 Review fixes (r21b, review of `78020e07`)
+
+Merged first: `8b0d5ab8` (r19b, §24.16). Checks: `test/assisted/r21-phase2e.integration.ts` (now 18: two new checks and
+one new assertion in "card"). Each suite alone: `r21-phase2e` 18/18, `r17-phase3e` 25/25, `r11-phase2a` 26/26,
+`r12-phase2c` 27/27, `phase1a` 30/30, `r14-phase2b` 24/24. tsc 17.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (must, patient data) | `POST …/assisted/payments/verify` and `/reconcile` answered the booker view with its prescription (medicines, advice, tests) to a member scoped to another branch, and to a lab whose verification was revoked, while the booking detail route refuses both | `partnerWallets/service.ts` `entityView`: a member outside the booking's branch scope gets `{ _id, status, paymentStatus }` only; otherwise the booker view with `clinical: labAdmissible(<lab>)` (no prescription unless the lab is active and verified). The member's scope is read once with its permission (`memberMay`) |
+| 2 (must) | A clinic (and an unverified lab) could use the lab patient lookup, and a lab create counted and audited the phone before it was refused | `assisted/bookers.ts` `admitLabBooker` (an active, verified lab; 403 `LAB_PARTNER_REQUIRED` / `PARTNER_NOT_VERIFIED`) is split out of `bookerOrigin`. The lookup calls it before counting; the create now runs `bookerOrigin` (admission and branch) before `countPhoneUse` and the `booking.attempted` audit |
+| 3 (must, index rule) | A lab create relied on the `assisted_links` unique key (`linkLabIn` upserts on it) without checking it | `assertAssistedIndexes` checks `{ bookerKind, bookerId, userId }` for a lab payer (503 `INDEXES_OUTDATED`) |
+| 4 | A lab card booking's `lifecycle.paid.by` said `pharmacy_card` | `<payer kind>_card` from the payment record (`lab_card`) |
+| 5 | Two audit-actor helpers | One: `bookerAuditFields` (`assisted/bookers.ts`), used by `auditBookerIn` and the card capture audits (`auditActorOf` is gone) |
+
+**Seen, not changed:** the desk's `labOf` / `deskBranch` (`assisted/labDesk.ts`) and `admitLabBooker` / `bookerOrigin` check
+the same lab and branch rules with different answers (the desk: 404 `PARTNER_NOT_FOUND`, a visit-mode check, its own
+messages). Merging them changes the desk's answers, so it is left for a desk round.
+
 ## 25. Phase 3 build specification (doctors) (r15, 2026-11-25)
 
 Design only; nothing here is built. Base: `f5f171c9` (the stage line with round 2a, r11). Rounds 2b, 2c, 2d and 2e are being

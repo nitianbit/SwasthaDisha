@@ -11,6 +11,11 @@ import { PaymentService } from '@/modules/payment/services';
 import type { IPaymentRecord, VerifyPaymentRequest } from '@/modules/payment/types';
 import { adminTopup, checkTopup, setFrozenIn, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
 import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
+import MemberModel from '@/modules/partners/model/member';
+import PartnerOrgModel from '@/modules/partners/model';
+import { hasGlobalScope, type PartnerActor } from '@/modules/partners/services';
+import { labAdmissible } from '@/modules/assisted/labViews';
+import type { PartnerPermission } from '@/modules/partners/types';
 import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
 import { assertPartnerWalletIndexes, PARTNER_WALLET_POLICY, partnerStore, type PartnerOwner } from '@/modules/partnerWallets/ledger';
 import { doctorIsEligible } from '@/modules/specialists/eligibility';
@@ -143,11 +148,41 @@ export async function createTopup(owner: PartnerOwner, ownerIdIn: string, actorI
   }
 }
 
-/** The lab's own top-up record, or the one 404 (another lab's, a pharmacy's, a customer's, a booking's). */
-async function ownTopup(owner: PartnerOwner, ownerId: string, paymentTransactionId: string): Promise<void> {
+/**
+ * 2e: a payment this lab may settle on the two routes — its own top-up (`wallet.manage`), or the card payment of a
+ * consultation it booked (`assisted_booking`, paid by this lab: `payerPartnerId`; the member needs `assisted.book`).
+ * Anything else, or the member lacking that permission: the one 404 / 403.
+ */
+type MemberScope = Pick<PartnerActor, 'role' | 'branchIds'>;
+type Payment = { kind: 'topup' | 'booking'; member: MemberScope };
+async function ownPayment(owner: PartnerOwner, m: LabMember, paymentTransactionId: string): Promise<Payment> {
   const r = /^[0-9a-fA-F]{24}$/.test(String(paymentTransactionId ?? ''))
     ? await PaymentRecordModel.findById(paymentTransactionId).lean() as Record<string, unknown> | null : null;
-  if (!r || !owner.topups.isTopup(r) || owner.topups.ownerOf(r) !== lower(ownerId)) throw recordNotFound();
+  if (r && owner.topups.isTopup(r) && owner.topups.ownerOf(r) === lower(m.partnerId)) return { kind: 'topup', member: await memberMay(m, 'wallet.manage') };
+  if (r?.context === 'assisted_booking' && lower(r.payerPartnerId) === lower(m.partnerId)) return { kind: 'booking', member: await memberMay(m, 'assisted.book') };
+  throw recordNotFound();
+}
+async function memberMay(m: LabMember, perm: PartnerPermission): Promise<MemberScope> {
+  const member = await MemberModel.findById(m.memberId).select({ role: 1, permissions: 1, branchIds: 1 }).lean() as
+    { role?: string; permissions?: string[]; branchIds?: unknown[] } | null;
+  if (member?.role !== 'owner' && !(member?.permissions ?? []).includes(perm)) throw err(403, 'INSUFFICIENT_PERMISSIONS', `Missing permissions: ${perm}`);
+  return { role: String(member?.role ?? '') as PartnerActor['role'], branchIds: (member?.branchIds ?? []).map(lower) };
+}
+/**
+ * The entity of a settled payment, as this lab sees it: its wallet, or (2e) its booker view of the consultation. r21b:
+ * as the booking detail route — a member scoped to other branches gets the payment's state only (never the booking),
+ * and the prescription shows only while the lab is active and verified (`clinical`, as an operational pharmacy).
+ */
+async function entityView(p: Payment, m: LabMember, entity: unknown) {
+  if (p.kind === 'topup') return walletView(entity as IPartnerWallet);
+  const b = entity as Record<string, any> | null;
+  if (!b?._id) return b;
+  if (!hasGlobalScope(p.member) && !p.member.branchIds.includes(lower(b.assisted?.bookedBy?.branchId))) {
+    return { _id: String(b._id), status: b.status, paymentStatus: b.paymentStatus };
+  }
+  const { bookerView } = await import('@/modules/assisted/bookerView');
+  const lab = await PartnerOrgModel.findById(m.partnerId).select({ kind: 1, isActive: 1, verification: 1 }).lean();
+  return bookerView(b, { kind: 'lab', id: lower(m.partnerId) }, { copies: 'queue', clinical: labAdmissible(lab) });
 }
 
 const memberRequester = (m: LabMember) => ({ userId: m.memberId, requesterUserType: 'partner', requesterPartnerId: lower(m.partnerId) });
@@ -179,19 +214,19 @@ export async function doctorTopupEntity(owner: PartnerOwner, record: IPaymentRec
   return walletView(await partnerStore(owner.kind, ownerId).findIn(null));
 }
 
-/** POST …/payments/verify (lab) — after Checkout (members with wallet.manage). */
+/** POST …/payments/verify (lab) — after Checkout: its top-up (wallet.manage) or (2e) its consultation's card payment (assisted.book). */
 export async function verifyLabPayment(owner: PartnerOwner, m: LabMember, body: Omit<VerifyPaymentRequest, 'userId'>) {
-  await ownTopup(owner, m.partnerId, body.paymentTransactionId);
+  const own = await ownPayment(owner, m, body.paymentTransactionId);
   const out = await payments().verifyPaymentAndProcess({ ...body, ...memberRequester(m) } as VerifyPaymentRequest);
-  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: walletView(out.entity as IPartnerWallet) };
+  return { context: out.context, paymentRecord: recordView(out.paymentRecord), entity: await entityView(own, m, out.entity) };
 }
 
 /** POST …/payments/reconcile (lab) — a lost answer or a closed Checkout: Razorpay's own record of the order decides. */
 export async function reconcileLabPayment(owner: PartnerOwner, m: LabMember, paymentTransactionId: string) {
-  await ownTopup(owner, m.partnerId, paymentTransactionId);
+  const own = await ownPayment(owner, m, paymentTransactionId);
   const out = await payments().reconcilePaymentAndProcess({ paymentTransactionId, ...memberRequester(m) });
   if (out.state !== 'paid') return out;
-  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: walletView(out.entity as IPartnerWallet) };
+  return { state: out.state, context: out.context, paymentRecord: recordView(out.paymentRecord), entity: await entityView(own, m, out.entity) };
 }
 
 // ── Admin (any owner; writes behind the admin tools switch) ──

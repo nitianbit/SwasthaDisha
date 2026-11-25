@@ -55,7 +55,9 @@ export type PartnerPermission =
   | 'finance.view'
   /** r13 (§24.7.3, L13): the lab wallet — see it; top it up. */
   | 'wallet.view'
-  | 'wallet.manage';
+  | 'wallet.manage'
+  /** 2e (§24.8.2, L13): book doctor consultations for walk-in patients, paid by the lab (never granted by migration). */
+  | 'assisted.book';
 
 export const ALL_PERMISSIONS: readonly PartnerPermission[] = [
   'staff.manage',
@@ -72,6 +74,7 @@ export const ALL_PERMISSIONS: readonly PartnerPermission[] = [
   'finance.view',
   'wallet.view',
   'wallet.manage',
+  'assisted.book',
 ] as const;
 
 export type ProfessionalKind = 'pathologist' | 'pharmacist' | 'doctor';
