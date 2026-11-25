@@ -47,6 +47,7 @@ import { adminAssistedRouter, pharmacyAssistedRouter } from '@/modules/assisted/
 import { doctorLabRouter } from '@/modules/assisted/routes/doctorLab';
 import { adminDoctorWalletRouter, adminLabWalletRouter, doctorWalletRouter, labWalletWorkspaceRouter } from '@/modules/partnerWallets/routes';
 import { smsAdminRouter } from '@/modules/smsNotices/admin';
+import { joinRouter } from '@/modules/smsNotices/joinLink';
 import { adminRecordsRouter, holderRecordsRouter } from '@/modules/recordAccess/routes';
 import { adminWithdrawalRouter } from '@/modules/walletWithdrawals/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
@@ -154,6 +155,9 @@ export const configureRoutes = (app: Express): void => {
   // D4: abandon an unresolved once-only request key (admission fence; scoped to the caller).
   app.use('/api/v1/request-keys', authenticate, requestKeyRouter);
   
+  // Phase 5d (§27.8.3): the SMS video link, without sign-in (its own per-IP limit; one neutral page for every closed case).
+  app.use('/j', joinRouter);
+
   // Health check endpoint
   app.get('/health', (_req, res) => {
     res.status(200).json({

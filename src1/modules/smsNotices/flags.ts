@@ -23,8 +23,20 @@ export const smsFlags = {
   },
   /** SMS_NOTICES_FROM: the DLT header of notices; empty = SMS_FROM. */
   noticesFrom: () => text('SMS_NOTICES_FROM'),
-  /** SMS_JOIN_LINK_BASE_URL (https only): the fixed address part of the link templates (round 5d). */
-  joinBase: () => (/^https:\/\/\S+$/.test(text('SMS_JOIN_LINK_BASE_URL')) ? text('SMS_JOIN_LINK_BASE_URL').replace(/\/+$/, '') : ''),
+  /**
+   * SMS_JOIN_LINK_BASE_URL: the fixed address part of the link templates (round 5d), https and ending in `/j` (the route);
+   * anything else counts as unset (the plain texts are sent).
+   */
+  joinBase: () => {
+    const v = text('SMS_JOIN_LINK_BASE_URL').replace(/\/+$/, '');
+    return /^https:\/\/\S+\/j$/.test(v) ? v : '';
+  },
+  /** r34 (§27.7): SMS_VISIT_REMINDER_MINUTES_BEFORE, the reminder's lead time (30–1440, default 120, SM14). */
+  reminderMinutesBefore: () => int('SMS_VISIT_REMINDER_MINUTES_BEFORE', 120, 30, 1440),
+  /** r34 (§27.8.1): JOIN_LINK_SECRET, at least 32 bytes; empty = no join links (the `_LINK` texts are not used, /j/ shows the page). */
+  joinSecret: () => (Buffer.byteLength(text('JOIN_LINK_SECRET')) >= 32 ? text('JOIN_LINK_SECRET') : ''),
+  /** r34 (§27.8.3): SMS_JOIN_RATE_PER_MINUTE, /j/ requests per IP and minute (default 30). */
+  joinRatePerMinute: () => int('SMS_JOIN_RATE_PER_MINUTE', 30, 1, 10_000),
   /** SMS_<MSG>_<LANG>_ENABLED and SMS_<MSG>_<LANG>_TEMPLATE: the per-message, per-language switch and DLT id. */
   pair: (message: string, lang: string) => {
     const k = `SMS_${message}_${lang.toUpperCase()}`;
