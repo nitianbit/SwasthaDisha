@@ -37,7 +37,8 @@ const notPending = (state: string) => err(409, 'RECORDS_REQUEST_NOT_PENDING', `T
 
 /** The person of a consultation (§25.9.2): its family member's id, else 'self'. */
 export const personKeyOf = (b: Row): string => (b?.dependentId ? lower(b.dependentId) : 'self');
-const labPersonKeyOf = (b: Row): string => (b?.patient?.kind === 'dependent' && b.patient.dependentId ? lower(b.patient.dependentId) : 'self');
+/** r30b: a family member's row without a dependent id is no one's person (null): never the holder's own ('self'). */
+const labPersonKeyOf = (b: Row): string | null => (b?.patient?.kind === 'dependent' ? (b.patient.dependentId ? lower(b.patient.dependentId) : null) : 'self');
 /** Consultations of one person of the account. */
 export const personQuery = (personKey: string) => ({ dependentId: personKey === 'self' ? { $in: [null, ''] } : { $in: [personKey, personKey.toUpperCase()] } });
 const labPersonQuery = (personKey: string) => (personKey === 'self' ? { 'patient.kind': { $ne: 'dependent' } }
@@ -254,9 +255,13 @@ export async function decideRecordsRequest(holderUserId: string, requestId: stri
   }
   const state = decision === 'approve' ? 'approved' : 'denied';
   const grant = await runLedgerTransaction(async (s) => {
-    const done = await RecordAccessRequestModel.updateOne({ _id: r._id, state: 'pending' },
+    // r30b: fenced on "pending and not expired" (§25.9.4), so a request that expires after the checks above is not answered.
+    const done = await RecordAccessRequestModel.updateOne({ _id: r._id, state: 'pending', expiresAt: { $gt: now } },
       { $set: { state, decidedAt: now, ...(decision === 'approve' ? { via: 'app' } : {}) } }, { session: s });
-    if (done.modifiedCount !== 1) throw notPending('answered');
+    if (done.modifiedCount !== 1) {
+      throw await RecordAccessRequestModel.exists({ _id: r._id, state: 'pending' }).session(s)
+        ? err(409, 'RECORDS_REQUEST_EXPIRED', 'This request has expired') : notPending('answered');
+    }
     if (decision === 'deny') return null;
     return RecordAccessGrantModel.findOneAndUpdate({ holderUserId: r.holderUserId, personKey: r.personKey, specialistId: r.specialistId },
       { $set: { ...(r.dependentId ? { dependentId: r.dependentId } : {}), via: 'app', requestId: String(r._id), at: now, expiresAt: yearAfter(now), revokedAt: null },
@@ -323,7 +328,7 @@ export async function grantedFileRead(doctorId: string, f: { kind: 'booking' | '
   if (!readable) return null;
   const holderUserId = lower(source.userId);
   const personKey = f.kind === 'booking' ? personKeyOf(source) : labPersonKeyOf(source);
-  if (!(await grantInForce(holderUserId, personKey, doctorId, now))) return null;
+  if (!personKey || !(await grantInForce(holderUserId, personKey, doctorId, now))) return null;
   const treating = (await ownTreatingBookings(doctorId, { userId: holderUserId, status: { $nin: ['cancelled', 'no_show'] }, ...personQuery(personKey) }, now))
     .find((t) => t.window.open);
   return treating ? { doctorId: lower(doctorId), holderUserId, personKey, treatingBookingId: lower(treating.booking._id), scope: 'file', path: f.path,

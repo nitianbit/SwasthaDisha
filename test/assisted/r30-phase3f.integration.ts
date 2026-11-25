@@ -548,6 +548,33 @@ async function main() {
       assert.equal((await RecordAccessRequestModel.findById(r.requestId).lean())!.state, 'pending', 'nothing was written');
       await expect('X', 'POST', `/records-access/requests/${r.requestId}/approve`, 200, {});
     });
+
+    // ───────────────────────── r30b: the review's two leftovers ─────────────────────────
+    await check('r30b: a lab row of a family member without a dependent id is no one\'s "self": its report is never read under the holder\'s own grant', async () => {
+      assert.ok(await RecordAccessGrantModel.exists({ holderUserId: X, personKey: 'self', specialistId: D, revokedAt: null }), 'D holds X\'s own grant');
+      const unnamed = await labRow({ kind: 'dependent', name: 'Unnamed relative' });   // no dependentId
+      assert.equal((await fileStatus(labX.rel, 'D')).status, 200, 'X\'s own report: readable under the grant');
+      assert.equal((await fileStatus(unnamed.rel, 'D')).status, 404, 'the family member\'s report is not X\'s');
+      const h = (await expect('D', 'GET', H(`?bookingId=${treat}`), 200)).json.data;
+      assert.ok(!h.others.labReports.some((l: any) => l.labBookingId === unnamed.id));
+    });
+
+    await check('r30b: an approval racing the request\'s expiry never lands: the write is fenced on "pending and not expired" (409 RECORDS_REQUEST_EXPIRED, no grant)', async () => {
+      const r = (await expect('D', 'POST', REQ(treatDep), 201, {})).json.data;
+      const real = RecordAccessRequestModel.updateOne.bind(RecordAccessRequestModel);
+      // The request expires between the approval's checks and its write.
+      (RecordAccessRequestModel as any).updateOne = async (filter: any, update: any, opts?: any) => {
+        if (String(filter?._id) === r.requestId && update?.$set?.state === 'approved') {
+          await RecordAccessRequestModel.collection.updateOne({ _id: new Types.ObjectId(r.requestId) }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+        }
+        return real(filter, update, opts);
+      };
+      try {
+        await expect('X', 'POST', `/records-access/requests/${r.requestId}/approve`, 409, {}, 'RECORDS_REQUEST_EXPIRED');
+      } finally { (RecordAccessRequestModel as any).updateOne = real; }
+      assert.notEqual((await RecordAccessRequestModel.findById(r.requestId).lean())!.state, 'approved');
+      assert.equal(await RecordAccessGrantModel.countDocuments({ holderUserId: X, personKey: depX, specialistId: D }), 0, 'no grant');
+    });
   } finally {
     server.close();
     await mongoose.disconnect();
