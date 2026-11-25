@@ -4882,7 +4882,7 @@ It is an alert only. The places:
 | DR10 | The recommendation code: Crockford base32, 7 random characters + a Luhn mod 32 check, printed `ABCD-EFGH` | §25.7.2 |
 | DR11 | One recommendation per consultation. The code stays the same across re-saves; an empty list withdraws it | §25.7.3 |
 | DR12 | The recommendation is made best effort: a prescription save never fails because of it | §25.7.3 |
-| DR13 | The full prescription PDF keeps its "MyEwaCare" header; the recommended-tests box is branded Jansetu (Q3) | §25.7.3 |
+| DR13 | The full prescription PDF keeps its "MyEwaCare" header; the recommended-tests box is branded Jansetu (Q3). *Superseded by the owner, 25 Nov: new PDFs say "Jansetu" (§25.16.1)* | §25.7.3 |
 | DR14 | The code is printed on the dispensing copy too; the copy's hash includes it only when present | §25.7.3 |
 | DR15 | Partners load a recommendation by code and phone, get test names only, and the load counts as a lookup | §25.7.4 |
 | DR16 | A recommendation links only to a booking for the same person; it never locks anything; a cancellation unlinks | §25.7.5 |
@@ -4922,7 +4922,7 @@ It is an alert only. The places:
 |---|---|---|
 | 1 | The account holder allows or denies in the Jansetu app now; the SMS code comes in phase 5 | §25.9.4 as written (DR21) |
 | 2 | "Consult now" is paid from the wallet only | §25.8 as written (DR18) |
-| 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays |
+| 3 | The PDF header stays "MyEwaCare"; only the recommended-tests box says Jansetu. Rebranding is the owner's call: **ask the owner in the morning** | DR13 stays. **Owner, 25 Nov: the heading says "Jansetu"** (built in r29, §25.16.1) |
 | 4 | A doctor books lab tests for patients of its own consultations AND for walk-ins by phone | §25.5.3 as written (DR6) |
 
 ### 25.12 Round 3d build record: test recommendations (r16, 2026-11-25)
@@ -5386,6 +5386,152 @@ The released report file is readable by the booking doctor at `report.releases[]
 | 4 | The lab list's `source` filter refused `doctor_assisted` | Allowed (`partners/validation/labBooking.ts`) |
 
 Checks: `test/assisted/r26-phase3b.integration.ts` (14 checks).
+
+### 25.16 Round r29: the prescription heading, and round 3c (a doctor pays a lab booking by card/UPI) (2026-11-25)
+
+Branch `m0/r29-phase3c` from `6a8574e9` (the stage line `m0/r28-stage-next-3`: 3a, 3b, 2e, 4a/4b, 5a). Local commits
+only. Check: `test/assisted/r29-phase3c.integration.ts` (21 checks over HTTP with the real routes, a stand-in Razorpay and
+refund gateway). Where this section and §25.6 differ, this one wins.
+
+#### 25.16.1 A. The prescription PDF heading (owner, 25 Nov)
+
+- New prescription PDFs are headed **"Jansetu"** instead of "MyEwaCare" (`specialistPortal/services` `buildPrescriptionHtml`).
+  Nothing else on the PDF changes. DR13 and §25.11 Q3 are superseded.
+- PDFs already issued stay as they are: nothing is regenerated (a re-save of the prescription makes a new PDF, which says
+  Jansetu).
+- The dispensing copy already said "Jansetu" (§17.2); it is unchanged.
+- Checks: r29 "A" (the rendered HTML has the Jansetu heading and no "MyEwaCare"); r16's PDF check now expects the Jansetu
+  heading.
+- **Seen, not changed** (other places that still say MyEwaCare / Myewacare; not prescription PDFs):
+  - the sign-in OTP SMS text "…on MyEwaCare, a service of EWA Healthcare Solutions…" (`sms/services`; a DLT-registered
+    template, pinned byte for byte by the r25 suite);
+  - the OTP emails' subject and text (`auth/services`: sign-in, email and corporate-email verification);
+  - the external-booking emails (`externalBookings/emailTemplates.ts`), named by `CONFIG.STORE_NAME` (default `Myewacare`)
+    and `support@myewacare.com` (`config/config.ts`, SMTP sender default too);
+  - the Meet invite email of customer bookings, signed "Myewacare" / "EWA Healthcare" (`meet/service`; assisted bookings'
+    events are already neutral "Jansetu");
+  - the app store links (`appVersions/services`, the store ids).
+  The lab invoice and payout PDFs carry no brand.
+
+#### 25.16.2 B. What was built (round 3c)
+
+No copied card code: the 1b/2b/2e card machinery now names its payer by kind in ONE table, and a doctor is the third
+payer kind. Pharmacy and lab card payments, and the doctor wallet path (3b), are unchanged (their suites are the check).
+
+| Area | Where | What |
+|---|---|---|
+| Payer table | `assisted/cardRefunds.ts` (`RECORD_PAYERS`, `recordPayerOf`, `recordPayerFieldsOf`, `payerBlockedAtCapture`) | Per payer kind: the record field that names it (`payerPharmacyId`, `payerPartnerId`, new `payerSpecialistId`), the order's payer fields and note key (pharmacy and lab byte-identical to 1b / 2e), and whether a capture is still taken (only a doctor no longer verified and active is refused, DR9) |
+| Order | `assisted/cardPayments.ts` `openCardOrderOf` | A doctor's order: `userId` = `payerUserId` = `payerSpecialistId` = the doctor, no `payerPharmacyId`, notes `{ flow: 'assisted_lab_booking', specialistId, bookingId }`, receipt `al` |
+| Capture | `assisted/cardPayments.ts` `applyAssistedCaptureOf` | The payer check reads the doctor (`recordPayerOf`). A capture for a doctor no longer verified and active is a late capture returned to the card in the same transaction, audited `booking.late_capture` with `payerBlocked: true`; the booking stays waiting and then expires (DR9, as C9). The follow-up lease, extra captures and the sweeps are the one path. Capture audits name the doctor (`actorKind`/`orgKind: 'doctor'`, `bookerAuditFields`) |
+| Refund rows | `assisted/model` | `payerKind` enum gains `doctor`. To the card by default; `refundTo: 'wallet'` (the doctor's own cancel) or the admin fallback credits the doctor wallet through `postBookerMovementIn` (`refundDoctorWalletIn`), no lot, not withdrawable (C3) |
+| Admin rows | `assisted/cardRefunds.ts` | Card refund rows and stuck money's card chargebacks name a doctor payer `payerKind: 'doctor'`, `payerId`, `payerName: 'Dr <name>'` (`doctorBookerName`, shared with the booking's `bookedBy.name`). The chargeback list now reads every payer field |
+| Create | `assisted/labBookings.ts` | The 3b refusal of `paymentMethod: 'razorpay'` is gone: a doctor's card create is the 2b card create (`pending_payment`, `paymentDeadline` = now + 30 min, seat held, funding `{ method: 'razorpay', state: 'pending', paymentRecordId, payerKind: 'doctor' }`, no wallet debit, the order after the commit). Both patient sources (§25.5.3) |
+| Doctor view | `assisted/labBookings.ts` `bookerLabViews` | The doctor's booker lab view carries `payment` as the pharmacy's does (`bookerPayments` takes any payer, `payerRefOf`) |
+| Cancel | `assisted/routes/doctorLab.ts` | The doctor's cancel passes `refundTo` |
+| Verify / reconcile | `payment/services`, `payment/routes`, `payment/controller`, `specialists/eligibility.ts` | A doctor's card record is verified and reconciled only by that doctor (specialist token, `payerSpecialistId`); anyone else, an admin included, gets 404 `PAYMENT_RECORD_NOT_FOUND`; the sweeps act as its payer. A doctor no longer verified and active is answered 403 `SPECIALIST_NOT_VERIFIED` on verify and reconcile of an assisted card record (the pharmacy gate of §23.1 for doctors; `assertEligibleDoctor`); its top-ups are not gated (DR3). The answer's `entity` is the doctor's booker lab view |
+
+Everything else needed no change: unpaid rows are hidden by funding method (`LAB_UNPAID_CARD_QUERY`), so a doctor's
+unpaid card row is the doctor's alone; patient, lab-reject and admin cancels queue the card refund to the doctor's card;
+the lab sweep reconciles and expires it; booker notices go to the doctor (`bookerNoticeUserId`); reconciliation checks
+wallet rows only (E9).
+
+#### 25.16.3 Choices made while building (ASSUMED r29, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| G1 | The doctor's booker view carries `payment` on every row, wallet rows too (`{ method: 'wallet', state, payBy: null }`); 3b's F4 (no `payment` block) is superseded | The web offers the refund choice by `method`, as for pharmacies |
+| G2 | DR9 reads the doctor at capture time (before the capture's transaction, as the provider S5 check); a missing doctor record counts as not eligible (the money goes back to the card) | Nobody can use a booking of a doctor that is gone |
+| G3 | Only the paying doctor verifies or reconciles its card record; admins get 404 there (they use the admin card-refund and chargeback tools), as for pharmacy and lab card records | DR4's ownership rule; one answer for everyone else |
+| G4 | The 403 for an ineligible doctor applies to any assisted card record (before ownership, as the pharmacy gate) but not to unknown ids or top-ups | The pharmacy pattern; DR3 |
+| G5 | A doctor's waiting card booking can be cancelled at any time (nothing refunded, nobody else told), as 2b's E3 | One cancel rule |
+| G6 | Late and extra captures, mark-failed and the extra-capture chargeback alert and audit name the row's payer kind. Before r29 the last two said `pharmacy` for every row, so lab rows now say `lab` | A doctor row must not be audited as a pharmacy; the same line fixes lab rows |
+| G7 | Doctor referral cuts stay off (`REFERRAL_DOCTOR_CUTS_ENABLED` off): the card row snapshots cut 0 as the wallet row does | Owner |
+
+#### 25.16.4 API for the web (doctor app)
+
+Specialist token, verified and active; `{ success, data }`, `Cache-Control: private, no-store`; paise unless marked ₹.
+
+- **Book with card/UPI.** `POST /api/v1/specialists/me/assisted/lab-bookings`: the §25.15 body (one patient source:
+  `{ fromBookingId, typedName }` or `{ phone, patient, holderName? }`) with `paymentMethod: 'razorpay'`. 201 (replay 200):
+  ```
+  { booking: <doctor booker lab view, status 'pending_payment'>,
+    funding: { method: 'razorpay', amountMinor, state: 'pending', walletEntryId: null, paymentTransactionId },
+    split: { listMinor, discountMinor, couponCode },
+    payment: { paymentRequired: true, paymentTransactionId, razorpayOrderId, razorpayKeyId, amount (₹), amountMinor, currency, payBy } | null,
+    newAccount, replayed }
+  ```
+  Open Razorpay Checkout with `key = razorpayKeyId`, `order_id = razorpayOrderId`, `amount = amountMinor`, `currency`.
+  `payBy` (ISO, 30 minutes) is when the seat is released unless paid. The same key and body → 200 `replayed` with the SAME
+  order (`payment: null` once paid, cancelled or expired); the method is not in the request hash (the same key sent with
+  `wallet` answers the card booking). Errors besides §25.15: 400 `PAYMENT_METHOD_UNAVAILABLE` (card switch off),
+  `NOTHING_TO_PAY` (0 to pay: book with `wallet`); 502 `RAZORPAY_ORDER_CREATION_FAILED` (the booking is held: send the
+  same request again); 503 `RAZORPAY_NOT_CONFIGURED`, `INDEXES_OUTDATED`. Every refusal comes before any account, seat or
+  order.
+- **The booker view `payment`** (list, detail, by-key, cancel and verify answers; this doctor only):
+  `{ method: 'wallet' | 'razorpay', state, payBy, paymentTransactionId?, razorpayOrderId?, razorpayKeyId?, amountMinor?, currency? }`.
+  `state`: `pending`, `captured`, `refunded`, `not_paid`, `forfeited`. Card rows carry `paymentTransactionId`; while
+  waiting (`status: 'pending_payment'`) also `payBy` and the open order with its amount (null when none is open yet: replay
+  the create), so "Pay now" opens Checkout from the booking page. `GET …/lab-bookings?status=pending_payment` lists the
+  waiting ones; `GET …/lab-bookings/by-key/:key` adds `payment` (the open order or null) for a card booking.
+- **After Checkout.** `POST /api/v1/payments/verify { paymentTransactionId, razorpayOrderId, razorpayPaymentId, razorpaySignature }`
+  (doctor token) → `{ context: 'assisted_lab_booking', paymentRecord, entity: <doctor booker lab view> }`.
+  `paymentRecord.status: 'paid'` and `entity.status: 'confirmed'`: booked; the patient is told then.
+  `paymentRecord.status: 'refunded'`: the booking could not take it (expired, cancelled, or the lab or the doctor not
+  available); the money goes back to the card or UPI. Lost answer or closed Checkout:
+  `POST /api/v1/payments/reconcile { paymentTransactionId }` → as verify with `state: 'paid'`, or
+  `{ state: 'unpaid', gatewayStatuses }`. Errors as §23.3, plus 403 `SPECIALIST_NOT_VERIFIED` (the doctor is not verified
+  and active: its capture is returned to the card by the server) and 404 `PAYMENT_RECORD_NOT_FOUND` for anyone but the
+  paying doctor.
+- **Cancel.** `POST /api/v1/specialists/me/assisted/lab-bookings/:id/cancel { reason?, expectedVersion?, refundTo?: 'card' | 'wallet' }`
+  → `{ booking, refundedMinor, alreadyCancelled, refund }`; `refund` (card bookings only) as §24.14 (`method: 'card' |
+  'wallet'`, `state: 'pending' | 'processed' | 'failed' | 'manual_review'`, …) or null when cancelled before payment.
+  `refundTo` defaults to `card`; `wallet` credits the doctor wallet at once and is **not withdrawable** (show this before
+  the doctor chooses); ignored for wallet-paid bookings. A waiting card booking may be cancelled at any time; a paid one up
+  to 1 hour before the slot (or while a lab reschedule is unanswered). 400 `VALIDATION_ERROR` for another `refundTo`.
+  Show "refund to card: in progress" while `pending`.
+- **Patient app / lab workspace.** A doctor's card booking appears only once paid ("Booked and paid by Dr <name>"); a
+  patient cancel or a lab reject refunds the DOCTOR's card, and the doctor is told ("being refunded to the card or UPI").
+- **Admin.** Card refund rows (`GET /api/v1/admin/assisted/card-refunds`, `…/:id`) and stuck money's `cardChargebacks`
+  name a doctor payer: `payerKind: 'doctor'`, `payerId`, `payerName: 'Dr <name>'`, `bookingKind: 'lab_booking'` (no
+  `pharmacyId` fields). Recheck, mark-failed, to-wallet (credits the doctor wallet, with the doctor's recorded agreement)
+  and `POST /api/v1/admin/assisted-payments/:paymentId/chargeback` (flag only, C4) work on doctor rows unchanged.
+
+#### 25.16.5 Switches, indexes, deploy, rollback
+
+- **Switches.** A doctor's card booking needs `ASSISTED_CARD_PAYMENT_ENABLED`, `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR` and
+  `ASSISTED_BOOKING_ENABLED_DOCTOR` (each off unless exactly `"true"`) and the Razorpay keys. Card switch off: 400
+  `PAYMENT_METHOD_UNAVAILABLE`; a doctor switch off: 503. Verify, reconcile, reads, cancel, the sweeps, expiry and refunds
+  always run.
+- **Indexes.** None new; the card create relies on r10e's `assisted_card_refunds {captureKey}` (503 until
+  `sync-indexes`). **Migration:** none (the `payerKind` enum is a schema change only).
+- **Order:** 1. deploy; 2. `npm run sync-indexes` (only if 2b/3a/3b indexes are not built yet); 3. restart. Where the
+  three switches are already on, doctor card bookings are live at the restart: test on stage first (book by card, pay in
+  Checkout, see it confirmed; cancel it to the card and to the wallet; book and let it expire, then pay the same order from
+  the Razorpay dashboard: refunded once).
+- **Rollback:** the card switch. Never roll the code back below r29 while a doctor card row is `pending_payment`, any of its
+  `assisted_lab_booking` records could still capture, or a card refund row with `payerKind: 'doctor'` is not settled: older
+  code refuses the doctor's capture as "not found" (the money would wait unapplied and unreturned) and cannot write a doctor
+  refund row. Checks: `db.partner_lab_bookings.countDocuments({ source: 'doctor_assisted', 'assisted.funding.method': 'razorpay', status: 'pending_payment' })` = 0
+  and `db.assisted_card_refunds.countDocuments({ payerKind: 'doctor', state: { $ne: 'processed' } })` = 0.
+
+#### 25.16.6 Checks
+
+`test/assisted/r29-phase3c.integration.ts`, 21 checks: A (the heading); gates (card switch, doctor lab switch, gateway
+keys, an unverified doctor); index 503; create (record owned by the doctor, 30-minute pay-by, no wallet money, nobody
+told); replay, by-key and the doctor's `payment`; unpaid rows hidden from the patient and the lab; verify ×2, reconcile and
+both sweeps racing (confirmed once, one notice, 2 runs); scope (another doctor, a pharmacy, the patient, an admin: 404);
+late capture after expiry (refunded once); extra capture (refunded once); cancel to the card (doctor), to the doctor wallet
+(not withdrawable), by the patient and the lab (the doctor's card); cancel before payment; DR9 (returned to the card, 403 on
+the doctor's verify and reconcile, then expired); admin queue names the doctor and to-wallet; chargeback flag only; switches
+off; pharmacy card unchanged and the payer table byte-identical for pharmacy and lab; the doctor wallet path unchanged;
+reconciliation clean.
+
+A mutation run, one break at a time: a doctor never refused at capture, or no 403 gate, fails DR9; `recordPayerOf`
+without the doctor fails 13 checks; the refund-row enum without `doctor` fails 10; the doctor view without `payment` fails
+5; the "MyEwaCare" heading fails A.
+
+**Seen, not changed:** the admin move of a doctor-made lab row still does not move its `assisted_links` row (3b F6). The
+lab member verify route (`/partner-workspace/assisted/payments/verify`) stays lab-only; doctors use `/payments`.
 
 ## 26. Phase 4 build specification (referral cuts, earnings, withdrawals) (r22, 2026-11-25)
 

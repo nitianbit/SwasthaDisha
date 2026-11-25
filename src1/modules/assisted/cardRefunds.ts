@@ -7,6 +7,9 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import PaymentRecordModel from '@/modules/payment/model';
 import { ASSISTED_CARD_CONTEXTS, type AssistedCardContext, type IPaymentRecord } from '@/modules/payment/types';
 import PartnerOrgModel from '@/modules/partners/model';
+import SpecialistModel from '@/modules/specialists/model';
+import { doctorIsEligible } from '@/modules/specialists/eligibility';
+import { doctorBookerName } from '@/modules/assisted/labViews';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
 import { RazorpayRefundGateway, type GatewayRefund, type RefundGateway } from '@/modules/pharmacyOrders/prescriptionRefund';
 import { AssistedCardRefundModel, type IAssistedCardRefund } from '@/modules/assisted/model';
@@ -34,6 +37,8 @@ import logger from '@/services/logger';
  * - Jansetu bears the gateway fee: the refund is always the full captured amount.
  * - r14 (§24.5): the same rows return the card captures of assisted LAB bookings; a row's `bookingKind` names the
  *   collection of its `bookingId` (rows from before r14 carry none and are consultations).
+ * - r29 (§25.6): the payer may be a doctor (a lab booking it made): `payerKind: 'doctor'`; a wallet refund credits the
+ *   doctor wallet (no lot, not withdrawable, C3).
  */
 const LEASE_MS = 300_000;
 /** r10b: real failures (gateway unreachable, outcome unknown, mismatch) before the worker stops and the row waits for an admin. */
@@ -142,9 +147,32 @@ function bookingRowOf(r: IAssistedCardRefund): AssistedRefundRow {
     ...(r.walletEntryId ? { walletEntryId: r.walletEntryId } : {}), attemptId: String(r._id), at: r.createdAt ?? new Date() };
 }
 
-/** 2e: who paid an assisted card record — a lab (`payerPartnerId`) or a pharmacy (`payerPharmacyId`). */
-export const recordPayerOf = (r: Pick<IPaymentRecord, 'payerPartnerId' | 'payerPharmacyId'>): { kind: 'pharmacy' | 'lab'; id: string } =>
-  (r.payerPartnerId ? { kind: 'lab', id: lower(r.payerPartnerId) } : { kind: 'pharmacy', id: lower(r.payerPharmacyId) });
+/**
+ * 2e / r29: how each payer kind is named on its assisted card payment record, in one table — the record field that names
+ * it (what `recordPayerOf` reads and verification by organisation matches), the fields its order writes (a lab also names
+ * its booking member; the pharmacy's are byte-identical to 1b), the key of the order's notes, and (r29, DR9) whether a
+ * capture of that payer is still taken: a doctor no longer verified and active gets its capture back on the card (C9).
+ * Pharmacy and lab payers are never refused at capture (as before).
+ */
+type RecordPayerField = 'payerPharmacyId' | 'payerPartnerId' | 'payerSpecialistId';
+const RECORD_PAYERS: Record<BookerKind, { field: RecordPayerField; note: string; fields(payerId: string, actorId: string): Record<string, string>;
+  blockedAtCapture(payerId: string): Promise<boolean> }> = {
+  pharmacy: { field: 'payerPharmacyId', note: 'pharmacyId', fields: (id) => ({ payerPharmacyId: id }), blockedAtCapture: async () => false },
+  lab: { field: 'payerPartnerId', note: 'partnerId', fields: (id, actor) => ({ payerPartnerId: lower(id), payerMemberId: lower(actor) }), blockedAtCapture: async () => false },
+  doctor: { field: 'payerSpecialistId', note: 'specialistId', fields: (id) => ({ payerSpecialistId: lower(id) }),
+    blockedAtCapture: async (id) => !(await doctorIsEligible(id)) },
+};
+/** 2e: who paid an assisted card record — a lab (`payerPartnerId`), r29 a doctor (`payerSpecialistId`), else a pharmacy (`payerPharmacyId`). */
+export const recordPayerOf = (r: Pick<IPaymentRecord, RecordPayerField>): { kind: BookerKind; id: string } => {
+  const kind = (['lab', 'doctor'] as const).find((k) => !!r[RECORD_PAYERS[k].field]) ?? 'pharmacy';
+  return { kind, id: lower(r[RECORD_PAYERS[kind].field]) };
+};
+/** The payer fields and notes of a card booking's Razorpay order (the paying organisation by its kind, §6.1). */
+export const recordPayerFieldsOf = (kind: BookerKind, payerId: string, actorId: string) =>
+  ({ fields: RECORD_PAYERS[kind].fields(payerId, actorId), notes: { [RECORD_PAYERS[kind].note]: payerId } });
+/** r29 (DR9): a capture paid by this payer is returned to the card instead of applied (only a doctor no longer eligible). */
+export const payerBlockedAtCapture = (kind: BookerKind | undefined, payerId: string): Promise<boolean> =>
+  (kind && RECORD_PAYERS[kind] ? RECORD_PAYERS[kind].blockedAtCapture(payerId) : Promise.resolve(false));
 
 /** The answer's view of a refund row (booker's own screens and the admin queue). */
 export const cardRefundView = (r: IAssistedCardRefund) => ({
@@ -298,11 +326,15 @@ async function adminRefundViews(rows: IAssistedCardRefund[]) {
 /** Admin lists: payer names by kind and (lower-case) id. */
 async function payerNames(payers: { kind: string; id: string }[]): Promise<Map<string, string | null>> {
   const idsOf = (kind: string) => [...new Set(payers.filter((p) => p.kind === kind && Types.ObjectId.isValid(p.id)).map((p) => lower(p.id)))];
-  const [pharmacies, labs] = await Promise.all([
-    idsOf('pharmacy').length ? PharmacyModel.find({ _id: { $in: idsOf('pharmacy') } }).select({ name: 1 }).lean() as unknown as Promise<{ _id: unknown; name?: string }[]> : [],
-    idsOf('lab').length ? PartnerOrgModel.find({ _id: { $in: idsOf('lab') } }).select({ name: 1 }).lean() as unknown as Promise<{ _id: unknown; name?: string }[]> : [],
+  type Named = { _id: unknown; name?: string };
+  const [pharmacies, labs, doctors] = await Promise.all([
+    idsOf('pharmacy').length ? PharmacyModel.find({ _id: { $in: idsOf('pharmacy') } }).select({ name: 1 }).lean() as unknown as Promise<Named[]> : [],
+    idsOf('lab').length ? PartnerOrgModel.find({ _id: { $in: idsOf('lab') } }).select({ name: 1 }).lean() as unknown as Promise<Named[]> : [],
+    // r29: a doctor payer is named as on its bookings ("Dr <name>").
+    idsOf('doctor').length ? SpecialistModel.find({ _id: { $in: idsOf('doctor') } }).select({ name: 1 }).lean() as unknown as Promise<Named[]> : [],
   ]);
-  return new Map([...pharmacies.map((p) => [`pharmacy:${lower(p._id)}`, p.name ?? null] as const), ...labs.map((p) => [`lab:${lower(p._id)}`, p.name ?? null] as const)]);
+  return new Map([...pharmacies.map((p) => [`pharmacy:${lower(p._id)}`, p.name ?? null] as const), ...labs.map((p) => [`lab:${lower(p._id)}`, p.name ?? null] as const),
+    ...doctors.map((p) => [`doctor:${lower(p._id)}`, doctorBookerName(p.name)] as const)]);
 }
 const payerFields = (kind: string, id: string | null | undefined, names: Map<string, string | null>) => {
   const payerName = id ? names.get(`${kind}:${lower(id)}`) ?? null : null;
@@ -397,7 +429,7 @@ export async function markCardRefundFailed(adminId: string, refundId: string, re
     await assertNoLiveGatewayRefund(String(c.row.razorpayPaymentId));
   } catch (e) { await free(); throw e; }
   const done = await finish(c.row, c.attemptId, 'failed', { lastError: 'MARKED_FAILED_BY_ADMIN' });
-  await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: 'pharmacy', orgId: c.row.payerId, action: 'card_refund.marked_failed',
+  await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: c.row.payerKind ?? 'pharmacy', orgId: c.row.payerId, action: 'card_refund.marked_failed',
     bookingId: c.row.bookingId, detail: { refundId: String(c.row._id), paymentRecordId: c.row.paymentRecordId, amountMinor: c.row.amountMinor, reason } }, null);
   return { refund: cardRefundView(done!) };
 }
@@ -414,7 +446,7 @@ export async function cardRefundsStuckPending(now: Date = new Date(), limit = 20
 /** r10b (stuck money): assisted card payments with a card dispute recorded (C4: flagged only, waiting for an admin). */
 export async function cardChargebacks(limit = 200) {
   const rows = await PaymentRecordModel.find({ context: { $in: ASSISTED_CARD_CONTEXTS }, chargebackAt: { $exists: true } })
-    .select({ context: 1, contextId: 1, payerPharmacyId: 1, finalAmount: 1, finalAmountPaise: 1, chargebackAt: 1, status: 1 }).sort({ chargebackAt: -1 }).limit(limit).lean() as unknown as IPaymentRecord[];
+    .select({ context: 1, contextId: 1, payerPharmacyId: 1, payerPartnerId: 1, payerSpecialistId: 1, finalAmount: 1, finalAmountPaise: 1, chargebackAt: 1, status: 1 }).sort({ chargebackAt: -1 }).limit(limit).lean() as unknown as IPaymentRecord[];
   // r10f: disputes recorded on extra captures (their own refund rows) are listed too.
   const extras = await AssistedCardRefundModel.find({ cause: 'extra_capture', chargebackAt: { $exists: true } }).sort({ chargebackAt: -1 }).limit(limit).lean() as IAssistedCardRefund[];
   const names = await payerNames([...rows.map(recordPayerOf), ...extras.map((r) => ({ kind: r.payerKind ?? 'pharmacy', id: r.payerId }))]);
@@ -445,10 +477,10 @@ async function recordExtraCaptureChargeback(adminId: string, extra: IAssistedCar
     const booking = Types.ObjectId.isValid(extra.bookingId)
       ? await bookingModelOf(extra.bookingKind).findById(extra.bookingId).select({ status: 1 }).session(s).lean() as { status?: string } | null : null;
     if (!replayed) {
-      await raiseAlertIn({ kind: 'booking_card_chargeback', subject: `pay:${extra.razorpayPaymentId}`, bookerKind: 'pharmacy', bookerId: extra.payerId,
+      await raiseAlertIn({ kind: 'booking_card_chargeback', subject: `pay:${extra.razorpayPaymentId}`, bookerKind: extra.payerKind ?? 'pharmacy', bookerId: extra.payerId,
         detail: { paymentRecordId: extra.paymentRecordId, razorpayPaymentId: extra.razorpayPaymentId, extraCapture: true, bookingId: extra.bookingId,
           amountMinor: extra.amountMinor, refundState: refund.state } }, s);
-      await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: 'pharmacy', orgId: extra.payerId, action: 'booking.card_chargeback', bookingId: extra.bookingId,
+      await auditIn({ actorKind: 'admin', actorId: lower(adminId), orgKind: extra.payerKind ?? 'pharmacy', orgId: extra.payerId, action: 'booking.card_chargeback', bookingId: extra.bookingId,
         detail: { paymentRecordId: extra.paymentRecordId, razorpayPaymentId: extra.razorpayPaymentId, extraCapture: true, amountMinor: extra.amountMinor, reason,
           refundState: refund.state } }, s);
     }

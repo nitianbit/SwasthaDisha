@@ -14,7 +14,8 @@ import {
  * r26 (round 3b, §25.5.4): a doctor books a lab test for a patient, paid from its wallet — the 2a routes with a doctor
  * booker, mounted at `/api/v1/specialists/me/assisted` beside the doctor wallet. Every route needs a verified, active
  * doctor (S5); the switches (`ASSISTED_BOOKING_ENABLED_DOCTOR` + `ASSISTED_LAB_BOOKING_ENABLED_DOCTOR`) gate the lookup,
- * the lab reads and new bookings only.
+ * the lab reads and new bookings only. r29 (round 3c): `paymentMethod: 'razorpay'` (also `ASSISTED_CARD_PAYMENT_ENABLED`)
+ * and the cancel's `refundTo: 'card' | 'wallet'`.
  */
 export const doctorLabRouter = Router();
 // r26b: the guards sit on each route (never a path-less `use`): this router shares its mount with the doctor wallet and the
@@ -45,6 +46,7 @@ r.post('/lab-bookings/by-key/:key/abandon', ...eligible, validate(v.keyParamSche
   catchAsync(async (req: AuthRequest, res) => send(res, await abandonLabByKeyFor(doctor(req), req.params.key))));
 r.get('/lab-bookings/:id', ...eligible, validate(v.idParamSchema, 'params'), catchAsync(async (req: AuthRequest, res) => send(res, await getLabBookingFor(doctor(req), req.params.id))));
 r.post('/lab-bookings/:id/cancel', ...eligible, validate(v.idParamSchema, 'params'), validate(v.labBookerCancelSchema, 'body'),
-  catchAsync(async (req: AuthRequest, res) => send(res, await cancelLabFor(doctor(req), req.params.id, { reason: req.body?.reason, expectedVersion: req.body?.expectedVersion }))));
+  catchAsync(async (req: AuthRequest, res) => send(res, await cancelLabFor(doctor(req), req.params.id,
+    { reason: req.body?.reason, expectedVersion: req.body?.expectedVersion, ...(req.body?.refundTo ? { refundTo: req.body.refundTo } : {}) }))));
 r.post('/lab-bookings/:id/accept-reschedule', ...eligible, validate(v.idParamSchema, 'params'), validate(v.labAcceptRescheduleSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await acceptLabRescheduleFor(doctor(req), req.params.id, Number(req.body.version)))));
