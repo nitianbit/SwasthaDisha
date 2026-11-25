@@ -35,11 +35,16 @@ export interface SmsWords {
   movedTo: string;
   movedOff: string;
   familyMember: string;
+  /** r34 (§27.6.3): the reminder's `place` for a video consultation on the patient's phone, a clinic visit, a home collection. */
+  jansetuApp: string;
+  theClinic: string;
+  home: string;
 }
 const WORDS: Record<string, SmsWords> = {
   en: {
     service: { video: 'video consultation', call: 'phone consultation', 'in-person': 'clinic consultation', lab: 'lab test', home: 'home sample collection' },
     cancelled: 'cancelled', movedTo: 'moved to', movedOff: 'moved to another number', familyMember: 'your family member',
+    jansetuApp: 'Jansetu app', theClinic: 'the clinic', home: 'home',
   },
 };
 export const wordsFor = (lang: string): SmsWords => WORDS[lang] ?? WORDS.en!;

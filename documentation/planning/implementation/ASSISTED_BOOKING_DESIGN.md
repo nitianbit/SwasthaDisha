@@ -7328,3 +7328,188 @@ rule fails it; awaiting a hook again fails the slow-outbox check.
 transactions of `cancelBookingSettlement`, `cancelAccepted` and `markNoShow`; the `void sms…` hooks stay after the
 commit. Single suites on the merge (`ce2d108b`, own mongod): `r31-phase5b` 20/20, `r30-phase3f` 22/22, `r25-phase5a`
 11/11, `r29-phase3c` 21/21, `r26-phase3b` 14/14, `q16a-bookings-money` 41/41, `q4b-instant` 25/25. `tsc` 17.
+
+### 27.14 Rounds 5c and 5d build record: visit reminders and the SMS video link (r34, 2026-11-25)
+
+Branch `m0/r34-phase5cd` from `ea5d1cf0` (`m0/r31-phase5b` with stage `88e152ed` merged). Local commits only. Built §27.7
+and §27.8 with SM14–SM16 and the owner's answers: a reminder 2 hours before the visit, at 20:00 the evening before when
+that falls in the night, one per visit; the link only where the patient joins video on their own phone. Suite:
+`test/assisted/r34-phase5cd.integration.ts` (13 checks). Nothing is sent and no link opens until the switches below are on.
+
+#### 27.14.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| Reminder due time | `smsNotices/events.ts` `reminderDueAt` | The start − `SMS_VISIT_REMINDER_MINUTES_BEFORE` (120); a due time from 21:00 to before 07:00 India time moves back to the 20:00 before it; none when the result is under 60 minutes from now |
+| Reminder rows | `smsNotices/events.ts` | `smsBooked` and `smsMoved` (the 5b hooks) also queue `reminder`, version = the start in epoch minutes, `dueAt` as above, through the same `queue` → `enqueueSms` (one row per visit: the 5a marker). Never for an instant consultation; a desk walk-in is already out of scope (5b). An account move queues none: the recipient is read at send time |
+| Reminder at send | the 5b composer (`compose`, `stillTrue`) | Sent only while the visit is still at that start and before it: a consultation `confirmed` and `paid`, a lab booking `confirmed`; otherwise `stale` (a move, a cancel). An open "not mine" report → `disputed` (5b) |
+| `place` of the reminder | `placeOf`, `templates.ts` `wordsFor` | "Jansetu app" (video on the patient's phone), "the clinic" (in person), the booker's name (the partner's device), the lab's name (lab visit), "home" (home collection); the new fixed words are in the word table |
+| Link variants | `compose` | BOOKED_LINK / REMINDER_LINK first, then BOOKED / REMINDER (5a's `chooseTemplate` keeps the patient's language before the link, SM6), only for a video consultation with `join.on: 'patient_phone'` while `JOIN_LINK_SECRET` and `SMS_JOIN_LINK_BASE_URL` are set. To the account phone like every notice, never `join.phone` (SM15) |
+| Token | `smsNotices/joinLink.ts` `joinTokenOf` | `<shortRef>-<mac>`, 29 characters; `mac` = the first 100 bits of HMAC-SHA256(`JOIN_LINK_SECRET`, `<bookingId>:<join.linkVersion>`), RFC 4648 base32. Computed when the SMS is sent; never stored (not in the outbox either) |
+| `GET /j/:token` | `smsNotices/joinLink.ts` `joinRouter`, mounted at `/j` in `configureRoutes` (no sign-in; only while `JOIN_LINK_SECRET` is set, else the app's 404) | As §27.8.3: the per-IP limit through the OTP counter store (`hitClient('join-ip', req, windows, { always: true })`, `otp/throttle.ts`); the token's shape and MAC (`timingSafeEqual`); a 302 to the Meet link only for a confirmed, paid video consultation on the patient's phone, no open dispute, an eligible doctor, an active `https://meet.google.com/` link, inside the Join window (`joinWindowOf`, as the partner's device, item 8 below). Everything else: the one page |
+| Request log | `middleware/requestLogger.ts` (moved out of `src1/index.ts`, same output) | Prints `/j/:token` for any `/j/…` path (any case); the route logs `{ outcome: 'redirect' \| 'closed' \| 'limited' \| 'unavailable' \| 'error' }` only |
+| Settings | `smsNotices/flags.ts` | `reminderMinutesBefore`, `joinSecret` (at least 32 bytes, else unset), `joinRatePerMinute` |
+
+#### 27.14.2 The texts to register on DLT (English)
+
+The repo text is in `smsNotices/templates.ts` (since 5a); each `{#var#}` is written there with its name. The link address is
+fixed text: `SMS_JOIN_LINK_BASE_URL` (the admin summary's `dltText` shows each text with the configured address). Every
+variable is at most 30 characters; the token is 29.
+
+**REMINDER** (`SMS_REMINDER_EN_TEMPLATE`, `SMS_REMINDER_EN_ENABLED`)
+
+```
+Jansetu reminder: {#var#}'s {#var#} on {#var#} at {#var#}, {#var#}.
+```
+Variables in order: patient's first name; service; date (`DD-MM-YYYY`); time (`HH:mm`); place. Samples:
+`Jansetu reminder: Rina's video consultation on 01-12-2026 at 10:30, Sharma Medicals.`,
+`Jansetu reminder: Rina's home sample collection on 01-12-2026 at 07:30, home.`
+
+**BOOKED_LINK** (`SMS_BOOKED_LINK_EN_TEMPLATE`, `SMS_BOOKED_LINK_EN_ENABLED`)
+
+```
+Jansetu: {#var#}'s {#var#} is booked for {#var#} at {#var#} via {#var#}. Ref {#var#}. Join the video call at https://<domain>/j/{#var#} at the booked time.
+```
+Variables: first name; service; date; time; place (the booker); Ref; token. Sample: `Jansetu: Rina's video consultation is
+booked for 01-12-2026 at 10:30 via Sharma Medicals. Ref ABCD2345. Join the video call at https://<domain>/j/ABCD2345-ABCDEFGHIJKLMNOPQRST at the booked time.`
+
+**REMINDER_LINK** (`SMS_REMINDER_LINK_EN_TEMPLATE`, `SMS_REMINDER_LINK_EN_ENABLED`)
+
+```
+Jansetu reminder: {#var#}'s {#var#} on {#var#} at {#var#}, {#var#}. Join: https://<domain>/j/{#var#}
+```
+Variables: first name; service; date; time; place ("Jansetu app"); token. Sample: `Jansetu reminder: Rina's video
+consultation on 01-12-2026 at 10:30, Jansetu app. Join: https://<domain>/j/ABCD2345-ABCDEFGHIJKLMNOPQRST`
+
+`https://<domain>/j` is exactly `SMS_JOIN_LINK_BASE_URL`, and that address must be whitelisted on DLT before the `_LINK`
+texts are registered.
+
+**The `/j/` page** (status 200 for every closed case; also with 429 and 503): "This Jansetu link is not open now. It
+opens 10 minutes before the booked time. You can also sign in to the Jansetu app with this mobile number and tap Join."
+and in Hindi "यह जनसेतु लिंक अभी खुला नहीं है। यह बुक किए गए समय से 10 मिनट पहले खुलता है। आप इसी मोबाइल नंबर से
+जनसेतु ऐप में साइन इन करके Join दबा सकते हैं।" Headers: `Cache-Control: no-store`, `Referrer-Policy: no-referrer`,
+`X-Robots-Tag: noindex`.
+
+#### 27.14.3 Choices made while building (ASSUMED r34, reversible)
+
+1. **Quiet hours** are 21:00 up to (not including) 07:00 India time: a reminder due at 21:00 moves to 20:00; one due at
+   07:00 or 20:59 stays.
+2. **The 60-minute rule is applied after the night rule.** r34b (coordinator's decision, reversible): when the 20:00 of
+   the night rule is under 60 minutes away, the reminder is due at 07:00 on the visit's day if that is at least 60
+   minutes from now and at least 60 minutes before the visit; otherwise there is none (the "booked" SMS has just gone).
+   And at send time (r34b): a reminder that comes due in the quiet hours anyway (a late drain, a retry) waits for the
+   next 07:00 if that is still at least an hour before the visit, without using an attempt; otherwise it is `skipped:
+   quiet`.
+3. **Every move through `smsMoved`** (the booker's move, the doctor's or an admin's no-show move, an admin's move, the
+   booker's accept of a lab's time, the lab's no-show rebook) queues the new time's reminder; the old one is `stale` when
+   due. r34b: the patient's own accept of a lab's new time in the app queues the new time's reminder too
+   (`smsReminder`), without a "moved" SMS. A lab's proposal already writes the proposed slot, so the old time's
+   reminder is `stale` from then on. An account move queues none. A move back to an earlier time reuses that time's
+   reminder (one per visit time).
+4. **A lab reminder** goes only while the booking is `confirmed` (§27.7); a lab visit (partner-made or desk) names the
+   lab, a home collection says "home".
+5. **The Hindi page text is a draft** for the phase 6 translator's check (like the SMS texts, SM18).
+6. **HEAD** is answered by the GET handler (Express: same status and headers, no body) and counts towards the same limit.
+7. **Only the counter store answers 503.** A database error while looking up the booking answers the page (logged with
+   the outcome `error`, r34b).
+8. **The Join window is the partner's device's** (r34b, `joinWindowOf` in `assisted/rxAccess.ts`, also used by the
+   booker view): a scheduled consultation from its start − 10 min to its end; an instant one from its acceptance −
+   10 min to the end of the doctor's held interval (the reservation: acceptance + `CONSULT_MS`, moved by every
+   extension). Both ends inclusive. (Before r34b the link had its own acceptance + 60 min rule.)
+9. **A token never expires by itself**: it opens only inside its visit's window, and dies with the admin account move
+   (`linkVersion`), a cancel (the status check) or a changed `JOIN_LINK_SECRET`.
+10. **`SMS_JOIN_RATE_PER_MINUTE`** is read on every request (1–10000, default 30); `JOIN_LINK_SECRET` under 32 bytes
+    counts as unset. r34b: `SMS_JOIN_LINK_BASE_URL` must be `https://…/j` (the route); any other address counts as unset
+    (the plain texts are sent).
+11. **`/j/` exists only while `JOIN_LINK_SECRET` is set** (r34b). Without it the path answers exactly as before 5d (the
+    app's 404) and nothing is counted.
+
+#### 27.14.4 Switches, deploy, rollback
+
+```
+SMS_VISIT_REMINDER_MINUTES_BEFORE=120   # 30–1440
+SMS_REMINDER_EN_TEMPLATE=   SMS_REMINDER_EN_ENABLED=false
+SMS_BOOKED_LINK_EN_TEMPLATE=   SMS_BOOKED_LINK_EN_ENABLED=false
+SMS_REMINDER_LINK_EN_TEMPLATE=   SMS_REMINDER_LINK_EN_ENABLED=false
+SMS_JOIN_LINK_BASE_URL=          # https://<domain>/j, exactly the address in the registered link texts
+JOIN_LINK_SECRET=                # 48 random bytes, base64 (openssl rand -base64 48); changing it kills every link sent
+SMS_JOIN_RATE_PER_MINUTE=30
+```
+
+- All off by default. Without `SMS_NOTICES_ENABLED` nothing is queued (reminders included); without the secret no link
+  is sent and `/j/` is the app's 404 (r34b); without a pair the plain text is used (`_LINK` off) or nothing (`REMINDER`
+  off).
+- **Deploy:** 1. deploy (no new index or collection: the outbox and the OTP counters exist); 2. route `/j/` on the link
+  domain to the API (nginx `location /j/ { proxy_pass …; access_log off; }`: the proxy's own access log must not keep
+  the token either) and set `TRUST_PROXY`; 3. set `JOIN_LINK_SECRET` and `SMS_JOIN_LINK_BASE_URL`; 4. whitelist the
+  address on DLT and register the three texts above; 5. one admin test send each (`POST /admin/sms-notices/test`); 6. the
+  pairs. Reminders need only the REMINDER pair.
+- **Rollback:** the pairs (a `_LINK` pair off falls back to the plain text); the secret unset removes `/j/` (every
+  link sent then answers the app's 404); the master switch stops all notices. Older code ignores `reminder` rows (no composer: `skipped`).
+
+#### 27.14.5 Checks
+
+`test/assisted/r34-phase5cd.integration.ts`, 13 checks (the hooks called as the commands call them; 5b's suite covers
+every command path; a fake gateway through `setSmsProvider`):
+1. due times: 10:00 → 08:00, 07:30 → 20:00 the evening before, 23:30 → 20:00 the same day, the 21:00 / 07:00 edges, the
+   minutes setting and its range;
+2. booked 50 minutes or 2.5 hours before the visit → no reminder;
+3. one reminder for three racing enqueues; ids only in the row; not sent a minute before it is due; at 08:00 the
+   REMINDER_LINK text with the token, to the account phone (not `join.phone`); the BOOKED_LINK text;
+4. a move → the old reminder `stale`, the new one sent at its time; a cancel → `stale`;
+5. none for an instant consultation or a desk walk-in; `place` for the partner's device, a clinic visit, a lab visit and
+   a home collection (plain texts, no link);
+6. variants: REMINDER_LINK off → REMINDER; no secret or no address → the plain texts; a short secret is none;
+7. master switch off → nothing queued;
+8. the token: 29 characters, the MAC recomputed independently, stable, new with `linkVersion`, nothing stored;
+9. `/j/`: 302 inside the window (GET and HEAD) with the three headers; early (12 minutes before), late, cancelled,
+   tampered, unknown Ref, lower case, short and an old `linkVersion` → the same page and status; the moved booking's new
+   token opens; a booker move keeps the token and the window follows the slot;
+10. never for the partner's device, a call, unpaid, disputed, an ineligible doctor, a Meet link not active or not Google;
+    instant: inside 60 minutes of acceptance, closed after, open again with an extension, closed after it;
+11. the 31st request in a minute from one IP → 429 with the page and `Retry-After`; another IP 200; a counter store that
+    refuses writes → 503 with the page;
+12. without `JOIN_LINK_SECRET` a valid token gets the page;
+13. logs: the request logger prints `GET /j/:token` (`/J/` too); the route logs the outcome only; no token, phone or
+    text in any log line, and no token, phone or name in any outbox row.
+
+**The 5b suite** (`r31-phase5b`, 19 checks) compared each booking's exact list of rows. Its row lists now leave out
+`reminder` rows (this suite checks them), and its admin-read check expects the pharmacy create's queued reminder next to
+the sent "booked" (the real create path queues it). Nothing else in it changed; 19 of 19 pass.
+
+**Mutation check.** Each of these, undone alone, makes exactly its check fail: the request logger's redaction (13), the
+window's start in `/j/` (9), the night rule (1), the reminder's version test at send (4).
+
+**Full regression** (`prun.sh … 2` on `db05fad8`): 83 suites, 80 passed, `tsc` 17 as before. The other three:
+- `r31-phase5b`: the exact row lists above (fixed in the suite, then 19 of 19);
+- `r10f-card-last` (a Meet call bounded in time): run alone, 2 of 2;
+- `phase0` (finding 6, a slow converter): the known load race in that test; it fails the same way on the base
+  `6a8574e9` (r30 comparison) and touches nothing of phase 5.
+
+#### 27.14.6 Review follow-ups (r34b, 2026-11-25)
+
+The r34 review (`8c67a206`) gave GO for stage. Merged `m0/r31-phase5b` (`2df5651e`, also the stage head: r31b and stage
+merge 2) first; conflicts in `smsNotices/events.ts` (r31b's fire-and-forget `queue` and move version kept; the reminder
+rides the same `queue`), `routes/index.ts` (both imports), this file (§27.13.7 before §27.14) and the 5b suite. Then:
+
+| # | Item | Built |
+|---|---|---|
+| 1 | One Join window | `joinWindowOf`, `joinOpenAt`, `instantHeldEnds` and `JOIN_OPENS_BEFORE_MS` in `assisted/rxAccess.ts`, used by the booker view (the partner's device, unchanged, inclusive end) and the SMS link. An instant consultation follows the doctor's held interval (acceptance + `CONSULT_MS`, moved by extensions) instead of acceptance + 60 min. `treating.ts` uses the constant (its instant and in-person openings are its own rules); `consultationEndOf` is a different end (completion, the day's end) and is left alone |
+| 1 | One alphabet, one limiter | `BASE32_ALPHABET` exported from `assisted/consultations.ts` (the Ref and the MAC). `hitClient` (`otp/throttle.ts`) takes a kind, windows and `{ always }` (not gated by `OTP_IP_LIMITS`), keeping its `req.ip` fallback; the OTP callers are unchanged |
+| 2 | `/j/` off | Without `JOIN_LINK_SECRET` the route passes on (`next()`): the app's own 404, no counter written, no headers added |
+| 3 | Quiet hours at send | A reminder that comes due from 21:00 to before 07:00 (a late drain, a retry) waits for the next 07:00 if that is at least an hour before the visit (the drain's new `later` outcome: the row is queued again with that due time, the attempt given back); otherwise `skipped: quiet` |
+| 4 | Night rule fallback | When the 20:00 before is under 60 minutes away: 07:00 on the visit's day if it is at least 60 minutes from now and before the visit; else none (coordinator's decision, reversible; §27.14.3 item 2) |
+| 5 | The patient accepts a lab's new time | `smsReminder` (exported) queues the new time's reminder at `partners/services/labBookings.ts` (the patient's accept); no "moved" SMS |
+| 6 | 5b suite | Every create and move path asserts its reminders (versions, each with its due time) next to its notices: one per create (none for an unpaid card booking, a walk-in or an instant consultation), the old time's and the new one's after a move, B → C → B → C → D gives B, C, D, and the patient's accept of a lab's new time gives the new time's |
+| 7 | Small items | A database error at `/j/` is logged as `error` (the page is shown); `SMS_JOIN_LINK_BASE_URL` must be `https://…/j`, else the plain texts |
+
+**Checks.** `r34-phase5cd` has 14 checks (new: the night-rule fallback cases in check 1; quiet hours at send; the
+instant window by the held interval, its inclusive end and an extension; `/j/` off = the app's 404 for GET and HEAD with
+no counter written; a database error → the page, logged `error`; a link address not ending in `/j` → plain texts).
+`r31-phase5b` has 20 checks (r31b's 20, now with the reminder assertions above).
+
+**Single suites** on `052ab90e` (own mongod): `r34-phase5cd` 14/14, `r31-phase5b` 20/20, `r25-phase5a` 11/11,
+`r10g-meet-retry` 14/14, `r10f-card-last` 2/2, `r10-phase1b` 19/19, `q4b-instant` 25/25, `r17-phase3e` 25/25,
+`phase1a` 30/30 (the booker view's Join call). `tsc` 17.
+
+**Full regression** (`prun.sh … 2` on `052ab90e`): 85 suites, 85 passed (`phase0` included), `tsc` 17.

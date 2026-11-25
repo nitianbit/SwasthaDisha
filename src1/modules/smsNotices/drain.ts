@@ -20,7 +20,7 @@ const LEASE_MS = 60_000;
 const BATCH = 50;
 const BACKOFF_MS = [2 * 60_000, 10 * 60_000];
 
-type Outcome = 'sent' | 'retry' | 'failed' | 'skipped';
+type Outcome = 'sent' | 'retry' | 'failed' | 'skipped' | 'deferred';
 
 async function finish(_id: unknown, lease: Date, set: Partial<ISmsNotice>, unset: Record<string, ''> = {}): Promise<boolean> {
   const r = await SmsNoticeModel.collection.updateOne({ _id: _id as never, state: 'sending', leaseUntil: lease },
@@ -50,6 +50,10 @@ async function handle(row: ISmsNotice, lease: Date, now: Date): Promise<Result> 
   if (!composer) return skip('no_composer');
   const c = await composer(row, now);
   if ('skip' in c) return skip(c.skip);
+  if ('later' in c) {
+    await finish(row._id, lease, { state: 'queued', dueAt: c.later, attempts: row.attempts - 1 });
+    return { outcome: 'deferred' };
+  }
   const sms = await prepareSms(row.recipientUserId ?? c.userId, c.lang, c.messages, c.values);
   if ('skip' in sms) return skip(sms.skip);
   const r = await sendBounded({ to: sms.to, text: sms.text, templateId: sms.template.templateId, unicode: sms.unicode });
@@ -61,7 +65,7 @@ async function handle(row: ISmsNotice, lease: Date, now: Date): Promise<Result> 
 
 /** One tick. `now` is when rows count as due (tests move it); leases are always judged on the wall clock. */
 export async function drainSmsOnce(now: Date = new Date()): Promise<Record<Outcome, number> & { claimed: number; stopped: boolean }> {
-  const out = { sent: 0, retry: 0, failed: 0, skipped: 0, claimed: 0, stopped: false };
+  const out = { sent: 0, retry: 0, failed: 0, skipped: 0, deferred: 0, claimed: 0, stopped: false };
   if (smsFlags.enabled()) await assertUniqueIndex(SmsNoticeModel, SMS_NOTICE_KEY);
   const rows = await SmsNoticeModel.find({ state: { $in: ['queued', 'sending'] }, dueAt: { $lte: now } })
     .sort({ dueAt: 1 }).limit(BATCH).lean() as ISmsNotice[];

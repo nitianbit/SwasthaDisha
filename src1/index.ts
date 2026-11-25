@@ -9,6 +9,7 @@ import { CONFIG } from '@/config/config';
 import { connectDB } from '@/db';
 import { configureRoutes } from '@/routes';
 import { errorHandler } from '@/modules/middleware/errorHandler';
+import { requestLogger } from '@/modules/middleware/requestLogger';
 import '@/modules/queue/service/consumers';
 import TaskQueue from '@/modules/queue/service/TaskQueue';
 import { runExternalBookingPaymentTimeoutScheduler } from '@/modules/externalBookings/services/externalBookingPaymentTimeoutScheduler';
@@ -62,14 +63,8 @@ app.options('*', cors());
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging middleware
-app.use((req, _res, next) => {
-  logger.info(`${req.method} ${req.path}`, {
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  });
-  next();
-});
+// Request logging middleware (r34: a join link's token is never printed)
+app.use(requestLogger);
 
 // Root endpoint
 app.use('/', (_req, _res, next) => {

@@ -85,10 +85,11 @@ export interface AssistedConsultInput {
 export const storedAssistedKey = (a: PharmacyActor | BookerActor, key: string) => storedConsultKey(asBooker(a), key);
 export const assistedKeyScope = (a: PharmacyActor | BookerActor) => consultKeyScope(asBooker(a));
 
+/** RFC 4648 base32 (upper case, no padding): the Ref (§5.1) and the join link's MAC (5d, §27.8.1). */
+export const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 /** §5.1: 8 characters, RFC 4648 base32 (upper case, no padding). */
 export function newShortRef(): string {
-  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  return Array.from(randomBytes(8)).map((b) => ALPHABET[b & 31]).join('');
+  return Array.from(randomBytes(8)).map((b) => BASE32_ALPHABET[b & 31]).join('');
 }
 
 /** The content a request key is bound to (§6.3): the payment method is excluded (Q3). */

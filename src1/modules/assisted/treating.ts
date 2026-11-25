@@ -1,7 +1,7 @@
 import { AppError } from '@/modules/common/types';
 import BookingModel from '@/modules/bookings/model';
 import { AssistedReviewItemModel } from '@/modules/assisted/model';
-import { appointmentIntervalOf, consultationEndOf, slotsOf, type SlotTimes } from '@/modules/assisted/rxAccess';
+import { appointmentIntervalOf, consultationEndOf, JOIN_OPENS_BEFORE_MS, slotsOf, type SlotTimes } from '@/modules/assisted/rxAccess';
 import { unpaidCardBooking } from '@/modules/assisted/views';
 
 /**
@@ -14,7 +14,6 @@ import { unpaidCardBooking } from '@/modules/assisted/views';
  *   no-show (a booking cancelled before it starts never opens one). An unpaid card booking never opens one.
  */
 type Row = Record<string, any>;
-const MIN = 60_000;
 const DAY = 86_400_000;
 
 export function treatingWindowOf(b: Row, slot?: SlotTimes | null, now: Date = new Date()): { open: boolean; opensAt: Date | null; closesAt: Date | null } {
@@ -25,7 +24,7 @@ export function treatingWindowOf(b: Row, slot?: SlotTimes | null, now: Date = ne
   const arrived = b.clinicDesk?.arrivedAt ? new Date(b.clinicDesk.arrivedAt) : null;
   const opensAt = b.instantRequestId ? new Date(b.createdAt)
     : b.consultationMode === 'in-person' ? (arrived ?? interval?.start ?? null)
-      : interval ? new Date(interval.start.getTime() - 10 * MIN) : null;
+      : interval ? new Date(interval.start.getTime() - JOIN_OPENS_BEFORE_MS) : null;
   const completedAt = Date.parse(String(b.lifecycle?.completed?.at ?? ''));
   const end = consultationEndOf(b, slot);
   const closesAt = Number.isFinite(completedAt) ? new Date(completedAt + 30 * DAY) : end ? new Date(end.getTime() + 7 * DAY) : null;
