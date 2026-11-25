@@ -1,10 +1,9 @@
 import logger from '@/services/logger';
 import BookingModel from '@/modules/bookings/model';
 import { bookerNames } from '@/modules/assisted/names';
-import { appointmentIntervalOf, hasPrescription, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
+import { hasPrescription, instantHeldEnds, joinOpenAt, joinWindowOf, rxWindowOpen, slotsOf } from '@/modules/assisted/rxAccess';
 import { currentDispensingUrl, ensureDispensingCopy, queueDispensingCopy } from '@/modules/assisted/dispensingCopy';
 import { refOf, type BookerLike } from '@/modules/assisted/bookers';
-import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { isInstantFunding } from '@/modules/assisted/types';
 
 type Row = Record<string, any>;
@@ -23,7 +22,6 @@ const TOP_LEVEL = ['_id', 'bookingType', 'bookingKind', 'userId', 'dependentId',
 const PRESCRIPTION_FIELDS = ['advice', 'medicines', 'testsAdvised', 'recommendationCode', 'prescribedAt',
   'prescribedBySpecialistName'] as const;
 const LIFECYCLE_EVENTS = ['created', 'confirmed', 'completed', 'cancelled'] as const;
-const JOIN_OPENS_BEFORE_MS = 10 * 60_000;
 
 /** §5.1: rows written before `source` existed derive it (clinic desk, otherwise self). */
 const sourceOf = (b: Row) => (typeof b.source === 'string' ? b.source : b.clinicDesk ? 'clinic_desk' : 'self');
@@ -91,9 +89,7 @@ export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerV
   const payments = await bookerPayments('booking', list, ref);
   // r17 (§25.8.3): an instant consultation's call runs from the acceptance to the end of the doctor's held interval
   // (extensions included), not a slot.
-  const instantIds = list.filter((b) => b.bookingKind === 'instant').map((b) => String(b._id).toLowerCase());
-  const held = new Map((instantIds.length ? await DoctorReservationModel.find({ kind: 'instant', refId: { $in: instantIds } }).select({ refId: 1, endTime: 1 }).lean() : [])
-    .map((x) => [String(x.refId).toLowerCase(), new Date(x.endTime)]));
+  const held = await instantHeldEnds(list.filter((b) => b.bookingKind === 'instant').map((b) => String(b._id)));
   return list.map((b) => {
     const v: Row = {};
     for (const k of TOP_LEVEL) if (b[k] !== undefined) v[k] = b[k];
@@ -130,11 +126,7 @@ export async function bookerViews(rows: Row[], booker: BookerLike, opts: BookerV
     // r17: an instant consultation from its acceptance to the end of the doctor's held interval.
     // r17b: only while the consultation is still on (a cancelled or completed one has no "Join call").
     const heldEnd = b.bookingKind === 'instant' && b.status === 'confirmed' ? held.get(String(b._id).toLowerCase()) : undefined;
-    const interval = b.bookingKind === 'instant'
-      ? (heldEnd && b.createdAt ? { start: new Date(b.createdAt), end: heldEnd } : null)
-      : appointmentIntervalOf(b, slotOf(b));
-    if (b.assisted?.join?.on === 'partner_device' && b.virtualMeeting?.joinUrl && interval
-        && now.getTime() >= interval.start.getTime() - JOIN_OPENS_BEFORE_MS && now.getTime() <= interval.end.getTime()) {
+    if (b.assisted?.join?.on === 'partner_device' && b.virtualMeeting?.joinUrl && joinOpenAt(joinWindowOf(b, slotOf(b), heldEnd), now)) {
       v.virtualMeeting = { joinUrl: b.virtualMeeting.joinUrl };
     }
     // The prescription for 90 days after the consultation (overnight H), without the diagnosis; its only file is the
