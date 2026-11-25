@@ -77,7 +77,8 @@ async function main() {
   // Doctors: docD is a real doctor whose name a forger would use; docE another doctor.
   const docD = oid(); const docE = oid();
   const doctors: Record<string, string> = { [docD]: 'Dr Real Doctor', [docE]: 'Dr Other' };
-  const specialistService = { getById: async (id: string) => ({ _id: id, name: doctors[id] ?? 'Dr Unknown', isActive: true, consultationFee: 100 }) };
+  await mongoose.connection.collection('specialists').insertMany(Object.entries(doctors).map(([id, name]) => ({ _id: new Types.ObjectId(id), name, isActive: true, isVerified: true })));
+  const specialistService = { getById: async (id: string) => ({ _id: id, name: doctors[id] ?? 'Dr Unknown', isActive: true, isVerified: true, consultationFee: 100 }) };
 
   // tsx emits no decorator metadata: the services the controllers resolve are wired by hand before the routers load.
   const payments = Object.assign(Object.create(PaymentService.prototype), {
