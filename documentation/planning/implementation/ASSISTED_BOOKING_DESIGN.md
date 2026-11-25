@@ -7369,3 +7369,8 @@ Branch `m0/r34c-sms-followups` from `ceb49e88` (r34b, on stage). Local commits o
 `queued` again for 07:00 (20:00 was under an hour away), one row per visit time, sent at 07:00; once sent, another move
 away and back leaves it `sent`.
 
+Undoing the re-arm alone fails exactly this check.
+
+**Single suites** on `fa2837ae` (own mongod): `r34-phase5cd` 15/15, `r31-phase5b` 20/20, `r25-phase5a` 11/11. `tsc` 17.
+**Full regression** (`prun.sh … 2` on `fa2837ae`): 85 suites, 84 passed, `tsc` 17; `phase0` failed its known load race
+(finding 6, a slow converter) and passed alone, 29/29.
