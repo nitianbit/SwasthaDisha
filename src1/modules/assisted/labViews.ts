@@ -16,6 +16,12 @@ const DAY_MS = 86_400_000;
  */
 export const labAdmissible = (p: Record<string, any> | null | undefined) => !!p && p.kind === 'lab' && p.isActive !== false && p.verification?.state === 'verified';
 
+/** r26 / r29: a doctor as it is named on what it booked or paid ("Dr <name>"; a name that already starts with Dr is kept). */
+export const doctorBookerName = (raw: unknown): string => {
+  const name = String(raw ?? '').trim();
+  return !name ? 'Your doctor' : /^dr\.?\s/i.test(name) ? name : `Dr ${name}`;
+};
+
 /** §5.1: rows written before `source` existed derive it. */
 export const labSourceOf = (b: Row): string => (typeof b?.source === 'string' ? b.source : 'self');
 

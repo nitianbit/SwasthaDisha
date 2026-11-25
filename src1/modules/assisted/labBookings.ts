@@ -34,7 +34,7 @@ import { auditIn } from '@/modules/assisted/support';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labDebitKey } from '@/modules/assisted/labRefunds';
 import { bookerNames } from '@/modules/assisted/names';
-import { bookerReportWindowOpen, labSourceOf } from '@/modules/assisted/labViews';
+import { bookerReportWindowOpen, doctorBookerName, labSourceOf } from '@/modules/assisted/labViews';
 import { ASSISTED_KEY, newShortRef, type PharmacyActor } from '@/modules/assisted/consultations';
 import { assertCardPaymentAvailable, bookerPayments, openCardOrderOf, type CardPaymentView } from '@/modules/assisted/cardPayments';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
@@ -224,7 +224,8 @@ export async function bookerLabViews(rows: Row[], bookerIn: LabBooker | string, 
     PartnerOrgModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.partnerId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1 }).lean() as unknown as Promise<Row[]>,
     BranchModel.find({ _id: { $in: [...new Set(list.map((r) => String(r.branchId)))].filter((x) => OBJECT_ID.test(x)) } }).select({ name: 1, address: 1, phone: 1 }).lean() as unknown as Promise<Row[]>,
     bookerNames(list.map((r) => ({ _id: r._id, userId: r.userId, dependentId: r.patient?.dependentId })), { kind: booker.kind, id: bookerId }),
-    booker.kind === 'pharmacy' ? bookerPayments('lab_booking', list, bookerId) : Promise.resolve(new Map<string, Row>()),
+    // r29: the doctor's view carries `payment` too (3c: card or wallet; pay now and the refund choice).
+    bookerPayments('lab_booking', list, { kind: booker.kind, id: bookerId }),
   ]);
   const pBy = new Map(partners.map((x) => [String(x._id), x]));
   const bBy = new Map(branches.map((x) => [String(x._id), x]));
@@ -312,8 +313,7 @@ async function bookerNameOf(booker: LabBooker): Promise<string> {
   if (booker.kind === 'pharmacy') {
     return (await PharmacyModel.findById(bookerIdOf(booker)).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? 'Pharmacy';
   }
-  const name = String((await SpecialistModel.findById(bookerIdOf(booker)).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? '').trim();
-  return !name ? 'Your doctor' : /^dr\.?\s/i.test(name) ? name : `Dr ${name}`;
+  return doctorBookerName((await SpecialistModel.findById(bookerIdOf(booker)).select({ name: 1 }).lean() as { name?: string } | null)?.name);
 }
 
 /**
@@ -340,7 +340,9 @@ export const createPharmacyLabBooking = (actor: PharmacyActor, input: AssistedLa
 /**
  * The one create of a partner-paid lab booking (2a; r26: a doctor booker too, §25.5). A doctor's patient comes from its own
  * consultation inside the treating window (`fromBookingId`: no phone, nothing counted) or is a walk-in by phone as for a
- * pharmacy; a doctor pays from its wallet only (card is 3c) and must be verified and active, re-read in the transaction.
+ * pharmacy; a doctor must be verified and active, re-read in the transaction. r29 (§25.6, round 3c): a doctor pays from
+ * its wallet or by card/UPI, exactly as a pharmacy (the row waits `pending_payment` for 30 minutes, hidden from the
+ * patient and the lab until paid).
  */
 export async function createAssistedLabBooking(booker: LabBooker, input: AssistedLabInput, clock: () => Date = () => new Date(), attempt = 0)
   : Promise<Awaited<ReturnType<typeof labReceipt>>> {
@@ -357,8 +359,8 @@ export async function createAssistedLabBooking(booker: LabBooker, input: Assiste
   if (replay && replay.assisted?.requestHash === hash) return labReceipt(replay, booker, true);
   // r14: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on, the gateway has keys and the card refunds' index is built
   // (decided before anything is counted or held, the same answer for every number).
+  // r29 (§25.6): a doctor pays by card too (3c), through the same card machinery.
   const card = input.paymentMethod === 'razorpay';
-  if (card && booker.kind !== 'pharmacy') throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Lab tests you book are paid from your Jansetu wallet');
   if (card) await assertCardPaymentAvailable();
   // Every other create names a phone like a lookup does: counted (the one limit the owner kept) and audited (ids only).
   // r26: a patient taken from the doctor's own consultation names no phone, so nothing is counted.

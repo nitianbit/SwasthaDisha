@@ -20,6 +20,14 @@ async function forRequester<T extends object>(req: AuthRequest, result: T): Prom
   if (r?.context === 'wallet_recharge' && r.paymentRecord && DOCTOR.topups.isTopup(r.paymentRecord as unknown as Record<string, unknown>)) {
     return { ...result, entity: await doctorTopupEntity(DOCTOR, r.paymentRecord) };
   }
+  // r29 (§25.6): a doctor's card payment of a lab booking it made answers its booker lab view (only that doctor verifies
+  // it, and only while verified and active: the route's gate).
+  const doctorId = String(req.user?.specialistId || req.user?._id || '').toLowerCase();
+  if (r?.context === 'assisted_lab_booking' && req.user?.userType === 'specialist' && !!r.paymentRecord?.payerSpecialistId
+    && String(r.paymentRecord.payerSpecialistId).toLowerCase() === doctorId && (r.entity as { _id?: unknown } | null)?._id) {
+    const { bookerLabView } = await import('@/modules/assisted/labBookings');
+    return { ...result, entity: await bookerLabView(r.entity as Record<string, any>, { kind: 'doctor', specialistId: doctorId }) };
+  }
   // Phase 1b: an assisted card payment (only its paying pharmacy can verify it) answers the booker view too; anyone else
   // gets the booking's id and states only. r14: lab bookings too.
   if (isAssistedCardContext(r?.context) && req.user?.userType !== 'pharmacy') {
