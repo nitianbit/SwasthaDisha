@@ -33,7 +33,8 @@ import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import { SmsNoticeModel } from '@/modules/smsNotices/model';
 import { drainSmsOnce } from '@/modules/smsNotices/drain';
 import { setSmsProvider } from '@/modules/smsNotices/provider';
-import { registerSmsComposers, reminderDueAt, smsBooked, smsCancelled, smsMoved } from '@/modules/smsNotices/events';
+import { registerSmsComposers, reminderDueAt, smsBooked, smsCancelled, smsMoved, smsReminder } from '@/modules/smsNotices/events';
+import { businessClock } from '@/modules/common/utils/istDate';
 import { joinTokenOf, joinUrlFor } from '@/modules/smsNotices/joinLink';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { OtpThrottleModel } from '@/modules/otp/model/throttle';
@@ -226,6 +227,38 @@ async function main() {
       await smsCancelled('booking', await doc(c));
       await drain(istAt(day, '10:00'));
       assert.deepEqual((await reminderOf(c)).map((r) => [r.state, r.reason]), [['skipped', 'stale']]);
+    });
+
+    await check('r34c: a visit moved away and back again gets its reminder: 08:30, moved at 19:00 the evening before, back at 21:00 → sent at 07:00 (re-armed once under a race); a sent one is never repeated', async () => {
+      const at0830 = istAt(day, '08:30');
+      const id = await consult(at0830);
+      await smsBooked('booking', await doc(id));
+      const r0830 = async () => (await reminderOf(id)).find((r) => r.version === String(Math.floor(at0830.getTime() / MIN)));
+      assert.equal(new Date((await r0830()).dueAt).getTime(), istAt(dayBefore, '20:00').getTime());
+      try {
+        businessClock.now = () => istAt(dayBefore, '19:00').getTime();
+        await BookingModel.updateOne({ _id: id }, { $set: fields(istAt(day, '10:00')) });
+        await smsMoved('booking', await doc(id));
+        await drain(istAt(dayBefore, '20:00'));
+        assert.deepEqual([(await r0830()).state, (await r0830()).reason], ['skipped', 'stale']);
+        businessClock.now = () => istAt(dayBefore, '21:00').getTime();
+        await BookingModel.updateOne({ _id: id }, { $set: fields(at0830) });
+        const back = await doc(id);
+        await Promise.all([smsReminder('booking', back), smsReminder('booking', back), smsMoved('booking', back)]);
+      } finally { businessClock.now = () => Date.now(); }
+      const armed = await r0830();
+      assert.deepEqual([armed.state, new Date(armed.dueAt).getTime(), armed.attempts, armed.reason ?? null, armed.finishedAt ?? null, armed.expireAt ?? null],
+        ['queued', istAt(day, '07:00').getTime(), 0, null, null, null], 'armed again for 07:00 (20:00 was under an hour away)');
+      assert.equal((await reminderOf(id)).length, 2, 'one row per visit time');
+      const out = await drain(istAt(day, '07:00'));
+      assert.ok(out.sent.some((x) => x.templateId === T.REMINDER_LINK && x.text.includes('at 08:30, Jansetu app.')), JSON.stringify(out.sent));
+      assert.equal((await r0830()).state, 'sent');
+      // Sent: moving away and back once more never sends it again.
+      await BookingModel.updateOne({ _id: id }, { $set: fields(istAt(day, '11:00')) });
+      await smsMoved('booking', await doc(id));
+      await BookingModel.updateOne({ _id: id }, { $set: fields(at0830) });
+      await smsMoved('booking', await doc(id));
+      assert.equal((await r0830()).state, 'sent');
     });
 
     await check('none for an instant consultation or a desk walk-in; place: the booker (partner device), "the clinic", the lab, "home"', async () => {

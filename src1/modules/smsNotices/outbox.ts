@@ -13,14 +13,24 @@ import { chooseTemplate, needsUnicode, render, type SendableTemplate, type SmsMe
  * (booking, event, version) changes nothing. Without the outbox's unique index (sync-indexes not run) nothing is queued.
  */
 export async function enqueueSms(n: { bookingKind: Exclude<SmsBookingKind, 'admin_test'>; bookingId: string; event: SmsEvent; version: string;
-  dueAt?: Date; recipientUserId?: string }): Promise<void> {
+  dueAt?: Date; recipientUserId?: string; rearmSkipped?: boolean }): Promise<void> {
+  const key = { bookingKind: n.bookingKind, bookingId: String(n.bookingId).toLowerCase(), event: n.event, version: n.version };
   try {
     if (!smsFlags.enabled()) return;
     await assertUniqueIndex(SmsNoticeModel, SMS_NOTICE_KEY);
-    await SmsNoticeModel.create({ bookingKind: n.bookingKind, bookingId: String(n.bookingId).toLowerCase(), event: n.event, version: n.version,
-      ...(n.recipientUserId ? { recipientUserId: n.recipientUserId } : {}), state: 'queued', dueAt: n.dueAt ?? new Date(), attempts: 0 });
+    await SmsNoticeModel.create({ ...key, ...(n.recipientUserId ? { recipientUserId: n.recipientUserId } : {}), state: 'queued',
+      dueAt: n.dueAt ?? new Date(), attempts: 0 });
   } catch (e) {
-    if (isDuplicateKeyError(e)) return;
+    if (isDuplicateKeyError(e)) {
+      // r34c: a reminder skipped before (its visit moved away and then back to this time) is armed again for its new due
+      // time, once: the compare-and-set on `skipped` lets one racing enqueue in. A sent one is never repeated.
+      if (n.rearmSkipped && n.dueAt && n.dueAt.getTime() > Date.now()) {
+        await SmsNoticeModel.updateOne({ ...key, state: 'skipped' }, { $set: { state: 'queued', dueAt: n.dueAt, version: n.version, attempts: 0 },
+          $unset: { reason: '', finishedAt: '', expireAt: '', leaseUntil: '', message: '', lang: '', sentAt: '', providerStatus: '' } })
+          .catch(() => logger.warn('sms enqueue skipped', { event: n.event, bookingKind: n.bookingKind, reason: 'rearm_failed' }));
+      }
+      return;
+    }
     logger.warn('sms enqueue skipped', { event: n.event, bookingKind: n.bookingKind,
       reason: (e as { code?: string })?.code === 'INDEXES_OUTDATED' ? 'indexes_outdated' : 'enqueue_failed' });
   }
