@@ -4,7 +4,8 @@ import { actorOf } from '@/modules/partners/controller';
 import * as f from '@/modules/partners/services/finance';
 
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
-const csv = (res: Response, name: string, body: string) => {
+/** A statement CSV answer (r33: shared with the referral statements). */
+export const sendCsv = (res: Response, name: string, body: string) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
   res.setHeader('Cache-Control', 'no-store');
@@ -14,8 +15,8 @@ const csv = (res: Response, name: string, body: string) => {
 const paged = (res: Response, p: { items: unknown[]; total: number; nextCursor: string | null }) =>
   res.status(200).json({ success: true, data: p.items, pagination: { total: p.total, nextCursor: p.nextCursor } });
 const pageOpts = (q: Record<string, unknown>) => ({ cursor: q.cursor as string | undefined, limit: q.limit ? Number(q.limit) : undefined });
-const period = (q: Record<string, unknown>) => ({ from: q.from as string | undefined, to: q.to as string | undefined });
-const csvName = (prefix: string, q: Record<string, unknown>) => `${prefix}-statement${q.from ? '-' + q.from : ''}${q.to ? '-to-' + q.to : ''}.csv`;
+export const period = (q: Record<string, unknown>) => ({ from: q.from as string | undefined, to: q.to as string | undefined });
+export const csvName = (prefix: string, q: Record<string, unknown>) => `${prefix}-statement${q.from ? '-' + q.from : ''}${q.to ? '-to-' + q.to : ''}.csv`;
 
 // ── Partner workspace (members with finance.view and partner-wide scope; admins with owner authority) ──
 async function partnerAccount(req: Request) {
@@ -30,7 +31,7 @@ export const partnerFinance = async (req: Request, res: Response, _n: NextFuncti
 export const partnerStatement = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.statementPage((await partnerAccount(req)).account, req.query as any));
 export const partnerStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
-  csv(res, csvName('partner', req.query), await f.statementCsv((await partnerAccount(req)).account, period(req.query)));
+  sendCsv(res, csvName('partner', req.query), await f.statementCsv((await partnerAccount(req)).account, period(req.query)));
 export const partnerEvents = async (req: Request, res: Response, _n: NextFunction) =>
   paged(res, await f.eventsPage((await partnerAccount(req)).account, pageOpts(req.query)));
 export const partnerPayouts = async (req: Request, res: Response, _n: NextFunction) =>
@@ -48,7 +49,7 @@ const doctorAccount = (req: Request) => f.findOwnerAccount('doctor', doctorOf(re
 export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeSummary(await doctorAccount(req), false));
 export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
-  csv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));
+  sendCsv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));
 export const doctorPayouts = async (req: Request, res: Response, _n: NextFunction) => paged(res, await f.payoutsPage(await doctorAccount(req), pageOpts(req.query)));
 export const doctorEvents = async (req: Request, res: Response, _n: NextFunction) => paged(res, await f.eventsPage(await doctorAccount(req), pageOpts(req.query)));
 export const doctorHistory = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.historyRefs(await doctorAccount(req)));
@@ -64,7 +65,7 @@ export const adminAccount = async (req: Request, res: Response, _n: NextFunction
 export const adminStatement = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.statementPage(await f.accountById(req.params.accountId), req.query as any));
 export const adminStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
-  csv(res, csvName(`account-${req.params.accountId}`, req.query), await f.statementCsv(await f.accountById(req.params.accountId), period(req.query)));
+  sendCsv(res, csvName(`account-${req.params.accountId}`, req.query), await f.statementCsv(await f.accountById(req.params.accountId), period(req.query)));
 export const adminAccountPayouts = async (req: Request, res: Response, _n: NextFunction) =>
   paged(res, await f.payoutsPage(await f.accountById(req.params.accountId), pageOpts(req.query)));
 export const adminHistory = async (req: Request, res: Response, _n: NextFunction) =>

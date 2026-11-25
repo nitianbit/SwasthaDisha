@@ -34,6 +34,7 @@ import { reverseRedemptionIn } from '@/modules/assisted/refunds';
 import { sendAssistedNotices } from '@/modules/assisted/support';
 import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
+import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 
 export const OFFER_MS = 5 * 60_000;
@@ -918,6 +919,7 @@ export class InstantConsultService {
       const done = await BookingModel.updateOne({ _id: id, status: 'confirmed' },
         { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: istTodayYyyymmdd() } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
+      await alertReadThenCancelIn(id, s); // r30 (§25.9.6)
       if (r.assisted) {
         // r17 (§25.8.2, D13): the doctor or an admin cancels a partner's consultation — the allocation still owed goes
         // back to the partner's wallet once (not withdrawable, DR20); never the patient's wallet; the join link dies.

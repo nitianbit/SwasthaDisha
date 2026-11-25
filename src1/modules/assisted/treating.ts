@@ -1,4 +1,7 @@
-import { appointmentIntervalOf, consultationEndOf, type SlotTimes } from '@/modules/assisted/rxAccess';
+import { AppError } from '@/modules/common/types';
+import BookingModel from '@/modules/bookings/model';
+import { AssistedReviewItemModel } from '@/modules/assisted/model';
+import { appointmentIntervalOf, consultationEndOf, slotsOf, type SlotTimes } from '@/modules/assisted/rxAccess';
 import { unpaidCardBooking } from '@/modules/assisted/views';
 
 /**
@@ -28,4 +31,37 @@ export function treatingWindowOf(b: Row, slot?: SlotTimes | null, now: Date = ne
   const closesAt = Number.isFinite(completedAt) ? new Date(completedAt + 30 * DAY) : end ? new Date(end.getTime() + 7 * DAY) : null;
   if (!opensAt || !closesAt || Number.isNaN(opensAt.getTime())) return closed;
   return { open: now >= opensAt && now < closesAt, opensAt, closesAt };
+}
+
+export type TreatingWindow = ReturnType<typeof treatingWindowOf>;
+export const treatingWindowClosed = () => new AppError({ status: 409, code: 'TREATING_WINDOW_CLOSED', message: 'This consultation is not open for treatment now' });
+
+/**
+ * r30: the doctor's OWN bookings matching `filter`, each with its treating window. An unpaid card booking and one with an
+ * open "not mine" report are left out (the caller answers them like a missing booking). 3b's `fromBookingId` and 3f's
+ * history, request, approval and file reads share it.
+ */
+export async function ownTreatingBookings(specialistId: string, filter: Record<string, unknown>, now: Date = new Date()): Promise<{ booking: Row; window: TreatingWindow }[]> {
+  const sid = String(specialistId);
+  const rows = (await BookingModel.find({ ...filter, specialistId: { $in: [sid.toLowerCase(), sid.toUpperCase()] } }).lean() as Row[])
+    .filter((b) => !unpaidCardBooking(b));
+  if (!rows.length) return [];
+  const disputed = new Set((await AssistedReviewItemModel.find({ kind: 'not_mine', bookingKind: 'booking', state: 'open',
+    bookingId: { $in: rows.map((b) => String(b._id).toLowerCase()) } }).select({ bookingId: 1 }).lean()).map((r) => r.bookingId));
+  const slots = await slotsOf(rows);
+  return rows.filter((b) => !disputed.has(String(b._id).toLowerCase()))
+    .map((b) => ({ booking: b, window: treatingWindowOf(b, slots.get(String(b.slotId)), now) }));
+}
+
+/**
+ * r30: the doctor's own booking `bookingId` while it treats that booking's patient. 404 BOOKING_NOT_FOUND for a missing,
+ * another doctor's, an unpaid card or a disputed booking, and for one `belongs` refuses (another account or person);
+ * 409 TREATING_WINDOW_CLOSED outside its window.
+ */
+export async function openOwnTreatingBooking(specialistId: string, bookingId: unknown, now: Date = new Date(),
+  belongs: (b: Row) => boolean = () => true): Promise<{ booking: Row; window: TreatingWindow }> {
+  const own = /^[0-9a-fA-F]{24}$/.test(String(bookingId)) ? (await ownTreatingBookings(specialistId, { _id: String(bookingId) }, now))[0] : undefined;
+  if (!own || !belongs(own.booking)) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+  if (!own.window.open) throw treatingWindowClosed();
+  return own;
 }

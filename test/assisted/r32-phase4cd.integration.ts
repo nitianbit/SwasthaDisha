@@ -1,5 +1,5 @@
 /**
- * Rounds 4c and 4d (ASSISTED_BOOKING_DESIGN.md §26.7, §26.8; build record §26.16).
+ * Rounds 4c and 4d (ASSISTED_BOOKING_DESIGN.md §26.7, §26.8; build record §26.17).
  * 4c — `provider_coupon_v2` + a top-level `earningSplit` for SELF bookings behind EARNING_RULE_V2_FOR_ALL (off):
  *   off: nothing is written (the rows are as before), the earning is the price; on: a platform coupon makes the provider
  *   earn the list price, a provider coupon list − discount; a booking the ledger does not pay never gets the rule.

@@ -7,6 +7,7 @@ import {
   isReferralOwnerKind, type SettlementOwnerKind,
 } from '@/modules/partners/model/settlement';
 import { assistedFlags } from '@/modules/assisted/flags';
+import type { ReferralCategory } from '@/modules/assisted/types';
 import PartnerOrgModel from '@/modules/partners/model';
 import SpecialistModel from '@/modules/specialists/model';
 import BookingModel from '@/modules/bookings/model';
@@ -160,36 +161,61 @@ export async function financeSummary(account: ISettlementAccount | null, full: b
   };
 }
 
+/** r33: a referral row's lines that were cut (a lab booking: one row for the booking, its cut lines listed). */
+export interface ReferralLineView { category: ReferralCategory; baseMinor: number; cutMinor: number }
+
 export interface StatementLine {
   _id: string; at: Date; kind: ILedgerEntry['kind']; source: string; sourceId: string; description: string;
   reference?: string; note?: string; amountMinor: number; balanceAfterMinor: number;
   /** r24 (§26.6.2): on earnings, the base and the referral cut taken from it (net = amountMinor). */
   grossMinor?: number; commissionMinor?: number;
+  /**
+   * r33 (§26.6.2): on referral rows, the booking's short ref and category (`mixed` when a lab booking's cut lines differ;
+   * `lines` lists them). Never the patient.
+   */
+  shortRef?: string; category?: ReferralCategory | 'mixed'; lines?: ReferralLineView[];
+}
+
+/** What `describe` knows of an entry's source: its words, and on referral rows the fields of §26.6.2. */
+type Described = { description: string } & Pick<StatementLine, 'shortRef' | 'category' | 'lines'>;
+
+/** r33: a lab booking's cut lines and their one category (`mixed` when they differ). */
+function labReferralOf(lines: { category?: ReferralCategory | null; baseMinor?: number; cutMinor?: number }[] | undefined): Pick<StatementLine, 'category' | 'lines'> {
+  const cut = (lines ?? []).filter((l) => l.category && Number(l.cutMinor) > 0)
+    .map((l) => ({ category: l.category!, baseMinor: Number(l.baseMinor ?? 0), cutMinor: Number(l.cutMinor) }));
+  const categories = [...new Set(cut.map((l) => l.category))];
+  return { ...(categories.length ? { category: categories.length === 1 ? categories[0]! : 'mixed' } : {}), lines: cut };
 }
 
 const ymdIso = (d: string) => (/^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d);
 
 /** Human descriptions for entries, looked up in one batch per source kind (no patient contact data). */
-async function describe(entries: ILedgerEntry[]): Promise<Map<string, string>> {
+async function describe(entries: ILedgerEntry[]): Promise<Map<string, Described>> {
   const ids = (src: string) => [...new Set(entries.filter((e) => e.source === src).map((e) => e.sourceId))].filter((x) => Types.ObjectId.isValid(x));
-  const out = new Map<string, string>();
+  const out = new Map<string, Described>();
+  const set = (key: string, description: string, extra: Omit<Described, 'description'> = {}) => out.set(key, { description: description.trim(), ...extra });
   const lab = await PartnerLabBookingModel.find({ _id: { $in: ids('partner_lab_booking') } }).select({ slot: 1, patient: 1, visitMode: 1 }).lean() as any[];
-  for (const b of lab) out.set(`partner_lab_booking:${b._id}`, `Lab booking · ${b.slot?.date ?? ''} ${b.slot?.startTime ?? ''} · ${String(b.patient?.name ?? '').split(' ')[0]}`.trim());
+  for (const b of lab) set(`partner_lab_booking:${b._id}`, `Lab booking · ${b.slot?.date ?? ''} ${b.slot?.startTime ?? ''} · ${String(b.patient?.name ?? '').split(' ')[0]}`);
   const cons = await BookingModel.find({ _id: { $in: ids('consultation') } }).select({ bookingDate: 1, bookingTime: 1, consultationMode: 1, bookingKind: 1 }).lean() as any[];
   for (const b of cons) {
-    out.set(`consultation:${b._id}`, `${b.bookingKind === 'instant' ? 'Instant consultation' : 'Consultation'} · ${ymdIso(b.bookingDate)} ${b.bookingTime ?? ''}${b.consultationMode ? ' · ' + b.consultationMode : ''}`.trim());
+    set(`consultation:${b._id}`, `${b.bookingKind === 'instant' ? 'Instant consultation' : 'Consultation'} · ${ymdIso(b.bookingDate)} ${b.bookingTime ?? ''}${b.consultationMode ? ' · ' + b.consultationMode : ''}`);
   }
-  // r24 (§26.6.2): a referral row names the booking by its short ref and date, never the patient.
-  const refLab = await PartnerLabBookingModel.find({ _id: { $in: ids('referral_lab_booking') } }).select({ slot: 1, 'assisted.shortRef': 1 }).lean() as any[];
-  for (const b of refLab) out.set(`referral_lab_booking:${b._id}`, `Referral · lab booking · ${b.slot?.date ?? ''} · Ref ${b.assisted?.shortRef ?? ''}`.trim());
+  // r24 (§26.6.2): a referral row names the booking by its short ref and date, never the patient; r33: and carries them as fields.
+  const refLab = await PartnerLabBookingModel.find({ _id: { $in: ids('referral_lab_booking') } })
+    .select({ slot: 1, 'assisted.shortRef': 1, 'assisted.split.lines.category': 1, 'assisted.split.lines.baseMinor': 1, 'assisted.split.lines.cutMinor': 1 }).lean() as any[];
+  for (const b of refLab) {
+    set(`referral_lab_booking:${b._id}`, `Referral · lab booking · ${b.slot?.date ?? ''} · Ref ${b.assisted?.shortRef ?? ''}`,
+      { ...(b.assisted?.shortRef ? { shortRef: b.assisted.shortRef } : {}), ...labReferralOf(b.assisted?.split?.lines) });
+  }
   const refCons = await BookingModel.find({ _id: { $in: ids('referral_consultation') } }).select({ bookingDate: 1, bookingKind: 1, 'assisted.shortRef': 1 }).lean() as any[];
   for (const b of refCons) {
-    out.set(`referral_consultation:${b._id}`, `Referral · ${b.bookingKind === 'instant' ? 'instant consultation' : 'consultation'} · ${ymdIso(b.bookingDate)} · Ref ${b.assisted?.shortRef ?? ''}`.trim());
+    set(`referral_consultation:${b._id}`, `Referral · ${b.bookingKind === 'instant' ? 'instant consultation' : 'consultation'} · ${ymdIso(b.bookingDate)} · Ref ${b.assisted?.shortRef ?? ''}`,
+      { ...(b.assisted?.shortRef ? { shortRef: b.assisted.shortRef } : {}), category: 'consultation' });
   }
   const pays = await SettlementPayoutModel.find({ _id: { $in: [...ids('payout'), ...ids('payout_void')] } }).select({ reference: 1, paidOn: 1, destination: 1 }).lean() as any[];
   for (const p of pays) {
-    out.set(`payout:${p._id}`, `Payout · ${p.paidOn} · ${p.destination?.label ?? ''}`.trim());
-    out.set(`payout_void:${p._id}`, `Payout voided · ${p.paidOn} · ref ${p.reference}`);
+    set(`payout:${p._id}`, `Payout · ${p.paidOn} · ${p.destination?.label ?? ''}`);
+    set(`payout_void:${p._id}`, `Payout voided · ${p.paidOn} · ref ${p.reference}`);
   }
   return out;
 }
@@ -250,10 +276,10 @@ export async function statementPage(account: ISettlementAccount | null, opts: { 
   const labels = await describe(entries);
   let after = startBalance;
   const lines: StatementLine[] = entries.map((e) => {
-    const line = { _id: String(e._id), at: e.at, kind: e.kind, source: e.source, sourceId: e.sourceId,
-      description: labels.get(`${e.source}:${e.sourceId}`) ?? FALLBACK[e.source] ?? e.source, reference: e.reference, note: e.note,
+    const { description, ...referral } = labels.get(`${e.source}:${e.sourceId}`) ?? { description: FALLBACK[e.source] ?? e.source };
+    const line = { _id: String(e._id), at: e.at, kind: e.kind, source: e.source, sourceId: e.sourceId, description, reference: e.reference, note: e.note,
       amountMinor: e.amountMinor, balanceAfterMinor: after,
-      ...(e.kind === 'earning' && e.grossMinor !== undefined ? { grossMinor: e.grossMinor, commissionMinor: e.commissionMinor ?? 0 } : {}) };
+      ...(e.kind === 'earning' && e.grossMinor !== undefined ? { grossMinor: e.grossMinor, commissionMinor: e.commissionMinor ?? 0 } : {}), ...referral };
     after -= e.amountMinor;
     return line;
   });
@@ -292,7 +318,7 @@ export async function statementCsv(account: ISettlementAccount | null, opts: { f
   const rows = [header, ['', 'Opening balance', '', '', '', '', rupees(bal)].map(cell).join(',')];
   for (const e of entries) {
     bal += e.amountMinor;
-    rows.push([istStamp(e.at), e.kind, labels.get(`${e.source}:${e.sourceId}`) ?? FALLBACK[e.source] ?? e.source, e.reference, e.note,
+    rows.push([istStamp(e.at), e.kind, labels.get(`${e.source}:${e.sourceId}`)?.description ?? FALLBACK[e.source] ?? e.source, e.reference, e.note,
       rupees(e.amountMinor), rupees(bal)].map(cell).join(','));
   }
   rows.push(['', 'Closing balance', '', '', '', '', rupees(bal)].map(cell).join(','));

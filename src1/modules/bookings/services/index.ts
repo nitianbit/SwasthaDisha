@@ -56,6 +56,7 @@ import {
 } from '@/modules/meet/service';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
+import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 
 interface BookingPaymentInitResponse {
   booking: IBooking;
@@ -1719,6 +1720,7 @@ export class BookingService {
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
       if ((done.noShows?.length ?? 0) > 0) await flagLegacyOriginalMonth(done, session); // Q16a (E): a second no-show leaves the bill
+      await alertReadThenCancelIn(String(bookingId), session); // r30 (§25.9.6)
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
       await releaseInterval('instant', String(bookingId).toLowerCase(), session);
       // Q14 (owner, 18 Nov 2026): the doctor is not paid for a no-show (the customer is still not refunded; the platform

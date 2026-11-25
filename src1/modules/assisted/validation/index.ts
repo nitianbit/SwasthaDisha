@@ -146,7 +146,7 @@ export const labBookerCancelSchema = Joi.object({ reason: Joi.string().trim().ma
 export const labAcceptRescheduleSchema = Joi.object({ version: Joi.number().integer().min(0).required() });
 /**
  * r26 (§25.5.3): a doctor's lab booking — 2a's body with exactly one patient source: the doctor's own consultation
- * (`fromBookingId` + `typedName`), or a walk-in by phone (`phone` + `patient` [+ `holderName`]). Wallet only (card is 3c).
+ * (`fromBookingId` + `typedName`), or a walk-in by phone (`phone` + `patient` [+ `holderName`]). r29: wallet or card/UPI (3c).
  */
 export const doctorLabBookingSchema = labBookingSchema.keys({
   phone: mobile, patient: consultationSchema.extract('patient').optional(), fromBookingId: objectId, typedName: personName,

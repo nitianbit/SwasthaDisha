@@ -25,6 +25,8 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   'recommendation.lookup',
   /** r17: the booker offered its instant request again (another doctor, or any online doctor). */
   'instant.reoffered',
+  /** r30 (§25.9.4): an admin revoked a holder's records-access grant to a doctor (orgKind `doctor`). */
+  'records.grant_revoked',
   /** r32 (§26.8): an admin recovered a disputed top-up (the take); wallet withdrawals (request, cancel, reject, paid, void). */
   'wallet.recovered', 'withdrawal.requested', 'withdrawal.cancelled', 'withdrawal.rejected', 'withdrawal.paid', 'withdrawal.voided'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
@@ -158,7 +160,7 @@ export interface IAssistedCardRefund {
   amountMinor: number;
   /** booker | patient | doctor | admin | late_capture | extra_capture (r10e: another capture on the same order) */
   cause: string;
-  /** 2e: the paying booker's kind (its wallet takes a to-wallet refund). */
+  /** 2e: the paying booker's kind (its wallet takes a to-wallet refund); r29: a doctor. */
   payerKind: 'pharmacy' | 'lab' | 'doctor';
   payerId: string;
   method: 'razorpay' | 'wallet';
@@ -192,7 +194,8 @@ const cardRefundSchema = new Schema<IAssistedCardRefund>({
   chargebackAt: { type: Date },
   amountMinor: { type: Number, required: true, min: 1 },
   cause: { type: String, required: true },
-  payerKind: { type: String, required: true, enum: ['pharmacy', 'lab'] },
+  // r29 (§25.6): a doctor pays a lab booking by card/UPI too.
+  payerKind: { type: String, required: true, enum: ['pharmacy', 'lab', 'doctor'] },
   payerId: { type: String, required: true },
   method: { type: String, required: true, enum: ['razorpay', 'wallet'] },
   state: { type: String, required: true, enum: ['pending', 'processed', 'failed', 'manual_review'] },

@@ -75,6 +75,12 @@ export const assistedFlags = {
    */
   doctorLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_DOCTOR'),
   /**
+   * r30 (§25.9.7): records access — the doctor's request, the holder's allow / deny, the `others` part of the treating
+   * history and file reads under a grant. Off: those requests and decisions answer 503 RECORDS_ACCESS_DISABLED and the
+   * history shows the doctor's own consultations only (still logged). Revoke, the lists and the expiry sweep always run.
+   */
+  records: () => on('RECORDS_ACCESS_ENABLED'),
+  /**
    * r32 (round 4d, §26.8, GATE-RBI): NEW wallet withdrawal requests (pharmacy, lab, doctor). Off: a request answers 503
    * WITHDRAWALS_DISABLED; cancel, reject, paid, void, reads and every credit always run.
    */
@@ -86,12 +92,12 @@ export const assistedFlags = {
    */
   earningRuleV2ForAll: () => on('EARNING_RULE_V2_FOR_ALL'),
   /**
-   * r32b (§26.16): the ₹50,000 cap on the PHARMACY's own card top-up orders. Off: pharmacy top-ups behave as before. Lab
+   * r32b (§26.17): the ₹50,000 cap on the PHARMACY's own card top-up orders. Off: pharmacy top-ups behave as before. Lab
    * and doctor wallets keep their cap (2d/3a) whatever it says.
    */
   walletBalanceCap: () => on('WALLET_BALANCE_CAP_ENABLED'),
   /**
-   * r32b (§26.16): a lost card dispute on a PHARMACY top-up is flagged only and taken back by the admin's Recover. Off:
+   * r32b (§26.17): a lost card dispute on a PHARMACY top-up is flagged only and taken back by the admin's Recover. Off:
    * the automatic take as on production. Lab and doctor top-ups are flagged only whatever it says (2d/3a).
    */
   chargebackFlagOnly: () => on('WALLET_CHARGEBACK_FLAG_ONLY'),

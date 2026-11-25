@@ -47,6 +47,7 @@ import { adminAssistedRouter, pharmacyAssistedRouter } from '@/modules/assisted/
 import { doctorLabRouter } from '@/modules/assisted/routes/doctorLab';
 import { adminDoctorWalletRouter, adminLabWalletRouter, doctorWalletRouter, labWalletWorkspaceRouter } from '@/modules/partnerWallets/routes';
 import { smsAdminRouter } from '@/modules/smsNotices/admin';
+import { adminRecordsRouter, holderRecordsRouter } from '@/modules/recordAccess/routes';
 import { adminWithdrawalRouter } from '@/modules/walletWithdrawals/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
@@ -134,6 +135,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/admin/doctors', authenticate, denyRoles('partner'), adminDoctorWalletRouter);
   // Phase 5a (§27.5.7): SMS notice summary and test send.
   app.use('/api/v1/admin/sms-notices', authenticate, denyRoles('partner'), smsAdminRouter);
+  // r30 (§25.9.4): records-access grants and the read log for admins (before the shared /admin router).
+  app.use('/api/v1/admin/records-access', authenticate, denyRoles('partner'), adminRecordsRouter);
   // r32 (round 4d, §26.8.2): the wallet withdrawal queue (reject, paid, void).
   app.use('/api/v1/admin/wallet-withdrawals', authenticate, denyRoles('partner'), adminWithdrawalRouter);
   app.use('/api/v1/admin', authenticate, denyRoles('partner'), adminAssistedRouter);
@@ -145,6 +148,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/patient-tracking', authenticate, denyRoles('partner'), patientTrackingRouter);
   app.use('/api/v1/pharmacy-tracking', authenticate, denyRoles('partner'), pharmacyTrackingRouter);
   app.use('/api/v1/external-bookings', authenticate, denyRoles('partner'), externalBookingRouter);
+  // r30 (§25.9.4): the account holder allows or denies a doctor's records request, and sees and revokes grants.
+  app.use('/api/v1/records-access', authenticate, denyRoles('partner'), holderRecordsRouter);
   app.use('/api/v1/webhooks', webhookRouter);
   // D4: abandon an unresolved once-only request key (admission fence; scoped to the caller).
   app.use('/api/v1/request-keys', authenticate, requestKeyRouter);
