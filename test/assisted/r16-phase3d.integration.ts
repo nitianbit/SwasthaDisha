@@ -303,7 +303,8 @@ async function main() {
       const b = await stored(rxBooking);
       const pdf = read(b.prescription.fileUrls[0]);
       assert.ok(pdf.includes('Jansetu') && pdf.includes(formatRecommendationCode(code)), 'the full PDF prints the code in the Jansetu box');
-      assert.ok(pdf.includes('MyEwaCare'), 'the header brand is unchanged (DR13)');
+      // r29 (owner, 25 Nov): the header says Jansetu too (DR13 superseded); PDFs issued before keep theirs.
+      assert.ok(pdf.includes('<div class="brand">Jansetu</div>') && !pdf.includes('MyEwaCare'), 'the header brand is Jansetu');
       const copy = read(b.prescription.dispensingCopy.url);
       assert.ok(copy.includes(formatRecommendationCode(code)) && !copy.includes('SECRET-DIAGNOSIS'), 'the dispensing copy prints the code, never the diagnosis');
       const view = (await expect('P', 'GET', `/api/v1/pharmacy-bookings/${rxBooking}`, 200)).json.data;
