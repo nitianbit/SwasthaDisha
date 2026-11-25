@@ -7316,3 +7316,31 @@ window's start in `/j/` (9), the night rule (1), the reminder's version test at 
 - `r10f-card-last` (a Meet call bounded in time): run alone, 2 of 2;
 - `phase0` (finding 6, a slow converter): the known load race in that test; it fails the same way on the base
   `6a8574e9` (r30 comparison) and touches nothing of phase 5.
+
+#### 27.14.6 Review follow-ups (r34b, 2026-11-25)
+
+The r34 review (`8c67a206`) gave GO for stage. Merged `m0/r31-phase5b` (`2df5651e`, also the stage head: r31b and stage
+merge 2) first; conflicts in `smsNotices/events.ts` (r31b's fire-and-forget `queue` and move version kept; the reminder
+rides the same `queue`), `routes/index.ts` (both imports), this file (§27.13.7 before §27.14) and the 5b suite. Then:
+
+| # | Item | Built |
+|---|---|---|
+| 1 | One Join window | `joinWindowOf`, `joinOpenAt`, `instantHeldEnds` and `JOIN_OPENS_BEFORE_MS` in `assisted/rxAccess.ts`, used by the booker view (the partner's device, unchanged, inclusive end) and the SMS link. An instant consultation follows the doctor's held interval (acceptance + `CONSULT_MS`, moved by extensions) instead of acceptance + 60 min. `treating.ts` uses the constant (its instant and in-person openings are its own rules); `consultationEndOf` is a different end (completion, the day's end) and is left alone |
+| 1 | One alphabet, one limiter | `BASE32_ALPHABET` exported from `assisted/consultations.ts` (the Ref and the MAC). `hitClient` (`otp/throttle.ts`) takes a kind, windows and `{ always }` (not gated by `OTP_IP_LIMITS`), keeping its `req.ip` fallback; the OTP callers are unchanged |
+| 2 | `/j/` off | Without `JOIN_LINK_SECRET` the route passes on (`next()`): the app's own 404, no counter written, no headers added |
+| 3 | Quiet hours at send | A reminder that comes due from 21:00 to before 07:00 (a late drain, a retry) waits for the next 07:00 if that is at least an hour before the visit (the drain's new `later` outcome: the row is queued again with that due time, the attempt given back); otherwise `skipped: quiet` |
+| 4 | Night rule fallback | When the 20:00 before is under 60 minutes away: 07:00 on the visit's day if it is at least 60 minutes from now and before the visit; else none (coordinator's decision, reversible; §27.14.3 item 2) |
+| 5 | The patient accepts a lab's new time | `smsReminder` (exported) queues the new time's reminder at `partners/services/labBookings.ts` (the patient's accept); no "moved" SMS |
+| 6 | 5b suite | Every create and move path asserts its reminders (versions, each with its due time) next to its notices: one per create (none for an unpaid card booking, a walk-in or an instant consultation), the old time's and the new one's after a move, B → C → B → C → D gives B, C, D, and the patient's accept of a lab's new time gives the new time's |
+| 7 | Small items | A database error at `/j/` is logged as `error` (the page is shown); `SMS_JOIN_LINK_BASE_URL` must be `https://…/j`, else the plain texts |
+
+**Checks.** `r34-phase5cd` has 14 checks (new: the night-rule fallback cases in check 1; quiet hours at send; the
+instant window by the held interval, its inclusive end and an extension; `/j/` off = the app's 404 for GET and HEAD with
+no counter written; a database error → the page, logged `error`; a link address not ending in `/j` → plain texts).
+`r31-phase5b` has 20 checks (r31b's 20, now with the reminder assertions above).
+
+**Single suites** on `052ab90e` (own mongod): `r34-phase5cd` 14/14, `r31-phase5b` 20/20, `r25-phase5a` 11/11,
+`r10g-meet-retry` 14/14, `r10f-card-last` 2/2, `r10-phase1b` 19/19, `q4b-instant` 25/25, `r17-phase3e` 25/25,
+`phase1a` 30/30 (the booker view's Join call). `tsc` 17.
+
+**Full regression** (`prun.sh … 2` on `052ab90e`): 85 suites, 85 passed (`phase0` included), `tsc` 17.
