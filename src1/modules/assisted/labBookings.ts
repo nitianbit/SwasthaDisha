@@ -1,6 +1,7 @@
 import { ClientSession, Types } from 'mongoose';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
+import { couponFundedBy } from '@/modules/coupon/funding';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { canonicalMobile } from '@/modules/common/utils/phone';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
@@ -194,7 +195,7 @@ async function labCouponFor(code: string | undefined, ctx: { userId: string; dep
   if (!code || !(ctx.listMinor > 0)) return null;
   const repo = new CouponRepository();
   const notForAssisted = () => err(400, 'COUPON_NOT_FOR_ASSISTED', 'This coupon cannot be used on a booking made for a patient');
-  const fundedByOf = (c: { fundedBy?: string; corporateIds?: string[] }) => c.fundedBy ?? ((c.corporateIds ?? []).length > 0 ? 'platform' : 'provider');
+  const fundedByOf = couponFundedBy;
   const known = await repo.findByCode(code);
   if (known && (known.usageLimitPerUser || (fundedByOf(known) === 'platform' && known.partnerUsable !== true))) throw notForAssisted();
   const patient = await UserModel.findById(ctx.userId).select({ corporateId: 1 }).lean() as { corporateId?: string } | null;

@@ -172,6 +172,8 @@ export interface IBooking {
   source?: BookingSource;
   /** Assisted booking (§5.1, P5): the earning rule frozen at create; completion reads it. */
   earningRule?: 'provider_coupon_v2';
+  /** r32 (4c, §26.7): a self booking's frozen split (`AssistedSplit` shape, cut 0, no referral). */
+  earningSplit?: import('@/modules/assisted/types').AssistedSplit;
   /** Assisted booking phase 1a (§5.1): the booker's block (see assisted/types). */
   assisted?: import('@/modules/assisted/types').AssistedBlock;
   walletFunding?: { total: number; revision?: number; closed?: boolean;

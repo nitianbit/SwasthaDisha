@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
+import { couponFundedBy } from '@/modules/coupon/funding';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { canonicalMobile } from '@/modules/common/utils/phone';
 import { normalizeCouponDiscount } from '@/modules/common/utils/couponMoney';
@@ -177,7 +178,7 @@ export async function assistedCouponFor(code: string | undefined, ctx: { userId:
   if (!code || !(ctx.listMinor > 0)) return null;
   const repo = new CouponRepository();
   const notForAssisted = () => err(400, 'COUPON_NOT_FOR_ASSISTED', 'This coupon cannot be used on a booking made for a patient');
-  const fundedByOf = (c: { fundedBy?: string; corporateIds?: string[] }) => c.fundedBy ?? ((c.corporateIds ?? []).length > 0 ? 'platform' : 'provider');
+  const fundedByOf = couponFundedBy;
   // Decided on the coupon itself first: E — a per-user-limited coupon is never used on a partner booking (the patient
   // never sees it); N1 — a platform-funded coupon only when an admin allowed it on partner bookings.
   const known = await repo.findByCode(code);

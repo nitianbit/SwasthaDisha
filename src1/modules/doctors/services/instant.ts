@@ -1,4 +1,5 @@
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
+import { selfEarningOf } from '@/modules/referralCuts/selfEarning';
 import { Service, Container } from 'typedi';
 import { createHash } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
@@ -667,6 +668,10 @@ export class InstantConsultService {
       // Phase 4a (§26.5.3): a partner's instant cut is snapshotted at accept, on the fee actually charged.
       const cut = a ? await snapshotCuts({ kind: a.bookedBy.kind, id: a.bookedBy.id, name: a.bookedBy.name },
         [{ category: 'consultation', baseMinor: instantBaseMinor(a, fee, allocated.couponMinor) }], s) : null;
+      // r32 (4c, §26.7): a customer's instant booking paid through the ledger gets the v2 rule and split while
+      // EARNING_RULE_V2_FOR_ALL is on (the fee charged and the coupon actually used on it).
+      const earning = !a && settlementSystem === 'ledger'
+        ? await selfEarningOf({ listMinor: fee, discountMinor: allocated.couponMinor, couponCode: allocated.couponMinor > 0 ? r.couponCode : null }, s) : {};
       const [booking] = await BookingModel.create([{
         _id: bookingId, bookingType: 'consultation', bookingKind: 'instant', instantRequestId: id, userId: r.userId,
         ...(r.patient.kind === 'dependent' ? { dependentId: r.patient.dependentId } : {}),
@@ -676,6 +681,7 @@ export class InstantConsultService {
         ...(a ? { source: r.source, earningRule: 'provider_coupon_v2', ...(contact?.phone ? { contactNo: contact.phone } : {}),
           ...(a.primaryConcern ? { primaryConcern: a.primaryConcern } : {}),
           ...(a.bookedBy.kind === 'pharmacy' ? { pharmacyId: a.bookedBy.id } : {}), assisted: instantBookingAssisted(a, id, fee, allocated.couponMinor, r.couponCode, cut!) } : {}),
+        ...earning,
       }], { session: s });
       const request = a ? await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest : taken;
       return { request, booking: booking!.toObject() as IBooking };

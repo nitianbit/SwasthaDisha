@@ -332,7 +332,9 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
       const account = await ensureSettlementAccount('doctor', String(doc.specialistId), sp?.name || input.doctorName || 'Doctor', s);
       settlement = { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName };
     }
-    const [created] = await BookingModel.create([{ ...doc, _id: bookingId, holds, settlementSystem, ...(settlement ? { settlement } : {}) }], { session: s });
+    // r32 (4c, §26.7): a self booking's v2 earning rule applies only where the ledger pays (legacy and clinic rows untouched).
+    const row = settlementSystem === 'ledger' || !doc.earningSplit ? doc : (({ earningRule: _r, earningSplit: _s, ...rest }) => rest)(doc);
+    const [created] = await BookingModel.create([{ ...row, _id: bookingId, holds, settlementSystem, ...(settlement ? { settlement } : {}) }], { session: s });
     const out = created.toObject() as IBooking;
     if (inTx) await inTx(out, s);
     return out;

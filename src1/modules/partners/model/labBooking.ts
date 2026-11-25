@@ -71,6 +71,9 @@ export interface IPartnerLabBooking {
   assisted?: Omit<AssistedBlock, 'join'>;
   /** r12 (§24.6.1): written only by the lab desk create. */
   desk?: ILabDeskBlock;
+  /** r32 (4c, §26.7): a SELF booking made while EARNING_RULE_V2_FOR_ALL was on earns its frozen split (cut 0). */
+  earningRule?: 'provider_coupon_v2';
+  earningSplit?: AssistedBlock['split'];
   createRequestKey?: string;
   /** Hash of the create request: a resent create with a different request under the same key is refused. */
   createRequestHash?: string;
@@ -146,6 +149,8 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     userId: { type: String, required: true },
     source: { type: String, enum: LAB_BOOKING_SOURCES },
     assisted: { type: Schema.Types.Mixed },
+    earningRule: { type: String, enum: ['provider_coupon_v2'] },
+    earningSplit: { type: Schema.Types.Mixed },
     desk: {
       type: new Schema<ILabDeskBlock>({
         memberId: { type: String, required: true },

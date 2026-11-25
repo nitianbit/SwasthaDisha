@@ -74,14 +74,26 @@ export const assistedFlags = {
    * ASSISTED_BOOKING_ENABLED_DOCTOR too. Reads, by-key, cancel, accept, refunds and report access always work.
    */
   doctorLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_DOCTOR'),
-  /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
+  /**
+   * r32 (round 4d, §26.8, GATE-RBI): NEW wallet withdrawal requests (pharmacy, lab, doctor). Off: a request answers 503
+   * WITHDRAWALS_DISABLED; cancel, reject, paid, void, reads and every credit always run.
+   */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
+  /**
+   * r32 (round 4c, §26.7, M13): new SELF ledger bookings (customer consultations, customer instant, customer lab bookings)
+   * are frozen with `earningRule: 'provider_coupon_v2'` and a top-level `earningSplit` (cut 0). Off: they are stored exactly
+   * as before. Bookings made while it was on keep their rule.
+   */
+  earningRuleV2ForAll: () => on('EARNING_RULE_V2_FOR_ALL'),
   rechargeSweepFrom: (): Date | null => {
     const raw = process.env.WALLET_RECHARGE_SWEEP_FROM;
     const t = raw ? Date.parse(raw) : NaN;
     return Number.isFinite(t) ? new Date(t) : null;
   },
 };
+
+/** r32 (§26.8.2, Q4/M15): the smallest withdrawal, paise (default ₹500). */
+export const withdrawalMinMinor = () => int('WALLET_WITHDRAWAL_MIN_MINOR', 50_000);
 
 /** ASSUMED D10 defaults; each can be changed with its environment variable. */
 export const assistedLimits = {
