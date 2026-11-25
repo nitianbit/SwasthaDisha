@@ -42,11 +42,19 @@ export class PharmacyCustomerController {
     res.status(200).json({ success: true, data: { _id: result._id, userId: result.userId, typedName: result.typedName, shownName } });
   };
 
-  list = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+  list = async (req: AuthRequest, res: Response, _next: NextFunction) => this.listOf(req, res, req.query as Record<string, unknown>);
+
+  /** r36 (WQ50): POST /pharmacy-customers/search { search, page?, limit? } — the list's answer, the phone or name never in a URL. */
+  search = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.listOf(req, res, req.body as Record<string, unknown>);
+  };
+
+  private listOf = async (req: AuthRequest, res: Response, q: Record<string, unknown>) => {
     const pharmacyId = req.user?.pharmacyId || '';
-    const page = req.query.page ? parseInt(req.query.page as string) : 1;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-    const search = req.query.search as string | undefined;
+    const page = q.page ? parseInt(String(q.page)) : 1;
+    const limit = q.limit ? parseInt(String(q.limit)) : 20;
+    const search = q.search === undefined ? undefined : String(q.search);
 
     const result = await this.service.getCustomers({ pharmacyId, page, limit, search });
 

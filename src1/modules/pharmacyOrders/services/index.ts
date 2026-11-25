@@ -1073,11 +1073,25 @@ export class PharmacyOrderService {
 
   /**
    * r36 (WQ50): an order as its pharmacy reads it — the customer populated (`name`, `phone`) and named by the pharmacy-facing
-   * rule the order list applies (the name the pharmacy typed, else masked).
+   * rule the order list applies (the name the pharmacy typed, else masked) — and `bill`, what a cash memo prints beyond the
+   * order: the selling pharmacy's name, address, GST and drug licence numbers, and once paid how (`paymentSource` as marked
+   * paid, else the payment mode) and when. Each line's batches (`items[].batchAllocations`: batchNumber, expiryDate,
+   * quantity) are already on the order.
    */
-  async pharmacyView(order: IPharmacyOrder, viewerPharmacyId: string): Promise<IPharmacyOrder> {
-    const populated = await PharmacyOrderModel.populate(order, { path: 'customerId', select: 'name phone', options: { lean: true } }) as unknown as IPharmacyOrder;
-    return (await withPharmacyFacingCustomerNames([populated], viewerPharmacyId))[0]!;
+  async pharmacyView(order: IPharmacyOrder, viewerPharmacyId: string): Promise<IPharmacyOrder & { bill: Record<string, unknown> }> {
+    const [populated, seller] = await Promise.all([
+      PharmacyOrderModel.populate(order, { path: 'customerId', select: 'name phone', options: { lean: true } }) as unknown as Promise<IPharmacyOrder>,
+      PharmacyModel.findById(order.pharmacyId).select({ name: 1, address: 1, city: 1, state: 1, pincode: 1, gstNumber: 1, drugLicenseNumber: 1 }).lean() as unknown as
+        Promise<Record<string, string | undefined> | null>,
+    ]);
+    const named = (await withPharmacyFacingCustomerNames([populated], viewerPharmacyId))[0]!;
+    const paid = order.paymentStatus === 'paid';
+    return { ...named, bill: {
+      pharmacy: seller ? { name: seller.name ?? null, address: seller.address ?? null, city: seller.city ?? null, state: seller.state ?? null,
+        pincode: seller.pincode ?? null, gstNumber: seller.gstNumber ?? null, drugLicenseNumber: seller.drugLicenseNumber ?? null } : null,
+      paymentMethod: paid ? (order.paymentSource || order.paymentMode || null) : null,
+      paidAt: paid ? order.paidAt ?? null : null,
+    } };
   }
 
   /** P8: the answer to a repeated keyed checkout: the order the key produced, payable again if it is still unpaid. */

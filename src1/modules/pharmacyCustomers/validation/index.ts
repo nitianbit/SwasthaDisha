@@ -37,3 +37,10 @@ export const userIdParamSchema = Joi.object({
 export const typedNameSchema = Joi.object({
   typedName: Joi.string().trim().min(1).max(200).required(),
 });
+
+/** r36 (WQ50): POST /pharmacy-customers/search — the GET list's query, in the body. */
+export const customerSearchSchema = Joi.object({
+  search: Joi.string().trim().max(100).allow(''),
+  page: Joi.number().integer().min(1),
+  limit: Joi.number().integer().min(1).max(100),
+});

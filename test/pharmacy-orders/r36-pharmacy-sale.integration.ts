@@ -6,6 +6,9 @@
  *   nothing changes; a key on any other order is still 400 REQUEST_KEY_UNSUPPORTED.
  * - `GET /pharmacy-orders/:id` for a pharmacy: the customer populated and named as the list names it.
  * - `GET /pharmacy-inventory` rows: `medicineId.prescriptionRequired` from the medicine.
+ * - `POST /pharmacy-customers/search { search }`: the GET list's answer and guards, the search never in the URL.
+ * - The pharmacy's order detail `bill`: the seller's name, address, GST and licence numbers, how and when it was paid; the
+ *   lines' batches (batch number, expiry) on the order.
  * Real authenticate + pharmacy order router + order service over HTTP on MongoDB; stock, catalogue and payment are fakes.
  *
  * Run (throwaway DB only; the script clears its database):
@@ -72,7 +75,8 @@ async function main() {
   const MED = oid();
   const inventory = {
     getInventoryByMedicine: async () => ({ retailPrice: 50, wholesalePrice: 40 }),
-    reserveOrderStockBulk: async (_p: string, items: { medicineId: string }[]) => new Map(items.map((i) => [String(i.medicineId), []])),
+    reserveOrderStockBulk: async (_p: string, items: { medicineId: string; quantity?: number }[]) => new Map(items.map((i) => [String(i.medicineId),
+      [{ batchId: new Types.ObjectId(), batchNumber: 'B-R36', expiryDate: '20271231', quantity: 1 }]])),
     returnStockBulk: async () => [], releaseOrderStockBulk: async () => undefined, consumeOrderReservedStockBulk: async () => undefined,
   };
   const medicines = {
@@ -85,10 +89,12 @@ async function main() {
   Container.set(PharmacyOrderService, new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
     new PharmacyOrderRepository(), pharmacyCustomerService, inventory, payments, new BookingRepository(), {}, sideEffects, medicines, refunds));
   const { default: pharmacyOrderRouter } = await import('@/modules/pharmacyOrders/routes');
+  const { default: pharmacyCustomerRouter } = await import('@/modules/pharmacyCustomers/routes');
   const { authenticate } = await import('@/modules/middleware/auth');
   const app = express();
   app.use(express.json());
   app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
+  app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/v1`;
@@ -98,7 +104,8 @@ async function main() {
     await UserModel.collection.insertOne({ _id: new Types.ObjectId(L), userType: 'user', phone: '9600036001', name: 'Asha Kumari', createdSource: 'self_signup' } as never);
     const P = oid(); const Q = oid();
     await PharmacyModel.collection.insertMany([
-      { _id: new Types.ObjectId(P), name: 'Counter Pharmacy', phone: '9700036001', isActive: true, isVerified: true },
+      { _id: new Types.ObjectId(P), name: 'Counter Pharmacy', phone: '9700036001', isActive: true, isVerified: true, address: '12 Police Bazar',
+        city: 'Shillong', state: 'Meghalaya', pincode: '793001', gstNumber: '17ABCDE1234F1Z5', drugLicenseNumber: 'ML-20B-0042' },
       { _id: new Types.ObjectId(Q), name: 'Other Pharmacy', phone: '9700036002', isActive: true, isVerified: true },
     ] as never);
     await PharmacyCustomerModel.collection.insertMany([P, Q].map((ph) => ({ pharmacyId: new Types.ObjectId(ph), userId: new Types.ObjectId(L), consent: 'patient_agreed' })) as never);
@@ -178,6 +185,26 @@ async function main() {
       assert.notEqual(one.customerId.name, 'Asha Kumari', 'never the account name unless the pharmacy-facing rule shows it');
       assert.equal(typeof (await expect('L', 'GET', `/pharmacy-orders/${id}`, 200)).json.data.customerId, 'string');
       await expect('Q', 'GET', `/pharmacy-orders/${id}`, 403);
+      // The bill: the seller and, once paid, how and when; each line's batches are on the order.
+      assert.deepEqual(one.bill, { pharmacy: { name: 'Counter Pharmacy', address: '12 Police Bazar', city: 'Shillong', state: 'Meghalaya', pincode: '793001',
+        gstNumber: '17ABCDE1234F1Z5', drugLicenseNumber: 'ML-20B-0042' }, paymentMethod: null, paidAt: null });
+      assert.deepEqual(one.items.map((l: any) => l.batchAllocations.map((b: any) => [b.batchNumber, b.expiryDate, b.quantity])), [[['B-R36', '20271231', 1]]]);
+      const paidAt = new Date();
+      await PharmacyOrderModel.updateOne({ _id: id }, { $set: { paymentStatus: 'paid', paymentSource: 'upi', paidAt } });
+      const paid = (await expect('P', 'GET', `/pharmacy-orders/${id}`, 200)).json.data.bill;
+      assert.deepEqual([paid.paymentMethod, paid.paidAt], ['upi', paidAt.toISOString()]);
+      assert.equal((await expect('L', 'GET', `/pharmacy-orders/${id}`, 200)).json.data.bill, undefined, 'the customer\'s read is unchanged');
+    });
+
+    await check('POST /pharmacy-customers/search answers as the GET list (same guards); the search stays out of the URL', async () => {
+      const viaGet = (await expect('P', 'GET', '/pharmacy-customers?search=9600036001', 200)).json;
+      const viaPost = await call('P', 'POST', '/pharmacy-customers/search', { search: '9600036001' });
+      assert.equal(viaPost.status, 200);
+      assert.deepEqual(viaPost.json, viaGet);
+      assert.ok((viaPost.json.data as any[]).length >= 1);
+      assert.deepEqual((await expect('P', 'POST', '/pharmacy-customers/search', 200, {})).json, (await expect('P', 'GET', '/pharmacy-customers', 200)).json);
+      await expect('L', 'POST', '/pharmacy-customers/search', 403, { search: 'Asha' });
+      await expect('P', 'POST', '/pharmacy-customers/search', 400, { search: 'x', limit: 0 });
     });
 
     await check('GET /pharmacy-inventory rows carry medicineId.prescriptionRequired from the medicine (with and without search)', async () => {

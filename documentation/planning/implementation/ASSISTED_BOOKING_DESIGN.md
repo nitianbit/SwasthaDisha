@@ -6733,6 +6733,8 @@ every answer is as before.
 | 1 | `POST /api/v1/pharmacy-orders` with `orderType: 'in_store'` refused a `requestKey` (400 `REQUEST_KEY_UNSUPPORTED`) | A pharmacy's in-store sale may carry `requestKey` (8–64 of `A-Za-z0-9_-`): exactly once per (pharmacy, key), with the rx order's pattern (`createInStoreSale`). The key is claimed in the order's transaction (scope `pharmacy_sale:<pharmacyId>`). The order stores `saleRequest: { requestKey, requestHash }` (the hash of the body without the key), with the unique partial index `{ pharmacyId, saleRequest.requestKey }`. The same key and body answer the first order (`replayed: true`); another body is 409 `IDEMPOTENCY_KEY_REUSED`; an abandoned key is 409 `REQUEST_ABANDONED`. Racing repeats make one order. A key on any other order is still 400 `REQUEST_KEY_UNSUPPORTED` |
 | 1b | Finding a sale whose answer was lost | `GET /api/v1/pharmacy-orders/by-key/:key` → `{ state: 'used', order } \| { state: 'abandoned' } \| { state: 'unknown' }`; `POST …/by-key/:key/abandon` → the same (`abandoned`, or `used` when the sale committed). Operational pharmacy; its own keys only (another pharmacy's key is `unknown`, uniform) |
 | 2 | The web learnt that a medicine needs a prescription only from the create's refusal | `GET /api/v1/pharmacy-inventory` rows: `medicineId.prescriptionRequired` (boolean, from the medicine; the create's own rule). Pharmacy and admin views; the customer view is unchanged |
+| 4 | The customer search put a phone or name into the URL (proxy logs) | `POST /api/v1/pharmacy-customers/search { search?, page?, limit≤100 }` → exactly the `GET /pharmacy-customers?search` answer (one handler, `listOf`), same guard (operational pharmacy), `Cache-Control: private, no-store`. The GET stays for the released app |
+| 5 | The cash memo lacked the seller and the payment | The pharmacy's order detail (and by-key's `order`) adds `bill: { pharmacy: { name, address, city, state, pincode, gstNumber, drugLicenseNumber } \| null, paymentMethod, paidAt }`; `paymentMethod` / `paidAt` only once `paymentStatus` is `paid` (`paymentSource` as marked paid, else the payment mode). Each line's batches were already on the order: `items[].batchAllocations: [{ batchId, batchNumber, expiryDate (YYYYMMDD), quantity }]` |
 | 3 | `GET /api/v1/pharmacy-orders/:id` showed the pharmacy a bare customer id | For a pharmacy caller: `customerId` populated `{ _id, name, phone }`, the name by the list's pharmacy-facing rule (`withPharmacyFacingCustomerNames`: the name the pharmacy typed, else masked). One reader, `PharmacyOrderService.pharmacyView`, also used by by-key. Admins and customers read it as before |
 
 **Exact shapes:**
@@ -6754,17 +6756,23 @@ every answer is as before.
 | S1 | A replay answers 201 with `replayed: true`, and for an online-paid order the rx order's `checkoutReplay` (its payment resumed when still payable) | The existing keyed order create does exactly this |
 | S2 | Only `orderType: 'in_store'` created by a pharmacy takes a key; a pharmacy's `online` order with a key stays 400 | The ask was the counter sale; `phase0`'s refusal check now sends `orderType: 'online'` |
 | S3 | `GET /pharmacy-orders/:id` for another pharmacy stays 403 `FORBIDDEN` (not the uniform 404) | Zero change for the released app; the new by-key routes are uniform (`unknown`) |
+| S5 | `bill.pharmacy` adds the drug licence number and the city, state and pincode (a pharmacy cash memo prints them); `paymentMethod` is the free text the pharmacy gave when marking paid (`cash`, `upi`, …), else the order's `paymentMode` | One read of the seller; nothing new stored |
 | S4 | The pharmacy's order detail populates the customer (the list already did); the released app reads `customerId` as text or `{ name, phone, _id }` alike (`ordersShared.ts` `toDisplayText`) and never sends it back | Checked in `pharmacy-app` |
 
 **Deploy:** run `sync-indexes` (builds `pharmacyorders` `pharmacyId_1_saleRequest.requestKey_1`, unique partial). Until then a
 keyed sale answers 503 `INDEXES_OUTDATED` (`assertUniqueIndex`); sales without a key are unaffected.
 
-**Checks:** `test/pharmacy-orders/r36-pharmacy-sale.integration.ts`, 5 checks:
+**GST:** order prices are GST-inclusive (`computeTotals`): `grandTotal = subtotal − discountTotal`; `taxTotal` (and each line's
+`taxAmount`, `lineTotal × gst / (100 + gst)` rounded per line) is the GST already inside the total, never added on top.
+
+**Checks:** `test/pharmacy-orders/r36-pharmacy-sale.integration.ts`, 6 checks:
 - without a key nothing changes; an `online` order with a key is still 400 and writes nothing;
 - the keyed sale (first, replay, another body 409, three racing repeats make one order, another pharmacy's same key is its own);
 - by-key (used with the pharmacy view, unknown, abandoned then 409 `REQUEST_ABANDONED`, abandoning a used key, another
   pharmacy's scope, a malformed key 400, a customer 403);
-- the order detail names the customer as the list does, the customer's own read unchanged, another pharmacy 403;
+- the order detail names the customer as the list does, the customer's own read unchanged (no `bill`), another pharmacy 403;
+  its `bill` (the seller; payment null until paid, then `upi` and the time) and the lines' batch numbers and expiry;
+- `POST /pharmacy-customers/search` equals the GET answer (with and without a search), a customer 403, a bad limit 400;
 - `prescriptionRequired` on inventory rows with and without search.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
