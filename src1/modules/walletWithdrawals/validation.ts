@@ -9,6 +9,8 @@ export const withdrawalRequestSchema = Joi.object({
   amountMinor: Joi.number().integer().min(1).max(100_000_000).required(),
   requestKey: key.required(),
   detailsVersion: version.required(),
+  /** r35 (WQ29): what the screen showed the owner would receive; 409 WITHDRAWAL_QUOTE_CHANGED when it differs now. */
+  expectedTransferMinor: Joi.number().integer().min(0).max(100_000_000),
 });
 export const withdrawalListQuerySchema = Joi.object({
   state: Joi.string().valid('requested', 'cancelled', 'rejected', 'paid', 'voided'),
@@ -27,6 +29,16 @@ export const withdrawalPaidSchema = Joi.object({
   detailsVersion: version.required(),
   expectedVersion: version.required(),
   requestKey: key.required(),
+  /** r35 (WQ29): already transferred although a dispute was recorded on held money: mark it paid (the money is owed back). */
+  disputeAcknowledged: Joi.boolean(),
 });
 /** §26.8.4: the admin's Recover of a disputed top-up. */
 export const recoverSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required(), requestKey: key.required() });
+
+/** r35 (§26.9, §26.10): the referral set-off, its by-key, the disputes list and the pharmacy's finance statement. */
+const walletKind = Joi.string().valid('pharmacy', 'lab', 'doctor');
+export const walletOwnerParamSchema = Joi.object({ kind: walletKind.required(), id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required() });
+export const walletOwnerKeyParamSchema = walletOwnerParamSchema.keys({ key: key.required() });
+export const setOffSchema = Joi.object({ amountMinor: Joi.number().integer().min(1).max(100_000_000).required(), requestKey: key.required() });
+export const disputesQuerySchema = Joi.object({ state: Joi.string().valid('flagged', 'recovered', 'blocked'), walletKind, limit: Joi.number().integer().min(1).max(200) });
+export const statementKind = Joi.string().valid('wallet', 'referral').default('wallet');

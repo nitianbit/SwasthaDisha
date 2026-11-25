@@ -14,7 +14,8 @@ import * as rv from '@/modules/referralCuts/validation';
 import { csvQuerySchema, payoutDetailsSchema, statementQuerySchema } from '@/modules/partners/validation/finance';
 import { mountWithdrawalRoutes } from '@/modules/walletWithdrawals/routes';
 import { setPharmacyPayoutDetails } from '@/modules/walletWithdrawals/service';
-import { recoverSchema } from '@/modules/walletWithdrawals/validation';
+import * as wv from '@/modules/walletWithdrawals/validation';
+import * as finance4 from '@/modules/assisted/controller/phase4f';
 import type { AuthRequest } from '@/modules/middleware/auth';
 
 /**
@@ -76,6 +77,10 @@ pharmacyAssistedRouter.put('/finance/payout-details', validate(payoutDetailsSche
   res.setHeader('Cache-Control', 'private, no-store');
   res.status(200).json({ success: true, data: await setPharmacyPayoutDetails(c.actorOf(req).pharmacyId, req.body) });
 }));
+// r35 (round 4f, §26.10): the pharmacy's Finance screen — wallet, referral, withdrawals and destination; one statement for either kind.
+pharmacyAssistedRouter.get('/finance', catchAsync(finance4.pharmacyFinance));
+pharmacyAssistedRouter.get('/finance/statement', validate(statementQuerySchema.keys({ kind: wv.statementKind }), 'query'), catchAsync(finance4.pharmacyStatement));
+pharmacyAssistedRouter.get('/finance/statement.csv', validate(csvQuerySchema.keys({ kind: wv.statementKind }), 'query'), catchAsync(finance4.pharmacyStatementCsv));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);
@@ -97,9 +102,20 @@ adminAssistedRouter.post('/wallet-lots/:lotId/chargeback', validate(v.lotIdParam
 adminAssistedRouter.post('/wallet-payments/:paymentId/chargeback', validate(v.paymentIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
   catchAsync(c.paymentChargeback));
 // r32 (§26.8.4): chargebacks are flagged only; the admin takes the money back explicitly (debit, receivable, freeze).
-adminAssistedRouter.post('/wallet-lots/:lotId/recover', validate(v.lotIdParamSchema, 'params'), validate(recoverSchema, 'body'), catchAsync(c.recoverLot));
-adminAssistedRouter.post('/wallet-payments/:paymentId/recover', validate(v.paymentIdParamSchema, 'params'), validate(recoverSchema, 'body'),
+adminAssistedRouter.post('/wallet-lots/:lotId/recover', validate(v.lotIdParamSchema, 'params'), validate(wv.recoverSchema, 'body'), catchAsync(c.recoverLot));
+adminAssistedRouter.post('/wallet-payments/:paymentId/recover', validate(v.paymentIdParamSchema, 'params'), validate(wv.recoverSchema, 'body'),
   catchAsync(c.recoverPayment));
+// r35 (round 4e, §26.9): a wallet's owed amount paid from the owner's referral earnings (REFERRAL_PAYOUTS_ENABLED), and its by-key.
+adminAssistedRouter.post('/wallets/:kind/:id/receivable/setoff-from-referral', validate(wv.walletOwnerParamSchema, 'params'), validate(wv.setOffSchema, 'body'),
+  catchAsync(finance4.adminSetOff));
+adminAssistedRouter.get('/wallets/:kind/:id/receivable/setoff-from-referral/by-key/:key', validate(wv.walletOwnerKeyParamSchema, 'params'),
+  catchAsync(finance4.adminSetOffByKey));
+adminAssistedRouter.post('/wallets/:kind/:id/receivable/setoff-from-referral/by-key/:key/abandon', validate(wv.walletOwnerKeyParamSchema, 'params'),
+  catchAsync(finance4.adminSetOffAbandon));
+// r35 (round 4f, §26.10): every top-up with a recorded card dispute (flagged, recovered or blocked).
+adminAssistedRouter.get('/wallet-disputes', validate(wv.disputesQuerySchema, 'query'), catchAsync(finance4.adminDisputes));
+// r35 (WQ29): a wallet's card top-ups credited without a lot (never withdrawable; recover one by its payment id).
+adminAssistedRouter.get('/wallets/:kind/:id/topups-without-lot', validate(wv.walletOwnerParamSchema, 'params'), catchAsync(finance4.adminTopupsWithoutLot));
 // r9: a top-up support already paid by hand is closed as compensated (never credited); and its by-key read.
 adminAssistedRouter.get('/wallet-payments/close-compensated/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(c.closeCompensatedByKey));
 adminAssistedRouter.post('/wallet-payments/:paymentId/close-compensated', validate(v.paymentIdParamSchema, 'params'), validate(v.closeCompensatedSchema, 'body'),

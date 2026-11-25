@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import { BASE32_ALPHABET } from '@/modules/common/utils/base32';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { couponFundedBy } from '@/modules/coupon/funding';
@@ -85,8 +86,6 @@ export interface AssistedConsultInput {
 export const storedAssistedKey = (a: PharmacyActor | BookerActor, key: string) => storedConsultKey(asBooker(a), key);
 export const assistedKeyScope = (a: PharmacyActor | BookerActor) => consultKeyScope(asBooker(a));
 
-/** RFC 4648 base32 (upper case, no padding): the Ref (§5.1) and the join link's MAC (5d, §27.8.1). */
-export const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 /** §5.1: 8 characters, RFC 4648 base32 (upper case, no padding). */
 export function newShortRef(): string {
   return Array.from(randomBytes(8)).map((b) => BASE32_ALPHABET[b & 31]).join('');

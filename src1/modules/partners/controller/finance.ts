@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { actorOf } from '@/modules/partners/controller';
 import * as f from '@/modules/partners/services/finance';
+import PartnerModel from '@/modules/partners/model';
+import { referralSummary } from '@/modules/referralCuts/payouts';
+import { withdrawalsSummary } from '@/modules/walletWithdrawals/service';
 
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
 /** A statement CSV answer (r33: shared with the referral statements). */
@@ -24,9 +27,13 @@ async function partnerAccount(req: Request) {
   f.assertPartnerFinanceReader(actor);
   return { actor, account: await f.findOwnerAccount('partner', actor.partnerId), full: actor.actorKind === 'admin' };
 }
+/** r35 (§26.10): a lab's finance adds its referral and withdrawals blocks (null for a partner that is not a lab). */
 export const partnerFinance = async (req: Request, res: Response, _n: NextFunction) => {
-  const { account, full } = await partnerAccount(req);
-  ok(res, await f.financeSummary(account, full));
+  const { actor, account, full } = await partnerAccount(req);
+  const lab = !!(await PartnerModel.exists({ _id: actor.partnerId, kind: 'lab' }));
+  const [summary, referral, withdrawals] = await Promise.all([f.financeSummary(account, full),
+    lab ? referralSummary('lab', actor.partnerId) : null, lab ? withdrawalsSummary('lab', actor.partnerId) : null]);
+  ok(res, { ...summary, referral, withdrawals });
 };
 export const partnerStatement = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.statementPage((await partnerAccount(req)).account, req.query as any));
@@ -46,7 +53,12 @@ export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: N
 // ── Doctor (specialist portal, their own account) ──
 const doctorOf = (req: Request) => String((req as AuthRequest).user!.specialistId || (req as AuthRequest).user!._id);
 const doctorAccount = (req: Request) => f.findOwnerAccount('doctor', doctorOf(req));
-export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeSummary(await doctorAccount(req), false));
+/** r35 (§26.10): the doctor's finance adds its referral and withdrawals blocks. */
+export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => {
+  const [summary, referral, withdrawals] = await Promise.all([f.financeSummary(await doctorAccount(req), false),
+    referralSummary('doctor', doctorOf(req)), withdrawalsSummary('doctor', doctorOf(req))]);
+  ok(res, { ...summary, referral, withdrawals });
+};
 export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   sendCsv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));

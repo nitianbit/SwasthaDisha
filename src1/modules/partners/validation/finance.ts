@@ -52,7 +52,8 @@ export const adjustmentSchema = Joi.object({
 });
 
 export const accountsQuerySchema = Joi.object({
-  ownerKind: Joi.string().valid('partner', 'doctor').optional(),
+  // r35 (§26.9): the referral owner kinds too, and `referral` for all three.
+  ownerKind: Joi.string().valid('partner', 'doctor', 'pharmacy_referral', 'lab_referral', 'doctor_referral', 'referral').optional(),
   due: Joi.string().valid('true', 'false').optional(),
   search: Joi.string().trim().max(100).allow('').optional(),
   detailsState: Joi.string().valid('none', 'unverified', 'verified').optional(),

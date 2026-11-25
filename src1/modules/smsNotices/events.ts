@@ -8,7 +8,7 @@ import { appointmentIntervalOf, hasPrescription, slotsOf } from '@/modules/assis
 import { unpaidCardBooking } from '@/modules/assisted/views';
 import { isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { isDeskRow, isWalkIn, partnerOriginOf } from '@/modules/assisted/deskViews';
-import { IST_OFFSET_MS, istDateIso, istTimeHhmm } from '@/modules/common/utils/istDate';
+import { IST_OFFSET_MS, businessClock, istDateIso, istTimeHhmm } from '@/modules/common/utils/istDate';
 import { SmsNoticeModel, type ISmsNotice, type SmsEvent } from '@/modules/smsNotices/model';
 import { enqueueSms, setSmsComposer, type SmsComposer } from '@/modules/smsNotices/outbox';
 import { smsFlags } from '@/modules/smsNotices/flags';
@@ -77,7 +77,7 @@ export async function smsHooksSettled(): Promise<void> {
 }
 
 /** r34: a version, or a version with its due time (the reminder). */
-type Version = string | { version: string; dueAt: Date } | null;
+type Version = string | { version: string; dueAt: Date; rearmSkipped?: boolean } | null;
 function queue(kind: Kind, b: Row | null | undefined, event: NoticeEvent, version: () => Promise<Version> | Version,
   recipientUserId?: string): Promise<void> {
   const p = (async () => {
@@ -129,8 +129,9 @@ export function reminderDueAt(start: Date, now: Date): Date | null {
  */
 export const smsReminder = (kind: Kind, b: Row | null | undefined) => (b?.bookingKind === 'instant' ? Promise.resolve() : queue(kind, b, 'reminder', async () => {
   const start = await startOf(kind, b!);
-  const dueAt = start ? reminderDueAt(start, new Date()) : null;
-  return start && dueAt ? { version: minutesOf(start), dueAt } : null;
+  const dueAt = start ? reminderDueAt(start, new Date(businessClock.now())) : null;
+  // r34c: one row per visit time; one skipped when the visit moved away is armed again when it moves back (rearmSkipped).
+  return start && dueAt ? { version: minutesOf(start), dueAt, rearmSkipped: true } : null;
 }));
 
 /** Booked and paid (a wallet create, a card confirmation, an instant acceptance, a desk booking with a slot); r34: its reminder. */

@@ -16,7 +16,7 @@ import PartnerOrgModel from '@/modules/partners/model';
 import SpecialistModel from '@/modules/specialists/model';
 import { SettlementAccountModel, SettlementEventModel, type ISettlementAccount } from '@/modules/partners/model/settlement';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
-import { destinationLabel, setPayoutDetails, type PayoutDetailsInput } from '@/modules/partners/services/finance';
+import { accountView, destinationLabel, setPayoutDetails, type PayoutDetailsInput } from '@/modules/partners/services/finance';
 import { isRealDate, istDate } from '@/modules/partners/services/slots';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -63,9 +63,14 @@ async function ownerName(kind: WithdrawalWalletKind, id: string): Promise<string
 async function homeAccount(kind: WithdrawalWalletKind, id: string): Promise<ISettlementAccount> {
   return ensureSettlementAccount(HOME_KIND[kind], lower(id), await ownerName(kind, id));
 }
+/**
+ * The owner's destination: its state, one masked line, the version to send back, and (r35, WQ29) the owner's own details
+ * as the finance reads show them (`accountName`, `ifsc`, `bankName`, `accountNumberLast4`, `accountNumberMasked`; or
+ * `upiId`, `accountName`) so the payout form can start filled; never the full account number.
+ */
 const destinationOf = (a: ISettlementAccount | null) => (a?.payoutDetails
-  ? { state: a.payoutDetailsState, masked: destinationLabel(a.payoutDetails), detailsVersion: a.payoutDetailsVersion ?? 0 }
-  : { state: 'none' as const, masked: null, detailsVersion: a?.payoutDetailsVersion ?? 0 });
+  ? { state: a.payoutDetailsState, masked: destinationLabel(a.payoutDetails), detailsVersion: a.payoutDetailsVersion ?? 0, details: accountView(a, false).payoutDetails }
+  : { state: 'none' as const, masked: null, detailsVersion: a?.payoutDetailsVersion ?? 0, details: null });
 
 /** Writers fail closed until sync-indexes has run (503 INDEXES_OUTDATED). */
 async function assertWithdrawalIndexes(kind: WithdrawalWalletKind): Promise<void> {
@@ -90,7 +95,7 @@ export function withdrawalView(w: IWalletWithdrawal) {
 const adminView = (w: IWalletWithdrawal) => ({ ...withdrawalView(w), walletRef: w.walletRef, requestedBy: w.requestedBy,
   destination: w.destination, holdEntryId: w.holdEntryId, releaseEntryId: w.releaseEntryId ?? null, voidEntryId: w.voidEntryId ?? null,
   paid: w.paid ? { method: w.paid.method, reference: w.paid.reference, paidOn: w.paid.paidOn, note: w.paid.note ?? null, by: w.paid.by, at: w.paid.at,
-    detailsVersion: w.paid.detailsVersion } : null });
+    detailsVersion: w.paid.detailsVersion, ...(w.paid.disputeAcknowledged ? { disputeAcknowledged: true, disputedMinor: w.paid.disputedMinor ?? 0 } : {}) } : null });
 const walletOut = (store: WalletStore, w: unknown) => {
   const st = store.state(w);
   return { balanceMinor: st.balanceMinor, withdrawableMinor: st.withdrawableMinor, receivableMinor: st.receivableMinor, frozen: st.frozen };
@@ -113,6 +118,30 @@ async function planTake(ref: WalletRef, amount: number, now: Date, s: ClientSess
 
 // ── Owner ──
 
+/** r35 (§26.10): the owner's home account destination (masked), read only. */
+export async function destinationFor(kind: WithdrawalWalletKind, id: string) {
+  return destinationOf(await SettlementAccountModel.findOne({ ownerKind: HOME_KIND[kind], ownerId: lower(id) }).lean() as ISettlementAccount | null);
+}
+
+/** r35 (§26.10): the wallet block of the finance reads — the balance, card money withdrawable now and later, what is owed. */
+export async function walletSummary(kind: WithdrawalWalletKind, id: string, now: Date = new Date()) {
+  const store = storeOf(kind, id);
+  const w = await store.findIn(null);
+  const st = w ? store.state(w) : { balanceMinor: 0, receivableMinor: 0, frozen: false };
+  const { nowMinor, later } = await withdrawableNowOf(store.ref, now);
+  return { balanceMinor: st.balanceMinor, withdrawableNowMinor: nowMinor, availableLater: later, receivableMinor: st.receivableMinor, frozen: st.frozen };
+}
+
+/** r35 (§26.10): the withdrawals block — requested ones waiting for an admin, the last paid one, the switch. */
+export async function withdrawalsSummary(kind: WithdrawalWalletKind, id: string) {
+  const [openCount, lastPaid] = await Promise.all([
+    WalletWithdrawalModel.countDocuments({ ...refOf(kind, id), state: 'requested' }),
+    WalletWithdrawalModel.findOne({ ...refOf(kind, id), state: { $in: ['paid', 'voided'] }, 'paid.at': { $exists: true } }).sort({ 'paid.at': -1 })
+      .select({ 'paid.at': 1 }).lean() as unknown as Promise<{ paid?: { at?: Date } } | null>,
+  ]);
+  return { openCount, lastPaidAt: lastPaid?.paid?.at ?? null, enabled: assistedFlags.withdrawals() };
+}
+
 /**
  * GET …/wallet/withdrawable: what may be withdrawn now (card money past its 7-day hold), what becomes withdrawable later,
  * the next allowed request time, the destination (masked) and, with `?amountMinor=`, the quote (gross, card fee, transfer).
@@ -121,13 +150,22 @@ export async function withdrawableOf(o: WithdrawalOwner, q: { amountMinor?: numb
   const store = storeOf(o.kind, o.id);
   const { nowMinor, later } = await withdrawableNowOf(store.ref, now);
   const last = await lastCounted(o.kind, o.id, now, null);
-  const account = await SettlementAccountModel.findOne({ ownerKind: HOME_KIND[o.kind], ownerId: lower(o.id) }).lean() as ISettlementAccount | null;
+  const destination = await destinationFor(o.kind, o.id);
   const amount = Number(q.amountMinor);
   const quote = Number.isSafeInteger(amount) && amount > 0 ? await planTake(store.ref, amount, now, null) : null;
+  let reason: string | null = null;
+  if (quote) {
+    // r35 (WQ29): why a request of this amount would be refused now (the request's own order of checks), else null.
+    const w = await store.findIn(null);
+    const st = w ? store.state(w) : null;
+    reason = !assistedFlags.withdrawals() ? 'WITHDRAWALS_DISABLED' : amount < withdrawalMinMinor() ? 'BELOW_MINIMUM'
+      : destination.state !== 'verified' ? 'DESTINATION_NOT_VERIFIED' : st && st.receivableMinor > 0 ? 'WALLET_RECEIVABLE' : st?.frozen ? 'WALLET_FROZEN'
+        : last ? 'WEEKLY_LIMIT' : quote.covered !== amount ? 'ABOVE_WITHDRAWABLE' : null;
+  }
   return {
     enabled: assistedFlags.withdrawals(), minimumMinor: withdrawalMinMinor(), withdrawableNowMinor: nowMinor, availableLater: later,
-    nextAllowedAt: last ? new Date(new Date(last.createdAt!).getTime() + WEEK_MS) : null, destination: destinationOf(account),
-    ...(quote ? { quote: { grossMinor: amount, feeMinor: quote.feeMinor, transferMinor: amount - quote.feeMinor, available: quote.covered === amount } } : {}),
+    nextAllowedAt: last ? new Date(new Date(last.createdAt!).getTime() + WEEK_MS) : null, destination,
+    ...(quote ? { quote: { grossMinor: amount, feeMinor: quote.feeMinor, transferMinor: amount - quote.feeMinor, available: reason === null, reason } } : {}),
   };
 }
 
@@ -135,7 +173,8 @@ export async function withdrawableOf(o: WithdrawalOwner, q: { amountMinor?: numb
  * POST …/wallet/withdrawals { amountMinor, requestKey, detailsVersion } — 201 `{ withdrawal, wallet, replayed }`; the same
  * key and amount answers the same withdrawal (200, replayed); another amount 409 IDEMPOTENCY_KEY_REUSED.
  */
-export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor: number; requestKey: string; detailsVersion: number }, now: Date = new Date()) {
+export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor: number; requestKey: string; detailsVersion: number; expectedTransferMinor?: number },
+  now: Date = new Date()) {
   if (!assistedFlags.withdrawals()) throw err(503, 'WITHDRAWALS_DISABLED', 'Withdrawals are not available yet');
   const amount = Number(body.amountMinor);
   const min = withdrawalMinMinor();
@@ -144,7 +183,9 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
   }
   await assertWithdrawalIndexes(o.kind);
   const store = storeOf(o.kind, o.id);
-  const requestHash = requestHashOf({ kind: 'wallet_withdrawal', amountMinor: amount });
+  // r35 (WQ29): `expectedTransferMinor` (what the screen showed) is part of the request only when sent.
+  const expected = body.expectedTransferMinor === undefined ? undefined : Number(body.expectedTransferMinor);
+  const requestHash = requestHashOf({ kind: 'wallet_withdrawal', amountMinor: amount, ...(expected !== undefined ? { expectedTransferMinor: expected } : {}) });
   const replay = async (s: ClientSession | null) => {
     const w = await WalletWithdrawalModel.findOne({ ...refOf(o.kind, o.id), requestKey: { $eq: body.requestKey } }).session(s).lean() as IWalletWithdrawal | null;
     if (!w) return null;
@@ -160,11 +201,15 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
       const again = await replay(s);
       if (again) return again;
       await claimRequestKey(keyScope(o.kind, o.id), body.requestKey, s);
-      const a = await SettlementAccountModel.findById(account._id).session(s).lean() as ISettlementAccount | null;
-      if (!a?.payoutDetails || a.payoutDetailsState !== 'verified') {
-        throw err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Add your bank or UPI details and wait for Jansetu to verify them before withdrawing');
-      }
-      if ((a.payoutDetailsVersion ?? 0) !== Number(body.detailsVersion)) {
+      // r35 (WQ29): the destination is checked AND the home account written (its finance version) in this transaction, so a
+      // payout-details change (refused while a withdrawal is requested, 409 WITHDRAWAL_OPEN) and a request never pass each other.
+      const a = await SettlementAccountModel.findOneAndUpdate({ _id: account._id, payoutDetailsState: 'verified', payoutDetailsVersion: Number(body.detailsVersion) },
+        { $inc: { financeVersion: 1 } }, { new: true, session: s }).lean() as ISettlementAccount | null;
+      if (!a?.payoutDetails) {
+        const now2 = await SettlementAccountModel.findById(account._id).session(s).lean() as ISettlementAccount | null;
+        if (!now2?.payoutDetails || now2.payoutDetailsState !== 'verified') {
+          throw err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Add your bank or UPI details and wait for Jansetu to verify them before withdrawing');
+        }
         throw err(409, 'PAYOUT_DETAILS_CHANGED', 'Your payout details changed since they were loaded; review them again');
       }
       const w = store.state(await store.walletIn(s));
@@ -181,6 +226,10 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
       }
       const id = new Types.ObjectId();
       const transfer = amount - plan.feeMinor;
+      if (expected !== undefined && expected !== transfer) {
+        throw err(409, 'WITHDRAWAL_QUOTE_CHANGED', 'The card fee changed since the screen was loaded; review the new amount',
+          { details: { grossMinor: amount, feeMinor: plan.feeMinor, transferMinor: transfer } });
+      }
       const posted = await postMovementIn(store, { kind: 'withdrawal_hold', amountMinor: amount, operationKey: `withdrawal:${String(id)}:hold`,
         referenceType: 'wallet_withdrawal', referenceId: `${String(id)}:hold`, lotsWithdrawableAt: now,
         description: `Withdrawal to your bank: ₹${rupees(amount)} (card fee ₹${rupees(plan.feeMinor)} on unspent card money; you receive ₹${rupees(transfer)})` }, s);
@@ -311,13 +360,15 @@ export async function adminReject(adminId: string, id: string, body: { reason: s
  * `withdrawal_paid` SettlementEvent on the home account. The same key and content again answers it (replayed).
  */
 export async function adminPaid(adminId: string, id: string, body: { method: 'bank_transfer' | 'upi'; reference: string; paidOn: string; note?: string;
-  detailsVersion: number; expectedVersion: number; requestKey: string }) {
+  detailsVersion: number; expectedVersion: number; requestKey: string; disputeAcknowledged?: boolean }) {
+  const ack = body.disputeAcknowledged === true;
   const reference = String(body.reference ?? '').trim();
   if (reference.length < 4 || reference.length > 64) throw err(400, 'INVALID_REFERENCE', 'Reference (UTR) must be 4 to 64 characters');
   if (!isRealDate(body.paidOn) || body.paidOn > istDate(new Date())) throw err(400, 'INVALID_DATE', 'paidOn must be a real date, not in the future');
   await assertUniqueIndex(WalletWithdrawalModel, { 'destination.homeAccountId': 1, 'paid.reference': 1 });
   const note = body.note?.trim() || undefined;
-  const requestHash = requestHashOf({ kind: 'withdrawal_paid', method: body.method, reference, paidOn: body.paidOn, note: note ?? null, detailsVersion: body.detailsVersion });
+  const requestHash = requestHashOf({ kind: 'withdrawal_paid', method: body.method, reference, paidOn: body.paidOn, note: note ?? null, detailsVersion: body.detailsVersion,
+    ...(ack ? { disputeAcknowledged: true } : {}) });
   try {
     return await walletTransaction(async (s) => {
       const w = await adminRow(id, s);
@@ -327,10 +378,14 @@ export async function adminPaid(adminId: string, id: string, body: { method: 'ba
       }
       if (w.state !== 'requested') throw err(409, 'WITHDRAWAL_NOT_REQUESTED', `This withdrawal is ${w.state}`);
       if (w.version !== body.expectedVersion) throw err(409, 'WITHDRAWAL_CHANGED', 'This withdrawal changed since it was loaded; review it again');
-      // r32b: card money whose dispute was recorded since the request is not paid out (reject it, or Recover first).
-      if (await WalletTopupLotModel.exists({ _id: { $in: w.lotAllocations.map((l) => l.lotId) },
-        $or: [{ disputeState: { $ne: 'none' } }, { chargedBackAt: { $exists: true } }] }).session(s)) {
-        throw err(409, 'WITHDRAWAL_LOT_DISPUTED', 'A card dispute was recorded on money this withdrawal holds; reject it instead of paying it');
+      // r32b: card money whose dispute was recorded since the request is not paid out (reject it, or Recover first). r35
+      // (WQ29): unless the admin already transferred it and says so (`disputeAcknowledged`): it is marked paid, nothing more
+      // is taken from the held lots, and that money is owed back — the lot's Recover makes the receivable (then set-off).
+      const disputed = await WalletTopupLotModel.find({ _id: { $in: w.lotAllocations.map((l) => l.lotId) },
+        $or: [{ disputeState: { $ne: 'none' } }, { chargedBackAt: { $exists: true } }] }).select({ _id: 1 }).session(s).lean();
+      const disputedMinor = w.lotAllocations.filter((l) => disputed.some((d) => String(d._id) === l.lotId)).reduce((x, l) => x + l.amountMinor, 0);
+      if (disputed.length && !ack) {
+        throw err(409, 'WITHDRAWAL_LOT_DISPUTED', 'A card dispute was recorded on money this withdrawal holds; reject it, or (if already transferred) mark it paid with disputeAcknowledged');
       }
       const a = await SettlementAccountModel.findById(w.destination.homeAccountId).session(s).lean() as ISettlementAccount | null;
       if (!a?.payoutDetails || a.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Verify the payout details before recording the transfer');
@@ -341,12 +396,14 @@ export async function adminPaid(adminId: string, id: string, body: { method: 'ba
       const at = new Date();
       const moved = await WalletWithdrawalModel.updateOne({ _id: w._id, state: 'requested', version: w.version },
         { $set: { state: 'paid', paid: { method: body.method, reference, paidOn: body.paidOn, ...(note ? { note } : {}), by: lower(adminId), at,
-          detailsVersion: a.payoutDetailsVersion ?? 0, requestKey: body.requestKey, requestHash } }, $inc: { version: 1 } }, { session: s });
+          detailsVersion: a.payoutDetailsVersion ?? 0, requestKey: body.requestKey, requestHash, ...(disputed.length ? { disputeAcknowledged: true, disputedMinor } : {}) } },
+          $inc: { version: 1 } }, { session: s });
       if (moved.modifiedCount !== 1) throw err(409, 'WITHDRAWAL_CHANGED', 'This withdrawal changed since it was loaded; review it again');
       await SettlementEventModel.create([{ settlementAccountId: String(a._id), action: 'withdrawal_paid', byKind: 'admin', by: lower(adminId), at,
         detail: { withdrawalId: String(w._id), grossMinor: w.grossMinor, feeMinor: w.feeMinor, transferMinor: w.transferMinor, method: body.method, reference,
-          paidOn: body.paidOn } }], { session: s });
-      await audit(w.walletRef.kind, w.walletRef.id, { kind: 'admin', id: adminId }, 'withdrawal.paid', String(w._id), { transferMinor: w.transferMinor, reference }, s);
+          paidOn: body.paidOn, ...(disputed.length ? { disputeAcknowledged: true, disputedMinor } : {}) } }], { session: s });
+      await audit(w.walletRef.kind, w.walletRef.id, { kind: 'admin', id: adminId }, 'withdrawal.paid', String(w._id), { transferMinor: w.transferMinor, reference,
+        ...(disputed.length ? { disputeAcknowledged: true, disputedMinor } : {}) }, s);
       return { withdrawal: adminView(await adminRow(id, s)), replayed: false };
     });
   } catch (e) {

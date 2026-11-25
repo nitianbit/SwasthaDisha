@@ -4,7 +4,7 @@ import logger from '@/services/logger';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import BookingModel from '@/modules/bookings/model';
 import { instantHeldEnds, joinOpenAt, joinWindowOf, slotsOf } from '@/modules/assisted/rxAccess';
-import { BASE32_ALPHABET } from '@/modules/assisted/consultations';
+import { base32Prefix } from '@/modules/common/utils/base32';
 import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { hitClient, OtpLimitError } from '@/modules/otp/throttle';
 import { smsFlags } from '@/modules/smsNotices/flags';
@@ -25,14 +25,7 @@ const TOKEN = /^([A-Z2-7]{8})-([A-Z2-7]{20})$/;
 
 /** The first 100 bits of the MAC, RFC 4648 base32 (20 characters, upper case, no padding). */
 function macOf(bookingId: string, linkVersion: unknown, secret: string): string {
-  const d = createHmac('sha256', secret).update(`${String(bookingId).toLowerCase()}:${Number(linkVersion)}`).digest();
-  let out = '';
-  for (let i = 0; i < 20; i++) {
-    const bit = i * 5;
-    const two = (d[bit >> 3]! << 8) | d[(bit >> 3) + 1]!;
-    out += BASE32_ALPHABET[(two >> (11 - (bit & 7))) & 31];
-  }
-  return out;
+  return base32Prefix(createHmac('sha256', secret).update(`${String(bookingId).toLowerCase()}:${Number(linkVersion)}`).digest(), 20);
 }
 
 /** The token of a partner-made consultation; null without the secret, a Ref or a link version. */

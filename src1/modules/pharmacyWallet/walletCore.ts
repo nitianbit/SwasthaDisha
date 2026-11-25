@@ -234,6 +234,30 @@ export async function postMovementIn<W, E>(store: WalletStore<W, E>, m: Movement
   return { entry, wallet: updated, replayed: false };
 }
 
+/**
+ * r35 (§26.9, M8): an owed receivable paid from elsewhere (the owner's referral earnings), in the caller's transaction,
+ * exactly once per operation key: the receivable falls by the amount and the balance does not move (the money never
+ * passed through the wallet); one `receivable_setoff` entry. Refused above what is owed (409 SETOFF_ABOVE_AVAILABLE).
+ */
+export async function setOffReceivableIn<W, E>(store: WalletStore<W, E>, m: { amountMinor: number; operationKey: string; referenceType: string;
+  referenceId: string; description: string; actor?: { kind: 'admin'; id: string } }, s: ClientSession): Promise<Posted<W, E>> {
+  if (!Number.isSafeInteger(m.amountMinor) || m.amountMinor <= 0) throw err(500, 'INVALID_AMOUNT', 'A wallet movement needs a positive paise amount');
+  const prior = await store.entryIn(m.operationKey, s);
+  if (prior) return { entry: prior, wallet: (await store.findIn(s)) as W, replayed: true };
+  const wallet = await store.walletIn(s);
+  const w = store.state(wallet);
+  if (m.amountMinor > w.receivableMinor) {
+    throw Object.assign(err(409, 'SETOFF_ABOVE_AVAILABLE', `This wallet owes ₹${(w.receivableMinor / 100).toFixed(2)}; a set-off cannot exceed it`),
+      { details: { receivableMinor: w.receivableMinor } });
+  }
+  const updated = await store.writeIn(wallet, { receivableMinor: w.receivableMinor - m.amountMinor }, s);
+  if (!updated) throw changed();
+  const entry = await store.insertEntryIn(wallet, { kind: 'receivable_setoff', amountMinor: m.amountMinor, signedMinor: 0, beforeMinor: w.balanceMinor,
+    afterMinor: w.balanceMinor, referenceType: m.referenceType, referenceId: m.referenceId, description: m.description, operationKey: m.operationKey,
+    receivableDeltaMinor: -m.amountMinor, withdrawableDeltaMinor: 0, ...(m.actor ? { actor: m.actor } : {}) }, s);
+  return { entry, wallet: updated, replayed: false };
+}
+
 /** Recomputes `withdrawableMinor` from the lots (a lot's fee became known, or a dispute was flagged), in the transaction. */
 export async function refreshWithdrawableIn(store: WalletStore, s: ClientSession): Promise<void> {
   const wallet = await store.findIn(s);
