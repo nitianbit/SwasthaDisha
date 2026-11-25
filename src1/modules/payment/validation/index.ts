@@ -20,7 +20,9 @@ export const verifyPaymentSchema = Joi.object({
     'string.empty': 'razorpaySignature is required',
     'any.required': 'razorpaySignature is required',
   }),
-  module: Joi.string().trim().valid('external-bookings').optional(),
+  // Informational only: the released apps send 'external-bookings' (lab/consultation bookings) or 'pharmacy-wallet'
+  // (pharmacy wallet top-up, S6). What a payment pays for is decided from the stored payment record, never from this.
+  module: Joi.string().trim().valid('external-bookings', 'pharmacy-wallet').optional(),
 });
 
 /** POST /payments/reconcile (W3b): settle a payment from the gateway's own record of the order. */
