@@ -311,7 +311,9 @@ async function main() {
     };
 
     // ── The outbox and the drain ──
-    const rowsOf = async (id: string) => await SmsNoticeModel.find({ bookingId: String(id).toLowerCase() }).sort({ createdAt: 1, _id: 1 }).lean() as any[];
+    // r34: the visit reminders (5c) queued beside "booked" and "moved" are checked by r34-phase5cd; these lists leave them out.
+    const rowsOf = async (id: string) => await SmsNoticeModel.find({ bookingId: String(id).toLowerCase(), event: { $ne: 'reminder' } })
+      .sort({ createdAt: 1, _id: 1 }).lean() as any[];
     const events = async (id: string) => (await rowsOf(id)).map((r) => `${r.event}:${r.version}`);
     /** One drain tick; the messages the gateway received in it. */
     const drain = async (now?: Date) => { const before = sms.sent.length; const out = await drainSmsOnce(now); return { out, sent: sms.sent.slice(before) }; };
@@ -704,7 +706,8 @@ async function main() {
       const r = await consultP();
       record((await drain()).sent);
       const list = (await expect('ADMIN', 'GET', `/api/v1/admin/sms-notices?bookingKind=booking&bookingId=${r.booking._id}`, 200)).json.data;
-      assert.equal(list.length, 1);
+      // r34: the pharmacy create also queued the visit reminder (5c), due 2 h before the slot.
+      assert.deepEqual(list.map((x: any) => [x.event, x.state]), [['booked', 'sent'], ['reminder', 'queued']]);
       assert.deepEqual(Object.keys(list[0]).sort(), ['attempts', 'createdAt', 'dueAt', 'event', 'lang', 'message', 'reason', 'sentAt', 'state', 'version']);
       assert.deepEqual([list[0].event, list[0].state, list[0].message], ['booked', 'sent', 'BOOKED']);
       await expect('ADMIN', 'GET', '/api/v1/admin/sms-notices?bookingKind=booking&bookingId=nope', 400, undefined, 'VALIDATION_ERROR');

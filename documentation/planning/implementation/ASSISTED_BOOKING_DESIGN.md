@@ -7121,3 +7121,16 @@ every command path; a fake gateway through `setSmsProvider`):
 12. without `JOIN_LINK_SECRET` a valid token gets the page;
 13. logs: the request logger prints `GET /j/:token` (`/J/` too); the route logs the outcome only; no token, phone or
     text in any log line, and no token, phone or name in any outbox row.
+
+**The 5b suite** (`r31-phase5b`, 19 checks) compared each booking's exact list of rows. Its row lists now leave out
+`reminder` rows (this suite checks them), and its admin-read check expects the pharmacy create's queued reminder next to
+the sent "booked" (the real create path queues it). Nothing else in it changed; 19 of 19 pass.
+
+**Mutation check.** Each of these, undone alone, makes exactly its check fail: the request logger's redaction (13), the
+window's start in `/j/` (9), the night rule (1), the reminder's version test at send (4).
+
+**Full regression** (`prun.sh … 2` on `db05fad8`): 83 suites, 80 passed, `tsc` 17 as before. The other three:
+- `r31-phase5b`: the exact row lists above (fixed in the suite, then 19 of 19);
+- `r10f-card-last` (a Meet call bounded in time): run alone, 2 of 2;
+- `phase0` (finding 6, a slow converter): the known load race in that test; it fails the same way on the base
+  `6a8574e9` (r30 comparison) and touches nothing of phase 5.
