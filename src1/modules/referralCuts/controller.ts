@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { assertAdminToolsOn, assistedFlags } from '@/modules/assisted/flags';
-import { assertPartnerFinanceReader, financeSummary, findOwnerAccount, statementCsv, statementPage } from '@/modules/partners/services/finance';
+import { assertPartnerFinanceReader, findOwnerAccount, statementCsv, statementPage } from '@/modules/partners/services/finance';
+import { referralSummary } from '@/modules/referralCuts/payouts';
 import { csvName, period, sendCsv } from '@/modules/partners/controller/finance';
 import { actorOf as partnerActorOf } from '@/modules/partners/controller';
 import PartnerModel from '@/modules/partners/model';
@@ -48,8 +49,8 @@ function referralReads(readerOf: (req: Request) => Reader | Promise<Reader>) {
       send(res, await listRules(r.kind, r.id), { switches: switches() });
     },
     summary: async (req: Request, res: Response) => {
-      const f = await financeSummary((await accountOf(req)).account, false);
-      send(res, { earnedMinor: f.totals.earnedMinor, paidMinor: f.totals.paidOutMinor, dueMinor: f.balanceMinor, ...switches() });
+      const r = await readerOf(req);
+      send(res, await referralSummary(r.kind, r.id));
     },
     statement: async (req: Request, res: Response) => {
       const page = await statementPage((await accountOf(req)).account, req.query as never);

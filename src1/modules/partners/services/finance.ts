@@ -7,6 +7,7 @@ import {
   isReferralOwnerKind, type SettlementOwnerKind,
 } from '@/modules/partners/model/settlement';
 import { assistedFlags } from '@/modules/assisted/flags';
+import { WalletWithdrawalModel } from '@/modules/walletWithdrawals/model';
 import type { ReferralCategory } from '@/modules/assisted/types';
 import PartnerOrgModel from '@/modules/partners/model';
 import SpecialistModel from '@/modules/specialists/model';
@@ -40,7 +41,7 @@ export const CSV_MAX_LINES = 5000;
 const canon = (id: string) => String(id).toLowerCase();
 
 /** Reads that must agree with each other (rows and balances) come from one database snapshot. */
-async function inSnapshot<T>(fn: (s: ClientSession) => Promise<T>): Promise<T> {
+export async function inSnapshot<T>(fn: (s: ClientSession) => Promise<T>): Promise<T> {
   const session = await mongoose.startSession();
   try {
     let out!: T;
@@ -223,6 +224,8 @@ async function describe(entries: ILedgerEntry[]): Promise<Map<string, Described>
 const FALLBACK: Record<string, string> = {
   partner_lab_booking: 'Lab booking', consultation: 'Consultation', payout: 'Payout', payout_void: 'Payout voided', admin_adjustment: 'Adjustment',
   referral_consultation: 'Referral · consultation', referral_lab_booking: 'Referral · lab booking',
+  // r35 (§26.9): referral earnings that paid a wallet amount owed (a lost card dispute).
+  receivable_setoff: 'Owed wallet amount paid from referral earnings',
 };
 
 /** Balance after `e` = Σ every entry at or before it in (at, _id) order — independent of any date filter. */
@@ -243,19 +246,19 @@ async function balanceBefore(accountId: string, at: Date, s: ClientSession): Pro
   return agg[0]?.total ?? 0;
 }
 
-function parseCursor(c?: string): { at: Date; id: Types.ObjectId } | null {
+export function parseCursor(c?: string): { at: Date; id: Types.ObjectId } | null {
   if (!c) return null;
   const [ms, id] = c.split('_');
   if (!/^\d{1,15}$/.test(ms ?? '') || !Types.ObjectId.isValid(id ?? '')) throw err(400, 'INVALID_CURSOR', 'Invalid statement cursor');
   return { at: new Date(Number(ms)), id: new Types.ObjectId(id) };
 }
 
-/** IST calendar range → instants [from 00:00, to+1 00:00). */
-function range(from?: string, to?: string): Record<string, unknown> {
+/** IST calendar range → instants [from 00:00, to+1 00:00), on `field` (r35: the wallet statement filters `createdAt`). */
+export function range(from?: string, to?: string, field = 'at'): Record<string, unknown> {
   const q: Record<string, Date> = {};
   if (from) { if (!isRealDate(from)) throw err(400, 'INVALID_DATE', 'from must be a real date'); q.$gte = new Date(`${from}T00:00:00+05:30`); }
   if (to) { if (!isRealDate(to)) throw err(400, 'INVALID_DATE', 'to must be a real date'); q.$lt = new Date(new Date(`${to}T00:00:00+05:30`).getTime() + 86_400_000); }
-  return Object.keys(q).length ? { at: q } : {};
+  return Object.keys(q).length ? { [field]: q } : {};
 }
 
 /** Newest first, with the running balance after each line; `nextCursor` pages further back. */
@@ -296,14 +299,31 @@ const cell = (v: unknown) => {
 };
 const istStamp = (d: Date) => new Date(new Date(d).getTime() + 330 * 60_000).toISOString().slice(0, 16).replace('T', ' ');
 
+/** One CSV row of a statement (r35: the ledger's and the wallet's), in paise. */
+export interface CsvLine { at: Date; type: string; description: string; reference?: string; note?: string; amountMinor: number }
+/**
+ * r35: the ONE statement CSV writer — the header, the opening balance, each row with the running balance, the closing
+ * balance (cells quoted, formula-leading text neutralised). The ledger statement and the pharmacy wallet statement use it.
+ */
+export function statementCsvOf(opening: number, lines: CsvLine[]): string {
+  let bal = opening;
+  const rows = [CSV_HEADER, ['', 'Opening balance', '', '', '', '', rupees(bal)].map(cell).join(',')];
+  for (const l of lines) {
+    bal += l.amountMinor;
+    rows.push([istStamp(l.at), l.type, l.description, l.reference, l.note, rupees(l.amountMinor), rupees(bal)].map(cell).join(','));
+  }
+  rows.push(['', 'Closing balance', '', '', '', '', rupees(bal)].map(cell).join(','));
+  return rows.join('\n') + '\n';
+}
+const CSV_HEADER = ['Date (IST)', 'Type', 'Description', 'Reference', 'Note', 'Amount (INR)', 'Balance (INR)'].map((v) => cell(v)).join(',');
+
 /**
  * Oldest first for a period, with opening (Σ before the period) and closing balance — even for a period without
  * activity. Rows and balances come from one snapshot. A period with more than CSV_MAX_LINES entries is refused (narrow
  * the period) rather than silently cut.
  */
 export async function statementCsv(account: ISettlementAccount | null, opts: { from?: string; to?: string }): Promise<string> {
-  const header = ['Date (IST)', 'Type', 'Description', 'Reference', 'Note', 'Amount (INR)', 'Balance (INR)'].map(cell).join(',');
-  if (!account) return header + '\n';
+  if (!account) return CSV_HEADER + '\n';
   const id = String(account._id);
   const period = range(opts.from, opts.to) as { at?: { $gte?: Date; $lt?: Date } };
   const { entries, opening } = await inSnapshot(async (s) => {
@@ -314,15 +334,8 @@ export async function statementCsv(account: ISettlementAccount | null, opts: { f
     return { entries: rows, opening: period.at?.$gte ? await balanceBefore(id, period.at.$gte, s) : 0 };
   });
   const labels = await describe(entries);
-  let bal = opening;
-  const rows = [header, ['', 'Opening balance', '', '', '', '', rupees(bal)].map(cell).join(',')];
-  for (const e of entries) {
-    bal += e.amountMinor;
-    rows.push([istStamp(e.at), e.kind, labels.get(`${e.source}:${e.sourceId}`)?.description ?? FALLBACK[e.source] ?? e.source, e.reference, e.note,
-      rupees(e.amountMinor), rupees(bal)].map(cell).join(','));
-  }
-  rows.push(['', 'Closing balance', '', '', '', '', rupees(bal)].map(cell).join(','));
-  return rows.join('\n') + '\n';
+  return statementCsvOf(opening, entries.map((e) => ({ at: e.at, type: e.kind,
+    description: labels.get(`${e.source}:${e.sourceId}`)?.description ?? FALLBACK[e.source] ?? e.source, reference: e.reference, note: e.note, amountMinor: e.amountMinor })));
 }
 
 // ── Q13: exact cursor pages `<ms>_<id>` (newest first, ties broken by id), as the Q10 bills list ──
@@ -418,6 +431,11 @@ export async function setPayoutDetails(target: { ownerKind: 'partner' | 'doctor'
     if (input.expectedDetailsVersion !== undefined && (current.payoutDetailsVersion ?? 0) !== input.expectedDetailsVersion) {
       throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
     }
+    // r35 (WQ29): a requested wallet withdrawal is paid to these details at the version it saw; they cannot change until
+    // it is cancelled (or rejected / paid). Every owner kind (pharmacy, lab, doctor) and every actor.
+    if (await WalletWithdrawalModel.exists({ 'destination.homeAccountId': String(base._id), state: 'requested' }).session(s)) {
+      throw err(409, 'WITHDRAWAL_OPEN', 'A withdrawal to these details is waiting; cancel it before changing where money is sent');
+    }
     const a = await SettlementAccountModel.findOneAndUpdate({ _id: base._id },
       { $set: { payoutDetails: details, payoutDetailsState: 'unverified', payoutDetailsChangedAt: new Date() }, $inc: { payoutDetailsVersion: 1 },
         $unset: { payoutDetailsVerifiedAt: 1, payoutDetailsVerifiedBy: 1 } }, { new: true, session: s }).lean() as ISettlementAccount;
@@ -494,8 +512,11 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
       if (isReferralOwnerKind(a.ownerKind) && !assistedFlags.referralPayouts()) {
         throw err(409, 'REFERRAL_PAYOUTS_DISABLED', 'Referral payouts are paused until the tax question is answered');
       }
-      if (!a.payoutDetails || a.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DETAILS_NOT_VERIFIED', 'Verify the payout details before recording a payout');
-      if (a.payoutDetailsVersion !== input.detailsVersion) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
+      // r35 (§26.9, §5.4): a lab's or doctor's referral account pays to its HOME account's verified destination (the lab's
+      // partner account, the doctor's account); a pharmacy's referral account is itself its home account.
+      const home = await homeAccountIn(a, s);
+      if (!home?.payoutDetails || home.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DETAILS_NOT_VERIFIED', 'Verify the payout details before recording a payout');
+      if (home.payoutDetailsVersion !== input.detailsVersion) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
       const balance = await ledgerBalance(String(a._id), s);
       if (amount > balance) throw err(409, 'INSUFFICIENT_BALANCE', `The balance is ₹${rupees(balance)}; a payout cannot exceed it`);
       if (await SettlementPayoutModel.exists({ settlementAccountId: String(a._id), reference, state: 'recorded' }).session(s)) {
@@ -503,7 +524,7 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
       }
       const [p] = await SettlementPayoutModel.create([{ settlementAccountId: String(a._id), amountMinor: amount, method: input.method, reference,
         paidOn: input.paidOn, ...(input.note?.trim() ? { note: input.note.trim() } : {}),
-        destination: { method: a.payoutDetails.method, label: destinationLabel(a.payoutDetails), detailsVersion: a.payoutDetailsVersion },
+        destination: { method: home.payoutDetails.method, label: destinationLabel(home.payoutDetails), detailsVersion: home.payoutDetailsVersion },
         state: 'recorded', by: adminId, requestKey: input.requestKey, requestHash }], { session: s });
       const payout = p!.toObject() as ISettlementPayout;
       await postLedgerEntry({ settlementAccountId: String(a._id), kind: 'payout', amountMinor: -amount, grossMinor: amount, source: 'payout',
@@ -524,6 +545,31 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
     }
     throw e;
   }
+}
+
+/** r35 (§5.4): the account whose payout details a payout to `a` uses — the owner's home account for a lab or doctor referral account. */
+const HOME_OF: Partial<Record<SettlementOwnerKind, 'partner' | 'doctor'>> = { lab_referral: 'partner', doctor_referral: 'doctor' };
+async function homeAccountIn(a: ISettlementAccount, s: ClientSession): Promise<ISettlementAccount | null> {
+  const kind = HOME_OF[a.ownerKind];
+  if (!kind) return a;
+  return await SettlementAccountModel.findOne({ ownerKind: kind, ownerId: canon(a.ownerId) }).session(s).lean() as ISettlementAccount | null;
+}
+
+/**
+ * r35 (§26.9, M8): the referral side of an owed wallet amount paid from the referral earnings, in the caller's transaction,
+ * exactly once per key: serialised on the referral account (`financeVersion`), refused above its balance (409
+ * SETOFF_ABOVE_AVAILABLE), an `adjustment` −amount (`source: 'receivable_setoff'`, `sourceId: <key>`), a finance event.
+ */
+export async function postReferralSetoffIn(adminId: string, accountId: string, amountMinor: number, key: string, s: ClientSession) {
+  const a = await bumpFinance(accountId, s);
+  const balance = await ledgerBalance(String(a._id), s);
+  if (amountMinor > balance) {
+    throw Object.assign(err(409, 'SETOFF_ABOVE_AVAILABLE', `The referral balance is ₹${rupees(balance)}; a set-off cannot exceed it`), { details: { referralDueMinor: balance } });
+  }
+  const entry = await postLedgerEntry({ settlementAccountId: String(a._id), kind: 'adjustment', amountMinor: -amountMinor, grossMinor: amountMinor,
+    source: 'receivable_setoff', sourceId: key, by: `admin:${adminId}`, byKind: 'admin' }, s);
+  await recordFinanceEvent(a, { kind: 'admin', id: adminId }, 'finance.receivable_setoff', { entryId: String(entry._id), amountMinor, balanceBeforeMinor: balance }, s);
+  return { entry: entry as ILedgerEntry, balanceAfterMinor: balance - amountMinor };
 }
 
 /** A payout recorded by mistake: marked voided and compensated by an `adjustment` (+amount), exactly once. */
@@ -636,9 +682,10 @@ export async function abandonAdjustmentKey(adminId: string, rawAccountId: string
  * Every matching account with its balance; `due` = balance above zero (the payout queue), largest first. Balances,
  * the due filter, totals, ordering and the page are all computed by the database over every matching account.
  */
-export async function adminListAccounts(q: { ownerKind?: 'partner' | 'doctor'; due?: boolean; search?: string; detailsState?: string; limit?: number; skip?: number }) {
+export async function adminListAccounts(q: { ownerKind?: SettlementOwnerKind | 'referral'; due?: boolean; search?: string; detailsState?: string; limit?: number; skip?: number }) {
   const filter: Record<string, unknown> = {};
-  if (q.ownerKind) filter.ownerKind = q.ownerKind;
+  // r35 (§26.9): the referral owner kinds too; `referral` = all three.
+  if (q.ownerKind) filter.ownerKind = q.ownerKind === 'referral' ? { $in: ['pharmacy_referral', 'lab_referral', 'doctor_referral'] } : q.ownerKind;
   if (q.detailsState) filter.payoutDetailsState = q.detailsState;
   if (q.search?.trim()) filter.beneficiaryName = { $regex: q.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
   const skip = Math.max(0, Number(q.skip) || 0);
@@ -657,7 +704,9 @@ export async function adminListAccounts(q: { ownerKind?: 'partner' | 'doctor'; d
   const meta = out?.meta?.[0] ?? { total: 0, totalDueMinor: 0 };
   return {
     total: meta.total, totalDueMinor: meta.totalDueMinor,
-    rows: (out?.rows ?? []).map((a: ISettlementAccount & { balanceMinor: number }) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor })),
+    // r35 (§26.9): a referral account's payouts are paused while REFERRAL_PAYOUTS_ENABLED is off (O1).
+    rows: (out?.rows ?? []).map((a: ISettlementAccount & { balanceMinor: number }) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor,
+      ...(isReferralOwnerKind(a.ownerKind) ? { payoutsPaused: !assistedFlags.referralPayouts() } : {}) })),
   };
 }
 

@@ -6482,6 +6482,130 @@ record is §26.17 because stage's r33 record is §26.16). Each suite alone on it
   ₹2,00,000 admin cap stays); its credit above ₹50,000 raises the alert.
 - 4e (referral payouts) and 4f (finance screens) are not built.
 
+### 26.18 Rounds 4e + 4f build record (r35, 2026-11-25)
+
+Branch `m0/r35-phase4ef` from `4d73adc3` (r32b on stage `2df5651e`). Local commits only. Built §26.9 (4e) and §26.10 (4f)
+under §26.4's rules, plus three gaps the WQ29 withdrawal screens found. Every switch is off by default; existing answers
+only gain fields. Check: `test/assisted/r35-phase4ef.integration.ts` (13 checks).
+
+#### 26.18.1 What was built, and what already existed
+
+| Item | Status | Where |
+|---|---|---|
+| Referral payouts refused while `REFERRAL_PAYOUTS_ENABLED` is off | **Existed** (r24, M19) | `finance.ts` `recordPayout` |
+| The payout's destination = the HOME account's verified details and version | **New** | `recordPayout` reads the lab's `partner` account for a `lab_referral` account and the doctor's `doctor` account for a `doctor_referral` one; a `pharmacy_referral` account is its own home. The payout's `destination` label is the home's |
+| Owed wallet amount paid from the referral earnings | **New** | `referralCuts/payouts.ts` `setOffFromReferral` (one transaction: the wallet's `receivable_setoff` via the new `walletCore.setOffReceivableIn`, then the referral account's `adjustment` via `finance.postReferralSetoffIn`; exactly once per key; audited `wallet.referral_setoff`) |
+| The admin accounts list filters the referral kinds | **New** | `ownerKind` takes `pharmacy_referral`, `lab_referral`, `doctor_referral` and `referral` (all three); referral rows add `payoutsPaused` |
+| Statements show payouts | **Existed** (the ledger statement); the set-off row's words are new | `finance.ts` `FALLBACK.receivable_setoff` |
+| Pharmacy `GET …/finance` | **New** | `assisted/controller/phase4f.ts` from the shared blocks: `walletSummary`, `withdrawalsSummary`, `destinationFor` (`walletWithdrawals/service.ts`) and `referralSummary` (`referralCuts/payouts.ts`; r33's `…/referral` now uses it too) |
+| Pharmacy statement `?kind=wallet\|referral` (+ `.csv`) | **New for `wallet`**; `referral` **existed** (r33) | The wallet kind: `pharmacyWallet/services` `walletStatementPage` (rows as `transactionView`) and `walletStatementCsv`. **One CSV writer:** `finance.ts` `statementCsvOf` (r33's `cell()`), now used by the ledger CSV and the wallet CSV |
+| Lab `/finance`, doctor `/me/finance`: `referral` and `withdrawals` blocks | **New** | `partners/controller/finance.ts` (a partner that is not a lab gets `null` blocks) |
+| Admin: referral accounts (due, payouts paused) | **New** (the filter and `payoutsPaused` above); the list itself existed | `GET /api/v1/settlements/accounts?ownerKind=referral&due=true` |
+| Admin: withdrawals queue | **Existed** (r32) | `GET /api/v1/admin/wallet-withdrawals` |
+| Admin: disputes | **New** | `GET /api/v1/admin/wallet-disputes` (`partnerWallets/topupKinds.ts` `topupDisputes`) |
+| Admin: rules per partner | **Existed** (r24/r33) | `GET /api/v1/admin/referral-rules?bookerKind&bookerId` |
+| WQ29 (1): the pharmacy's own payout account for its form | **New** | `payoutDetails.details` (masked) in `…/finance` and in `…/wallet/withdrawable`'s `destination` |
+| WQ29 (2): why a quote is not available | **New** | `quote.reason` |
+| WQ29 (3): top-ups credited without a lot | **New** | `GET /api/v1/admin/wallets/:kind/:id/topups-without-lot` |
+
+#### 26.18.1a WQ29 web review: four withdrawal risks (coordinator, 25 Nov)
+
+| # | Risk | Built |
+|---|---|---|
+| 1 | The fee could change between the screen and the request | The request takes an optional `expectedTransferMinor`; when the plan's transfer differs: 409 `WITHDRAWAL_QUOTE_CHANGED` with `details: { grossMinor, feeMinor, transferMinor }` (the new quote). It is part of the request hash only when sent (older keys replay unchanged) |
+| 2 | A payout-details edit after a request made the withdrawal un-payable (an admin who had transferred could only Reject: paid twice) | Every payout-details change (owner and admin; pharmacy, lab and doctor home accounts) is refused with 409 `WITHDRAWAL_OPEN` while a withdrawal to that account is `requested`: cancel first. The request checks the destination and writes the home account (`financeVersion`) in its transaction, so the two never pass each other |
+| 3 | A dispute recorded after the bank transfer left only Reject (money returned that had already left) | Admin `paid` takes `disputeAcknowledged: true`: it is marked paid (`paid.disputeAcknowledged`, `paid.disputedMinor`), nothing more is taken from the held lots, and the withdrawn money is owed back — the lot's Recover makes it the wallet's receivable (then set-off from referral earnings). Audited (`withdrawal.paid` detail and the `withdrawal_paid` SettlementEvent carry `disputeAcknowledged`, `disputedMinor`). Without it: 409 `WITHDRAWAL_LOT_DISPUTED` as before |
+| 4 | Scope (**coordinator decision**) | A lab withdrawal request, cancel and abandon need `wallet.manage` **and** partner-wide scope (403 `FINANCE_SCOPE_REQUIRED`), as the finance reads: a branch-limited member cannot withdraw the whole lab wallet. Reads stay with `wallet.view` |
+
+#### 26.18.2 ASSUMED (r35, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| P1 | A set-off above what is owed or above the referral balance is refused (409 `SETOFF_ABOVE_AVAILABLE` with `details.receivableMinor` / `details.referralDueMinor`), never silently capped | The admin chooses the amount; a refusal says why |
+| P2 | The wallet's `receivable_setoff` entry of a set-off moves no balance (the referral money never passed through the wallet): `signedAmountPaise` 0, `receivableDeltaPaise` −amount; the wallet stays frozen until an admin unfreezes it (as after any set-off) | Balance = Σ entries holds; unfreezing is an admin decision |
+| P3 | The set-off needs only `REFERRAL_PAYOUTS_ENABLED` (M8), not the admin-tools switch | §26.9 "behind the same switch" |
+| P4 | The pharmacy statement keeps the ledger statement's query (`before`, `limit`, `from`, `to`) and adds `kind` (default `wallet`); the wallet kind lists completed rows only | One statement contract for the web |
+| P5 | The payout to a referral account is not fenced on the home account's `financeVersion` (it reads the home's version, compared with `detailsVersion`) | A recorded payout reports a transfer the admin made to the version it saw |
+| P6 | The disputes read is capped at 200 rows, newest first, without a cursor | An admin queue, as stuck money's lists |
+| P7 | A withdrawal request bumps the home account's `financeVersion` (the serialisation point with a payout-details change); an admin payout on that account fenced on an older `expectedFinanceVersion` then answers 409 `FINANCE_CHANGED` | One existing serialisation point |
+| P8 | `paid` with `disputeAcknowledged` does not create the receivable itself; the lot's Recover does (its take counts the withdrawn money, which the balance no longer holds) | Nothing is taken twice |
+
+#### 26.18.3 API for the web (exact shapes; `{ success, data }`, `Cache-Control: private, no-store`, paise)
+
+**Pharmacy** (operational pharmacy token):
+- `GET /api/v1/pharmacy-assisted/finance` →
+  ```
+  { wallet: { balanceMinor, withdrawableNowMinor, availableLater: [{ amountMinor, availableAt }], receivableMinor, frozen },
+    referral: { earnedMinor, paidMinor, dueMinor, cutsEnabled, payoutsEnabled },
+    withdrawals: { openCount, lastPaidAt | null, enabled },
+    payoutDetails: { state: 'none'|'unverified'|'verified', masked | null, detailsVersion,
+      details: { method: 'bank', accountName, ifsc, bankName?, accountNumberLast4, accountNumberMasked }
+             | { method: 'upi', upiId, accountName? } | null } }
+  ```
+  `details` prefills the payout form (`PUT …/finance/payout-details`, send `expectedDetailsVersion: detailsVersion`); the
+  full account number is never returned.
+- `GET …/finance/statement?kind=wallet|referral&before&limit≤200&from&to` → `data`: for `wallet`, the wallet rows as the
+  released app reads them (`transactionView`: every stored field plus `transactionType: 'credit'|'debit'|'refund'` by sign
+  and `movementType` = the stored kind, e.g. `booking_debit`, `withdrawal_hold`, `receivable_setoff`; amounts in
+  `amountPaise`, `signedAmountPaise`, `balanceAfterPaise`), newest first; for `referral`, r33's referral statement lines
+  `{ _id, at, kind, source, sourceId, description, reference?, note?, amountMinor, balanceAfterMinor, grossMinor?,
+  commissionMinor?, shortRef?, category?, lines? }`. Top level `pagination: { nextCursor }` (send it as `before`).
+- `GET …/finance/statement.csv?kind&from&to` → `text/csv`, columns `Date (IST), Type, Description, Reference, Note,
+  Amount (INR), Balance (INR)`, with opening and closing balance rows; `pharmacy-wallet-statement….csv` /
+  `pharmacy-referral-statement….csv`. 400 `EXPORT_TOO_LARGE` above 5,000 rows.
+- `POST …/wallet/withdrawals { amountMinor, requestKey, detailsVersion, expectedTransferMinor? }` (r32, now): 409
+  `WITHDRAWAL_QUOTE_CHANGED` with `details: { grossMinor, feeMinor, transferMinor }` when `expectedTransferMinor` differs.
+- `PUT …/finance/payout-details` (and the lab's, the doctor's and the admin's): 409 `WITHDRAWAL_OPEN` while a withdrawal
+  to that account is `requested`.
+- `GET …/wallet/withdrawable?amountMinor` (r32, now) → `{ enabled, minimumMinor, withdrawableNowMinor, availableLater,
+  nextAllowedAt, destination: { state, masked, detailsVersion, details }, quote?: { grossMinor, feeMinor, transferMinor,
+  available, reason } }`; `reason` is null when a request of this amount would go through now, else the first that
+  applies of `WITHDRAWALS_DISABLED`, `BELOW_MINIMUM`, `DESTINATION_NOT_VERIFIED`, `WALLET_RECEIVABLE`, `WALLET_FROZEN`,
+  `WEEKLY_LIMIT`, `ABOVE_WITHDRAWABLE` (`available` = `reason === null`).
+
+**Lab** (`GET /api/v1/partner-workspace/finance`, `finance.view`) and **doctor** (`GET /api/v1/specialists/me/finance`):
+the existing `{ account, balanceMinor, totals, lastPayout }` plus `referral: { earnedMinor, paidMinor, dueMinor,
+cutsEnabled, payoutsEnabled }` and `withdrawals: { openCount, lastPaidAt, enabled }` (both `null` for a partner that is
+not a lab). The doctor's and lab's destination stay on their existing finance reads (`account.payoutDetails`).
+
+**Admin:**
+- `POST /api/v1/admin/wallets/:kind(pharmacy|lab|doctor)/:id/receivable/setoff-from-referral { amountMinor, requestKey }` →
+  201 (replay 200) `{ setoff: { amountMinor, referralAccountId, ledgerEntryId, walletEntryId, at }, wallet: {
+  receivableMinor, frozen }, replayed }`. 409 `REFERRAL_PAYOUTS_DISABLED`, `SETOFF_ABOVE_AVAILABLE` (`details`),
+  `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 404 `WALLET_NOT_FOUND` (no wallet or no referral account). `GET
+  …/by-key/:key` → `{ state: 'used', setoff } | { state: 'abandoned' | 'unknown' }`; `POST …/by-key/:key/abandon`.
+- `GET /api/v1/settlements/accounts?ownerKind=partner|doctor|pharmacy_referral|lab_referral|doctor_referral|referral&due`
+  → as before; referral rows add `payoutsPaused` (true while `REFERRAL_PAYOUTS_ENABLED` is off). Show "Paused until tax
+  advice" on their payout form.
+- `GET /api/v1/admin/wallet-disputes?state=flagged|recovered|blocked&walletKind&limit≤200` → `[{ paymentRecordId,
+  walletKind, ownerId, lotId | null, amountMinor, remainingMinor | null, state, chargebackAt | null, recoveredAt | null, at
+  }]`, newest first. `flagged`: recorded, nothing taken (Recover); `recovered`: taken; `blocked`: never credited.
+- `GET /api/v1/admin/wallets/:kind/:id/topups-without-lot` → `[{ paymentRecordId, walletKind, ownerId, razorpayPaymentId,
+  amountMinor, paidAt, creditedAt, chargebackAt }]` (recover one with `POST /api/v1/admin/wallet-payments/:paymentId/recover`).
+- `POST /api/v1/admin/wallet-withdrawals/:id/paid` (r32, now) takes `disputeAcknowledged?: true`; the withdrawal's
+  `paid` adds `disputeAcknowledged`, `disputedMinor` when used.
+- Lab withdrawal request / cancel / abandon: 403 `FINANCE_SCOPE_REQUIRED` for a branch-limited member.
+- Unchanged and reused: `GET /api/v1/admin/wallet-withdrawals` (the queue), `GET /api/v1/admin/referral-rules?bookerKind&bookerId`.
+
+#### 26.18.4 Switches, indexes, deploy, rollback
+
+- No new switch: 4e uses `REFERRAL_PAYOUTS_ENABLED` (off). No new index: the set-off relies on the ledger's unique
+  `{settlementAccountId, source, sourceId, kind}`, the request keys and the wallet stores' operation keys
+  (`assertUniqueIndex`, 503 until `sync-indexes`). No migration.
+- Order: deploy; restart. With every switch off: referral payouts and set-offs stay refused; the reads are new.
+- Rollback: plain (nothing new is written while the switch is off).
+
+#### 26.18.5 Checks
+
+`test/assisted/r35-phase4ef.integration.ts`, 9 checks: the payout refused while off (a partner payout unchanged); on, a
+lab referral payout to the home destination, fenced on the home version, refused while the home is unverified, a
+pharmacy's own home, statements show the payouts; the set-off (off 409; on, paired once under 3 identical requests,
+balance unchanged, a race of two never below zero, capped by both balances, key reuse, by-key and abandon, the statement
+row, the unknown wallet); the accounts list filters and `payoutsPaused`; the pharmacy `/finance` blocks and another
+pharmacy's own; the pharmacy statement (wallet paging, from/to, referral kind, both CSVs, another pharmacy's rows never);
+the lab and doctor blocks; the disputes and top-ups without a lot; the quote's reasons; WQ29: the fee fence, the details
+lock, paid after a dispute (then Recover and set-off), the lab scope (13 checks in all).
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

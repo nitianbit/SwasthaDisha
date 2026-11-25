@@ -12,6 +12,10 @@ const DETAIL_KEYS = new Map<string, string[]>([
   // r32 (§26.8.2): withdrawals — the smallest amount, and what can be withdrawn now.
   ['WITHDRAWAL_BELOW_MINIMUM', ['minimumMinor']],
   ['WITHDRAWAL_ABOVE_AVAILABLE', ['withdrawableNowMinor']],
+  // r35 (§26.9): a referral set-off above what is owed or above the referral balance.
+  ['SETOFF_ABOVE_AVAILABLE', ['receivableMinor', 'referralDueMinor']],
+  // r35 (WQ29): the new quote of a withdrawal whose card fee changed since the screen was loaded.
+  ['WITHDRAWAL_QUOTE_CHANGED', ['grossMinor', 'feeMinor', 'transferMinor']],
 ]);
 /** r32: known codes may carry these times (ISO), nothing else (WITHDRAWAL_WEEKLY_LIMIT: when the next request is allowed). */
 const DETAIL_TIMES = new Map<string, string[]>([['WITHDRAWAL_WEEKLY_LIMIT', ['nextAllowedAt']]]);

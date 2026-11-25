@@ -18,6 +18,8 @@ import { AppError } from '@/modules/common/types';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { PaymentService } from '@/modules/payment/services';
 import PharmacyModel from '@/modules/pharmacies/model';
+import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
+import { CSV_MAX_LINES, inSnapshot, parseCursor, range, statementCsvOf } from '@/modules/partners/services/finance';
 
 /**
  * The released pharmacy app (WalletScreen) decides credit or debit from `transactionType` first and only knows
@@ -27,11 +29,13 @@ import PharmacyModel from '@/modules/pharmacies/model';
  */
 const APP_TYPES = ['credit', 'debit', 'refund'];
 const ZERO_DEBIT_KINDS = ['chargeback', 'receivable_setoff', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
+/** A row's signed paise (rows from before phase 1a: from the rupee balances). */
+const signedPaiseOf = (t: IPharmacyWalletTransaction) => (Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
+  : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100));
 export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletTransaction & { movementType: string } {
   const kind = String(t.transactionType);
   if (APP_TYPES.includes(kind)) return { ...t, movementType: kind };
-  const signed = Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
-    : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100);
+  const signed = signedPaiseOf(t);
   // A zero-amount row (a chargeback the balance could not cover) reads as what its kind is.
   const credit = signed > 0 || (signed === 0 && !ZERO_DEBIT_KINDS.includes(kind));
   return { ...t, transactionType: (credit ? 'credit' : 'debit') as IPharmacyWalletTransaction['transactionType'], movementType: kind };
@@ -41,6 +45,37 @@ export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletT
 export function walletView(w: IPharmacyWallet): Record<string, unknown> {
   return { ...w, withdrawableMinor: Number(w.withdrawableMinor ?? 0), frozen: w.frozen === true,
     receivableMinor: Number(w.receivableMinor ?? 0) };
+}
+
+/**
+ * r35 (§26.10): the pharmacy WALLET statement (`…/finance/statement?kind=wallet`) — completed rows newest first, each as
+ * `transactionView` answers it (the released app's credit / debit and the stored kind), `before` = `<createdAt ms>_<id>`
+ * as the ledger statement's cursor, an IST `from` / `to`.
+ */
+export async function walletStatementPage(pharmacyId: string, opts: { before?: string; limit?: number; from?: string; to?: string }) {
+  const limit = Math.min(Math.max(Number(opts.limit) || 50, 1), 200);
+  const cur = parseCursor(opts.before);
+  const rows = await PharmacyWalletTransactionModel.find({ pharmacyId, status: 'completed', ...range(opts.from, opts.to, 'createdAt'),
+    ...(cur ? { $or: [{ createdAt: { $lt: cur.at } }, { createdAt: cur.at, _id: { $lt: cur.id } }] } : {}) })
+    .sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as IPharmacyWalletTransaction[];
+  const lines = rows.slice(0, limit);
+  const last = lines[lines.length - 1] as (IPharmacyWalletTransaction & { createdAt?: Date }) | undefined;
+  return { lines: lines.map(transactionView), nextCursor: rows.length > limit && last ? `${new Date(last.createdAt!).getTime()}_${String(last._id)}` : null };
+}
+
+/** r35 (§26.10): the wallet statement's CSV — the finance CSV writer (`statementCsvOf`) over the completed rows of the period. */
+export async function walletStatementCsv(pharmacyId: string, opts: { from?: string; to?: string }): Promise<string> {
+  const period = range(opts.from, opts.to, 'createdAt') as { createdAt?: { $gte?: Date } };
+  const { rows, opening } = await inSnapshot(async (s) => {
+    const found = await PharmacyWalletTransactionModel.find({ pharmacyId, status: 'completed', ...period }).sort({ createdAt: 1, _id: 1 })
+      .limit(CSV_MAX_LINES + 1).session(s).lean() as (IPharmacyWalletTransaction & { createdAt: Date })[];
+    if (found.length > CSV_MAX_LINES) throw new AppError({ status: 400, code: 'EXPORT_TOO_LARGE', message: `More than ${CSV_MAX_LINES} entries in this period; export a shorter period` });
+    const before = period.createdAt?.$gte ? await PharmacyWalletTransactionModel.find({ pharmacyId, status: 'completed', createdAt: { $lt: period.createdAt.$gte } })
+      .select({ signedAmountPaise: 1, balanceBefore: 1, balanceAfter: 1 }).session(s).lean() as IPharmacyWalletTransaction[] : [];
+    return { rows: found, opening: before.reduce((a, t) => a + signedPaiseOf(t), 0) };
+  });
+  return statementCsvOf(opening, rows.map((t) => ({ at: t.createdAt, type: transactionView(t).movementType, description: t.description ?? '',
+    reference: t.referenceId, note: t.notes, amountMinor: signedPaiseOf(t) })));
 }
 
 /** r7: the exact reads of an admin top-up by its key (now with the pharmacy store, r13). */

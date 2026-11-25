@@ -442,7 +442,7 @@ async function main() {
       await cardTopup('pharmacy', ph.id, 200_000, 4000, 8);
       await spend('pharmacy', ph.id, 100_000);
       const q = (await expect(ph.id, 'GET', `${PW}/withdrawable?amountMinor=100000`, 200)).json.data;
-      assert.deepEqual(q.quote, { grossMinor: 100_000, feeMinor: 2000, transferMinor: 98_000, available: true });
+      assert.deepEqual(q.quote, { grossMinor: 100_000, feeMinor: 2000, transferMinor: 98_000, available: true, reason: null });
       const r = await withdraw(ph.id, ph.version, 100_000);
       assert.equal(r.status, 201, r.text);
       const w = r.json.data.withdrawal;

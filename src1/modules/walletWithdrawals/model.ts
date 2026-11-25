@@ -25,7 +25,9 @@ export interface IWalletWithdrawal {
   releaseEntryId?: string;
   voidEntryId?: string;
   paid?: { method: 'bank_transfer' | 'upi'; reference: string; paidOn: string; note?: string; by: string; at: Date; detailsVersion: number;
-    requestKey: string; requestHash: string };
+    requestKey: string; requestHash: string;
+    /** r35 (WQ29): paid although a dispute was recorded on held money (already transferred); that money is owed back. */
+    disputeAcknowledged?: boolean; disputedMinor?: number };
   reason?: string;
   requestKey: string;
   requestHash: string;
@@ -50,7 +52,8 @@ const withdrawalSchema = new Schema<IWalletWithdrawal>({
   paid: {
     type: new Schema({ method: { type: String, required: true, enum: ['bank_transfer', 'upi'] }, reference: { type: String, required: true },
       paidOn: { type: String, required: true }, note: { type: String }, by: { type: String, required: true }, at: { type: Date, required: true },
-      detailsVersion: { type: Number, required: true }, requestKey: { type: String, required: true }, requestHash: { type: String, required: true } }, { _id: false }),
+      detailsVersion: { type: Number, required: true }, requestKey: { type: String, required: true }, requestHash: { type: String, required: true },
+      disputeAcknowledged: { type: Boolean }, disputedMinor: { type: Number, min: 0 } }, { _id: false }),
     default: undefined,
   },
   reason: { type: String, trim: true },
