@@ -812,11 +812,15 @@ export class PaymentService {
         || (isAssistedCardContext(paymentRecord.context) && String(paymentRecord.payerPartnerId ?? '').toLowerCase() === requesterLab));
 
     // r20 (§25.4.3): a doctor top-up is verified only by its doctor (`payerSpecialistId`) or an admin; the internal sweep
-    // and the doctor's check (as the payer) are unchanged.
-    const doctorRule = topupKind?.kind === 'doctor' && data.requesterUserType !== undefined;
+    // and the doctor's check (as the payer) are unchanged. r29 (§25.6): an assisted card payment a DOCTOR made (a lab
+    // booking it booked, `payerSpecialistId`) is verified only by that doctor (admins use the admin tools, as for the
+    // pharmacy's and lab's card payments); the sweeps, which name no caller, act as its payer.
+    const doctorOwner = topupKind?.kind === 'doctor' ? topupKind.ownerOf(paymentRecord)
+      : isAssistedCardContext(paymentRecord.context) && paymentRecord.payerSpecialistId ? String(paymentRecord.payerSpecialistId).toLowerCase() : null;
+    const doctorRule = !!doctorOwner && data.requesterUserType !== undefined;
     const admitted = doctorRule
-      ? data.requesterUserType === 'admin'
-        || (data.requesterUserType === 'specialist' && String(data.userId).toLowerCase() === topupKind!.ownerOf(paymentRecord))
+      ? (data.requesterUserType === 'admin' && topupKind?.kind === 'doctor')
+        || (data.requesterUserType === 'specialist' && String(data.userId).toLowerCase() === doctorOwner)
       : belongsToRequester || pharmacyCanVerify || partnerCanVerify;
 
     if (!admitted) {

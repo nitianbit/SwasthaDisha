@@ -606,7 +606,7 @@ export class SpecialistPortalService {
 <body>
   <div class="page">
     <div class="header">
-      <div class="brand">MyEwaCare</div>
+      <div class="brand">Jansetu</div>
       <h1 class="title">Medical Prescription</h1>
       <p class="subtitle">Consultation booking prescription summary</p>
     </div>

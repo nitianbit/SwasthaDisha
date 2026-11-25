@@ -25,14 +25,19 @@ const norm = (v: unknown) => (v == null ? '' : String(v).trim());
 /** Stored emails are lower-case (model), so an email differing only in case is the same sign-in. */
 const normField = (f: string, v: unknown) => (f === 'email' ? norm(v).toLowerCase() : norm(v));
 
-/** Patient-facing doctor writes (slots, consult status, prescription): 403 SPECIALIST_NOT_VERIFIED unless eligible. */
-export const requireEligibleDoctor = async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
+/** The requesting doctor is verified and active, else 403 SPECIALIST_NOT_VERIFIED (r29: also the card-payment gate). */
+export async function assertEligibleDoctor(req: AuthRequest): Promise<void> {
   const id = objectIdOrNull(doctorIdOf(req));
   const sp = id ? await SpecialistModel.findById(id).select({ isActive: 1, isVerified: 1 }).lean() : null;
   if (!isEligibleDoctor(sp)) {
     throw new AppError({ status: 403, code: 'SPECIALIST_NOT_VERIFIED',
       message: 'Your doctor account must be verified and active before you can do this' });
   }
+}
+
+/** Patient-facing doctor writes (slots, consult status, prescription): 403 SPECIALIST_NOT_VERIFIED unless eligible. */
+export const requireEligibleDoctor = async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
+  await assertEligibleDoctor(req);
   next();
 };
 

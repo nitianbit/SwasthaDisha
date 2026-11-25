@@ -12,13 +12,14 @@ import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { BOOKING_PAYMENT_WINDOW_MS } from '@/modules/bookings/holds';
 import PartnerOrgModel from '@/modules/partners/model';
 import {
-  bookingModelOf, cardContextOf, cardKindOf, kickCardRefunds, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf, recordPayerOf,
+  bookingModelOf, cardContextOf, cardKindOf, kickCardRefunds, payerBlockedAtCapture, queueCardRefundIn, queueExtraCaptureRefundIn, recordPaiseOf,
+  recordPayerFieldsOf, recordPayerOf,
 } from '@/modules/assisted/cardRefunds';
 import { AssistedCardRefundModel } from '@/modules/assisted/model';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { freeLease, withDeadline } from '@/modules/common/utils/lease';
 import type { AssistedBookingKind } from '@/modules/assisted/types';
-import { bookerAuditFields, refOf, type BookerLike } from '@/modules/assisted/bookers';
+import { bookerAuditFields, payerRefOf, type BookerLike, type PayerRef } from '@/modules/assisted/bookers';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { smsBooked } from '@/modules/smsNotices/events';
 
@@ -42,6 +43,10 @@ import { smsBooked } from '@/modules/smsNotices/events';
  * (`partner_lab_bookings`), what "waiting for payment" means (`pending_payment`, its `paymentDeadline`), the provider
  * admission for S5 (an active, verified lab) and the follow-up after confirmation (the patient's notice). Order,
  * capture, late and extra captures, the follow-up lease, the sweeps and the refund rows are the one code path.
+ *
+ * r29 (§25.6): the payer of a lab booking may be a DOCTOR (round 3c). The payer is named by its kind everywhere (the
+ * order's payer fields, the capture's payer check, the refund rows: assisted/cardRefunds.ts `RECORD_PAYERS`), and a
+ * capture for a doctor no longer verified and active is a late capture, returned to the card (DR9, as C9).
  */
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
@@ -203,13 +208,13 @@ export async function openCardOrderOf(kind: AssistedBookingKind, given: Row, opt
   if (stored) return stored.status === 'created' ? viewOf(kind, stored, b) : null;
   if (!opts.create) return null;
   try {
-    // 2e: the paying organisation by its kind — a pharmacy (`payerPharmacyId`) or a lab and its booking member
-    // (`payerPartnerId`, `payerMemberId`); verification by organisation reads these (§6.1).
+    // 2e: the paying organisation by its kind — a pharmacy (`payerPharmacyId`), a lab and its booking member
+    // (`payerPartnerId`, `payerMemberId`) or (r29) a doctor (`payerSpecialistId`); verification by organisation reads these (§6.1).
     const actorId = b.assisted.bookedBy.actorId;
-    const payer = f.payerKind === 'lab' ? { payerPartnerId: lower(f.payerId), payerMemberId: lower(actorId) } : { payerPharmacyId: f.payerId };
-    const out = await payments().createOrder({ recordId: f.paymentRecordId, userId: actorId, payerUserId: actorId, ...payer,
+    const payer = recordPayerFieldsOf(f.payerKind, f.payerId, actorId);
+    const out = await payments().createOrder({ recordId: f.paymentRecordId, userId: actorId, payerUserId: actorId, ...payer.fields,
       context: k.context, contextId: lower(b._id), baseAmount: f.amountMinor / 100, finalAmount: f.amountMinor / 100,
-      notes: { flow: k.context, [f.payerKind === 'lab' ? 'partnerId' : 'pharmacyId']: f.payerId, bookingId: lower(b._id) } });
+      notes: { flow: k.context, ...payer.notes, bookingId: lower(b._id) } });
     return viewOf(kind, out.paymentRecord, b);
   } catch (e) {
     if (isDuplicateKeyError(e)) {
@@ -230,9 +235,10 @@ export const openCardOrder = (b: IBooking, opts?: { create: boolean }) => openCa
  * null when none is open yet: replay the create), so "pay now" works from any device. Read only. Never in a patient's,
  * doctor's or lab's view.
  */
-export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], bookerLike: BookerLike): Promise<Map<string, Row>> {
+export async function bookerPayments(kind: AssistedBookingKind, rows: Row[], bookerLike: BookerLike | PayerRef): Promise<Map<string, Row>> {
   const k = KINDS[kind];
-  const booker = refOf(bookerLike);
+  // r29: a doctor booker of lab bookings too.
+  const booker = payerRefOf(bookerLike);
   const out = new Map<string, Row>();
   for (const b of rows) {
     const f = b?.assisted?.funding;
@@ -261,6 +267,8 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
   if (!pre?.assisted) throw notFound();
   // S5: a capture for a booking whose provider (doctor; r14: lab) is not verified and active is never applied (returned to the card).
   const blocked = await k.providerBlocked(pre);
+  // r29 (DR9): nor one paid by a doctor no longer verified and active (the booking then expires unpaid).
+  const payerBlocked = await payerBlockedAtCapture(pre.assisted.funding?.payerKind, lower(pre.assisted.funding?.payerId));
   const outcome = await runLedgerTransaction<Outcome>(async (s) => {
     const rec = await PaymentRecordModel.findById(rid).session(s).lean() as unknown as IPaymentRecord | null;
     if (!rec || rec.context !== k.context || lower(rec.contextId) !== id) throw notFound();
@@ -274,7 +282,7 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
     // r10b: this record already confirmed the booking (a crash or a racing call came between that and the follow-up):
     // nothing moves again; the follow-up below is resumed and only then is the record processed.
     if (lower(b.paymentTransactionId) === rid && lower(f.paymentRecordId) === rid && f.state !== 'pending' && f.state !== 'not_paid') return 'appliedBefore';
-    const applicable = !blocked && k.waiting(b) && f.state === 'pending' && lower(f.paymentRecordId) === rid && amount === f.amountMinor;
+    const applicable = !blocked && !payerBlocked && k.waiting(b) && f.state === 'pending' && lower(f.paymentRecordId) === rid && amount === f.amountMinor;
     const audit = { ...bookerAuditFields(f.payerKind, b.assisted.bookedBy.actorId, f.payerId), bookingId: id };
     if (applicable) {
       const { filter, update } = k.confirm(id, rid, rec, amount);
@@ -288,7 +296,7 @@ export async function applyAssistedCaptureOf(kind: AssistedBookingKind, record: 
     const q = await queueCardRefundIn({ bookingId: id, bookingKind: kind, payerKind: f.payerKind, payerId: f.payerId, record: rec, cause: 'late_capture', to: 'card' }, s);
     if (q.created) await Model.updateOne({ _id: id }, { $push: { 'assisted.funding.refunds': q.row } }, { session: s });
     await auditIn({ ...audit, action: 'booking.late_capture', detail: { ...k.auditDetail, paymentRecordId: rid, amountMinor: amount, bookingStatus: b.status,
-      [k.blockedKey]: blocked, refundState: q.refund.state } }, s);
+      [k.blockedKey]: blocked, ...(payerBlocked ? { payerBlocked: true } : {}), refundState: q.refund.state } }, s);
     return 'returned';
   });
   if (outcome === 'returned') await kickCardRefunds(id);

@@ -10,6 +10,7 @@ import type { AssistedAuditAction } from '@/modules/assisted/model';
 import { linkLabIn, linkPharmacyCustomerIn } from '@/modules/assisted/patient';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { labAdmissible } from '@/modules/assisted/labViews';
+import type { BookerKind } from '@/modules/assisted/types';
 
 /**
  * Round 2e (ASSISTED_BOOKING_DESIGN.md §24.8.1): WHO books an assisted consultation — a pharmacy (1a) or a lab member
@@ -35,6 +36,9 @@ export interface BookerRef { kind: 'pharmacy' | 'lab'; id: string }
 /** A booker organisation, or a pharmacy id as phase 0–2 callers pass it. */
 export type BookerLike = string | BookerRef;
 export const refOf = (b: BookerLike): BookerRef => (typeof b === 'string' ? { kind: 'pharmacy', id: lower(b) } : { kind: b.kind, id: lower(b.id) });
+/** r29: any payer of an assisted booking (r26: a doctor books lab tests, §25.5), as the card machinery names it. */
+export interface PayerRef { kind: BookerKind; id: string }
+export const payerRefOf = (b: BookerLike | PayerRef): PayerRef => (typeof b === 'string' ? refOf(b) : { kind: b.kind, id: lower(b.id) });
 
 /** Phase 1a callers pass a pharmacy actor without `kind`. */
 export const asBooker = (a: PharmacyActor | BookerActor): BookerActor => ('kind' in a ? a : { kind: 'pharmacy', pharmacyId: a.pharmacyId, actorId: a.actorId });
@@ -97,10 +101,13 @@ export const bookedByOf = (b: BookerActor, name: string) => (b.kind === 'pharmac
   ? { kind: 'pharmacy' as const, id: lower(b.pharmacyId), actorKind: 'pharmacy', actorId: lower(b.actorId), name }
   : { kind: 'lab' as const, id: lower(b.partnerId), branchId: lower(b.branchId), actorKind: 'member', actorId: lower(b.memberId), name });
 
-/** The audit's actor and organisation of a booker: a pharmacy, or a lab member for its lab (also from a stored booking). */
+/**
+ * The audit's actor and organisation of a booker: a pharmacy, or a lab member for its lab (also from a stored booking);
+ * r29: a doctor (the doctor is both, §25.3).
+ */
 export const bookerAuditFields = (kind: string, actorId: unknown, orgId: unknown) => ({
-  actorKind: (kind === 'pharmacy' ? 'pharmacy' : 'member') as 'pharmacy' | 'member', actorId: lower(actorId),
-  orgKind: kind as BookerRef['kind'], orgId: lower(orgId) });
+  actorKind: (kind === 'lab' ? 'member' : kind === 'doctor' ? 'doctor' : 'pharmacy') as 'pharmacy' | 'member' | 'doctor', actorId: lower(actorId),
+  orgKind: kind as BookerKind, orgId: lower(orgId) });
 
 /** The booker's audit (§6.1), in the action's transaction, ids and codes only: one trail (`assisted_audit_events`) for both kinds. */
 export function auditBookerIn(b: BookerActor, action: AssistedAuditAction, fields: { bookingId?: string; requestKey?: string; detail?: Record<string, unknown> },
