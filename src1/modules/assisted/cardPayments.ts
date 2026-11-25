@@ -146,7 +146,7 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
       const { bookedNotices } = await import('@/modules/assisted/consultations');
       await sendAssistedNotices(await bookedNotices(withMeet) as AssistedNotice[]);
       // Phase 5b: the patient's SMS (resumed with the follow-up until done; the outbox marker keeps one).
-      await smsBooked('booking', withMeet);
+      void smsBooked('booking', withMeet);
       return withMeet;
     },
   },

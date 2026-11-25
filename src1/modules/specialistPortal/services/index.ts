@@ -414,7 +414,7 @@ export class SpecialistPortalService {
       }
     }
     // Phase 5b: the patient's "prescription ready" SMS, on the first save only (partner-made consultations).
-    if (!hasPrescription(booking)) await smsRxReady(updated);
+    if (!hasPrescription(booking)) void smsRxReady(updated);
 
     return updated;
   }

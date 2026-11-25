@@ -301,7 +301,7 @@ export async function notifyLabBooked(b: IPartnerLabBooking): Promise<void> {
       message: `${b.assisted!.bookedBy.name} booked a lab test (${b.visitMode === 'home' ? 'home collection' : 'lab visit'}) on ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted!.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:booked:customer` });
   } catch { /* best effort */ }
-  await smsBooked('lab_booking', b);
+  void smsBooked('lab_booking', b);
 }
 
 async function replayOf(storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
@@ -662,7 +662,7 @@ export async function acceptLabRescheduleFor(booker: LabBooker, bookingId: strin
       message: `${b.assisted?.bookedBy.name ?? 'Your partner'} accepted the new time for your lab test: ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted?.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:reschedule:${b.reschedule.version}:accepted` });
   } catch { /* best effort */ }
-  await smsMoved('lab_booking', b);
+  void smsMoved('lab_booking', b);
   return bookerLabView(b as never, booker);
 }
 

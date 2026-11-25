@@ -703,7 +703,7 @@ export class InstantConsultService {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_confirmed', title: 'Doctor accepted',
         message: `Doctor accepted, Ref ${a.shortRef}: join now.`, bookingId: String(booking._id), key: `assisted_instant:${r._id}:accepted:booker`,
         data: { requestId: String(r._id), shortRef: a.shortRef } }]);
-      await smsBooked('booking', booking);
+      void smsBooked('booking', booking);
     }
   }
 
@@ -950,7 +950,7 @@ export class InstantConsultService {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: 'Consultation cancelled',
         message: `Ref ${a.shortRef}: cancelled by ${requester.userType === 'admin' ? 'the Jansetu team' : 'the doctor'}. ₹${out.refunded.toFixed(2)} is back in your wallet.`,
         bookingId: id, key: `assisted_instant:${id}:cancelled:booker`, data: { shortRef: a.shortRef } }]);
-      await smsCancelled('booking', out.booking);
+      void smsCancelled('booking', out.booking);
     }
     return { userId: out.userId, refunded: out.refunded };
   }

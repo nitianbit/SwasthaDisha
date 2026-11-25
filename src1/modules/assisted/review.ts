@@ -323,7 +323,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
     { audience: 'booker', userId: bookerNoticeUserId(moved.assisted!.bookedBy), type: 'general', title: 'Booking moved to another account',
       message: `Booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId: id, key: `assisted:${id}:moved:booker:${input.requestKey}` },
   ]);
-  await smsMovedOff('booking', moved, fromUserId);
+  void smsMovedOff('booking', moved, fromUserId);
   const { __fromUserId: _f, ...clean } = moved as IBooking & { __fromUserId?: string };
   return { booking: moveView(clean as IBooking), replayed: false };
 }
@@ -480,7 +480,7 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
       message: `Lab booking Ref ${o.ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
       key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } }] : []),
   ]);
-  await smsMovedOff('lab_booking', clean, fromUserId);
+  void smsMovedOff('lab_booking', clean, fromUserId);
   return { booking: labMoveView(clean), replayed: false };
 }
 
