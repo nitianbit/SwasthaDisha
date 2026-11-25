@@ -6471,6 +6471,11 @@ Checks: `test/assisted/r32-phase4cd.integration.ts` (now 18): the cap off and on
 pharmacy lot taken at once on both routes, once; a doctor's flagged only) and the old-way lot replayed once the switch is
 on; the switch on (flag, then Recover); paid refused on disputed money; 4c pay-again keeps the coupon's funding.
 
+Merged `origin/stage` at `2df5651e` (r33 referral API, r30 records access, r31 SMS 5b; conflicts kept both sides; the r32
+record is §26.17 because stage's r33 record is §26.16). Each suite alone on its own database: `r32-phase4cd` 18/18,
+`r31-phase5b` 20/20, `phase1a-review` 20/20, `r9b-followups` 5/5, `r13-phase2d` 18/18, `r20-phase3a` 15/15,
+`s6-pharmacy-wallet-verify` 31/31, `r10-phase1b` 19/19. The full regression (`prun.sh … 2`): 85 of 85 pass, tsc 17.
+
 **Seen, not changed:**
 - `assisted/consultations.ts` and `assisted/labBookings.ts` keep a one-line alias `const fundedByOf = couponFundedBy`.
 - The admin pharmacy top-up (`POST /pharmacy-wallet/topup` by an admin) is not capped by O2 (it is an admin credit; the
