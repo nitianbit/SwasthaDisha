@@ -242,9 +242,6 @@ async function main() {
       if (code) assert.equal(r.json.code, code, `${who} ${method} ${url}: ${r.text.slice(0, 300)}`);
       return r;
     };
-    /** r32 (§26.8.4): a lost dispute is flagged only; the admin's Recover takes the money back (what a chargeback did before). */
-    const recover = (route: 'wallet-lots' | 'wallet-payments', id: string, reason = 'recover the disputed top-up') =>
-      expect('ADMIN', 'POST', `/admin/${route}/${id}/recover`, 200, { reason, requestKey: `r32rec-${oid().slice(-12)}` });
 
     // ── Slots ── (one-patient slots of doctor D; `at` is the start)
     const slotAt = async (doctor: string, at: Date, modes?: string[]) => {
@@ -403,17 +400,13 @@ async function main() {
       const lots = await expect('ADMIN', 'GET', `/admin/pharmacies/${C}/wallet/lots`, 200);
       assert.equal(lots.json.data[0]._id, String(lot._id));
       const cb = await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
-      assert.deepEqual([cb.json.data.replayed, cb.json.data.flagged], [false, true]);
-      // r32: flagged only (nothing taken); the admin's Recover takes the money back.
-      assert.equal((await PharmacyWalletModel.findOne({ pharmacyId: C }).lean() as any).balancePaise, 30000);
-      assert.equal((await recover('wallet-lots', String(lot._id))).json.data.replayed, false);
+      assert.equal(cb.json.data.replayed, false);
       const w = await PharmacyWalletModel.findOne({ pharmacyId: C }).lean() as any;
       assert.equal(w.balancePaise, 0); assert.equal(w.receivableMinor, 50000, 'what the balance could not cover is owed'); assert.equal(w.frozen, true);
       assert.equal(w.withdrawableMinor, 0);
       const closed = await WalletTopupLotModel.findById(lot._id).lean() as any;
       assert.equal(closed.closed, true); assert.equal(closed.disputeState, 'lost'); assert.equal(closed.remainingMinor, 0);
       assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
-      assert.equal((await recover('wallet-lots', String(lot._id))).json.data.replayed, true);
       assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: C, transactionType: 'chargeback' }), 1, 'once per lot');
       await expect('C' as Who, 'POST', '/pharmacy-assisted/consultations', 409, consult(await futureSlot(), { phone: '9600000912', patient: { relation: 'self', name: 'Dispute Two' } }), 'WALLET_RECEIVABLE');
       await expect('ADMIN', 'PUT', `/admin/pharmacies/${C}/wallet/freeze`, 409, { frozen: false, reason: 'try' }, 'WALLET_RECEIVABLE');
@@ -571,10 +564,7 @@ async function main() {
       await expect(W as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000941', patient: { relation: 'self', name: 'Spent One' } }));
       assert.equal((await balanceOf(W)).paise, 0, 'the top-up was spent on a booking');
       // Before: the lot route was the only way and there is no lot.
-      const flag = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
-      assert.deepEqual([flag.json.data.replayed, flag.json.data.flagged, flag.json.data.lotId], [false, true, null]);
-      // r32: the take is the admin's Recover.
-      const cb = await recover('wallet-payments', t.payId);
+      const cb = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
       assert.equal(cb.json.data.replayed, false); assert.equal(cb.json.data.withoutLot, true); assert.equal(cb.json.data.paymentRecordId, t.recordId);
       const w = await PharmacyWalletModel.findOne({ pharmacyId: W }).lean() as any;
       assert.equal(w.balancePaise, 0); assert.equal(w.receivableMinor, 50000, 'the spent top-up is owed'); assert.equal(w.frozen, true);
@@ -585,12 +575,9 @@ async function main() {
       assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.recordId}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
       assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.payId}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
       assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
-      assert.equal((await recover('wallet-payments', t.recordId)).json.data.replayed, true);
-      assert.equal((await recover('wallet-lots', String(lot._id))).json.data.replayed, true);
       assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W, transactionType: 'chargeback' }), 1);
-      const audits = await assistedModels.AssistedAuditEventModel.find({ action: 'wallet.recovered', orgId: W }).lean() as any[];
+      const audits = await assistedModels.AssistedAuditEventModel.find({ action: 'wallet.chargeback', orgId: W }).lean() as any[];
       assert.equal(audits.length, 1); assert.equal(audits[0].detail.withoutLot, true); assert.equal(audits[0].detail.paymentRecordId, t.recordId);
-      assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'wallet.chargeback', orgId: W }), 1, 'the flag, once');
       assert.equal(await sumOf(W), (await balanceOf(W)).paise, 'balance = Σ entries');
       await expect(W as Who, 'POST', '/pharmacy-assisted/consultations', 409, consult(await futureSlot(), { phone: '9600000942', patient: { relation: 'self', name: 'Spent Two' } }), 'WALLET_RECEIVABLE');
 
@@ -600,9 +587,7 @@ async function main() {
       const lot2 = await WalletTopupLotModel.findOne({ paymentRecordId: t2.recordId }).lean() as any;
       assert.ok(lot2, 'credited with a lot');
       await expect('ADMIN', 'POST', `/admin/wallet-lots/${String(lot2._id)}/chargeback`, 200, { reason: 'lost' });
-      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${t2.payId}/chargeback`, 200, { reason: 'lost again' })).json.data.replayed, true);
-      await recover('wallet-lots', String(lot2._id));
-      const viaPayment = await recover('wallet-payments', t2.payId, 'recover again');
+      const viaPayment = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t2.payId}/chargeback`, 200, { reason: 'lost again' });
       assert.equal(viaPayment.json.data.replayed, true); assert.equal(viaPayment.json.data.lotId, String(lot2._id)); assert.equal(viaPayment.json.data.withoutLot, false);
       assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W2, transactionType: 'chargeback' }), 1);
 
@@ -612,11 +597,6 @@ async function main() {
       const both = await Promise.all([t3.recordId, t3.payId, t3.recordId].map((id) => call('ADMIN', 'POST', `/admin/wallet-payments/${id}/chargeback`, { reason: 'race' })));
       assert.deepEqual(both.map((r) => r.status), [200, 200, 200], both.map((r) => r.text.slice(0, 200)).join(' | '));
       assert.equal(both.filter((r) => r.json.data.replayed === false).length, 1, 'exactly one is the chargeback');
-      // r32: and the Recover, by both ids at once: one take.
-      const takes = await Promise.all([t3.recordId, t3.payId, t3.recordId].map((id) => call('ADMIN', 'POST', `/admin/wallet-payments/${id}/recover`,
-        { reason: 'race recover', requestKey: `r32rec-${oid().slice(-12)}` })));
-      assert.deepEqual(takes.map((r) => r.status), [200, 200, 200], takes.map((r) => r.text.slice(0, 200)).join(' | '));
-      assert.equal(takes.filter((r) => r.json.data.replayed === false).length, 1, 'exactly one is the take');
       assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: W3, transactionType: 'chargeback' }), 1);
       assert.equal(await WalletTopupLotModel.countDocuments({ paymentRecordId: t3.recordId }), 1);
       assert.equal(await assistedModels.AssistedAuditEventModel.countDocuments({ action: 'wallet.chargeback', orgId: W3 }), 1);
@@ -631,8 +611,7 @@ async function main() {
       const ow = await PharmacyWalletModel.collection.insertOne({ pharmacyId: new Types.ObjectId(W4), balance: 300, balancePaise: 30000, isActive: true } as never);
       await PharmacyWalletTransactionModel.collection.insertOne({ pharmacyId: new Types.ObjectId(W4), walletId: ow.insertedId, transactionType: 'credit', amount: 300,
         balanceBefore: 0, balanceAfter: 300, status: 'completed', referenceType: 'wallet_recharge', referenceId: String((old as any)._id), signedAmountPaise: 30000 } as never);
-      await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((old as any)._id)}/chargeback`, 200, { reason: 'old dispute' });
-      const oc = await recover('wallet-payments', String((old as any)._id));
+      const oc = await expect('ADMIN', 'POST', `/admin/wallet-payments/${String((old as any)._id)}/chargeback`, 200, { reason: 'old dispute' });
       assert.equal(oc.json.data.entry.amountPaise, 30000);
       const w4 = await PharmacyWalletModel.findOne({ pharmacyId: W4 }).lean() as any;
       assert.deepEqual([w4.balancePaise, w4.receivableMinor ?? 0, w4.frozen], [0, 0, true]);
@@ -843,16 +822,11 @@ async function main() {
           assert.equal(Number(w?.balancePaise ?? 0), 0);
         } else {
           seen.creditedThenChargedBack += 1;
-          // r32: credited, then flagged (nothing taken); the admin's Recover takes it back.
-          assert.deepEqual([c, k, !!after.chargebackAt, cb.json.data.flagged], [1, 0, true, true], 'credited once, flagged');
-          await recover('wallet-payments', id);
-          const w2 = await PharmacyWalletModel.findOne({ pharmacyId: P2 }).lean() as any;
-          assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: P2, transactionType: 'chargeback' }), 1, 'recovered once');
-          assert.deepEqual([w2.balancePaise, w2.frozen], [0, true]);
+          assert.deepEqual([c, k, !!after.chargebackAt], [1, 1, false], 'credited once, charged back once');
+          assert.deepEqual([w.balancePaise, w.frozen], [0, true]);
         }
-        const wNow = await PharmacyWalletModel.findOne({ pharmacyId: P2 }).lean() as any;
         const rows = await PharmacyWalletTransactionModel.find({ pharmacyId: P2 }).lean() as any[];
-        assert.equal(rows.reduce((a, r) => a + Number(r.signedAmountPaise ?? 0), 0), Number(wNow?.balancePaise ?? 0), 'balance = Σ entries');
+        assert.equal(rows.reduce((a, r) => a + Number(r.signedAmountPaise ?? 0), 0), Number(w?.balancePaise ?? 0), 'balance = Σ entries');
       }
       console.log('   race outcomes', JSON.stringify(seen));
     });
@@ -865,7 +839,6 @@ async function main() {
       const bk = await expect(H2 as Who, 'POST', '/pharmacy-assisted/consultations', 201, consult(await futureSlot(), { phone: '9600000971', patient: { relation: 'self', name: 'Honest One' } }));
       assert.deepEqual(await balanceOf(H2), { paise: 80000, withdrawable: 30000 }, 'the booking spent lot money first (300 left)');
       await expect('ADMIN', 'POST', `/admin/wallet-payments/${noLot.payId}/chargeback`, 200, { reason: 'dispute lost' });
-      await recover('wallet-payments', noLot.payId);
       assert.deepEqual(await balanceOf(H2), { paise: 30000, withdrawable: 30000 }, 'the ₹500 came out of the non-lot money: still 300');
       await expect(H2 as Who, 'POST', `/pharmacy-assisted/bookings/${bk.json.data.booking._id}/cancel`, 200, {});
       assert.deepEqual(await balanceOf(H2), { paise: 80000, withdrawable: 80000 }, 'the refund restores the lot: 800');

@@ -572,9 +572,15 @@ async function main() {
       assert.ok(!JSON.stringify(audits).includes('123456789012'), 'no account number in the audit');
     });
 
-    await check('4d cap ₹50,000: a pharmacy card top-up above it 409 WALLET_LIMIT_REACHED; a credit above it posts and raises wallet_over_limit', async () => {
+    await check('4d cap ₹50,000 (r32b: behind WALLET_BALANCE_CAP_ENABLED for pharmacies): off, the pharmacy top-up is as before; on, above it 409; a credit above it posts and raises wallet_over_limit', async () => {
       const ph = await freshPharmacy();
       await cardTopup('pharmacy', ph.id, 4_000_000, 0, 8);
+      // Switch off (production): no cap on the pharmacy's own card top-up.
+      const free = await call(ph.id, 'POST', '/api/v1/pharmacy-wallet/topup', { amount: 15_000 });
+      assert.equal(free.status, 200, free.text);
+      await PaymentRecordModel.deleteMany({ payerPharmacyId: ph.id, status: 'created' });
+      process.env.WALLET_BALANCE_CAP_ENABLED = 'true';
+      try {
       const r = await call(ph.id, 'POST', '/api/v1/pharmacy-wallet/topup', { amount: 15_000 });
       assert.deepEqual([r.status, r.json.code], [409, 'WALLET_LIMIT_REACHED']);
       assert.equal(r.json.details.allowedMinor, 1_000_000);
@@ -582,6 +588,7 @@ async function main() {
       assert.equal(ok.status, 200, ok.text);
       const again = await call(ph.id, 'POST', '/api/v1/pharmacy-wallet/topup', { amount: 1 });
       assert.equal(again.json.code, 'WALLET_LIMIT_REACHED', 'an unpaid top-up of the last 30 minutes counts');
+      } finally { delete process.env.WALLET_BALANCE_CAP_ENABLED; }
       // A refund / admin credit beyond the cap posts and alerts (money is never stranded).
       await runLedgerTransaction((s) => postMovementIn(pharmacyStore(ph.id), { kind: 'refund_credit', amountMinor: 2_000_000, operationKey: `refund:${oid()}`,
         referenceType: 'test', referenceId: oid(), description: 'A refund' }, s));
@@ -590,7 +597,40 @@ async function main() {
       assert.deepEqual([alert.bookerKind, alert.detail.balanceMinor, alert.detail.maxBalanceMinor], ['pharmacy', 6_000_000, 5_000_000]);
     });
 
-    await check('4d chargeback then Recover: the dispute is flagged only (no debit, no freeze, not withdrawable); Recover debits, owes the shortfall, freezes — once; withdrawals then refused', async () => {
+    await check('4d chargebacks with WALLET_CHARGEBACK_FLAG_ONLY off (production): a pharmacy lot is taken at once (lot and payment routes, once); a doctor's (as a lab's) top-up is flagged only', async () => {
+      const ph = await freshPharmacy();
+      const rid = await cardTopup('pharmacy', ph.id, 100_000, 2000, 8);
+      await spend('pharmacy', ph.id, 70_000);
+      const lot = await WalletTopupLotModel.findOne({ paymentRecordId: rid }).lean() as any;
+      const cb = await expect('ADMIN', 'POST', `/api/v1/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
+      assert.deepEqual([cb.json.data.replayed, cb.json.data.flagged, cb.json.data.entry.amountPaise], [false, undefined, 30_000]);
+      const b = await balanceOf('pharmacy', ph.id);
+      assert.deepEqual([b.balanceMinor, b.receivableMinor, b.frozen], [0, 70_000, true], 'taken at once, as on production');
+      assert.equal((await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${rid}/chargeback`, 200, { reason: 'again' })).json.data.replayed, true);
+      assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: ph.id, transactionType: 'chargeback' }), 1);
+      // r32b (item 5): the switch turned on later — a repeat on the lot taken the old way is replayed: no flag, audit or alert.
+      process.env.WALLET_CHARGEBACK_FLAG_ONLY = 'true';
+      try {
+        const audits0 = await AssistedAuditEventModel.countDocuments({ orgId: ph.id, action: 'wallet.chargeback' });
+        const alerts0 = await AssistedAlertModel.countDocuments({ kind: 'wallet_topup_chargeback' });
+        const again = await expect('ADMIN', 'POST', `/api/v1/admin/wallet-lots/${String(lot._id)}/chargeback`, 200, { reason: 'once more' });
+        assert.deepEqual([again.json.data.replayed, again.json.data.flagged], [true, true]);
+        assert.equal(await AssistedAuditEventModel.countDocuments({ orgId: ph.id, action: 'wallet.chargeback' }), audits0);
+        assert.equal(await AssistedAlertModel.countDocuments({ kind: 'wallet_topup_chargeback' }), alerts0);
+        assert.equal((await PaymentRecordModel.findById(rid).lean() as any).chargebackAt, undefined, 'no fresh flag');
+      } finally { delete process.env.WALLET_CHARGEBACK_FLAG_ONLY; }
+      // A doctor's top-up (like a lab's) stays flagged only with the switch off.
+      const DX = oid();
+      const drid = await cardTopup('doctor', DX, 50_000, 1000, 8);
+      const dcb = await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${drid}/chargeback`, 200, { reason: 'doctor dispute lost' });
+      assert.deepEqual([dcb.json.data.flagged, dcb.json.data.walletKind], [true, 'doctor']);
+      const dw = await PartnerWalletModel.findOne({ ownerKind: 'doctor', ownerId: DX }).lean() as any;
+      assert.deepEqual([dw.balanceMinor, dw.frozen], [50_000, false], 'nothing taken');
+    });
+
+    await check('4d chargeback with WALLET_CHARGEBACK_FLAG_ONLY on: flagged only (no debit, no freeze, not withdrawable); Recover debits, owes the shortfall, freezes — once; withdrawals then refused', async () => {
+      process.env.WALLET_CHARGEBACK_FLAG_ONLY = 'true';
+      try {
       const ph = await freshPharmacy();
       const rid = await cardTopup('pharmacy', ph.id, 100_000, 2000, 8);
       await spend('pharmacy', ph.id, 70_000);
@@ -614,6 +654,34 @@ async function main() {
       b = await balanceOf('pharmacy', ph.id);
       assert.deepEqual([b.balanceMinor, b.receivableMinor], [30_000, 0]);
       assert.equal((await withdraw(ph.id, ph.version, 50_000)).json.code, 'WALLET_FROZEN');
+      } finally { delete process.env.WALLET_CHARGEBACK_FLAG_ONLY; }
+    });
+
+    await check('r32b: a withdrawal holding card money whose dispute was recorded since cannot be marked paid (409 WITHDRAWAL_LOT_DISPUTED); reject still releases it', async () => {
+      process.env.WALLET_CHARGEBACK_FLAG_ONLY = 'true';
+      try {
+        const ph = await freshPharmacy();
+        const rid = await cardTopup('pharmacy', ph.id, 100_000, 2000, 8);
+        const w = (await withdraw(ph.id, ph.version, 60_000)).json.data.withdrawal;
+        await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${rid}/chargeback`, 200, { reason: 'Razorpay dispute lost' });
+        const today = new Date(Date.now() + IST).toISOString().slice(0, 10);
+        await expect('ADMIN', 'POST', `${ADMW}/${w._id}/paid`, 409, { method: 'upi', reference: 'UTR-R32B-DISP', paidOn: today, detailsVersion: ph.version,
+          expectedVersion: 0, requestKey: newKey() }, 'WITHDRAWAL_LOT_DISPUTED');
+        await expect('ADMIN', 'POST', `${ADMW}/${w._id}/reject`, 200, { reason: 'card dispute recorded', expectedVersion: 0 });
+        assert.equal((await balanceOf('pharmacy', ph.id)).balanceMinor, 100_000);
+      } finally { delete process.env.WALLET_CHARGEBACK_FLAG_ONLY; }
+    });
+
+    await check('r32b: 4c pay-again without an earlier payment record keeps the booking\'s own coupon funding (a platform coupon stays platform)', async () => {
+      const frozen = { earningRule: 'provider_coupon_v2', earningSplit: { couponCode: 'CORP', couponFundedBy: 'platform' as const } };
+      const p = await selfSplitPatchFor(frozen, { baseAmount: 500, discountAmount: 100 });
+      assert.deepEqual([p.earningSplit?.couponCode, p.earningSplit?.couponFundedBy, p.earningSplit?.baseMinor], ['CORP', 'platform', 50_000]);
+      const gone = await selfSplitPatchFor({ earningRule: 'provider_coupon_v2', earningSplit: { couponCode: 'GONE1', couponFundedBy: 'platform' as const } },
+        { baseAmount: 500, discountAmount: 100 });
+      assert.deepEqual([gone.earningSplit?.couponFundedBy, gone.earningSplit?.baseMinor], ['platform', 50_000], 'a coupon no longer readable keeps its funding');
+      const none = await selfSplitPatchFor({ earningRule: 'provider_coupon_v2', earningSplit: { couponCode: 'CORP', couponFundedBy: 'platform' as const } },
+        { baseAmount: 500, discountAmount: 0 });
+      assert.deepEqual([none.earningSplit?.couponCode, none.earningSplit?.baseMinor], [undefined, 50_000], 'no discount, no coupon');
     });
 
     await check('4d lab and doctor: the same withdrawal on their own routes (lab member with wallet.manage; eligible doctor), to their home accounts', async () => {

@@ -5,7 +5,8 @@ import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/p
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { lotsWritableWhen, withdrawableOfIn as lotsWithdrawableOfIn } from '@/modules/pharmacyWallet/walletLots';
-import { postMovementIn, WALLET_POLICY, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { chargeBackLotIn, postMovementIn, WALLET_POLICY, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import type { IPharmacyWallet, IPharmacyWalletTransaction } from '@/modules/pharmacyWallet/types';
 
 /**
@@ -142,6 +143,8 @@ export const pharmacyTopups: TopupKind<IPharmacyWallet, IPharmacyWalletTransacti
   ownerOf: (r) => String(r.payerPharmacyId).toLowerCase(),
   storeFor: (r) => pharmacyStore(String(r.payerPharmacyId)),
   store: (id) => pharmacyStore(id),
+  // r32b: the production rule (`take`) until WALLET_CHARGEBACK_FLAG_ONLY is on; then flagged only, and the admin Recovers.
+  chargeback: () => (assistedFlags.chargebackFlagOnly() ? 'flag' : 'take'),
   /** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
   lotsWritable: lotsWritableWhen(assistedFlags.pharmacy),
   rechargeDescription: 'Pharmacy wallet recharge via Razorpay',
@@ -158,4 +161,15 @@ export async function postPharmacyMovementIn(m: PharmacyMovement, s: ClientSessi
   if (!Types.ObjectId.isValid(m.pharmacyId)) throw err(404, 'PHARMACY_NOT_FOUND', 'Pharmacy not found');
   const { pharmacyId, amountPaise, ...rest } = m;
   return postMovementIn(pharmacyStore(pharmacyId), { ...rest, amountMinor: amountPaise }, s);
+}
+
+/**
+ * Chargebacks (§5.3, production gate): a card dispute LOST on a pharmacy top-up lot (`chargeBackLotIn`, the `take` rule;
+ * the lot route while WALLET_CHARGEBACK_FLAG_ONLY is off).
+ */
+export async function recordChargebackIn(lotId: string, s: ClientSession): Promise<PostedMovement> {
+  if (!Types.ObjectId.isValid(lotId)) throw err(404, 'LOT_NOT_FOUND', 'Top-up not found');
+  const lot = await WalletTopupLotModel.findById(lotId).session(s).lean();
+  if (!lot || lot.walletRef.kind !== 'pharmacy') throw err(404, 'LOT_NOT_FOUND', 'Top-up not found');
+  return chargeBackLotIn(pharmacyStore(lot.walletRef.id), lot, s);
 }

@@ -15,12 +15,14 @@ export interface LotBackfillReport { mode: 'dry-run' | 'commit'; missing: Record
 
 export async function backfillLotWithdrawableAfter(opts: { commit: boolean }): Promise<LotBackfillReport> {
   const missing: Record<string, number> = {};
-  for (const row of await WalletTopupLotModel.aggregate([{ $match: { withdrawableAfter: { $exists: false } } },
+  // r32b: only lots that carry their creation time (a lot without one is listed by its absence, never given a null date).
+  const missingFilter = { withdrawableAfter: { $exists: false }, createdAt: { $type: 'date' } };
+  for (const row of await WalletTopupLotModel.aggregate([{ $match: missingFilter },
     { $group: { _id: '$walletRef.kind', n: { $sum: 1 } } }]) as { _id: string; n: number }[]) missing[row._id] = row.n;
   let filled = 0;
   if (opts.commit) {
     // One update with a pipeline: each lot's own createdAt + 7 days; a lot written meanwhile (with the field) is untouched.
-    const r = await WalletTopupLotModel.collection.updateMany({ withdrawableAfter: { $exists: false } },
+    const r = await WalletTopupLotModel.collection.updateMany(missingFilter,
       [{ $set: { withdrawableAfter: { $add: ['$createdAt', CARD_HOLD_DAYS * 86_400_000] } } }]);
     filled = r.modifiedCount;
   }

@@ -122,6 +122,8 @@ TopupKind<IPartnerWallet, IPartnerWalletEntry> {
     ownerOf: (r) => lower(r[o.payerField]),
     storeFor: (r) => store(String(r[o.payerField])),
     store,
+    // Owner C4 (2d/3a): a lab's or doctor's lost card dispute is always flagged only (r32b: whatever the pharmacy switch says).
+    chargeback: () => 'flag',
     lotsWritable: lotsWritableWhen(o.on),
     assertCreditable: assertPartnerWalletIndexes,
     rechargeDescription: o.description,

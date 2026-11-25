@@ -264,22 +264,16 @@ async function main() {
       assert.equal((await call('ADMIN', 'POST', '/pharmacy-wallet/topup', { pharmacyId: B, amount: 200 }, { 'idempotency-key': 'r9b-hand-' + oid() })).status, 200);
       const t = await topupRecord(B, 300, 'created');
       await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.recordId}/close-compensated`, 200, { reason: 'paid by hand', requestKey: newKey() });
-      const flag = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.orderId}/chargeback`, 200, { reason: 'card dispute lost' });
-      assert.deepEqual([flag.json.data.blockedUncredited, flag.json.data.compensated, flag.json.data.flagged, flag.json.data.replayed], [false, true, true, false]);
-      // r32 (§26.8.4): flagged only; the admin's Recover takes the hand payment back.
-      const recover = (id: string) => expect('ADMIN', 'POST', `/admin/wallet-payments/${id}/recover`, 200, { reason: 'recover the hand payment', requestKey: newKey() });
-      const r = await recover(t.orderId);
+      const r = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.orderId}/chargeback`, 200, { reason: 'card dispute lost' });
       const d = r.json.data;
-      assert.deepEqual([d.compensated, d.replayed, d.entry.amountPaise, d.entry.receivableDeltaPaise], [true, false, 20000, 10000]);
+      assert.deepEqual([d.blockedUncredited, d.compensated, d.replayed, d.entry.amountPaise, d.entry.receivableDeltaPaise], [false, true, false, 20000, 10000]);
       const w = await PharmacyWalletModel.findOne({ pharmacyId: B }).lean() as any;
       assert.deepEqual([w.balancePaise, w.receivableMinor, w.frozen], [0, 10000, true]);
       const again = await expect('ADMIN', 'POST', `/admin/wallet-payments/${t.recordId}/chargeback`, 200, { reason: 'again' });
       assert.equal(again.json.data.replayed, true);
-      assert.equal((await recover(t.recordId)).json.data.replayed, true);
       assert.equal(await PharmacyWalletTransactionModel.countDocuments({ pharmacyId: B, transactionType: 'chargeback' }), 1, 'once');
-      assert.equal(await AssistedAuditEventModel.countDocuments({ action: 'wallet.chargeback', orgId: B }), 1);
-      const audits = await AssistedAuditEventModel.find({ action: 'wallet.recovered', orgId: B }).lean() as any[];
-      assert.equal(audits.length, 1); assert.deepEqual([audits[0].detail.compensated, audits[0].detail.debitedMinor], [true, 20000]);
+      const audits = await AssistedAuditEventModel.find({ action: 'wallet.chargeback', orgId: B }).lean() as any[];
+      assert.equal(audits.length, 1); assert.deepEqual([audits[0].detail.compensated, audits[0].detail.debitedPaise], [true, 20000]);
       const rows = await PharmacyWalletTransactionModel.find({ pharmacyId: B }).lean() as any[];
       assert.equal(rows.reduce((a, x) => a + Number(x.signedAmountPaise ?? 0), 0), 0, 'balance = Σ entries');
       const rec = await PaymentRecordModel.findById(t.recordId).lean() as any;
@@ -296,8 +290,7 @@ async function main() {
       const m = await topupRecord(C, 300, 'created');
       await expect('ADMIN', 'POST', `/admin/wallet-payments/${m.recordId}/close-compensated`, 200, { reason: 'paid by hand', requestKey: newKey() });
       await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(m.recordId) }, { $set: { chargebackAt: new Date() } });
-      assert.equal((await expect('ADMIN', 'POST', `/admin/wallet-payments/${m.recordId}/chargeback`, 200, { reason: 'card dispute lost' })).json.data.replayed, true);
-      const later = await recover(m.recordId);
+      const later = await expect('ADMIN', 'POST', `/admin/wallet-payments/${m.recordId}/chargeback`, 200, { reason: 'card dispute lost' });
       assert.deepEqual([later.json.data.compensated, later.json.data.entry.amountPaise, await balanceOf(C)], [true, 30000, 20000]);
     });
 

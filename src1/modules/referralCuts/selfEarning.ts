@@ -18,13 +18,20 @@ type SelfTerms = { listMinor: number; discountMinor: number; couponCode?: string
   /** Lab bookings: the tests and packages in their stored order, with their list prices. */
   lines?: { catalogItemId: string; listMinor: number }[] };
 
-/** The split of a self booking's terms (the coupon's funding read now). */
-export async function selfSplitOf(t: SelfTerms, s?: ClientSession | null): Promise<AssistedSplit> {
+/**
+ * The split of a self booking's terms (the coupon's funding read now). r32b: `known` is the split already frozen on the
+ * booking — terms that name no coupon but carry a discount keep that coupon, and a coupon that can no longer be read keeps
+ * the funding it had.
+ */
+export async function selfSplitOf(t: SelfTerms, s?: ClientSession | null, known?: Pick<AssistedSplit, 'couponCode' | 'couponFundedBy'> | null): Promise<AssistedSplit> {
   const listMinor = Math.max(0, Math.round(Number(t.listMinor) || 0));
   const discountMinor = Math.min(listMinor, Math.max(0, Math.round(Number(t.discountMinor) || 0)));
-  const code = typeof t.couponCode === 'string' && t.couponCode.trim() ? t.couponCode.trim() : null;
+  const named = typeof t.couponCode === 'string' && t.couponCode.trim() ? t.couponCode.trim() : null;
+  const code = named ?? (discountMinor > 0 && known?.couponCode ? known.couponCode : null);
   const coupon = code ? await CouponModel.findOne({ code: { $eq: code } }).select({ fundedBy: 1, corporateIds: 1 }).session(s ?? null).lean() : null;
-  const fundedBy = code ? couponFundedBy((coupon ?? {}) as { fundedBy?: string; corporateIds?: unknown[] }) : undefined;
+  const fundedBy = !code ? undefined
+    : coupon ? couponFundedBy(coupon as { fundedBy?: string; corporateIds?: unknown[] })
+      : known?.couponCode === code && known.couponFundedBy ? known.couponFundedBy : couponFundedBy({});
   const baseMinor = fundedBy === 'platform' ? listMinor : listMinor - discountMinor;
   const lineDiscounts = t.lines ? spreadByPrice(t.lines.map((l) => l.listMinor), discountMinor) : [];
   return {
@@ -46,10 +53,12 @@ export async function selfEarningOf(t: SelfTerms, s?: ClientSession | null): Pro
  * v2 self booking's split is made again from them. Only for a booking frozen with the rule (whatever the switch says
  * now); assisted rows keep their own split.
  */
-export async function selfSplitPatchFor(b: { earningRule?: string; assisted?: unknown },
+export async function selfSplitPatchFor(b: { earningRule?: string; assisted?: unknown; earningSplit?: Pick<AssistedSplit, 'couponCode' | 'couponFundedBy'> | null },
   r: { baseAmount?: unknown; discountAmount?: unknown; couponCode?: string | null }): Promise<{ earningSplit?: AssistedSplit }> {
   if (b.earningRule !== 'provider_coupon_v2' || b.assisted) return {};
   const base = Number(r.baseAmount);
   if (!Number.isFinite(base) || base < 0) return {};
-  return { earningSplit: await selfSplitOf({ listMinor: base * 100, discountMinor: Math.max(0, Number(r.discountAmount || 0)) * 100, couponCode: r.couponCode }) };
+  // r32b: pay-again without an earlier record names no coupon: the booking's own frozen coupon decides the funding.
+  return { earningSplit: await selfSplitOf({ listMinor: base * 100, discountMinor: Math.max(0, Number(r.discountAmount || 0)) * 100, couponCode: r.couponCode },
+    null, b.earningSplit) };
 }

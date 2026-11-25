@@ -327,6 +327,11 @@ export async function adminPaid(adminId: string, id: string, body: { method: 'ba
       }
       if (w.state !== 'requested') throw err(409, 'WITHDRAWAL_NOT_REQUESTED', `This withdrawal is ${w.state}`);
       if (w.version !== body.expectedVersion) throw err(409, 'WITHDRAWAL_CHANGED', 'This withdrawal changed since it was loaded; review it again');
+      // r32b: card money whose dispute was recorded since the request is not paid out (reject it, or Recover first).
+      if (await WalletTopupLotModel.exists({ _id: { $in: w.lotAllocations.map((l) => l.lotId) },
+        $or: [{ disputeState: { $ne: 'none' } }, { chargedBackAt: { $exists: true } }] }).session(s)) {
+        throw err(409, 'WITHDRAWAL_LOT_DISPUTED', 'A card dispute was recorded on money this withdrawal holds; reject it instead of paying it');
+      }
       const a = await SettlementAccountModel.findById(w.destination.homeAccountId).session(s).lean() as ISettlementAccount | null;
       if (!a?.payoutDetails || a.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Verify the payout details before recording the transfer');
       if ((a.payoutDetailsVersion ?? 0) !== Number(body.detailsVersion)) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
