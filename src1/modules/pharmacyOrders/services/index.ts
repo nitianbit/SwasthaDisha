@@ -7,6 +7,7 @@ import { PharmacyCustomerService } from '@/modules/pharmacyCustomers/services';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PaymentService } from '@/modules/payment/services';
 import { BookingRepository } from '@/modules/bookings/repository';
+import { hasDoctorPrescription } from '@/modules/bookings/serverOwnedFields';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
 import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/services/sideEffects';
 import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
@@ -436,6 +437,21 @@ export class PharmacyOrderService {
     }
   }
 
+  /**
+   * S4: an order is linked to a consultation only when that consultation carries the prescription its doctor saved
+   * (server marker and prescriber), never one a client wrote into the booking. Called after the link has passed the
+   * existence / customer checks, so it reveals nothing about other customers' bookings.
+   */
+  private async ensureConsultationPrescribed(linkedConsultationId: string): Promise<void> {
+    if (!hasDoctorPrescription(await this.bookingRepository.findById(linkedConsultationId))) {
+      throw new AppError({
+        status: 400,
+        code: 'CONSULTATION_PRESCRIPTION_REQUIRED',
+        message: 'The linked consultation has no prescription saved by its doctor',
+      });
+    }
+  }
+
   private async resolveOrderItemsPricing(
     pharmacyId: string,
     buyerPharmacyId: string | undefined,
@@ -611,6 +627,7 @@ export class PharmacyOrderService {
     }
     await this.validateLinkedReferences(data.customerId, data);
 
+    if (data.linkedConsultationId) await this.ensureConsultationPrescribed(data.linkedConsultationId);
     const pricedItems = await this.resolveOrderItemsPricing(
       pharmacyId,
       data.buyerPharmacyId,
@@ -1178,6 +1195,10 @@ export class PharmacyOrderService {
       linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
     });
 
+    // S4: a new or changed consultation link needs the doctor's prescription (an existing link is not re-judged).
+    if (data.linkedConsultationId && data.linkedConsultationId !== String(order.linkedConsultationId ?? '')) {
+      await this.ensureConsultationPrescribed(data.linkedConsultationId);
+    }
     let updatePayload: Record<string, unknown> = {
       ...data,
       ...(Object.prototype.hasOwnProperty.call(data, 'customerId') ? { customerId: nextCustomerId } : {}),
