@@ -5530,6 +5530,11 @@ A mutation run, one break at a time: a doctor never refused at capture, or no 40
 without the doctor fails 13 checks; the refund-row enum without `doctor` fails 10; the doctor view without `payment` fails
 5; the "MyEwaCare" heading fails A.
 
+Each suite alone on its own database: `r29-phase3c` 21/21, `r26-phase3b` 14/14, `r14-phase2b` 24/24, `r21-phase2e` 18/18,
+`r20-phase3a` 15/15, `r16-phase3d` 15/15, `r10-phase1b` 19/19, `r10b-phase1b-fixes` 23/23, `r10f-card-last` 2/2. The full
+regression (`prun.sh … 4`): 80 of 81 pass, tsc 17 (unchanged); the one failure, `phase0` ("a slow converter …", a timing
+check under load), passes alone (29/29).
+
 **Seen, not changed:** the admin move of a doctor-made lab row still does not move its `assisted_links` row (3b F6). The
 lab member verify route (`/partner-workspace/assisted/payments/verify`) stays lab-only; doctors use `/payments`.
 
