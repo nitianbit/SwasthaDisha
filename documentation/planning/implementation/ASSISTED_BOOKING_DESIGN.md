@@ -7272,7 +7272,9 @@ SMS_JOIN_RATE_PER_MINUTE=30
   off).
 - **Deploy:** 1. deploy (no new index or collection: the outbox and the OTP counters exist); 2. route `/j/` on the link
   domain to the API (nginx `location /j/ { proxy_pass …; access_log off; }`: the proxy's own access log must not keep
-  the token either) and set `TRUST_PROXY`; 3. set `JOIN_LINK_SECRET` and `SMS_JOIN_LINK_BASE_URL`; 4. whitelist the
+  the token either); **before switching the join link on, firewall the Node port (4041 on stage) or bind it to
+  127.0.0.1, and set `TRUST_PROXY` to the real hop count** (r34c: otherwise a client reaching Node directly, or a forged
+  `X-Forwarded-For`, picks its own address for the per-IP limit); 3. set `JOIN_LINK_SECRET` and `SMS_JOIN_LINK_BASE_URL`; 4. whitelist the
   address on DLT and register the three texts above; 5. one admin test send each (`POST /admin/sms-notices/test`); 6. the
   pairs. Reminders need only the REMINDER pair.
 - **Rollback:** the pairs (a `_LINK` pair off falls back to the plain text); the secret unset removes `/j/` (every
@@ -7344,3 +7346,26 @@ no counter written; a database error → the page, logged `error`; a link addres
 `phase1a` 30/30 (the booker view's Join call). `tsc` 17.
 
 **Full regression** (`prun.sh … 2` on `052ab90e`): 85 suites, 85 passed (`phase0` included), `tsc` 17.
+
+#### 27.14.7 Follow-ups (r34c, 2026-11-25)
+
+Branch `m0/r34c-sms-followups` from `ceb49e88` (r34b, on stage). Local commits only.
+
+1. **No import cycle.** `BASE32_ALPHABET` and the base32 encoder (`base32Prefix`) live in `common/utils/base32.ts`; the
+   Ref (`assisted/consultations.ts`) and the join link's MAC (`smsNotices/joinLink.ts`) import them from there, so
+   `joinLink.ts` no longer imports `assisted/consultations.ts` (which imports `smsNotices/events.ts`, which imports
+   `joinLink.ts`).
+2. **A reminder is not lost after a move back.** A reminder's key is its visit time, so a row already `skipped: stale`
+   (the visit had moved away) blocked the one for the same time when the visit moved back. Now the reminder's enqueue
+   (`enqueueSms` with `rearmSkipped`) re-arms that `skipped` row when its new due time is in the future: `queued`, the new
+   `dueAt`, the version, attempts 0, the finish fields cleared, by a compare-and-set on `state: 'skipped'` (one racing
+   enqueue wins). A `sent` reminder is never repeated. The reminder's "now" is `businessClock` (the business clock the
+   limits use; real time unless a test moves it).
+3. **Deploy** (§27.14.4 step 2): firewall the Node port (4041 on stage) or bind it to 127.0.0.1, and set `TRUST_PROXY` to
+   the real hop count, before switching the join link on.
+
+**Check** (r34-phase5cd, now 15): a visit at 08:30 (reminder due 20:00 the evening before), moved to 10:00 at 19:00, its
+08:30 reminder `stale` at 20:00, moved back at 21:00 (two racing reminder enqueues and the move): the 08:30 row is
+`queued` again for 07:00 (20:00 was under an hour away), one row per visit time, sent at 07:00; once sent, another move
+away and back leaves it `sent`.
+
