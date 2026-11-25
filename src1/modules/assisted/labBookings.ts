@@ -12,16 +12,12 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
 import { CouponRepository } from '@/modules/coupon/repository';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import BookingModel from '@/modules/bookings/model';
 import SpecialistModel from '@/modules/specialists/model';
 import { PartnerWalletEntryModel } from '@/modules/partnerWallets/model';
 import { DOCTOR } from '@/modules/partnerWallets/ledger';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
-import { AssistedReviewItemModel } from '@/modules/assisted/model';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
-import { treatingWindowOf } from '@/modules/assisted/treating';
-import { unpaidCardBooking } from '@/modules/assisted/views';
-import { slotsOf } from '@/modules/assisted/rxAccess';
+import { openOwnTreatingBooking } from '@/modules/assisted/treating';
 import { maskName } from '@/modules/assisted/names';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
@@ -328,12 +324,7 @@ async function bookerNameOf(booker: LabBooker): Promise<string> {
  */
 async function patientOfConsultation(specialistId: string, input: AssistedLabInput, now: Date): Promise<PreparedPatient> {
   const missing = () => err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
-  if (!OBJECT_ID.test(String(input.fromBookingId))) throw missing();
-  const b = await BookingModel.findOne({ _id: input.fromBookingId, specialistId: { $in: [lower(specialistId), String(specialistId).toUpperCase()] } }).lean() as Row | null;
-  if (!b || unpaidCardBooking(b)) throw missing();
-  if (await AssistedReviewItemModel.exists({ kind: 'not_mine', bookingKind: 'booking', bookingId: lower(b._id), state: 'open' })) throw missing();
-  const slot = (await slotsOf([b])).get(String(b.slotId));
-  if (!treatingWindowOf(b, slot, now).open) throw err(409, 'TREATING_WINDOW_CLOSED', 'This consultation is no longer open for booking tests');
+  const b = (await openOwnTreatingBooking(specialistId, input.fromBookingId, now)).booking;
   const typed = cleanName(input.typedName);
   const dependentId = b.dependentId ? lower(b.dependentId) : undefined;
   const dep = dependentId ? await DependentModel.findOne({ _id: dependentId, userId: b.userId, isActive: true }).select({ name: 1 }).lean() as { name?: string } | null : null;

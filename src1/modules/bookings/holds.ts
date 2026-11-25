@@ -22,6 +22,7 @@ import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import { assistedBookerFilter, assistedCauseOf, settleAssistedFundingIn } from '@/modules/assisted/refunds';
 import { countBookerCancellationIn } from '@/modules/assisted/limits';
 import { unpaidCardBooking } from '@/modules/assisted/views';
+import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 import { clinicBranchContext, branchClosedOn } from '@/modules/doctors/services/schedule';
 
 /**
@@ -497,6 +498,8 @@ export async function cancelBookingSettlement(p: {
     }
     await BookingModel.updateOne({ _id: id, status: 'cancelled' },
       { $set: { holds: { version: 1, heldSlotId: null, followUpParentId: null } } }, { session: s });
+    // r30 (§25.9.6): an alert when the doctor read other providers' records under this booking.
+    await alertReadThenCancelIn(id, s);
     const after = await BookingModel.findById(id).session(s).lean() as IBooking;
     if (p.inTx) await p.inTx(after, s, refunded);
     return { booking: after, refunded, alreadyCancelled: false };

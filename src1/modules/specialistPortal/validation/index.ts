@@ -142,3 +142,9 @@ export const patientUserIdParamSchema = Joi.object({
       'any.required': 'User ID is required',
     }),
 });
+
+/** r30 (§25.9.3): `dependentId` = one family member; `bookingId` = the doctor's treating booking (the treating view). */
+export const patientHistoryQuerySchema = Joi.object({
+  dependentId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/),
+  bookingId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/),
+});
