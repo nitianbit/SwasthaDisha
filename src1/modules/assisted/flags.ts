@@ -80,14 +80,36 @@ export const assistedFlags = {
    * history shows the doctor's own consultations only (still logged). Revoke, the lists and the expiry sweep always run.
    */
   records: () => on('RECORDS_ACCESS_ENABLED'),
-  /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
+  /**
+   * r32 (round 4d, §26.8, GATE-RBI): NEW wallet withdrawal requests (pharmacy, lab, doctor). Off: a request answers 503
+   * WITHDRAWALS_DISABLED; cancel, reject, paid, void, reads and every credit always run.
+   */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
+  /**
+   * r32 (round 4c, §26.7, M13): new SELF ledger bookings (customer consultations, customer instant, customer lab bookings)
+   * are frozen with `earningRule: 'provider_coupon_v2'` and a top-level `earningSplit` (cut 0). Off: they are stored exactly
+   * as before. Bookings made while it was on keep their rule.
+   */
+  earningRuleV2ForAll: () => on('EARNING_RULE_V2_FOR_ALL'),
+  /**
+   * r32b (§26.17): the ₹50,000 cap on the PHARMACY's own card top-up orders. Off: pharmacy top-ups behave as before. Lab
+   * and doctor wallets keep their cap (2d/3a) whatever it says.
+   */
+  walletBalanceCap: () => on('WALLET_BALANCE_CAP_ENABLED'),
+  /**
+   * r32b (§26.17): a lost card dispute on a PHARMACY top-up is flagged only and taken back by the admin's Recover. Off:
+   * the automatic take as on production. Lab and doctor top-ups are flagged only whatever it says (2d/3a).
+   */
+  chargebackFlagOnly: () => on('WALLET_CHARGEBACK_FLAG_ONLY'),
   rechargeSweepFrom: (): Date | null => {
     const raw = process.env.WALLET_RECHARGE_SWEEP_FROM;
     const t = raw ? Date.parse(raw) : NaN;
     return Number.isFinite(t) ? new Date(t) : null;
   },
 };
+
+/** r32 (§26.8.2, Q4/M15): the smallest withdrawal, paise (default ₹500). */
+export const withdrawalMinMinor = () => int('WALLET_WITHDRAWAL_MIN_MINOR', 50_000);
 
 /** ASSUMED D10 defaults; each can be changed with its environment variable. */
 export const assistedLimits = {

@@ -33,6 +33,7 @@ import { cardContextOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { auditIn, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { deskCustomerPart, deskLabPart, isDeskRow, isWalkIn } from '@/modules/assisted/deskViews';
 import { bookerNoticeUserId } from '@/modules/assisted/bookers';
+import { selfEarningOf } from '@/modules/referralCuts/selfEarning';
 import { smsCancelled, smsMoved, smsReminder, smsReportReady } from '@/modules/smsNotices/events';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
@@ -282,6 +283,9 @@ export class LabBookingService {
     const subtotalMinor = items.reduce((a, i) => a + i.priceMinor, 0);
     const { discountMinor, couponCode } = await this.couponFor(userId, String(partner._id), items, subtotalMinor, input.couponCode);
     const payableMinor = Math.max(0, subtotalMinor - discountMinor);
+    // r32 (4c, §26.7): the v2 earning rule and split while EARNING_RULE_V2_FOR_ALL is on (nothing otherwise).
+    const earning = await selfEarningOf({ listMinor: subtotalMinor, discountMinor, couponCode,
+      lines: items.map((i) => ({ catalogItemId: String(i._id), listMinor: Number(i.priceMinor) })) });
     // Q9: the price the customer accepted is a fence — nothing is funded at any other price (prices or a coupon may
     // have changed since the screen was shown).
     if ((input.acceptedPayableMinor !== undefined && input.acceptedPayableMinor !== payableMinor)
@@ -309,6 +313,7 @@ export class LabBookingService {
         reschedule: { version: 0, pending: false },
         report: { draftFiles: [], releasedFiles: [], releases: [] },
         lifecycle: {},
+        ...earning,
       }], { session: s });
       return created!.toObject() as IPartnerLabBooking;
     });
@@ -990,9 +995,11 @@ export class LabBookingService {
     if (isDeskRow(b)) return;
     if (b.paymentStatus !== 'paid') return;
     // r11 (§24.4.4): a partner-paid booking earns its split (provider_coupon_v2, cut 0 in phase 2), once per booking.
-    const split = b.assisted?.split;
-    if (isAssisted(b) && split?.rule === 'provider_coupon_v2') {
-      if (b.assisted?.funding?.state !== 'captured') return;
+    // r32 (4c, §26.7): so does a self booking frozen with the rule (its top-level `earningSplit`, cut 0).
+    const selfV2 = !isAssisted(b) && b.earningRule === 'provider_coupon_v2';
+    const split = selfV2 ? b.earningSplit : b.assisted?.split;
+    if ((isAssisted(b) || selfV2) && split?.rule === 'provider_coupon_v2') {
+      if (isAssisted(b) && b.assisted?.funding?.state !== 'captured') return;
       const by = { by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' as const : 'system' as const };
       if (Number(split.providerMinor) > 0) {
         await postLedgerEntry({

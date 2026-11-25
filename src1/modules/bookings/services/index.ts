@@ -37,6 +37,7 @@ import { NotificationService } from '@/modules/notification/services';
 import { SlotService } from '@/modules/slots/services';
 import { Service } from 'typedi';
 import { CouponService } from '@/modules/coupon/services';
+import { selfEarningOf, selfSplitPatchFor } from '@/modules/referralCuts/selfEarning';
 import { PaymentService, bookingPriceTermsOf } from '@/modules/payment/services';
 import { PaymentRepository } from '@/modules/payment/repository';
 import { BookingReminderScheduler } from '@/modules/bookings/services/bookingReminderScheduler';
@@ -804,6 +805,9 @@ export class BookingService {
     }
 
     await this.validateWalletIfRequested(data.userId, data.useWalletBalance);
+    // r32 (4c, §26.7): the v2 earning rule and split while EARNING_RULE_V2_FOR_ALL is on (nothing otherwise; a booking the
+    // ledger does not pay drops them at the insert).
+    const earning = await selfEarningOf({ listMinor: Math.round(basePrice * 100), discountMinor: Math.round(discountAmount * 100), couponCode });
 
     const booking: IBooking = {
       bookingType,
@@ -839,6 +843,7 @@ export class BookingService {
         createRequestKey: requestKey,
         createTerms: { basePrice, discountAmount, ...(couponCode ? { couponCode } : {}), useWalletBalance: data.useWalletBalance === true },
       } : {}),
+      ...earning,
     };
 
     // Slot capacity and (for a follow-up) the parent consultation's benefit are taken in the same transaction as
@@ -2112,6 +2117,8 @@ export class BookingService {
         paymentStatus: 'paid',
         // Q16a (A): a coupon taken at pay-again is the booking's price from now on (earning and legacy payout follow it).
         ...bookingPriceTermsOf({ baseAmount, discountAmount }, booking),
+        // r32 (4c): and a v2 self booking's split follows the same terms.
+        ...(await selfSplitPatchFor(booking, { baseAmount, discountAmount, couponCode })),
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: grossAmount },

@@ -9,7 +9,7 @@ import { auditIn } from '@/modules/assisted/support';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentService } from '@/modules/payment/services';
 import type { IPaymentRecord, VerifyPaymentRequest } from '@/modules/payment/types';
-import { adminTopup, checkTopup, setFrozenIn, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
+import { adminTopup, assertTopupWithinCap, checkTopup, setFrozenIn, walletTransaction } from '@/modules/pharmacyWallet/walletCore';
 import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
 import MemberModel from '@/modules/partners/model/member';
 import PartnerOrgModel from '@/modules/partners/model';
@@ -17,7 +17,7 @@ import { hasGlobalScope, type PartnerActor } from '@/modules/partners/services';
 import { labAdmissible } from '@/modules/assisted/labViews';
 import type { PartnerPermission } from '@/modules/partners/types';
 import { PartnerWalletEntryModel, type IPartnerWallet, type IPartnerWalletEntry } from '@/modules/partnerWallets/model';
-import { assertPartnerWalletIndexes, PARTNER_WALLET_POLICY, partnerStore, type PartnerOwner } from '@/modules/partnerWallets/ledger';
+import { assertPartnerWalletIndexes, partnerStore, type PartnerOwner } from '@/modules/partnerWallets/ledger';
 import { doctorIsEligible } from '@/modules/specialists/eligibility';
 
 /**
@@ -31,7 +31,6 @@ const err = (status: number, code: string, message: string) => new AppError({ st
 const payments = (): PaymentService => Container.get(PaymentService);
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
 const recordNotFound = () => err(404, 'PAYMENT_RECORD_NOT_FOUND', 'Payment record not found');
-const PENDING_WINDOW_MS = 30 * 60_000;
 
 // ── Views ──
 export function walletView(w: IPartnerWallet | null | undefined) {
@@ -124,15 +123,8 @@ export async function createTopup(owner: PartnerOwner, ownerIdIn: string, actorI
   };
   const prior = await replay();
   if (prior) return prior;
-  const balanceMinor = (await partnerStore(owner.kind, ownerId).findIn(null))?.balanceMinor ?? 0;
-  const pending = await PaymentRecordModel.find({ [owner.topups.payerField]: ownerId, context: 'wallet_recharge', 'notes.flow': owner.topups.flow, status: 'created',
-    createdAt: { $gte: new Date(Date.now() - PENDING_WINDOW_MS) } }).select({ finalAmount: 1, finalAmountPaise: 1 }).lean() as unknown as IPaymentRecord[];
-  const pendingMinor = pending.reduce((a, r) => a + recordPaise(r), 0);
-  const max = PARTNER_WALLET_POLICY.maxBalanceMinor;
-  if (balanceMinor + pendingMinor + body.amountMinor > max) {
-    throw Object.assign(err(409, 'WALLET_LIMIT_REACHED', `A ${owner.kind} wallet holds at most ₹${(max / 100).toLocaleString('en-IN')}`),
-      { details: { maxBalanceMinor: max, balanceMinor, pendingMinor, allowedMinor: Math.max(0, max - balanceMinor - pendingMinor) } });
-  }
+  // O2: the one cap check of every top-up kind (r32: shared with the pharmacy's top-up).
+  await assertTopupWithinCap(owner.topups, ownerId, body.amountMinor);
   razorpayKeyId();
   try {
     const out = await payments().createOrder({ ...order.fields, requestKey, requestHash, context: 'wallet_recharge',

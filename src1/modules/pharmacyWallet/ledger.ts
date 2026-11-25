@@ -2,11 +2,11 @@ import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { PharmacyWalletModel, PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { lotsWritableWhen, withdrawableOfIn as lotsWithdrawableOfIn } from '@/modules/pharmacyWallet/walletLots';
-import { chargeBackLotIn, postMovementIn, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { chargeBackLotIn, postMovementIn, WALLET_POLICY, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import type { IPharmacyWallet, IPharmacyWalletTransaction } from '@/modules/pharmacyWallet/types';
 
 /**
@@ -143,10 +143,13 @@ export const pharmacyTopups: TopupKind<IPharmacyWallet, IPharmacyWalletTransacti
   ownerOf: (r) => String(r.payerPharmacyId).toLowerCase(),
   storeFor: (r) => pharmacyStore(String(r.payerPharmacyId)),
   store: (id) => pharmacyStore(id),
-  chargeback: 'take',
+  // r32b: the production rule (`take`) until WALLET_CHARGEBACK_FLAG_ONLY is on; then flagged only, and the admin Recovers.
+  chargeback: () => (assistedFlags.chargebackFlagOnly() ? 'flag' : 'take'),
   /** Lots are written only while the pharmacy switch is on AND their unique index is built (fail closed = no lot). */
   lotsWritable: lotsWritableWhen(assistedFlags.pharmacy),
   rechargeDescription: 'Pharmacy wallet recharge via Razorpay',
+  // r32 (O2, §26.8.1): pharmacy card money is withdrawable 7 days after payment too (stored on each new lot).
+  cardHoldDays: WALLET_POLICY.cardHoldDays,
 };
 
 /** Σ remaining of the pharmacy's lots that count as withdrawable (not closed, fee known, no dispute). */
@@ -160,7 +163,10 @@ export async function postPharmacyMovementIn(m: PharmacyMovement, s: ClientSessi
   return postMovementIn(pharmacyStore(pharmacyId), { ...rest, amountMinor: amountPaise }, s);
 }
 
-/** Chargebacks (§5.3, production gate): a card dispute LOST on a pharmacy top-up lot (`chargeBackLotIn`, the `take` rule). */
+/**
+ * Chargebacks (§5.3, production gate): a card dispute LOST on a pharmacy top-up lot (`chargeBackLotIn`, the `take` rule;
+ * the lot route while WALLET_CHARGEBACK_FLAG_ONLY is off).
+ */
 export async function recordChargebackIn(lotId: string, s: ClientSession): Promise<PostedMovement> {
   if (!Types.ObjectId.isValid(lotId)) throw err(404, 'LOT_NOT_FOUND', 'Top-up not found');
   const lot = await WalletTopupLotModel.findById(lotId).session(s).lean();

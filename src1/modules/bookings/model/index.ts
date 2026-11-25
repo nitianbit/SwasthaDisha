@@ -474,6 +474,8 @@ const bookingSchema = new Schema<IBooking>(
     source: { type: String, enum: ['self', 'pharmacy_assisted', 'lab_assisted', 'doctor_assisted', 'clinic_desk', 'lab_desk'] },
     // Assisted booking (§5.1, P5): the earning rule frozen at create (provider-borne coupon, cut 0 until phase 4).
     earningRule: { type: String, enum: ['provider_coupon_v2'] },
+    // r32 (4c, §26.7): a SELF booking made while EARNING_RULE_V2_FOR_ALL was on: its split (the assisted split's shape, cut 0).
+    earningSplit: { type: Schema.Types.Mixed },
     // Assisted booking phase 1a (§5.1, §17): booker, consent, language, identity, join, funding (wallet), split. The
     // shape is assisted/types AssistedBlock; written only by the assisted writers.
     assisted: { type: Schema.Types.Mixed },

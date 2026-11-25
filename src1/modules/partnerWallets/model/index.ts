@@ -25,7 +25,9 @@ export interface IPartnerWallet {
   updatedAt?: Date;
 }
 
-export type PartnerWalletEntryKind = 'credit' | 'booking_debit' | 'refund_credit' | 'chargeback' | 'receivable_setoff' | 'adjustment';
+/** r32 (§26.8.1): `withdrawal_hold` (debit), `withdrawal_release` and `withdrawal_void` (credits). */
+export type PartnerWalletEntryKind = 'credit' | 'booking_debit' | 'refund_credit' | 'chargeback' | 'receivable_setoff' | 'adjustment'
+  | 'withdrawal_hold' | 'withdrawal_release' | 'withdrawal_void';
 
 export interface IPartnerWalletEntry {
   _id?: string;
@@ -70,7 +72,8 @@ const entrySchema = new Schema<IPartnerWalletEntry>({
   walletId: { type: String, required: true },
   ownerKind: { type: String, required: true, enum: ['lab', 'doctor'] },
   ownerId: { type: String, required: true },
-  kind: { type: String, required: true, enum: ['credit', 'booking_debit', 'refund_credit', 'chargeback', 'receivable_setoff', 'adjustment'] },
+  kind: { type: String, required: true, enum: ['credit', 'booking_debit', 'refund_credit', 'chargeback', 'receivable_setoff', 'adjustment',
+    'withdrawal_hold', 'withdrawal_release', 'withdrawal_void'] },
   amountMinor: { type: Number, required: true },
   balanceAfterMinor: { type: Number, required: true, min: 0 },
   withdrawableDeltaMinor: { type: Number, required: true, default: 0 },

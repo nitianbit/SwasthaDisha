@@ -223,7 +223,8 @@ export interface ISettlementEvent {
   _id?: string;
   settlementAccountId: string;
   action: string;
-  byKind: 'admin' | 'member' | 'doctor';
+  /** r32: `pharmacy` (its home account's payout details). */
+  byKind: 'admin' | 'member' | 'doctor' | 'pharmacy';
   by: string;
   detail?: Record<string, unknown>;
   at: Date;
@@ -233,7 +234,7 @@ const settlementEventSchema = new Schema<ISettlementEvent>(
   {
     settlementAccountId: { type: String, required: true },
     action: { type: String, required: true },
-    byKind: { type: String, required: true, enum: ['admin', 'member', 'doctor'] },
+    byKind: { type: String, required: true, enum: ['admin', 'member', 'doctor', 'pharmacy'] },
     by: { type: String, required: true },
     detail: { type: Schema.Types.Mixed },
     at: { type: Date, required: true },

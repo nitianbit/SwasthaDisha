@@ -41,6 +41,7 @@ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/services/sideEffects';
 import { SpecialistRepository } from '@/modules/specialists/repository';
+import { selfSplitPatchFor } from '@/modules/referralCuts/selfEarning';
 import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { SlotRepository } from '@/modules/slots/repository';
 import {
@@ -1221,6 +1222,8 @@ export class PaymentService {
     // back to the customer's wallet, exactly as a late capture for a cancelled booking does, and the booking stays
     // unconfirmed (its payment window then expires it). Nothing is lost; a capture already applied stays applied.
     const doctorBlocked = !!booking.specialistId && await doctorExistsIneligible(booking.specialistId);
+    // r32 (4c, §26.7): a v2 self booking's split follows the winning record's terms (a coupon taken at pay-again included).
+    const earningPatch = await selfSplitPatchFor(booking, paymentRecord);
     const capture = await recordGatewayCapture({
       model: BookingModel, kind: 'booking', bookingId: String(booking._id), userId: booking.userId, recordId: thisRecord,
       amount: Number(paymentRecord.finalAmount || 0),
@@ -1234,6 +1237,7 @@ export class PaymentService {
         // Q16a (A): the winning record's terms become the booking's price (a coupon taken at pay-again included), so the
         // earning and the legacy payout follow what the customer was actually charged.
         ...bookingPriceTermsOf(paymentRecord, booking),
+        ...earningPatch,
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: Number(paymentRecord.finalAmount || booking.price || 0) },

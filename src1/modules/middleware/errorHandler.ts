@@ -9,8 +9,15 @@ const DETAIL_KEYS = new Map<string, string[]>([
   ['WALLET_LIMIT_REACHED', ['maxBalanceMinor', 'balanceMinor', 'pendingMinor', 'allowedMinor']],
   // r17: QUOTE_CHANGED (partner instant): the quote and the coupon discount.
   ['QUOTE_CHANGED', ['quotedAmountMinor', 'discountMinor']],
+  // r32 (§26.8.2): withdrawals — the smallest amount, and what can be withdrawn now.
+  ['WITHDRAWAL_BELOW_MINIMUM', ['minimumMinor']],
+  ['WITHDRAWAL_ABOVE_AVAILABLE', ['withdrawableNowMinor']],
 ]);
+/** r32: known codes may carry these times (ISO), nothing else (WITHDRAWAL_WEEKLY_LIMIT: when the next request is allowed). */
+const DETAIL_TIMES = new Map<string, string[]>([['WITHDRAWAL_WEEKLY_LIMIT', ['nextAllowedAt']]]);
 const paiseDetails = (keys: string[], d: Record<string, unknown>) => Object.fromEntries(keys.filter((k) => Number.isSafeInteger(d[k])).map((k) => [k, d[k]]));
+const timeDetails = (keys: string[], d: Record<string, unknown>) => Object.fromEntries(keys
+  .filter((k) => d[k] instanceof Date && Number.isFinite((d[k] as Date).getTime())).map((k) => [k, (d[k] as Date).toISOString()]));
 
 export const errorHandler = (
   err: CustomError,
@@ -35,9 +42,11 @@ export const errorHandler = (
   const limit = (err as { limit?: unknown }).limit;
   const details = (err as { details?: unknown }).details;
   const detailKeys = DETAIL_KEYS.get(String(err?.code));
+  const timeKeys = DETAIL_TIMES.get(String(err?.code));
   const extra = {
     ...(err?.code === 'ASSISTED_LIMIT_REACHED' && typeof limit === 'string' ? { limit } : {}),
     ...(detailKeys && details && typeof details === 'object' ? { details: paiseDetails(detailKeys, details as Record<string, unknown>) } : {}),
+    ...(timeKeys && details && typeof details === 'object' ? { details: timeDetails(timeKeys, details as Record<string, unknown>) } : {}),
   };
 
   // O1: limits tell the client when to try again.

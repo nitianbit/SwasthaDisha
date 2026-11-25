@@ -23,6 +23,8 @@ export interface IWalletTopupLot {
   openedAtChargeback?: boolean;
   /** r13 (O2, partner wallets): card money becomes withdrawable from this time (7 days after payment); read by phase 4. */
   withdrawableAfter?: Date;
+  /** r32 (§26.8.4): the admin's "Recover" (or a pre-r32 `take` chargeback) debited this lot's money: never again. */
+  chargedBackAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -41,10 +43,13 @@ const lotSchema = new Schema<IWalletTopupLot>({
   remainingMinor: { type: Number, required: true, min: 0 },
   openedAtChargeback: { type: Boolean },
   withdrawableAfter: { type: Date },
+  chargedBackAt: { type: Date },
 }, { timestamps: true, strict: 'throw' });
 lotSchema.index({ paymentRecordId: 1 }, { unique: true });
 lotSchema.index({ 'walletRef.kind': 1, 'walletRef.id': 1, createdAt: 1 });
 lotSchema.index({ feeState: 1, createdAt: 1 });
+// r32 (§26.8.5): what is withdrawable now, per wallet.
+lotSchema.index({ 'walletRef.kind': 1, 'walletRef.id': 1, withdrawableAfter: 1 });
 
 export const WalletTopupLotModel: Model<IWalletTopupLot> = model<IWalletTopupLot>('WalletTopupLot', lotSchema, 'wallet_topup_lots');
 export default WalletTopupLotModel;

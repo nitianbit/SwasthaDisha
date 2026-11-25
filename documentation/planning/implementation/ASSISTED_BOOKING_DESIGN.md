@@ -6180,7 +6180,7 @@ since payouts are off).
 | M7 | A withdrawal marked paid moves no ledger money (wallet money is not an earning); it is audited on the home account | §26.8.3 |
 | M8 | Setting a receivable off against the referral balance uses the payout switch (it is a payment of the referral) | §26.9 |
 | M9 | Statements and referral rows show the short ref, date and category, never the patient's name | §26.4 |
-| M10 | **Decided 25 Nov (Q2):** Jansetu pays every gateway fee. A withdrawal has no fee deduction: `feeMinor = 0`, `transferMinor = grossMinor` (this replaces §2.3 C) | §26.8.1 |
+| M10 | **Decided 25 Nov (Q2):** Jansetu pays every gateway fee. A withdrawal has no fee deduction: `feeMinor = 0`, `transferMinor = grossMinor` (this replaces §2.3 C). *Superseded by the owner, 25 Nov: the card fee is deducted only when UNSPENT card money is withdrawn (§26.17)* | §26.8.1 |
 | M11 | Every top-up kind flags a chargeback; debiting the wallet is the admin's explicit "Recover" | §26.8.4 |
 | M12 | Lots without `withdrawableAfter` are backfilled `createdAt + 7 days` (older card money is already past the hold) | §26.8.1 |
 | M13 | `provider_coupon_v2` for self bookings uses a top-level `earningSplit` (no `assisted` block), behind `EARNING_RULE_V2_FOR_ALL` | §26.7 |
@@ -6213,7 +6213,7 @@ The owner asked for decisions in line with their earlier answers. These replace 
 | # | Decision | Built as |
 |---|---|---|
 | Q1 | **Pharmacy and lab consultation cuts work.** Owner, 22 Nov: "Doctor's referral cut OFF until legal advice; pharmacy/lab cuts work". Legal work is not chased now | Behind `REFERRAL_CUTS_ENABLED` (default off); the admin sets rules per partner and category. No separate consultation switch. Doctor cuts stay off. **Open owner item:** the NMC fee-splitting risk of consultation cuts (GATE-NMC) |
-| Q2 | **Jansetu pays gateway fees** (owner decision): no fee deduction on withdrawal | `feeMinor = 0`. **Open owner question:** the cost of a card top-up followed by a withdrawal (about 2% of the amount, paid by Jansetu) |
+| Q2 | **Jansetu pays gateway fees** (owner decision): no fee deduction on withdrawal | `feeMinor = 0`. **Open owner question:** the cost of a card top-up followed by a withdrawal (about 2% of the amount, paid by Jansetu). **Owner, 25 Nov: deduct the card fee only when unspent card money is withdrawn** (built in r32, §26.17) |
 | Q3 | Referral earnings cannot fund the wallet while payouts are paused | No route |
 | Q4 | Minimum withdrawal ₹500, configurable | `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000) |
 | Q5 | Rolling 7 days | §26.8.1 |
@@ -6312,6 +6312,175 @@ permission is the finance one, as §26.6.2 says.
 **Tests:** `test/assisted/r33-referral-gaps.integration.ts` (5 checks: the switches on every answer, the row fields with
 mixed and single-category lab bookings and unchanged provider rows, the pharmacy CSV, the lab reads incl. admin as owner,
 the refusals); `r24-phase4ab` updated for `cutsEnabled` in the totals.
+
+### 26.17 Rounds 4c + 4d build record (r32, 2026-11-25)
+
+Branch `m0/r32-phase4cd` from `6a8574e9` (the stage line `m0/r28-stage-next-3`: 3a, 3b, 2e, 4a/4b, 5a). Local commits
+only. Built §26.7 (4c) and §26.8 (4d) with the decisions of §26.12–§26.14, and one new owner decision (25 Nov) that
+replaces M10 / Q2: **the card fee is deducted ONLY when UNSPENT card money is withdrawn; money spent on bookings never
+pays a fee.** Both rounds ship dark: `EARNING_RULE_V2_FOR_ALL` and `WALLET_WITHDRAWALS_ENABLED` stay off. Check:
+`test/assisted/r32-phase4cd.integration.ts` (15 checks).
+
+#### 26.17.1 Round 4c: `provider_coupon_v2` for SELF bookings
+
+| Area | Where | What |
+|---|---|---|
+| The split | `referralCuts/selfEarning.ts` (new) | `selfEarningOf(terms)`: while the switch is on, `{ earningRule: 'provider_coupon_v2', earningSplit }` of the assisted split's shape — `listMinor`, `couponCode`, `couponFundedBy`, `discountMinor`, `baseMinor` (the list price for a platform-funded coupon, list − discount otherwise), `cutMinor: 0`, `providerMinor = baseMinor`, `lines` per test for labs; nothing at all while it is off. `selfSplitPatchFor`: at payment (Q16a) the winning record's terms remake the split of a booking frozen with the rule (a coupon taken at pay-again included) |
+| Coupon funding | `coupon/funding.ts` (new) | `couponFundedBy`: the one rule (`fundedBy`, else corporate = platform); the assisted consultation and lab creates use it instead of their private copies |
+| Writers | `bookings/services` (customer consultation create; pay-again's direct settle), `payment/services` (`processBookingPayment`), `doctors/services/instant.ts` (customer instant, ledger only), `partners/services/labBookings.ts` (customer lab create) | The rule and split at create; the split follows the paying terms |
+| Ledger only | `bookings/holds.ts` | A booking the ledger does not pay (legacy cutover, clinic) drops the rule at the insert: legacy and clinic rows are untouched (`payouts` exclusions hold) |
+| Readers | `doctors/services/earnings.ts`, `partners/services/labBookings.ts` `postEarning` | `assisted.split ?? earningSplit` for a row with the rule |
+| Models | `bookings/model`, `bookings/types`, `partners/model/labBooking.ts` | `earningSplit` (Mixed); lab rows gain `earningRule` |
+| Switch | `assisted/flags.ts` | `EARNING_RULE_V2_FOR_ALL` (off). Bookings made while it is on keep the rule; older ones keep theirs |
+
+**Effect:** only a platform-funded coupon changes anything — the provider earns the list price and Jansetu bears the
+discount. A provider-funded coupon earns list − discount, as today. No migration. Turn it on after providers are told.
+
+#### 26.17.2 Round 4d: withdrawals, card hold, cap, chargebacks
+
+| Area | Where | What |
+|---|---|---|
+| Movements | `pharmacyWallet/walletCore.ts` | Kinds `withdrawal_hold` (a debit), `withdrawal_release`, `withdrawal_void` (credits). A hold carries `lotsWithdrawableAt`: it takes only card money withdrawable then (fee known, no dispute, past its card hold), oldest first, and is refused (409 `WITHDRAWAL_ABOVE_AVAILABLE`) when those lots do not cover it. Release and void restore exactly the held allocations; credits always post |
+| Lots | `pharmacyWallet/walletLots.ts`, `model/lots.ts` | `withdrawableNowOf(ref, now)` (`nowMinor`, `later[{ amountMinor, availableAt }]`) and `withdrawableNowFilter(now)`: past `withdrawableAfter`, or — for a lot written before the field — `createdAt + 7 days`. `consumeLots` takes an optional filter; `planLots` is its read-only twin (the withdrawal's fee is computed on the same lots). The stored `withdrawableOfIn` is unchanged (M5). Lot `chargedBackAt`; index `{walletRef.kind, walletRef.id, withdrawableAfter}` |
+| Card hold | `pharmacyWallet/ledger.ts`, `scripts/lotWithdrawableAfter.ts` | Pharmacy top-ups get `cardHoldDays: 7` (new lots carry `withdrawableAfter`). `npm run migrate:lot-withdrawable-after` (dry run, then `--commit`; rerunnable) writes `createdAt + 7 days` where missing |
+| Cap ₹50,000 | `walletCore.ts` `WALLET_POLICY`, `assertTopupWithinCap`; `pharmacyWallet/services` | *r32b: the pharmacy's only while `WALLET_BALANCE_CAP_ENABLED` is on.* One cap check for every top-up kind (balance + unpaid top-ups of the last 30 minutes + the new amount ≤ ₹50,000, else 409 `WALLET_LIMIT_REACHED` with the room left); the pharmacy's own card top-up now uses it (the lab/doctor check moved here). A credit that leaves any wallet above the cap still posts and raises the alert `wallet_over_limit` (once a day per wallet; M6) |
+| Withdrawals | `walletWithdrawals/` (new: model, service, routes, validation) | `wallet_withdrawals` as §26.8.1. Request, cancel, reject, paid and void as §26.8.3, each in one transaction with its audit (`withdrawal.*` in `assisted_audit_events`); paid writes a `withdrawal_paid` SettlementEvent on the home account (M7). Home account: lab `partner`, doctor `doctor`, pharmacy `pharmacy_referral` (opened on first use) |
+| The fee (owner, 25 Nov) | `walletWithdrawals/service.ts` | Each lot's gateway fee in proportion to what is withdrawn from it (`floor(fee × withdrawn / lot amount)`); the money a booking already spent from that lot never pays its share. `feeMinor = Σ`, `transferMinor = grossMinor − feeMinor`. The answer's `feeLine` and the hold entry's description say it ("card fee ₹x on unspent card money; you receive ₹y") |
+| Chargebacks | `walletCore.ts` `recordTopupChargebackIn`, `recoverTopupIn`; `assisted/controller/phase1a.ts` | **Every top-up kind is flagged only** — the pharmacy's too (it was `take`): the top-up gets `chargebackAt`, its lot `disputeState: 'lost'`; nothing is debited or frozen. The new **Recover** runs the take explicitly (debit up to the balance, the shortfall owed as a receivable, the wallet frozen), once per top-up, also for a top-up credited without a lot or closed as compensated. *r32b (§26.17.7): for the pharmacy only while `WALLET_CHARGEBACK_FLAG_ONLY` is on; off, the production take stays* |
+| Pharmacy destination | `walletWithdrawals/service.ts`, `partners/services/finance.ts`, `partners/model/settlement.ts` | `PUT /api/v1/pharmacy-assisted/finance/payout-details` sets the `pharmacy_referral` account's details with the Q5 versioned rules; `FinanceActor` and SettlementEvent `byKind` gain `pharmacy` |
+| Errors | `middleware/errorHandler.ts` | Safe details for `WITHDRAWAL_BELOW_MINIMUM` (`minimumMinor`), `WITHDRAWAL_ABOVE_AVAILABLE` (`withdrawableNowMinor`), `WITHDRAWAL_WEEKLY_LIMIT` (`nextAllowedAt`, ISO) |
+| Switches | `assisted/flags.ts` | `WALLET_WITHDRAWALS_ENABLED` (off: new requests 503 `WITHDRAWALS_DISABLED`; everything else runs), `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000 = ₹500) |
+
+#### 26.17.3 ASSUMED (r32, reversible)
+
+| # | Choice | Why |
+|---|---|---|
+| N1 | The fee is each lot's share, rounded down (the remaining paise stay Jansetu's); a lot partly spent on bookings pays only on what is withdrawn | Owner, 25 Nov: spent money never pays a fee; never more than the lot's fee in total |
+| N2 | `amountMinor` of a request is the gross (what leaves the wallet); the minimum applies to it | One number for the wallet and the limit |
+| N3 | The request hash is the amount only; `detailsVersion` is a fence (409 `PAYOUT_DETAILS_CHANGED`), not part of the request's identity | As `expectedVersion` fences |
+| N4 | Recover needs a recorded dispute first (409 `DISPUTE_NOT_RECORDED`); a blocked (never credited) top-up has nothing to recover (409 `NOTHING_TO_RECOVER`). Recover also takes a payment id (`/wallet-payments/:paymentId/recover`), for top-ups credited without a lot | §26.8.4 names only the lot route; older top-ups have no lot |
+| N5 | Recover is exactly once per top-up by its own key (`chargeback:<lot>`); the `requestKey` is recorded in the audit | The take already had a key |
+| N6 | A lab's new request needs an operational lab and `wallet.manage`; reads need `wallet.view`, cancel and abandon `wallet.manage`. A doctor needs to be eligible for every route (as the doctor wallet) | The top-up guards |
+| N7 | A UTR is unique per home account across states (a voided withdrawal keeps its UTR) | A new transfer has a new UTR |
+| N8 | `GET …/withdrawable?amountMinor=` adds a `quote` (gross, fee, transfer) so the screen can show "you get ₹t" before the request | Minimal API: no separate quote route |
+| N9 | 4c: the split at payment follows the winning record's terms; a customer instant booking counts its coupon only when it was used on the fee | Q16a: the earning follows what the customer was charged |
+| N10 | The withdrawal reconciliation checks of §26.8.6 item 11 (Σ holds of requested = Σ gross; no release of a paid one) are not built; the wallet invariants (balance = Σ entries) cover the new kinds | Time; the daily invariants already hold |
+
+#### 26.17.4 API for the web
+
+Owner routes (`{ success, data }`, `Cache-Control: private, no-store`, paise): the pharmacy at
+`/api/v1/pharmacy-assisted/wallet/…` (operational pharmacy), the lab at `/api/v1/partner-workspace/assisted/wallet/…`
+(`wallet.view` reads; `wallet.manage` acts, a new request also needs a verified lab), the doctor at
+`/api/v1/specialists/me/assisted/wallet/…` (eligible doctor).
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET …/wallet/withdrawable` | `?amountMinor` (optional quote) | `{ enabled, minimumMinor, withdrawableNowMinor, availableLater: [{ amountMinor, availableAt }], nextAllowedAt, destination: { state: 'none'\|'unverified'\|'verified', masked, detailsVersion }, quote?: { grossMinor, feeMinor, transferMinor, available } }` |
+| `POST …/wallet/withdrawals` | `{ amountMinor (≥ minimumMinor), requestKey, detailsVersion }` | 201 (replay 200) `{ withdrawal, wallet: { balanceMinor, withdrawableMinor, receivableMinor, frozen }, replayed }` |
+| `GET …/wallet/withdrawals` | `?state&cursor&limit≤50` | `[withdrawal]`, newest first; `pagination: { nextCursor }` |
+| `GET …/wallet/withdrawals/:id`, `GET …/by-key/:key`, `POST …/by-key/:key/abandon` | — | the withdrawal; `{ state: 'used', withdrawal } \| { state: 'abandoned' } \| { state: 'unknown' }` |
+| `POST …/wallet/withdrawals/:id/cancel` | `{ expectedVersion }` | `{ withdrawal, wallet, replayed }` (only while `requested`) |
+| `PUT /api/v1/pharmacy-assisted/finance/payout-details` | as the partner and doctor payout details (`method: 'bank' \| 'upi'`, …, `expectedDetailsVersion?`) | the home account, masked; an admin verifies it at `/api/v1/settlements/accounts/:id/payout-details/verify` |
+
+`withdrawal` = `{ _id, walletKind, state: 'requested'|'cancelled'|'rejected'|'paid'|'voided', grossMinor, feeMinor,
+transferMinor, feeLine, lots: [{ lotId, amountMinor, feeMinor }], destination: { masked, detailsVersion }, paid: { method,
+reference, paidOn, at } | null, reason, version, createdAt, updatedAt }`. Show `feeLine` ("Card fee on unspent card money:
+₹x. You receive ₹y of ₹z." or "No card fee. You receive ₹y.") before and after the request; the wallet statement's hold
+row says the same.
+
+Errors: 400 `WITHDRAWAL_BELOW_MINIMUM` (`details.minimumMinor`), `VALIDATION_ERROR`; 403 (guards,
+`SPECIALIST_NOT_VERIFIED`); 404 `WITHDRAWAL_NOT_FOUND` (another owner's); 409 `PAYOUT_DESTINATION_NOT_VERIFIED`,
+`PAYOUT_DETAILS_CHANGED`, `WITHDRAWAL_ABOVE_AVAILABLE` (`details.withdrawableNowMinor`), `WALLET_FROZEN`,
+`WALLET_RECEIVABLE`, `WITHDRAWAL_WEEKLY_LIMIT` (`details.nextAllowedAt`), `WITHDRAWAL_CHANGED`, `WITHDRAWAL_NOT_REQUESTED`,
+`IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 503 `WITHDRAWALS_DISABLED`, `INDEXES_OUTDATED`.
+
+Admin (`requireAdmin`):
+- `GET /api/v1/admin/wallet-withdrawals?state&cursor` (oldest first) and `GET …/:id` — the withdrawal plus `walletRef`,
+  `requestedBy`, `destination.homeAccountId`, `holdEntryId`, `releaseEntryId`, `voidEntryId`, `paid.note`, `paid.by`.
+- `POST …/:id/reject { reason, expectedVersion }`; `POST …/:id/paid { method: 'bank_transfer'|'upi', reference, paidOn
+  (YYYY-MM-DD), note?, detailsVersion, expectedVersion, requestKey }` (409 `REFERENCE_REUSED`, `PAYOUT_*`,
+  `WITHDRAWAL_*`); `POST …/:id/void { reason, expectedVersion }` (only `paid`; 409 `WITHDRAWAL_NOT_PAID`).
+- Chargebacks: `POST /api/v1/admin/wallet-lots/:lotId/chargeback` and `…/wallet-payments/:paymentId/chargeback` now FLAG
+  every top-up (`{ flagged: true, credited: true, replayed, paymentRecordId, lotId, walletKind, <owner>Id, message }`, or
+  `blockedUncredited` for a top-up never credited). **New:** `POST /api/v1/admin/wallet-lots/:lotId/recover` and
+  `…/wallet-payments/:paymentId/recover` `{ reason, requestKey }` (admin tools switch) → `{ recovered: true, replayed,
+  entry, wallet, lotId, paymentRecordId, walletKind, <owner>Id, withoutLot, compensated? }`; 409 `DISPUTE_NOT_RECORDED`,
+  `NOTHING_TO_RECOVER`.
+- Pharmacy top-up: `POST /api/v1/pharmacy-wallet/topup` (the pharmacy's card top-up) answers 409 `WALLET_LIMIT_REACHED`
+  with `details: { maxBalanceMinor, balanceMinor, pendingMinor, allowedMinor }` above ₹50,000.
+
+#### 26.17.5 Indexes, switches, deploy, rollback
+
+- **Indexes** (`npm run sync-indexes`): `wallet_withdrawals` `{walletRef.kind, walletRef.id, requestKey}` unique,
+  `{destination.homeAccountId, paid.reference}` unique (partial), `{state, createdAt}`, `{walletRef.kind, walletRef.id,
+  createdAt: -1}`; `wallet_topup_lots {walletRef.kind, walletRef.id, withdrawableAfter}`. Until then a request answers 503.
+- **Order:** 1. deploy; 2. `npm run sync-indexes`; 3. `npm run migrate:lot-withdrawable-after` (dry run, then
+  `-- --commit`); 4. restart. `WALLET_WITHDRAWALS_ENABLED` waits for GATE-RBI; `EARNING_RULE_V2_FOR_ALL` waits until
+  providers are told.
+- **Live at the deploy (no switch):** the `wallet_over_limit` alert (only once `assisted_alerts` exists, r32b); new
+  pharmacy lots carry `withdrawableAfter` (it only matters to withdrawals, which are off). *Corrected by r32b
+  (§26.17.7):* pharmacy chargebacks and the pharmacy top-up cap are behind their own switches, off.
+- **Rollback:** never roll the code back while a withdrawal is `requested` or a hold is unreleased
+  (`db.wallet_withdrawals.countDocuments({ state: 'requested' })` = 0), or while a booking made with
+  `EARNING_RULE_V2_FOR_ALL` on is not yet completed (older code would read its earning from the price).
+
+#### 26.17.6 Checks
+
+`test/assisted/r32-phase4cd.integration.ts`, 15 checks: 4c off (rows as before, the earning is the price); 4c on (a
+platform coupon earns the list price for the doctor and the lab, a provider coupon list − discount, pay-again follows the
+paying terms); 4c legacy rows untouched; the switch off (503); the index 503; destination and minimum; the 7-day card
+hold, admin credits never withdrawable, the backfill; the fee only on unspent card money (₹2,000 top-up with a ₹40 fee,
+₹1,000 spent, ₹1,000 withdrawn → fee ₹20); a hold racing a booking debit (3 runs, never below zero); 5 identical
+requests (one hold); the weekly limit and cancel; reject, paid vs cancel racing (3 runs), the UTR unique, void once; the
+cap (top-up refused, a refund above it posts and alerts); chargeback then Recover (flag only, then debit, receivable,
+freeze, once); the lab and doctor routes.
+
+Existing suites changed for the chargeback decision (the take is now Recover): `phase1a-review` checks 7, 12, 16 and 17
+and `r9b-followups` check 1 call Recover after the chargeback and read its answer and audit (`wallet.recovered`).
+*Reverted by r32b (§26.17.7): with the switch off they test the production take unchanged.*
+
+Each suite alone on its own database: `r32-phase4cd` 15/15, `phase1a-review` 20/20, `r9b-followups` 5/5,
+`r9-owner-decisions` 10/10, `r13-phase2d` 18/18, `r20-phase3a` 15/15, `r10-phase1b` 19/19. The full regression
+(`prun.sh … 2`): 83 of 84 pass, tsc 17 (unchanged); the one failure, `r10f-card-last` check 1 (a 1.5-second timing bound
+under load), passes alone (2/2).
+
+#### 26.17.7 r32b: the live pharmacy path unchanged with every switch off (review of r32)
+
+The review found three 4d changes acting on the LIVE pharmacy path (S6) with every switch off. Production must not
+change behaviour until the owner decides. Where this section and §26.17.1–6 differ, this one wins.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The ₹50,000 cap refused pharmacy card top-ups | `WALLET_BALANCE_CAP_ENABLED` (off): the cap on the PHARMACY's own card top-up order only while it is on; off, the pharmacy top-up is exactly as before. Lab and doctor wallets keep their cap (2d/3a) whatever it says |
+| 2 | Pharmacy chargebacks became flag-only | `WALLET_CHARGEBACK_FLAG_ONLY` (off) governs the **pharmacy** top-up kind only (`TopupKind.chargeback()`): off, a lost dispute on a pharmacy top-up is taken at once exactly as on production (the lot route's `recordChargebackIn`; the payment route's take, also without a lot or after a compensated close; same answers and audits); on, flagged only and taken back with Recover. **Lab and doctor top-ups stay flag-only whatever it says** (2d/3a). The take and Recover share one function (`takeTopupIn`). `phase1a-review` and `r9b-followups` are back to their production expectations (the switch is off in them); the r32 suite tests each mode explicitly |
+| 3 | The `wallet_over_limit` alert was written inside every credit transaction | `npm run sync-indexes` creates `assisted_alerts` (every model's collection is created; it has a unique `key` index). In addition the alert is written only once that collection exists (checked outside the transaction, remembered); otherwise a warning with ids only — a credit never creates a collection in its transaction and never fails for an alert |
+| 4 | Paid could pay out money disputed since the request | `paid` refuses with 409 `WITHDRAWAL_LOT_DISPUTED` when a held lot has a recorded dispute (or was charged back); reject releases it |
+| 5 | A repeat chargeback of a lot taken the old way would flag, audit and alert again once the switch is on | A lot whose `chargeback:<lot>` entry exists answers flagged and replayed: nothing is marked, audited or alerted |
+| 6 | The backfill could write a date from a missing `createdAt` | Only lots whose `createdAt` is a date are filled |
+| 7 | 4c pay-again without an earlier payment record named no coupon, so a platform coupon's discount was treated as provider-funded | The booking's own frozen split decides: its coupon (and, when that coupon can no longer be read, its recorded funding) |
+
+**Switches added:** `WALLET_BALANCE_CAP_ENABLED`, `WALLET_CHARGEBACK_FLAG_ONLY` (both off unless exactly `"true"`).
+**Rollback:** none needed for these: with both off the pharmacy path is as before r32. Turning `WALLET_CHARGEBACK_FLAG_ONLY`
+off again after flags were recorded leaves those top-ups flagged (an admin Recovers them).
+
+**API changes for the web:** with the flag-only switch off, the pharmacy chargeback answers are the production ones
+(`{ entry, wallet, replayed }` on the lot route; `{ blockedUncredited: false, entry, wallet, replayed, lotId,
+paymentRecordId, withoutLot }` on the payment route). Admin paid: 409 `WITHDRAWAL_LOT_DISPUTED`.
+
+Checks: `test/assisted/r32-phase4cd.integration.ts` (now 18): the cap off and on; chargebacks with the switch off (a
+pharmacy lot taken at once on both routes, once; a doctor's flagged only) and the old-way lot replayed once the switch is
+on; the switch on (flag, then Recover); paid refused on disputed money; 4c pay-again keeps the coupon's funding.
+
+Merged `origin/stage` at `2df5651e` (r33 referral API, r30 records access, r31 SMS 5b; conflicts kept both sides; the r32
+record is §26.17 because stage's r33 record is §26.16). Each suite alone on its own database: `r32-phase4cd` 18/18,
+`r31-phase5b` 20/20, `phase1a-review` 20/20, `r9b-followups` 5/5, `r13-phase2d` 18/18, `r20-phase3a` 15/15,
+`s6-pharmacy-wallet-verify` 31/31, `r10-phase1b` 19/19. The full regression (`prun.sh … 2`): 85 of 85 pass, tsc 17.
+
+**Seen, not changed:**
+- `assisted/consultations.ts` and `assisted/labBookings.ts` keep a one-line alias `const fundedByOf = couponFundedBy`.
+- The admin pharmacy top-up (`POST /pharmacy-wallet/topup` by an admin) is not capped by O2 (it is an admin credit; the
+  ₹2,00,000 admin cap stays); its credit above ₹50,000 raises the alert.
+- 4e (referral payouts) and 4f (finance screens) are not built.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 

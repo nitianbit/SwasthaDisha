@@ -49,6 +49,7 @@ import { adminDoctorWalletRouter, adminLabWalletRouter, doctorWalletRouter, labW
 import { smsAdminRouter } from '@/modules/smsNotices/admin';
 import { joinRouter } from '@/modules/smsNotices/joinLink';
 import { adminRecordsRouter, holderRecordsRouter } from '@/modules/recordAccess/routes';
+import { adminWithdrawalRouter } from '@/modules/walletWithdrawals/routes';
 import orderHealthCheckRouter from '@/modules/orderHealthChecks/routes';
 import pharmacyWalletRouter from '@/modules/pharmacyWallet/routes';
 import pharmacyInventoryImportRouter from '@/modules/pharmacyInventoryImports/routes';
@@ -137,6 +138,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/admin/sms-notices', authenticate, denyRoles('partner'), smsAdminRouter);
   // r30 (§25.9.4): records-access grants and the read log for admins (before the shared /admin router).
   app.use('/api/v1/admin/records-access', authenticate, denyRoles('partner'), adminRecordsRouter);
+  // r32 (round 4d, §26.8.2): the wallet withdrawal queue (reject, paid, void).
+  app.use('/api/v1/admin/wallet-withdrawals', authenticate, denyRoles('partner'), adminWithdrawalRouter);
   app.use('/api/v1/admin', authenticate, denyRoles('partner'), adminAssistedRouter);
   app.use('/api/v1/pharmacy-suppliers', authenticate, denyRoles('partner'), pharmacySupplierRouter);
   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, denyRoles('partner'), orderHealthCheckRouter);
