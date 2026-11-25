@@ -5651,6 +5651,25 @@ Errors: 503 `RECORDS_ACCESS_DISABLED`, `INDEXES_OUTDATED`, `READ_LOG_UNAVAILABLE
 - External diagnostics reports are not in `others` (DR24).
 - The web screens of §25.9.9 are not built (backend only).
 
+#### 25.17.1 Review leftovers (r30b, 2026-11-25)
+
+Branch `m0/r30b-3f-leftovers` from `21496500` (the stage head). Local commits only. The two items left from the 3f
+review; the review notes were not in the repo, so each is described as found in the code:
+
+1. **The approve race.** The holder's approve (and deny) checked the request (pending, not expired, its booking still
+   open) and then wrote it with a compare-and-set on `state: 'pending'` only, while §25.9.4 asks for "pending and not
+   expired". A request that expired between the checks and the write was still approved and gave a grant. The write is
+   now fenced on `state: 'pending'` and `expiresAt > now`; a request still pending but expired answers 409
+   `RECORDS_REQUEST_EXPIRED` (the sweep marks it), one answered meanwhile 409 `RECORDS_REQUEST_NOT_PENDING`.
+2. **The lab self-key null.** A partner-lab row of a family member without a dependent id (`patient.kind: 'dependent'`,
+   no `dependentId`) was keyed as the holder's own person (`'self'`). The `others` list already left it out (its query
+   matches `patient.kind` not `dependent`), but a file read under the holder's own grant opened its report. Such a row
+   now belongs to no person (`labPersonKeyOf` → null): no grant reads it.
+
+**Checks** (`r30-phase3f`, now 24), each failing before its fix: a family member's lab row without a dependent id → its
+report 404 under the holder's grant (the holder's own report still 200) and absent from `others`; an approval whose
+request expires between the checks and the write → 409 `RECORDS_REQUEST_EXPIRED`, the request not approved, no grant.
+
 ## 26. Phase 4 build specification (referral cuts, earnings, withdrawals) (r22, 2026-11-25)
 
 Design only; nothing here is built. Three code lines are cited:
