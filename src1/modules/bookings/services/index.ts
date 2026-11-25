@@ -56,6 +56,7 @@ import {
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
 import { smsMoved } from '@/modules/smsNotices/events';
+import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 
 interface BookingPaymentInitResponse {
   booking: IBooking;
@@ -1715,6 +1716,7 @@ export class BookingService {
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
       if ((done.noShows?.length ?? 0) > 0) await flagLegacyOriginalMonth(done, session); // Q16a (E): a second no-show leaves the bill
+      await alertReadThenCancelIn(String(bookingId), session); // r30 (§25.9.6)
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
       await releaseInterval('instant', String(bookingId).toLowerCase(), session);
       // Q14 (owner, 18 Nov 2026): the doctor is not paid for a no-show (the customer is still not refunded; the platform
@@ -1748,7 +1750,7 @@ export class BookingService {
     });
     if (isReplayedBooking(updated)) return { ...updated, replayed: true };
     // Phase 5b (r31): a partner-made consultation's patient gets the "moved" SMS (other bookings are out of its scope).
-    await smsMoved('booking', updated);
+    void smsMoved('booking', updated);
     try {
       await this.notificationService.create({
         userId: String(updated.userId), type: 'general', title: 'Your missed appointment has a new time',
@@ -1865,7 +1867,7 @@ export class BookingService {
       patch: { ...updatePayload, lifecycle: this.buildLifecyclePatch(booking.lifecycle, { rescheduled: true }) },
     });
     // Phase 5b (r31): an admin's move of a partner-made consultation sends the patient the "moved" SMS.
-    await smsMoved('booking', updated);
+    void smsMoved('booking', updated);
 
     if (updated.status === 'confirmed') {
       await this.bookingReminderScheduler.scheduleBookingReminders(updated);

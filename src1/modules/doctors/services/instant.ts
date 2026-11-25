@@ -33,6 +33,7 @@ import { reverseRedemptionIn } from '@/modules/assisted/refunds';
 import { sendAssistedNotices } from '@/modules/assisted/support';
 import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
+import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
 import { smsBooked, smsCancelled } from '@/modules/smsNotices/events';
 
@@ -703,7 +704,7 @@ export class InstantConsultService {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_confirmed', title: 'Doctor accepted',
         message: `Doctor accepted, Ref ${a.shortRef}: join now.`, bookingId: String(booking._id), key: `assisted_instant:${r._id}:accepted:booker`,
         data: { requestId: String(r._id), shortRef: a.shortRef } }]);
-      await smsBooked('booking', booking);
+      void smsBooked('booking', booking);
     }
   }
 
@@ -913,6 +914,7 @@ export class InstantConsultService {
       const done = await BookingModel.updateOne({ _id: id, status: 'confirmed' },
         { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: istTodayYyyymmdd() } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
+      await alertReadThenCancelIn(id, s); // r30 (§25.9.6)
       if (r.assisted) {
         // r17 (§25.8.2, D13): the doctor or an admin cancels a partner's consultation — the allocation still owed goes
         // back to the partner's wallet once (not withdrawable, DR20); never the patient's wallet; the join link dies.
@@ -950,7 +952,7 @@ export class InstantConsultService {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: 'Consultation cancelled',
         message: `Ref ${a.shortRef}: cancelled by ${requester.userType === 'admin' ? 'the Jansetu team' : 'the doctor'}. ₹${out.refunded.toFixed(2)} is back in your wallet.`,
         bookingId: id, key: `assisted_instant:${id}:cancelled:booker`, data: { shortRef: a.shortRef } }]);
-      await smsCancelled('booking', out.booking);
+      void smsCancelled('booking', out.booking);
     }
     return { userId: out.userId, refunded: out.refunded };
   }

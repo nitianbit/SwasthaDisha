@@ -32,6 +32,8 @@ import { hasPrescription } from '@/modules/assisted/rxAccess';
 import { smsRxReady } from '@/modules/smsNotices/events';
 import logger from '@/services/logger';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
+import { assistedFlags } from '@/modules/assisted/flags';
+import { logRecordRead, othersOf, personKeyOf, treatingAccess } from '@/modules/recordAccess';
 
 export interface SpecialistAppointmentQuery {
   view: 'day' | 'month' | 'all';
@@ -414,17 +416,25 @@ export class SpecialistPortalService {
       }
     }
     // Phase 5b: the patient's "prescription ready" SMS, on the first save only (partner-made consultations).
-    if (!hasPrescription(booking)) await smsRxReady(updated);
+    if (!hasPrescription(booking)) void smsRxReady(updated);
 
     return updated;
   }
 
-  async getPatientHistory(specialistId: string, patientUserId: string) {
+  /**
+   * The doctor's history of a patient. Without `bookingId` (DR23): the doctor's own consultations as before — the whole
+   * account, or one family member with `dependentId`. r30 (§25.9.3): with `bookingId` (the doctor's treating booking, inside
+   * its window) the own consultations of that booking's person, the access state and — with the holder's grant and
+   * RECORDS_ACCESS_ENABLED — other providers' records. Every read is logged before the answer (DR25; 503 when it cannot be).
+   */
+  async getPatientHistory(specialistId: string, patientUserId: string, q: { dependentId?: string; bookingId?: string } = {}) {
+    const treating = q.bookingId ? await treatingAccess(specialistId, patientUserId, q.bookingId, q.dependentId) : null;
+    const personKey = treating?.personKey ?? (q.dependentId ? q.dependentId.toLowerCase() : null);
     const bookings =
-      await this.bookingRepository.findConsultationsBySpecialistAndUserId(
+      (await this.bookingRepository.findConsultationsBySpecialistAndUserId(
         specialistId,
         patientUserId
-      );
+      )).filter((b) => !personKey || personKeyOf(b) === personKey);
 
     if (bookings.length === 0) {
       throw new AppError({
@@ -448,7 +458,11 @@ export class SpecialistPortalService {
       this.toConsultationSummary(b)
     );
 
-    return { patient, consultations };
+    const others = treating?.granted && assistedFlags.records() ? await othersOf(specialistId, treating.holderUserId, treating.personKey) : null;
+    await logRecordRead({ doctorId: specialistId.toLowerCase(), holderUserId: patientUserId.toLowerCase(), personKey: personKey ?? 'account',
+      treatingBookingId: treating?.treatingBookingId ?? null, scope: others ? 'other_history' : 'own_history' });
+    if (!treating) return { patient, consultations };
+    return { patient, consultations, ...(others ? { others } : {}), access: treating.access };
   }
 
   private toPatientSummary(user: IUser) {

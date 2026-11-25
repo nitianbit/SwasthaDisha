@@ -9,7 +9,7 @@ import { unpaidCardBooking } from '@/modules/assisted/views';
 import { isUnpaidCardLab } from '@/modules/assisted/labViews';
 import { isDeskRow, isWalkIn, partnerOriginOf } from '@/modules/assisted/deskViews';
 import { IST_OFFSET_MS, istDateIso, istTimeHhmm } from '@/modules/common/utils/istDate';
-import type { ISmsNotice, SmsEvent } from '@/modules/smsNotices/model';
+import { SmsNoticeModel, type ISmsNotice, type SmsEvent } from '@/modules/smsNotices/model';
 import { enqueueSms, setSmsComposer, type SmsComposition } from '@/modules/smsNotices/outbox';
 import { smsFlags } from '@/modules/smsNotices/flags';
 import { wordsFor, type SmsMessage, type SmsWords } from '@/modules/smsNotices/templates';
@@ -19,8 +19,8 @@ import { linkTokenFor } from '@/modules/smsNotices/joinLink';
  * Phase 5b (ASSISTED_BOOKING_DESIGN.md §27.6): the booking events that send an SMS, and what each one says.
  *
  * - **Hooks.** One call per event, after the booking's commit (`smsBooked`, `smsRxReady`, `smsReportReady`,
- *   `smsCancelled`, `smsMoved`, `smsMovedOff`). Each never throws and only queues a row (`enqueueSms`): nothing here
- *   can change, fail or delay a booking. The caller decides whether the event is one that sends (not what the patient
+ *   `smsCancelled`, `smsMoved`, `smsMovedOff`), made with `void` (fire and forget). Each never throws and only queues a
+ *   row (`enqueueSms`): nothing here can change, fail or delay a booking. The caller decides whether the event is one that sends (not what the patient
  *   did in the app, not a lab's proposal); these helpers keep the rows in scope: partner-made consultations (instant
  *   ones too) and lab bookings, and lab desk rows — never a customer's own booking, a clinic desk booking, a legacy
  *   pharmacy booking or an unpaid card booking (never announced, C7). A desk walk-in (tested on arrival) only hears of
@@ -61,22 +61,38 @@ async function startOf(kind: Kind, b: Row): Promise<Date | null> {
   }
   return appointmentIntervalOf(b, (await slotsOf([b])).get(String(b.slotId ?? '')))?.start ?? null;
 }
-/** A move's version: the new start in epoch minutes (§27.6.1). */
 const minutesOf = (d: Date) => String(Math.floor(d.getTime() / MIN_MS));
+/**
+ * A move's version: `<the new start in epoch minutes>:<the move's write, epoch ms>`. Every move writes the booking, so a
+ * move back to an earlier time (B → C → B) has its own key and is told (phase 5 stores no counter on a booking).
+ */
+const moveVersionOf = (start: Date, b: Row) => `${minutesOf(start)}:${new Date(b.updatedAt ?? Date.now()).getTime()}`;
 
 // ───────────────────────────── Hooks (after the commit) ─────────────────────────────
 
+/** The enqueues still running (hooks are fire and forget): `smsHooksSettled` waits for them (tests, shutdown). */
+const inFlight = new Set<Promise<void>>();
+export async function smsHooksSettled(): Promise<void> {
+  while (inFlight.size) await Promise.all([...inFlight]);
+}
+
+/** r34: a version, or a version with its due time (the reminder). */
 type Version = string | { version: string; dueAt: Date } | null;
-async function queue(kind: Kind, b: Row | null | undefined, event: NoticeEvent, version: () => Promise<Version> | Version,
+function queue(kind: Kind, b: Row | null | undefined, event: NoticeEvent, version: () => Promise<Version> | Version,
   recipientUserId?: string): Promise<void> {
-  try {
-    if (!smsFlags.enabled() || !b?._id || !inScope(kind, b, event)) return;
-    const v = await version();
-    if (v) await enqueueSms({ bookingKind: kind, bookingId: String(b._id), event, ...(typeof v === 'string' ? { version: v } : v),
-      ...(recipientUserId ? { recipientUserId: String(recipientUserId) } : {}) });
-  } catch {
-    logger.warn('sms enqueue skipped', { event, bookingKind: kind, reason: 'enqueue_failed' });
-  }
+  const p = (async () => {
+    try {
+      if (!smsFlags.enabled() || !b?._id || !inScope(kind, b, event)) return;
+      const v = await version();
+      if (v) await enqueueSms({ bookingKind: kind, bookingId: String(b._id), event, ...(typeof v === 'string' ? { version: v } : v),
+        ...(recipientUserId ? { recipientUserId: String(recipientUserId) } : {}) });
+    } catch {
+      logger.warn('sms enqueue skipped', { event, bookingKind: kind, reason: 'enqueue_failed' });
+    }
+  })();
+  inFlight.add(p);
+  void p.finally(() => inFlight.delete(p));
+  return p;
 }
 
 /**
@@ -103,21 +119,24 @@ const queueReminder = (kind: Kind, b: Row | null | undefined) => (b?.bookingKind
 }));
 
 /** Booked and paid (a wallet create, a card confirmation, an instant acceptance, a desk booking with a slot); r34: its reminder. */
-export const smsBooked = async (kind: Kind, b: Row | null | undefined) => { await queue(kind, b, 'booked', () => '1'); await queueReminder(kind, b); };
+export const smsBooked = (kind: Kind, b: Row | null | undefined) => Promise.all([queue(kind, b, 'booked', () => '1'), queueReminder(kind, b)]).then(() => undefined);
 /** The doctor's first prescription save (the caller checks "first"). */
 export const smsRxReady = (b: Row | null | undefined) => queue('booking', b, 'rx_ready', () => '1');
 /** The lab's first report release (the caller checks "first"). */
 export const smsReportReady = (b: Row | null | undefined) => queue('lab_booking', b, 'report_ready', () => '1');
 /** Cancelled by someone other than the patient in the app. */
 export const smsCancelled = (kind: Kind, b: Row | null | undefined) => queue(kind, b, 'cancelled', () => '1');
-/** Moved to a new time (a later move is its own notice; the version is the new start); r34: the new time's reminder. */
-export const smsMoved = async (kind: Kind, b: Row | null | undefined) => {
-  await queue(kind, b, 'moved', async () => {
+/**
+ * Moved to a new time (every move is its own notice; only the latest one is sent, §27.13.7); r34: the new time's
+ * reminder.
+ */
+export const smsMoved = (kind: Kind, b: Row | null | undefined) => Promise.all([
+  queue(kind, b, 'moved', async () => {
     const start = await startOf(kind, b!);
-    return start ? minutesOf(start) : null;
-  });
-  await queueReminder(kind, b);
-};
+    return start ? moveVersionOf(start, b!) : null;
+  }),
+  queueReminder(kind, b),
+]).then(() => undefined);
 /**
  * The admin account move (SM17): the previous holder hears "moved to another number"; the new holder is told it is
  * booked. Version `move:<n>`, n = the moves made so far.
@@ -174,9 +193,10 @@ const shownDate = (d: Date) => istDateIso(d).split('-').reverse().join('-');
 
 /**
  * Whether the event is still true when the row is due (§27.6.2). A "booked" is for the current holder only: one queued
- * before an account move is stale (the move queues the new holder's own, `move:<n>`), so nobody hears it twice.
+ * before an account move is stale (the move queues the new holder's own, `move:<n>`), so nobody hears it twice. A
+ * "moved" is true while the booking still starts at its time and no later move was queued (B → C → B: one SMS).
  */
-function stillTrue(kind: Kind, b: Row, o: Origin, row: ISmsNotice, start: Date | null, now: Date): boolean {
+async function stillTrue(kind: Kind, b: Row, o: Origin, row: ISmsNotice, start: Date | null, now: Date): Promise<boolean> {
   const age = now.getTime() - new Date(row.createdAt ?? now).getTime();
   switch (row.event) {
     case 'booked':
@@ -187,7 +207,10 @@ function stillTrue(kind: Kind, b: Row, o: Origin, row: ISmsNotice, start: Date |
     case 'rx_ready': return hasPrescription(b) && age <= 3 * DAY_MS;
     case 'report_ready': return (b.report?.releases ?? []).length > 0 && age <= 3 * DAY_MS;
     case 'cancelled': return b.status === 'cancelled' && age <= DAY_MS;
-    case 'moved': return b.status !== 'cancelled' && !!start && minutesOf(start) === row.version && now < start;
+    case 'moved':
+      if (b.status === 'cancelled' || !start || minutesOf(start) !== row.version.split(':')[0] || now >= start) return false;
+      return !await SmsNoticeModel.exists({ bookingKind: row.bookingKind, bookingId: row.bookingId, event: 'moved',
+        $or: [{ createdAt: { $gt: row.createdAt } }, { createdAt: row.createdAt, _id: { $gt: row._id } }] });
     case 'moved_off': return age <= DAY_MS;
     // r34 (§27.7): the visit is still on at the time the reminder was made for (a move or a cancel makes it stale).
     case 'reminder':
@@ -212,7 +235,7 @@ async function compose(row: ISmsNotice, now: Date): Promise<SmsComposition | { s
   if (!b) return { skip: 'booking_missing' };
   const o = inScope(kind, b, event);
   const start = o ? await startOf(kind, b) : null;
-  if (!o || !stillTrue(kind, b, o, row, start, now)) return { skip: 'stale' };
+  if (!o || !await stillTrue(kind, b, o, row, start, now)) return { skip: 'stale' };
   if (event !== 'moved_off' && o.disputed?.state === 'open') return { skip: 'disputed' };
   const [name, place] = await Promise.all([patientName(kind, b, row), placeOf(kind, b, event)]);
   const mode = kind === 'booking' ? b.consultationMode : b.visitMode;

@@ -353,7 +353,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   const withMeet = booking.consultationMode === 'in-person' ? booking : await bestEffort('meet', () => fx.meet(booking), booking);
   await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
   await sendAssistedNotices(await bookedNotices(withMeet));
-  await smsBooked('booking', withMeet);
+  void smsBooked('booking', withMeet);
   const fresh = await BookingModel.findById(booking._id).lean() as IBooking | null;
   return assistedReceipt(fresh ?? withMeet, false, customer.created);
 }

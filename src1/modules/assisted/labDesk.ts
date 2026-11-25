@@ -255,7 +255,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
         : `Booked at ${partner.name}: ${b.visitMode === 'home' ? 'home collection' : 'lab visit'} on ${b.slot.date} at ${b.slot.startTime}. Pay at the lab.`,
       bookingId: String(b._id), key: `labdesk:${b._id}:booked:customer` });
   } catch { /* best effort */ }
-  await smsBooked('lab_booking', b);
+  void smsBooked('lab_booking', b);
   return receipt(actor, b, false);
 }
 

@@ -11,7 +11,9 @@
  *  3. Checked again at send: booked then cancelled → `stale`; moved twice → the first `stale`; prescription withdrawn →
  *     `stale`; a booking moved to another account → the old "booked" is stale, the new holder gets theirs.
  *  4. SMS never affects a booking: the answers and stored bookings are the same with SMS on and off, a hanging gateway
- *     is never called by a request, a missing outbox index queues nothing and the booking still answers 201.
+ *     is never called by a request, a slow outbox never delays an answer (the hooks are fire and forget), a missing
+ *     outbox index queues nothing and the booking still answers 201.
+ *  r31b: a move back to an earlier time (B → C → B) is told; several moves before a tick send only the latest.
  *  5. Switch off: nothing queued. The admin per-booking read. No phone, name or text in any row or log line.
  *
  * Every check runs even when an earlier one fails (the run exits 1 if any failed).
@@ -74,7 +76,7 @@ import { resetIndexChecks } from '@/modules/common/utils/requiredIndex';
 import { SmsNoticeModel } from '@/modules/smsNotices/model';
 import { drainSmsOnce } from '@/modules/smsNotices/drain';
 import { setSmsProvider } from '@/modules/smsNotices/provider';
-import { registerSmsComposers, smsBooked } from '@/modules/smsNotices/events';
+import { registerSmsComposers, smsBooked, smsHooksSettled } from '@/modules/smsNotices/events';
 import type { IMember, PartnerPermission } from '@/modules/partners/types';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r31_phase5b_check?directConnection=true';
@@ -311,12 +313,14 @@ async function main() {
     };
 
     // ── The outbox and the drain ──
-    // r34: the visit reminders (5c) queued beside "booked" and "moved" are checked by r34-phase5cd; these lists leave them out.
-    const rowsOf = async (id: string) => await SmsNoticeModel.find({ bookingId: String(id).toLowerCase(), event: { $ne: 'reminder' } })
-      .sort({ createdAt: 1, _id: 1 }).lean() as any[];
+    // The hooks are fire and forget: every read of the outbox first waits for the enqueues still running.
+    const rowsOf = async (id: string) => { await smsHooksSettled();
+      return await SmsNoticeModel.find({ bookingId: String(id).toLowerCase() }).sort({ createdAt: 1, _id: 1 }).lean() as any[]; };
     const events = async (id: string) => (await rowsOf(id)).map((r) => `${r.event}:${r.version}`);
     /** One drain tick; the messages the gateway received in it. */
-    const drain = async (now?: Date) => { const before = sms.sent.length; const out = await drainSmsOnce(now); return { out, sent: sms.sent.slice(before) }; };
+    const drain = async (now?: Date) => { await smsHooksSettled(); const before = sms.sent.length; const out = await drainSmsOnce(now); return { out, sent: sms.sent.slice(before) }; };
+    /** A move's version: the new start in epoch minutes, then the move's write (ms). */
+    const startMinutes = (version: string) => version.split(':')[0];
     const dmy = (d: string) => (/^\d{8}$/.test(d) ? `${d.slice(6, 8)}-${d.slice(4, 6)}-${d.slice(0, 4)}` : d.split('-').reverse().join('-'));
     const BOOKED = (name: string, service: string, date: string, time: string, place: string, ref: string) =>
       `Jansetu: ${name}'s ${service} is booked for ${date} at ${time} via ${place}. Ref ${ref}. Sign in to the Jansetu app with this number for details.`;
@@ -424,6 +428,7 @@ async function main() {
       const created = (await expect('P', 'POST', `${PA}/instant/requests`, 201, { requestKey: newKey(), ...patientX, preferredLanguage: 'en',
         specialization: 'General Physician', mode: 'video', target: { kind: 'any' }, join: { on: 'partner_device' }, acceptedQuoteMinor: 50000,
         acceptedPayableMinor: 50000, paymentMethod: 'wallet' })).json.data;
+      await smsHooksSettled();
       assert.equal(await SmsNoticeModel.countDocuments({ createdAt: { $gte: t0 } }), 0, 'nothing queued for a request');
       const acc = await instantSvc.accept(D, created.request._id);
       const id = String(acc.booking._id);
@@ -538,7 +543,9 @@ async function main() {
       const moved = (await expect('P', 'POST', `${PA}/bookings/${c.booking._id}/reschedule`, 200, { slotId: to, requestKey: newKey() })).json.data.booking;
       const slot = await SlotModel.findById(to).lean() as any;
       const start = Date.parse(`${slot.date.slice(0, 4)}-${slot.date.slice(4, 6)}-${slot.date.slice(6, 8)}T${slot.startTime}:00+05:30`);
-      assert.deepEqual(await events(c.booking._id), ['booked:1', `moved:${Math.floor(start / MIN)}`]);
+      const cm = (await rowsOf(c.booking._id)).map((r) => [r.event, r.event === 'moved' ? startMinutes(r.version) : r.version]);
+      assert.deepEqual(cm, [['booked', '1'], ['moved', String(Math.floor(start / MIN))]]);
+      assert.match((await rowsOf(c.booking._id))[1].version, /^\d+:\d{13}$/);
       // A lab proposal sends nothing; the booker's accept does.
       const ls = await labSlot();
       await expect('PATH', 'POST', `${WS}/lab-bookings/${l.booking._id}/reschedule`, 200, { slotId: ls, reason: 'Machine down' });
@@ -546,7 +553,8 @@ async function main() {
       const version = (await PartnerLabBookingModel.findById(l.booking._id).lean() as any).reschedule.version;
       const acc = (await expect('P', 'POST', `${PA}/lab-bookings/${l.booking._id}/accept-reschedule`, 200, { version })).json.data;
       const lStart = new Date(acc.slot.startsAt).getTime();
-      assert.deepEqual(await events(l.booking._id), ['booked:1', `moved:${Math.floor(lStart / MIN)}`]);
+      assert.deepEqual((await rowsOf(l.booking._id)).map((r) => [r.event, r.event === 'moved' ? startMinutes(r.version) : r.version]),
+        [['booked', '1'], ['moved', String(Math.floor(lStart / MIN))]]);
       // The lab rebooks a no-show (once; its replay adds nothing).
       await PartnerLabBookingModel.updateOne({ _id: n.booking._id }, { $set: { status: 'no_show', 'lifecycle.noShowAt': new Date() }, $inc: { statusVersion: 1 } });
       const ns = await labSlot(); const key = newKey();
@@ -573,6 +581,35 @@ async function main() {
       const rm = await rowsOf(m.booking._id);
       assert.deepEqual(rm.map((r) => [r.event, r.state, r.reason ?? null]), [['booked', 'sent', null], ['moved', 'skipped', 'stale'], ['moved', 'sent', null]]);
       assert.ok(sent.some((x) => x.text === CANCELLED_MOVED('Rina', 'video consultation', `moved to ${dmy(second.bookingDate)} ${second.bookingTime}`)));
+    });
+
+    await check('r31b: a move back to an earlier time is told (B → C, then back to B); C → D → C before a tick sends one SMS, the latest', async () => {
+      const B = await docSlot();
+      const c = (await expect('P', 'POST', `${PA}/consultations`, 201, consultBody(B))).json.data;
+      const id = c.booking._id;
+      await drain();
+      const C = await docSlot();
+      const toC = (await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: C, requestKey: newKey() })).json.data.booking;
+      const first = await drain();
+      assert.deepEqual(first.sent.map((x) => x.text), [CANCELLED_MOVED('Rina', 'video consultation', `moved to ${dmy(toC.bookingDate)} ${toC.bookingTime}`)]);
+      const backToB = (await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: B, requestKey: newKey() })).json.data.booking;
+      assert.equal(backToB.slotId, B);
+      const moves = (await rowsOf(id)).filter((r) => r.event === 'moved');
+      assert.equal(moves.length, 2, 'the move back to B has its own row');
+      const second = await drain();
+      record(second.sent);
+      assert.deepEqual(second.sent.map((x) => x.text), [CANCELLED_MOVED('Rina', 'video consultation', `moved to ${dmy(backToB.bookingDate)} ${backToB.bookingTime}`)]);
+      // Three moves before one tick (C → D → C): only the latest is sent; the earlier two are stale.
+      const D = await docSlot();
+      await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: C, requestKey: newKey() });
+      await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: D, requestKey: newKey() });
+      const lastC = (await expect('P', 'POST', `${PA}/bookings/${id}/reschedule`, 200, { slotId: C, requestKey: newKey() })).json.data.booking;
+      const third = await drain();
+      record(third.sent);
+      assert.deepEqual(third.sent.map((x) => x.text), [CANCELLED_MOVED('Rina', 'video consultation', `moved to ${dmy(lastC.bookingDate)} ${lastC.bookingTime}`)]);
+      const last3 = (await rowsOf(id)).filter((r) => r.event === 'moved').slice(-3);
+      assert.deepEqual(last3.map((r) => [r.state, r.reason ?? null]), [['skipped', 'stale'], ['skipped', 'stale'], ['sent', null]]);
+      assert.equal(new Set((await rowsOf(id)).map((r) => r.version)).size, (await rowsOf(id)).length);
     });
 
     // ───────────────────────── The admin account move ─────────────────────────
@@ -675,7 +712,7 @@ async function main() {
       record((await drain()).sent);
     });
 
-    await check('a hanging gateway is never called by a request; a missing outbox index queues nothing and the booking still answers 201', async () => {
+    await check('a hanging gateway is never called by a request; a slow outbox never delays an answer; a missing outbox index queues nothing and the booking still answers 201', async () => {
       sms.mode = 'hang';
       const calls = sms.calls;
       const t0 = Date.now();
@@ -687,6 +724,17 @@ async function main() {
       assert.equal(out.retry, 1);
       sms.mode = 'ok';
       await SmsNoticeModel.updateMany({ state: 'queued' }, { $set: { dueAt: new Date() } });
+      record((await drain()).sent);
+      // A slow outbox (each insert 3 s) never delays an answer: the hooks are fire and forget.
+      const realCreate = (SmsNoticeModel as any).create.bind(SmsNoticeModel);
+      (SmsNoticeModel as any).create = async (...a: unknown[]) => { await new Promise((res) => setTimeout(res, 3000)); return realCreate(...a); };
+      try {
+        const t1 = Date.now();
+        const slow = await consultP();
+        const answered = Date.now() - t1;
+        assert.ok(answered < 3000, `answered in ${answered} ms`);
+        assert.deepEqual(await events(slow.booking._id), ['booked:1'], 'queued once the slow insert finished');
+      } finally { (SmsNoticeModel as any).create = realCreate; }
       record((await drain()).sent);
       await SmsNoticeModel.collection.dropIndex('bookingKind_1_bookingId_1_event_1_version_1');
       resetIndexChecks();
@@ -716,6 +764,7 @@ async function main() {
 
     await check('no phone number, name, text or template id in any outbox row or log line', async () => {
       assert.ok(sentTexts.length >= 25, `texts sent: ${sentTexts.length}`);
+      await smsHooksSettled();
       const rows = JSON.stringify(await SmsNoticeModel.find({}).lean());
       const secrets = [PHONE_X, PHONE_Y, PHONE_S, 'Rina', 'Bikash', 'Mina', 'Selma', ...Object.values(T)];
       for (const s of secrets) assert.ok(!rows.includes(s), `outbox holds ${s}`);

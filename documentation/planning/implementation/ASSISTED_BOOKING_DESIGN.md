@@ -5538,6 +5538,119 @@ check under load), passes alone (29/29).
 **Seen, not changed:** the admin move of a doctor-made lab row still does not move its `assisted_links` row (3b F6). The
 lab member verify route (`/partner-workspace/assisted/payments/verify`) stays lab-only; doctors use `/payments`.
 
+### 25.17 Round 3f build record: treating window, read log, records-access approvals and grants (r30, 2026-11-25)
+
+Branch `m0/r30-phase3f` from `6a8574e9` (the stage line `m0/r28-stage-next-3`: 3a, 3b, 3e, 2e, 4a/4b, 5a). Local commits
+only. Built §25.9 with DR21–DR26 and the §25.11 decisions. Owner decision Q1: the account holder allows or denies in the
+Jansetu app; the SMS code is a seam only (§27.9). Numbered §25.17 because r29 (3c) writes §25.16. No copies: the treating
+booking is one loader in `assisted/treating.ts`, shared with 3b's `fromBookingId`.
+
+**What was built**
+
+| Area | Where | What |
+|---|---|---|
+| Models | `recordAccess/model/index.ts` (new) | `record_reads` `{ doctorId, holderUserId, personKey, treatingBookingId, scope: own_history \| other_history \| file, path?, sourceBookingId?, at }`, kept for good, ids only; `record_access_requests` (unique partial `{treatingBookingId, specialistId}` where `pending`; `{holderUserId, state, createdAt:-1}`; `{treatingBookingId, createdAt:-1}`); `record_access_grants` (unique `{holderUserId, personKey, specialistId}`, renewed in place; `{specialistId, holderUserId}`). `personKey` = the family member's id or `self` |
+| Treating booking | `assisted/treating.ts` | `ownTreatingBookings` (the doctor's own bookings with their §25.9.1 window; an unpaid card booking or an open "not mine" report is left out) and `openOwnTreatingBooking` (404 `BOOKING_NOT_FOUND` / 409 `TREATING_WINDOW_CLOSED`). 3b's `patientOfConsultation` now calls it |
+| Service | `recordAccess/index.ts` (new) | `treatingAccess`, `othersOf` (DR24 allowlist), `requestRecordsAccess`, `decideRecordsRequest`, `revokeRecordsGrant`, holder and admin lists, `logRecordRead` (DR25: 503 `READ_LOG_UNAVAILABLE`), `grantedFileRead` (DR26), `expireRecordRequests` (DR21), the `RecordsCodeSender` seam (`setRecordsCodeSender`; none in phase 3) |
+| History | `specialistPortal/services/index.ts`, `specialists/routes`, `specialistPortal/validation` | `?dependentId` (one person) and `?bookingId` (the treating view). Without `bookingId` the answer is unchanged (DR23). Every read writes its `record_reads` row before the answer |
+| Files | `file/access.ts`, `file/controller` | `Decision` gains 503. A specialist refused by the rules so far gets the grant rule: another booking's full prescription PDF (still held, not withdrawn by an admin clear) or a released partner-lab report (by its active `partner_lab_report` binding) of a person the doctor treats now with a grant in force; logged first. The controller answers 503 `READ_LOG_UNAVAILABLE` |
+| Alert | `recordAccess/alert.ts` (new); `bookings/holds.ts` (`cancelBookingSettlement`), `doctors/services/instant.ts` (`cancelAccepted`), `bookings/services` (`markNoShow`) | `read_then_cancel` (`detail.bookingId`) in the cancelling transaction when the booking has an `other_history` or `file` read |
+| Routes | `recordAccess/routes.ts` (new), `src1/routes/index.ts` | below |
+| Switch, sweep, audit | `assisted/flags.ts`, `assisted/schedulers.ts`, `assisted/model/index.ts` | `RECORDS_ACCESS_ENABLED` (`assistedFlags.records`); the expiry sweep every 10 minutes; audit action `records.grant_revoked` (admin revoke) |
+
+Checks: `test/assisted/r30-phase3f.integration.ts` (22 checks over HTTP with the real routes): DR23 unchanged answer and
+its log row; no grant = own history only and other files 404; 404 for another doctor, account or person, 409 outside the
+window, the identity note; request (24 h, app channel, the holder's notice, replace, a 5-way race leaves one pending,
+expiry at the window's close, no app channel for a holder who never signed in); another account 404; allow (allowlist
+only, the full PDF and the released report, each logged first; never a draft); a grant in force answers `approved`; deny;
+approve against deny; expiry at 24 h and at the window's close (approve 409, the sweep); an unverified doctor (403, files
+404, the reduced plain history still logged, re-verification restores); a grant without an open treating booking reads
+nothing; the read log refusing writes gives 503 with no data; the alert after a cancel, a no-show and an instant cancel,
+none after own reads only; revoke, renew in place, 12 months; an admin move; admin reads, grants and the audited revoke;
+switch off; index 503.
+
+**ASSUMED (r30, reversible)**
+
+| # | Choice | Why |
+|---|---|---|
+| G1 | A history read of the whole account (no `bookingId`, no `dependentId`) is logged with `personKey: 'account'` | `self` would misname it: it covers the family members too |
+| G2 | No `…/records-access/confirm` route yet. The request calls the `RecordsCodeSender` seam (none in phase 3, so `channels.sms` is `false`); the request keeps `codeHash`, `codeExpiresAt` and `wrongTries` for the follow-up after 5a (§27.9), which adds the code and the route | A route that can only answer 409 `NO_CODE_SENT` is no API |
+| G3 | A request is created whether or not the holder has the app; `channels.app` = the holder has signed in (`otpVerified`). A holder who signs in within the request's life can still approve | Q1: patients without the app cannot approve, so their doctor keeps the own view |
+| G4 | A new request replaces the older pending one in one transaction; racing requests leave one pending (older answers name a request that is then `replaced`) | §25.9.7 |
+| G5 | Approve and deny re-check the request's booking (window open, the same holder and person, no open "not mine") and otherwise mark it `expired` (409 `RECORDS_REQUEST_EXPIRED`); a list shows a pending request past its expiry as `expired` before the sweep marks it | DR21, §17.5 item 3 |
+| G6 | A file read needs ANY open treating booking of the doctor for that person (a file URL names no booking); the log row names that booking | §25.9.5 |
+| G7 | `others` leaves out the treating doctor's own consultations (they are in `consultations`) and rows under an open "not mine" report; medicines keep name, dosage, frequency, instructions and duration; `prescriptionFile` is the current full PDF; `labReports[].date` is the slot date; the signer is name, kind and registration number | DR24 allowlist |
+| G8 | The holder's notice (in-app, type `general`, `data: { kind: 'records_access_request', requestId }`): "A doctor asks to see past health records" / "Your doctor, <name>, asks to see <first name>'s past health records. Open Jansetu to allow or deny." | No health details; the GATE-DPDP review checks this text (§25.9.7 step 3) |
+| G9 | The admin's revoke reason is kept on the grant (`revokeReason`); the audit row holds ids only. A holder's revoke is recorded on the grant (`revokedByKind: 'holder'`), not audited | The audit is ids and codes only |
+| G10 | A history read that finds nothing (404 `PATIENT_HISTORY_NOT_FOUND`) writes no log row | Nothing is shown |
+| G11 | The approval of a doctor who became unverified still records the grant (it cannot be used while the doctor is unverified) | The holder's answer is kept |
+| G12 | 3b's 409 `TREATING_WINDOW_CLOSED` now says "This consultation is not open for treatment now" (the shared loader); the code is unchanged | One loader |
+
+**API for the web** (`{ success, data }`; `Cache-Control: private, no-store` on the records routes)
+
+Doctor app (specialist token):
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET /api/v1/specialists/me/patients/:userId/history` | `?dependentId` (optional) | unchanged `{ patient, consultations }` (the doctor's own; one person with `dependentId`). An unverified doctor gets the reduced view, as before |
+| `GET …/history?bookingId=<the doctor's booking>` | verified and active (403 `SPECIALIST_NOT_VERIFIED`) | `{ patient, consultations, others?, access }`. `consultations` = the doctor's own with that booking's person. `access = { window: { opensAt, closesAt }, grant: { at, expiresAt, via } \| null, request: { state, createdAt, expiresAt } \| null, identityNote? }`. `others` (grant in force and the switch on) = `{ consultations: [{ bookingId, date, doctorName, specialization, consultationMode, diagnosis, advice, medicines, testsAdvised, recommendationCode, prescribedAt, prescriptionFile }], labReports: [{ labBookingId, labName, date, tests, releases: [{ file, releasedAt, signer: { name, kind, registrationNumber } }] }] }` |
+| `POST /api/v1/specialists/me/bookings/:id/records-access/request` | verified and active; inside the window | 201 `{ requestId, state: 'pending', expiresAt, channels: { app, sms } }`; 200 `{ state: 'approved', grant: { at, expiresAt, via } }` when a grant is in force (nothing created) |
+| `GET /api/static/<path>` | `prescriptionFile` and `releases[].file` from `others` | the file (the full PDF, DR26); 503 `READ_LOG_UNAVAILABLE`; 404 without a grant, outside the window or with the switch off |
+
+Screen: show the "Other doctors' records" panel from `access` — no `request`: "Ask the patient for approval"; `pending`
+until `expiresAt`; `approved` until `grant.expiresAt`; `denied` / `expired`: ask again. `identityNote`: "Identity attested
+by the partner, not verified". Show no code box (`channels.sms` stays `false` in phase 3).
+
+Customer app (user token; the account holder only, else 403 `FORBIDDEN`):
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET /api/v1/records-access/requests` | `?state=pending\|approved\|denied\|expired\|replaced` | `[{ _id, state, treatingBookingId, createdAt, expiresAt, decidedAt, doctor: { id, name, specialization }, patient: { personKey, name } }]` (newest 50; `pending` lists only unexpired ones; `patient.name` is null for the holder) |
+| `POST /api/v1/records-access/requests/:id/approve` | — | `{ request, grant }`; grant = `{ _id, state: 'active', via: 'app', at, expiresAt, revokedAt, doctor, patient }` |
+| `POST /api/v1/records-access/requests/:id/deny` | — | `{ request, grant: null }` |
+| `GET /api/v1/records-access/grants` | — | `[grant]` (newest 100; `state`: `active` \| `revoked` \| `expired`) |
+| `POST /api/v1/records-access/grants/:id/revoke` | — | `{ grant, alreadyRevoked }` |
+
+Screens: "Doctors asking to see records" (Allow / Deny) from `?state=pending`; "Who can see my records" (Revoke) from
+`grants`. The in-app notice carries `data.requestId`.
+
+Admin (admin token):
+
+| Route | Request | `data` |
+|---|---|---|
+| `GET /api/v1/admin/records-access/grants` | `?holderUserId&specialistId&limit≤200` | the stored rows |
+| `POST /api/v1/admin/records-access/grants/:id/revoke` | `{ reason }` (3–500 characters) | `{ grant, alreadyRevoked }` (audited `records.grant_revoked`) |
+| `GET /api/v1/admin/records-access/reads` | `?holderUserId&doctorId&from&to&limit≤500` | `[{ _id, doctorId, holderUserId, personKey, treatingBookingId, scope, path?, sourceBookingId?, at }]`, newest first |
+
+`GET /api/v1/admin/assisted/alerts` lists `read_then_cancel` (`detail.bookingId`).
+
+Errors: 503 `RECORDS_ACCESS_DISABLED`, `INDEXES_OUTDATED`, `READ_LOG_UNAVAILABLE`; 403 `SPECIALIST_NOT_VERIFIED`,
+`FORBIDDEN`; 404 `BOOKING_NOT_FOUND`, `PATIENT_HISTORY_NOT_FOUND`, `RECORDS_REQUEST_NOT_FOUND`, `RECORDS_GRANT_NOT_FOUND`;
+409 `TREATING_WINDOW_CLOSED`, `RECORDS_REQUEST_NOT_PENDING`, `RECORDS_REQUEST_EXPIRED`, `RECORDS_REQUEST_CHANGED`
+(retry); 400 `VALIDATION_ERROR`.
+
+**Switch, deploy, rollback**
+
+- `RECORDS_ACCESS_ENABLED` (new; off unless exactly `"true"`) gates the request, approve and deny (503), the `others`
+  part and file reads by grant. Off: the treating view shows the own consultations and `access`, still logged. Revoke,
+  the lists, the sweep and the read log always work.
+- Order (§25.9.7): 1. deploy (history reads are logged from now on; answers without `bookingId` are unchanged); 2.
+  `npm run sync-indexes` (the three new collections); 3. the GATE-DPDP review of the notice (G8) and the app text; 4.
+  `RECORDS_ACCESS_ENABLED=true`; 5. restart. No migration.
+- Rollback: the switch, or the code (no money; grants simply stop being read).
+
+**Seen, not changed**
+
+- r29 (3c) adds `doctorBookerName` in `assisted/labViews.ts`; the holder's notice here needs no "Dr" prefix, so nothing is
+  copied. Merge note: r29 also edits `assisted/labBookings.ts` (lines next to `patientOfConsultation`) and
+  `assisted/model/index.ts` (other lines).
+- Today's history summary (DR23) still carries `price`, `notes`, `documents` and the meeting link of the doctor's own
+  consultations (for a partner-booked row `price` is the partner's money), and `patient` carries the holder's contacts in
+  every view. Unchanged here.
+- The doctor gets no notice when the holder answers; the treating view's `access.request` shows it.
+- External diagnostics reports are not in `others` (DR24).
+- The web screens of §25.9.9 are not built (backend only).
+
 ## 26. Phase 4 build specification (referral cuts, earnings, withdrawals) (r22, 2026-11-25)
 
 Design only; nothing here is built. Three code lines are cited:
@@ -6179,6 +6292,26 @@ bookers (M17).
 - `assisted/labBookings.ts` keeps its own `newShortRef`.
 - Lab desk rows never snapshot (§5.5).
 - 4c to 4f are not built.
+
+### 26.16 r33: referral API gaps closed (2026-11-25)
+
+Branch `m0/r33-referral-gaps` from stage `6a8574e9`. Local commits only. The gaps the WQ26 web screens found:
+
+| Gap | Built |
+|---|---|
+| No answer said whether cuts or payouts are on | The rule lists (admin `GET /admin/referral-rules`, booker `…/referral-rules`) add a top-level `switches: { cutsEnabled, payoutsEnabled }` next to `data` (the list stays an array); the totals (`…/referral`) add `cutsEnabled` beside `payoutsEnabled` in `data`. `cutsEnabled` = `REFERRAL_CUTS_ENABLED`, `payoutsEnabled` = `REFERRAL_PAYOUTS_ENABLED` |
+| Statement rows had the short ref and category only inside `description` (§26.6.2) | Referral rows (`referral_consultation`, `referral_lab_booking`) add `shortRef` and `category`. A lab booking stays **one row** (one ledger entry, so balances and cursors are unchanged) with `lines: [{ category, baseMinor, cutMinor }]` (its cut lines) and `category` = their one category, or `mixed` when they differ (M21). Provider rows are unchanged. No patient name |
+| No referral statement CSV | `GET …/referral/statement.csv?from&to`: the finance CSV (`statementCsv`, same columns as M16, opening and closing balance), file `pharmacy-referral-statement….csv` / `lab-referral-statement….csv`; the CSV answer helpers (`sendCsv`, `csvName`, `period`) are exported from `partners/controller/finance.ts` and shared |
+| M17: labs had no referral reads | `GET /api/v1/partner-workspace/assisted/referral-rules`, `…/referral`, `…/referral/statement`, `…/referral/statement.csv` (and the admin-as-owner twins under `/partner-workspace/admin/:partnerId/workspace/assisted/…`): `finance.view` with partner-wide scope (`assertPartnerFinanceReader`, 403 FINANCE_SCOPE_REQUIRED), labs only (403 LAB_PARTNER_REQUIRED). The same handlers serve the pharmacy and the lab (`referralReads` in `referralCuts/controller.ts`). No doctor routes (doctor cuts stay off) |
+
+**ASSUMED:** M21 — one statement row per lab booking with its cut lines listed, rather than one row per line (simpler: no
+change to the ledger, the running balance or the cursor). M22 — the lab reads sit under `/partner-workspace/assisted/`,
+mirroring the pharmacy's `/pharmacy-assisted/` paths, rather than §26.6.2's `/partner-workspace/finance/referral`; the
+permission is the finance one, as §26.6.2 says.
+
+**Tests:** `test/assisted/r33-referral-gaps.integration.ts` (5 checks: the switches on every answer, the row fields with
+mixed and single-category lab bookings and unchanged provider rows, the pharmacy CSV, the lab reads incl. admin as owner,
+the refusals); `r24-phase4ab` updated for `cutsEnabled` in the totals.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
@@ -6849,7 +6982,7 @@ master switch and a message's English pair are on (§27.13.5).
 
 | Part | Where | Notes |
 |---|---|---|
-| Hooks | `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`, `smsMovedOff` | One line at each hook, after the commit. Never throw; read nothing while `SMS_NOTICES_ENABLED` is off; queue only rows in scope (below) |
+| Hooks | `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`, `smsMovedOff` | One line at each hook, after the commit, called with `void` (r31b: fire and forget, no added latency). Never throw; read nothing while `SMS_NOTICES_ENABLED` is off; queue only rows in scope (below) |
 | Composer | `smsNotices/events.ts` `compose`, registered by `registerSmsComposers()` (`src1/index.ts`, before the drain starts) | One function for every event and both booking kinds: reads the booking again, checks the event (§27.6.2), builds the variables (§27.5.5, §27.6.3) |
 | Scope | `inScope` in `events.ts` | A consultation with an `assisted` block (instant ones too), a partner-made lab booking, a lab desk row. Never a customer's own booking, a clinic desk booking, a legacy pharmacy booking or an unpaid card booking. A desk walk-in only hears of its report (and of an account move) |
 | Fixed words | `smsNotices/templates.ts` `wordsFor(lang)` | Service names, "cancelled", "moved to", "moved to another number", "your family member"; English only (other languages fall back with their texts) |
@@ -6862,8 +6995,8 @@ master switch and a message's English pair are on (§27.13.5).
 | Event (version) | Path | Hook |
 |---|---|---|
 | `booked` (`1`) | Pharmacy (1a) and lab (2e) consultation, wallet | `assisted/consultations.ts:356` |
-| | The same, card confirmation (1b, 2e); the follow-up runs again until done, the marker keeps one | `assisted/cardPayments.ts:144` |
-| | Pharmacy lab booking, wallet (2a) and card confirmation (2b); doctor lab booking (3b) | `notifyLabBooked`, `assisted/labBookings.ts:303` |
+| | The same, card confirmation (1b, 2e); the follow-up runs again until done, the marker keeps one | `assisted/cardPayments.ts:149` |
+| | Pharmacy lab booking, wallet (2a) and card confirmation (2b); doctor lab booking, wallet (3b) and card (3c, r29) | `notifyLabBooked`, `assisted/labBookings.ts:304` |
 | | Lab desk, rows with a slot (2c) | `assisted/labDesk.ts:258` |
 | | Partner Consult now: the doctor accepts (3e) | `doctors/services/instant.ts:706` |
 | `rx_ready` (`1`) | The doctor's first prescription save (no doctor's prescription before it) | `specialistPortal/services/index.ts:417` |
@@ -6874,8 +7007,8 @@ master switch and a message's English pair are on (§27.13.5).
 | | Admin cancel of a moved lab no-show | `partners/services/labBookings.ts:720` |
 | | The booker cancels its lab booking (never an unpaid card row) | `partners/services/labBookings.ts:858` |
 | | The lab desk cancels a desk row | `partners/services/labBookings.ts:885` |
-| `moved` (new start, epoch minutes) | The booker moves a consultation | `assisted/pharmacyCommands.ts:438` |
-| | The booker accepts a lab's new time | `assisted/labBookings.ts:663` |
+| `moved` (`<new start, epoch minutes>:<the move's write, epoch ms>`, r31b) | The booker moves a consultation | `assisted/pharmacyCommands.ts:438` |
+| | The booker accepts a lab's new time | `assisted/labBookings.ts:665` |
 | | The lab rebooks a no-show | `partners/services/labBookings.ts:968` |
 | | The doctor or an admin moves a consultation's no-show (r31, ASSUMED 5) | `bookings/services/index.ts:1751` |
 | | An admin moves a consultation (r31, ASSUMED 5) | `bookings/services/index.ts:1868` |
@@ -6992,6 +7125,40 @@ notice twice per save changes nothing (the marker), so "first" is a cost saving 
 
 **Full regression** (`prun.sh … 2` on `ddf6aacc`): 81 entries, 81 passed (`r25-phase5a` and `r31-phase5b` among them),
 `tsc` 17 as before.
+
+#### 27.13.7 Review follow-ups (r31b, 2026-11-25)
+
+The r31 review (Opus xhigh) found it safe for stage with no must-fix. Merged `origin/stage` (`88e152ed`: r29, phase 3c
+doctor card lab bookings and the "Jansetu" prescription heading) without conflict: a doctor's card lab booking is
+confirmed through the same lab follow-up, so `notifyLabBooked` queues its "booked" too. Then the two later items:
+
+1. **A move back to an earlier time is told.** The "moved" version was the new start alone, so B → C → B was silent
+   (the key `(moved, B)` already existed). It is now `<new start, epoch minutes>:<the move's write, epoch ms>`
+   (`moveVersionOf`, `smsNotices/events.ts`): every move writes the booking, so every move has its own key, and phase
+   5 still stores nothing on a booking. At send time a "moved" is true while the booking still starts at that time,
+   before it, not cancelled, **and no later "moved" row exists for the booking** (`stillTrue`), so several moves before
+   one tick send only the latest (C → D → C: one SMS, the earlier two `stale`).
+2. **Hooks are fire and forget.** Every hook call is `void smsX(...)`: a request never waits for the outbox (they never
+   throw). `smsHooksSettled()` waits for the enqueues still running (the suite reads the outbox after it).
+   Consequence for SM2: a card confirmation's follow-up may now finish a few milliseconds before its enqueue, so a crash
+   in that window loses that SMS like any other (best effort); the marker still keeps one when the follow-up runs again.
+
+**Checks.** The suite has 20 checks: the new one moves a consultation B → C (sent), back to B (its own row, sent), then
+C → D → C before one tick (one SMS, the latest); and a 3 s outbox insert no longer delays an answer (answered before it
+ends, the row queued after). Mutations: the old minutes-only version fails the new check; dropping the "latest move"
+rule fails it; awaiting a hook again fails the slow-outbox check.
+
+**Single suites** on `c962a415` (own mongod): `r31-phase5b` 20/20, `r25-phase5a` 11/11, `r29-phase3c` 21/21,
+`r26-phase3b` 14/14, `r21-phase2e` 18/18, `r14-phase2b` 24/24, `r10-phase1b` 19/19, `r10b-phase1b-fixes` 23/23. `tsc` 17.
+
+**Full regression** (`prun.sh … 2` on `3007027f`): 82 entries, 82 passed (`r29-phase3c` and `r31-phase5b` among them),
+`tsc` 17.
+
+**Stage merge 2** (`622912a7`: r33 referral gaps, r30 phase 3f). The only conflict was the imports of
+`bookings/services/index.ts`; both are kept. 3f's read-then-cancel alert (`alertReadThenCancelIn`) stays inside the
+transactions of `cancelBookingSettlement`, `cancelAccepted` and `markNoShow`; the `void sms…` hooks stay after the
+commit. Single suites on the merge (`ce2d108b`, own mongod): `r31-phase5b` 20/20, `r30-phase3f` 22/22, `r25-phase5a`
+11/11, `r29-phase3c` 21/21, `r26-phase3b` 14/14, `q16a-bookings-money` 41/41, `q4b-instant` 25/25. `tsc` 17.
 
 ### 27.14 Rounds 5c and 5d build record: visit reminders and the SMS video link (r34, 2026-11-25)
 

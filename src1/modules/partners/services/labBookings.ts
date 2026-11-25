@@ -654,7 +654,7 @@ export class LabBookingService {
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     // Phase 5b: the patient's SMS (partner-made and desk rows; the helper leaves the others out).
-    await smsCancelled('lab_booking', after);
+    void smsCancelled('lab_booking', after);
     if (isDeskRow(after)) {
       // r12: a desk row refunds nothing through Jansetu (paid at the lab).
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking', message: `${note}.`,
@@ -717,7 +717,7 @@ export class LabBookingService {
       return 0;
     });
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
-    await smsCancelled('lab_booking', after);
+    void smsCancelled('lab_booking', after);
     if (isAssisted(after)) {
       await kickCardRefunds(id);
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled', message: `${note}.`, bookingId: id,
@@ -855,7 +855,7 @@ export class LabBookingService {
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `The lab test on ${shownSlot(after)} (Ref ${after.assisted?.shortRef}) was cancelled.${out.refunded > 0 ? ` ${after.assisted?.bookedBy.name} has been refunded.` : ''}`,
         bookingId: id, key: `plb:${id}:cancelled` });
-      await smsCancelled('lab_booking', after);
+      void smsCancelled('lab_booking', after);
     }
     return { booking: after, refunded: out.refunded, alreadyCancelled: out.alreadyCancelled };
   }
@@ -882,7 +882,7 @@ export class LabBookingService {
     if (!out.alreadyCancelled) {
       await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
         message: `Your lab booking of ${shownSlot(after)} was cancelled by the lab.`, bookingId: id, key: `plb:${id}:cancelled` });
-      await smsCancelled('lab_booking', after);
+      void smsCancelled('lab_booking', after);
     }
     return { booking: (await withDeskBills(actor.partnerId, [after], [partnerView(after)]))[0]!, alreadyCancelled: out.alreadyCancelled };
   }
@@ -965,7 +965,7 @@ export class LabBookingService {
     if (!replayed) {
       await this.notify({ userId: after.userId, type: 'general', title: 'Your missed lab slot has a new time',
         message: `New time: ${after.slot.date} ${after.slot.startTime}.`, bookingId: id, key: `plb:${id}:no_show_rescheduled` });
-      await smsMoved('lab_booking', after);
+      void smsMoved('lab_booking', after);
     }
     return { ...partnerView(after), replayed };
   }
@@ -1197,7 +1197,7 @@ export class LabBookingService {
           key: `assisted:lab:${id}:report_ready:booker` });
       }
       // Phase 5b: the patient's SMS on the first release (partner-made and desk rows).
-      if (firstRelease) await smsReportReady(after);
+      if (firstRelease) void smsReportReady(after);
     }
     await grantFiles(readerOf(actor), [path], 'partner_lab_report', { model: 'PartnerLabBooking', resourceId: id, field: 'report.releasedFiles' });
     return partnerView(after);

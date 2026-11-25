@@ -12,16 +12,12 @@ import { CouponRedemptionModel } from '@/modules/coupon/model/redemption';
 import { CouponService } from '@/modules/coupon/services';
 import { CouponRepository } from '@/modules/coupon/repository';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
-import BookingModel from '@/modules/bookings/model';
 import SpecialistModel from '@/modules/specialists/model';
 import { PartnerWalletEntryModel } from '@/modules/partnerWallets/model';
 import { DOCTOR } from '@/modules/partnerWallets/ledger';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
-import { AssistedReviewItemModel } from '@/modules/assisted/model';
 import { postBookerMovementIn } from '@/modules/assisted/bookerWallet';
-import { treatingWindowOf } from '@/modules/assisted/treating';
-import { unpaidCardBooking } from '@/modules/assisted/views';
-import { slotsOf } from '@/modules/assisted/rxAccess';
+import { openOwnTreatingBooking } from '@/modules/assisted/treating';
 import { maskName } from '@/modules/assisted/names';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
@@ -301,7 +297,7 @@ export async function notifyLabBooked(b: IPartnerLabBooking): Promise<void> {
       message: `${b.assisted!.bookedBy.name} booked a lab test (${b.visitMode === 'home' ? 'home collection' : 'lab visit'}) on ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted!.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:booked:customer` });
   } catch { /* best effort */ }
-  await smsBooked('lab_booking', b);
+  void smsBooked('lab_booking', b);
 }
 
 async function replayOf(storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
@@ -329,12 +325,7 @@ async function bookerNameOf(booker: LabBooker): Promise<string> {
  */
 async function patientOfConsultation(specialistId: string, input: AssistedLabInput, now: Date): Promise<PreparedPatient> {
   const missing = () => err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
-  if (!OBJECT_ID.test(String(input.fromBookingId))) throw missing();
-  const b = await BookingModel.findOne({ _id: input.fromBookingId, specialistId: { $in: [lower(specialistId), String(specialistId).toUpperCase()] } }).lean() as Row | null;
-  if (!b || unpaidCardBooking(b)) throw missing();
-  if (await AssistedReviewItemModel.exists({ kind: 'not_mine', bookingKind: 'booking', bookingId: lower(b._id), state: 'open' })) throw missing();
-  const slot = (await slotsOf([b])).get(String(b.slotId));
-  if (!treatingWindowOf(b, slot, now).open) throw err(409, 'TREATING_WINDOW_CLOSED', 'This consultation is no longer open for booking tests');
+  const b = (await openOwnTreatingBooking(specialistId, input.fromBookingId, now)).booking;
   const typed = cleanName(input.typedName);
   const dependentId = b.dependentId ? lower(b.dependentId) : undefined;
   const dep = dependentId ? await DependentModel.findOne({ _id: dependentId, userId: b.userId, isActive: true }).select({ name: 1 }).lean() as { name?: string } | null : null;
@@ -662,7 +653,7 @@ export async function acceptLabRescheduleFor(booker: LabBooker, bookingId: strin
       message: `${b.assisted?.bookedBy.name ?? 'Your partner'} accepted the new time for your lab test: ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted?.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:reschedule:${b.reschedule.version}:accepted` });
   } catch { /* best effort */ }
-  await smsMoved('lab_booking', b);
+  void smsMoved('lab_booking', b);
   return bookerLabView(b as never, booker);
 }
 

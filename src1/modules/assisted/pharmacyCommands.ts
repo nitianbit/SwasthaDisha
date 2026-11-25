@@ -349,7 +349,7 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
   }
   await sendAssistedNotices(notices);
   // Phase 5b: the patient's SMS, as the in-app notice: not when the patient cancelled in the app or it was never announced.
-  if (by !== 'patient' && !unannounced) await smsCancelled('booking', b);
+  if (by !== 'patient' && !unannounced) void smsCancelled('booking', b);
   return out;
 }
 
@@ -435,7 +435,7 @@ export async function rescheduleByBooker(actorIn: PharmacyActor | BookerActor, b
     ...(updated.specialistId ? [{ audience: 'doctor' as const, userId: String(updated.specialistId), type: 'specialist_general' as const,
       title: 'Consultation moved', message: `A consultation with you was moved to ${when}.`, bookingId: id, key: `assisted:${id}:moved:${v}:doctor` }] : []),
   ]);
-  await smsMoved('booking', updated);
+  void smsMoved('booking', updated);
   const fresh = await BookingModel.findById(id).lean() as IBooking;
   return { booking: await bookerView(fresh as never, ref), replayed: false };
 }

@@ -66,6 +66,7 @@ import {
 } from '@/modules/partners/controller/invoice';
 import * as lab from '@/modules/partners/controller/labBooking';
 import * as fin from '@/modules/partners/controller/finance';
+import * as referral from '@/modules/referralCuts/controller';
 import * as clinic from '@/modules/partners/controller/clinic';
 import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
@@ -267,6 +268,11 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/finance/payouts', ...guard('finance.view'), validate(finV.pageQuerySchema, 'query'), catchAsync(fin.partnerPayouts));
   r.get('/finance/events', ...guard('finance.view'), validate(finV.pageQuerySchema, 'query'), catchAsync(fin.partnerEvents));
   r.put('/finance/payout-details', ...guard(), validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putPartnerPayoutDetails));
+  // r33 (M17, §26.6.2): a lab booker's referral rates and earnings, read as its finance (finance.view, partner-wide).
+  r.get('/assisted/referral-rules', ...guard('finance.view'), catchAsync(referral.labReferral.rules));
+  r.get('/assisted/referral', ...guard('finance.view'), catchAsync(referral.labReferral.summary));
+  r.get('/assisted/referral/statement', ...guard('finance.view'), validate(finV.statementQuerySchema, 'query'), catchAsync(referral.labReferral.statement));
+  r.get('/assisted/referral/statement.csv', ...guard('finance.view'), validate(finV.csvQuerySchema, 'query'), catchAsync(referral.labReferral.statementCsv));
 }
 
 const partnerRouter = Router();
