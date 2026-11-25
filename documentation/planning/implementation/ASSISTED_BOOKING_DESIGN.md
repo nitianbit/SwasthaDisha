@@ -6698,6 +6698,11 @@ three new). They cover:
 
 The `r24-phase4ab` and `r33-referral-gaps` referral-block assertions gain `setOffMinor: 0`.
 
+Each suite alone on its own database (on the final code): `r35-phase4ef` 16/16, `r32-phase4cd` 18/18, `r33-referral-gaps`
+5/5, `r24-phase4ab` 15/15, `q5-finance` 19/19, `s6-pharmacy-wallet-verify` 31/31, `phase1a-review` 20/20, `r6-small-fixes`
+16/16, `r13-phase2d` 18/18, `r20-phase3a` 15/15. The full regression (`prun.sh … 2`, at `49b5ed2b`): 87 of 87 pass,
+tsc 17, no failures.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
