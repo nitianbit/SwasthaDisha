@@ -23,6 +23,7 @@ import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { labAdmissible, labRequestContent, validateLabRequest, type AssistedLabInput } from '@/modules/assisted/labBookings';
 import { cleanName, countPhoneUse, linkLabIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
+import { smsBooked } from '@/modules/smsNotices/events';
 
 /**
  * Assisted booking round 2c (ASSISTED_BOOKING_DESIGN.md §24.6, §5.5, §7.5): the LAB FRONT DESK books the lab's own tests
@@ -37,7 +38,7 @@ import { cleanName, countPhoneUse, linkLabIn, preparePatient, writePatientIn } f
  * request key) with a content hash.
  *
  * Owner, 23 Nov: no blocking limits except the hourly phone lookups (no per-number, new-account or cancellation cap).
- * Labs only ever see typed or masked names. SMS is phase 5 (comments only).
+ * Labs only ever see typed or masked names. Phase 5b: the patient's SMS (scheduled rows; a walk-in hears only of its report).
  */
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
 const err = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) =>
@@ -248,13 +249,13 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
   if (made.replayed) return receipt(actor, made.booking, true);
   const b = made.booking;
   // After the commit, best effort: the patient is told where, and that they pay at the lab.
-  // SMS phase 5 (scheduled rows): "Booked at <lab> on <date time>; pay at the lab"
   try {
     await labService().notify({ userId: b.userId, type: 'booking_confirmed', title: 'Lab test booked',
       message: walkIn ? `Booked at ${partner.name}. Pay at the lab.`
         : `Booked at ${partner.name}: ${b.visitMode === 'home' ? 'home collection' : 'lab visit'} on ${b.slot.date} at ${b.slot.startTime}. Pay at the lab.`,
       bookingId: String(b._id), key: `labdesk:${b._id}:booked:customer` });
   } catch { /* best effort */ }
+  void smsBooked('lab_booking', b);
   return receipt(actor, b, false);
 }
 

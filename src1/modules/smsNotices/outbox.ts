@@ -29,9 +29,11 @@ export async function enqueueSms(n: { bookingKind: Exclude<SmsBookingKind, 'admi
 /**
  * What an event's SMS says, decided by the drain from the booking as it is now (round 5b registers one composer per
  * event). `messages` lists the preferred message first (the link variant, then the plain one); `values` are the
- * template variables by name. `{ skip }` = the event is no longer true (`stale`, `disputed`, …).
+ * template variables by name, or (r31) made for the language of the text chosen, so its fixed words match it.
+ * `{ skip }` = the event is no longer true (`stale`, `disputed`, …).
  */
-export type SmsComposition = { userId: string; lang: string; messages: SmsMessage[]; values: Record<string, string> };
+export type SmsValues = Record<string, string> | ((lang: string) => Record<string, string>);
+export type SmsComposition = { userId: string; lang: string; messages: SmsMessage[]; values: SmsValues };
 export type SmsComposer = (row: ISmsNotice, now: Date) => Promise<SmsComposition | { skip: string }>;
 const composers = new Map<SmsEvent, SmsComposer>();
 export function setSmsComposer(event: SmsEvent, c?: SmsComposer): void {
@@ -42,7 +44,7 @@ export const composerOf = (event: SmsEvent) => composers.get(event);
 /** A ready SMS, or why it is skipped (shared by the drain and the admin test send). */
 export type PreparedSms = { to: string; text: string; unicode: boolean; template: SendableTemplate } | { skip: string };
 
-export async function prepareSms(userId: string, lang: string, messages: SmsMessage[], values: Record<string, string>): Promise<PreparedSms> {
+export async function prepareSms(userId: string, lang: string, messages: SmsMessage[], values: SmsValues): Promise<PreparedSms> {
   const user = await UserModel.findById(userId).select({ phone: 1, isActive: 1 }).lean() as { phone?: string; isActive?: boolean } | null;
   const to = canonicalMobile(user?.phone);
   if (!to) return { skip: 'no_phone' };
@@ -50,9 +52,10 @@ export async function prepareSms(userId: string, lang: string, messages: SmsMess
   return prepareText(to, lang, messages, values);
 }
 
-export function prepareText(to: string, lang: string, messages: SmsMessage[], values: Record<string, string>): PreparedSms {
+export function prepareText(to: string, lang: string, messages: SmsMessage[], values: SmsValues): PreparedSms {
   const template = chooseTemplate(messages, lang);
-  return template ? textFor(to, template, values) : { skip: 'no_template' };
+  if (!template) return { skip: 'no_template' };
+  return textFor(to, template, typeof values === 'function' ? values(template.lang) : values);
 }
 
 export function textFor(to: string, template: SendableTemplate, values: Record<string, string>): PreparedSms {

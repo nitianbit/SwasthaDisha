@@ -31,6 +31,7 @@ import { ASSISTED_KEY, asDoctorUnavailable, assistedKeyScope, storedAssistedKey,
 import { assistedEffects, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
 import { cancellationRefundOf, kickCardRefunds } from '@/modules/assisted/cardRefunds';
 import { openCardOrder } from '@/modules/assisted/cardPayments';
+import { smsCancelled, smsMoved } from '@/modules/smsNotices/events';
 
 /**
  * Assisted booking phase 1a, booker commands besides the create (§6.2, §7.1, §8.7, P7, P9, §17.6): the masked lookup,
@@ -347,6 +348,8 @@ export async function afterAssistedCancel(b: IBooking, by: 'booker' | 'patient' 
       message: `A consultation on ${when} was cancelled.`, bookingId: id, key: `assisted:${id}:cancelled:doctor` });
   }
   await sendAssistedNotices(notices);
+  // Phase 5b: the patient's SMS, as the in-app notice: not when the patient cancelled in the app or it was never announced.
+  if (by !== 'patient' && !unannounced) void smsCancelled('booking', b);
   return out;
 }
 
@@ -432,6 +435,7 @@ export async function rescheduleByBooker(actorIn: PharmacyActor | BookerActor, b
     ...(updated.specialistId ? [{ audience: 'doctor' as const, userId: String(updated.specialistId), type: 'specialist_general' as const,
       title: 'Consultation moved', message: `A consultation with you was moved to ${when}.`, bookingId: id, key: `assisted:${id}:moved:${v}:doctor` }] : []),
   ]);
+  void smsMoved('booking', updated);
   const fresh = await BookingModel.findById(id).lean() as IBooking;
   return { booking: await bookerView(fresh as never, ref), replayed: false };
 }

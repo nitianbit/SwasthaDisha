@@ -46,6 +46,7 @@ import {
 import { assertReferralIndexes, labCategoryOf, snapshotCuts } from '@/modules/referralCuts/service';
 import type { AssistedBlock } from '@/modules/assisted/types';
 import { labAdmissible } from '@/modules/assisted/labViews';
+import { smsBooked, smsMoved } from '@/modules/smsNotices/events';
 
 /**
  * Assisted booking round 2a (ASSISTED_BOOKING_DESIGN.md §24.4): a PHARMACY books a partner-lab test for a walk-in patient
@@ -292,12 +293,12 @@ async function labReceipt(b: IPartnerLabBooking, booker: LabBooker, replayed: bo
  * patient is told who booked and paid. The lab sees the row in its list (L18).
  */
 export async function notifyLabBooked(b: IPartnerLabBooking): Promise<void> {
-  // SMS phase 5: "<pharmacy> booked a lab test (lab visit / home collection) on <date time>. Ref <ref>"
   try {
     await labService().notify({ userId: b.userId, type: 'booking_confirmed', title: 'Lab test booked',
       message: `${b.assisted!.bookedBy.name} booked a lab test (${b.visitMode === 'home' ? 'home collection' : 'lab visit'}) on ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted!.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:booked:customer` });
   } catch { /* best effort */ }
+  void smsBooked('lab_booking', b);
 }
 
 async function replayOf(storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
@@ -653,6 +654,7 @@ export async function acceptLabRescheduleFor(booker: LabBooker, bookingId: strin
       message: `${b.assisted?.bookedBy.name ?? 'Your partner'} accepted the new time for your lab test: ${b.slot.date} at ${b.slot.startTime}. Ref ${b.assisted?.shortRef}.`,
       bookingId: String(b._id), key: `assisted:lab:${b._id}:reschedule:${b.reschedule.version}:accepted` });
   } catch { /* best effort */ }
+  void smsMoved('lab_booking', b);
   return bookerLabView(b as never, booker);
 }
 

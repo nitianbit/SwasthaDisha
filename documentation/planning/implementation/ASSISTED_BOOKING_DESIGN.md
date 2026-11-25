@@ -7133,3 +7133,193 @@ Neither of the other two is a regression:
 The suites that cover the shared changes were also run on the final head, all passing: `r10g-meet-retry`,
 `r10f-card-last`, `r10-phase1b`, `r14-phase2b` (lease and deadline helpers), `q16b-identity`, `q2-invoices` and
 `o1-otp-limits` (the SMS service).
+
+### 27.13 Round 5b build record (r31, 2026-11-25)
+
+Branch `m0/r31-phase5b` from the stage head `6a8574e9` (`m0/r28-stage-next-3`: 5a, 4a/4b, 3b and 2e merged). Local
+commits only. Built: §27.6, with the owner's answers of 25 Nov (Q1 the same gateway account, a new "Jansetu" header in
+`SMS_NOTICES_FROM`, empty until approved; Q4 partner-made and lab desk bookings only; English now, the other first-wave
+languages once registered). Suite: `test/assisted/r31-phase5b.integration.ts` (19 checks). Nothing is sent until the
+master switch and a message's English pair are on (§27.13.5).
+
+#### 27.13.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| Hooks | `smsNotices/events.ts`: `smsBooked`, `smsRxReady`, `smsReportReady`, `smsCancelled`, `smsMoved`, `smsMovedOff` | One line at each hook, after the commit, called with `void` (r31b: fire and forget, no added latency). Never throw; read nothing while `SMS_NOTICES_ENABLED` is off; queue only rows in scope (below) |
+| Composer | `smsNotices/events.ts` `compose`, registered by `registerSmsComposers()` (`src1/index.ts`, before the drain starts) | One function for every event and both booking kinds: reads the booking again, checks the event (§27.6.2), builds the variables (§27.5.5, §27.6.3) |
+| Scope | `inScope` in `events.ts` | A consultation with an `assisted` block (instant ones too), a partner-made lab booking, a lab desk row. Never a customer's own booking, a clinic desk booking, a legacy pharmacy booking or an unpaid card booking. A desk walk-in only hears of its report (and of an account move) |
+| Fixed words | `smsNotices/templates.ts` `wordsFor(lang)` | Service names, "cancelled", "moved to", "moved to another number", "your family member"; English only (other languages fall back with their texts) |
+| Values by language | `smsNotices/outbox.ts` | A composition's values may be made for the language of the text chosen, so its fixed words always match the template sent |
+| Shared origin | `assisted/deskViews.ts` `partnerOriginOf` | Moved from `assisted/review.ts` (`labOrigin`), unchanged; the account move and the notices read the same Ref, dispute, moves and language |
+| Admin read | `GET /api/v1/admin/sms-notices?bookingKind&bookingId` (`smsNotices/admin.ts`) | Moved here from 5a (§27.12.2 item 6). `[{ event, version, state, message, lang, attempts, reason, dueAt, sentAt, createdAt }]`, oldest first; 400 `VALIDATION_ERROR` for a bad query; admins only |
+
+#### 27.13.2 The hooks (`file:line` at the r31 head)
+
+| Event (version) | Path | Hook |
+|---|---|---|
+| `booked` (`1`) | Pharmacy (1a) and lab (2e) consultation, wallet | `assisted/consultations.ts:356` |
+| | The same, card confirmation (1b, 2e); the follow-up runs again until done, the marker keeps one | `assisted/cardPayments.ts:149` |
+| | Pharmacy lab booking, wallet (2a) and card confirmation (2b); doctor lab booking, wallet (3b) and card (3c, r29) | `notifyLabBooked`, `assisted/labBookings.ts:304` |
+| | Lab desk, rows with a slot (2c) | `assisted/labDesk.ts:258` |
+| | Partner Consult now: the doctor accepts (3e) | `doctors/services/instant.ts:706` |
+| `rx_ready` (`1`) | The doctor's first prescription save (no doctor's prescription before it) | `specialistPortal/services/index.ts:417` |
+| `report_ready` (`1`) | The lab's first report release (partner-made and desk rows) | `partners/services/labBookings.ts:1200` |
+| `cancelled` (`1`) | Every consultation cancel through `afterAssistedCancel` (booker; doctor; admin; admin close; admin cancel of a moved no-show), not when the patient cancelled and not when unannounced | `assisted/pharmacyCommands.ts:352` |
+| | Partner Consult now, doctor or admin cancel | `doctors/services/instant.ts:953` |
+| | Lab reject (partner-made and desk rows) | `partners/services/labBookings.ts:657` |
+| | Admin cancel of a moved lab no-show | `partners/services/labBookings.ts:720` |
+| | The booker cancels its lab booking (never an unpaid card row) | `partners/services/labBookings.ts:858` |
+| | The lab desk cancels a desk row | `partners/services/labBookings.ts:885` |
+| `moved` (`<new start, epoch minutes>:<the move's write, epoch ms>`, r31b) | The booker moves a consultation | `assisted/pharmacyCommands.ts:438` |
+| | The booker accepts a lab's new time | `assisted/labBookings.ts:665` |
+| | The lab rebooks a no-show | `partners/services/labBookings.ts:968` |
+| | The doctor or an admin moves a consultation's no-show (r31, ASSUMED 5) | `bookings/services/index.ts:1751` |
+| | An admin moves a consultation (r31, ASSUMED 5) | `bookings/services/index.ts:1868` |
+| `moved_off` + `booked` (`move:<n>`) | The admin account move: consultations, lab bookings | `assisted/review.ts:326`, `:483` |
+
+**No SMS** (each with its one-line reason in the code): the patient cancels in the app (consultations `by === 'patient'`;
+lab `partners/services/labBookings.ts:617`, `:623`); the patient accepts a lab's new time (`:788`); a lab's proposal
+(`:771`); an unpaid card booking cancelled or expired; an instant request before acceptance (`assisted/instant.ts:233`).
+
+#### 27.13.3 The English texts to register on DLT
+
+Each is the text of `smsNotices/templates.ts` with every variable written `{#var#}` (the admin summary shows the same
+`dltText`). Every variable is at most 30 characters; dates are `DD-MM-YYYY`, times 24-hour `HH:mm`, India time.
+
+**BOOKED** (`SMS_BOOKED_EN_TEMPLATE`, `SMS_BOOKED_EN_ENABLED`)
+
+```
+Jansetu: {#var#}'s {#var#} is booked for {#var#} at {#var#} via {#var#}. Ref {#var#}. Sign in to the Jansetu app with this number for details.
+```
+Variables in order: patient's first name; service; date; time; place; Ref. Sample: `Jansetu: Rina's video consultation
+is booked for 01-12-2026 at 10:30 via Sharma Medicals. Ref ABCD2345. Sign in to the Jansetu app with this number for details.`
+
+**RX_READY** (`SMS_RX_READY_EN_TEMPLATE`, `SMS_RX_READY_EN_ENABLED`)
+
+```
+Jansetu: the prescription for {#var#} from the consultation on {#var#} is ready. Sign in to the Jansetu app with this number, or ask {#var#}.
+```
+Variables: first name; consultation date; the partner that booked. Sample: `Jansetu: the prescription for Rina from the
+consultation on 01-12-2026 is ready. Sign in to the Jansetu app with this number, or ask Sharma Medicals.`
+
+**REPORT_READY** (`SMS_REPORT_READY_EN_TEMPLATE`, `SMS_REPORT_READY_EN_ENABLED`)
+
+```
+Jansetu: the lab report for {#var#} from {#var#} ({#var#}) is ready. Sign in to the Jansetu app with this number to see it.
+```
+Variables: first name; test date; lab name. Sample: `Jansetu: the lab report for Rina from 01-12-2026 (Metro Labs) is
+ready. Sign in to the Jansetu app with this number to see it.`
+
+**CANCELLED_MOVED** (`SMS_CANCELLED_MOVED_EN_TEMPLATE`, `SMS_CANCELLED_MOVED_EN_ENABLED`)
+
+```
+Jansetu: {#var#}'s {#var#} has been {#var#}. Sign in to the Jansetu app with this number for details.
+```
+Variables: first name; service; what. Samples: `… Rina's lab test has been cancelled. …`, `… Rina's video consultation
+has been moved to 05-12-2026 11:00. …`, `… Rina's phone consultation has been moved to another number. …`
+
+**Values the variables take** (English): service `video consultation`, `phone consultation`, `clinic consultation`,
+`lab test`, `home sample collection`; what `cancelled`, `moved to <DD-MM-YYYY> <HH:mm>`, `moved to another number`;
+a name with nothing left after cleaning → `your family member`; an empty place → `Jansetu`. Place: the pharmacy's or
+lab's name that booked (booked, prescription ready); the lab's name for a desk row, for a lab test a doctor booked and for
+every report. The `_LINK` and `REMINDER` texts are 5c/5d.
+
+#### 27.13.4 Choices made while building (ASSUMED r31, reversible)
+
+1. **Desk walk-ins** (tested on arrival) get no "booked", "cancelled" or "moved"; their report-ready SMS is sent.
+2. **A lab test a doctor booked (3b) names the lab**, never the doctor (§10.2: no doctor names in an SMS).
+3. **"Moved to another number" uses the previous holder's own account name**, so nothing of the new holder reaches the
+   old number. The new holder's "booked" names the patient as the booking now does (a lab booking keeps the name the
+   partner typed).
+4. **"Booked" is the current holder's only.** A "booked" still queued when an account move happens is `stale`; the move
+   queues the new holder's own (`move:<n>`), so nobody gets it twice.
+5. **Two more "moved" hooks than §27.6.1 lists**: the doctor's or an admin's move of a consultation's no-show (the
+   counterpart of the lab's, which §27.6.1 lists) and an admin's move of a consultation. Both pass through the same scope,
+   so customer bookings are untouched.
+6. **An instant consultation cancelled by the doctor or an admin gets "cancelled"** (§27.6.1 over §10.2's "booked only").
+7. **Lab cancels of desk rows** (reject, desk cancel, admin cancel of a moved no-show) send "cancelled" like
+   partner-made rows.
+8. **Name cleaning removes** digits, punctuation and emoji (`O'Brien` → `OBrien`), then takes the first word.
+9. **"First"** is read on the booking before the change: no doctor's prescription before the save; no release before the
+   release (read outside the release's transaction). Racing saves or releases both queue `1`; the marker keeps one.
+10. **A lab "booked" is still true** from `confirmed` to `completed` before the slot starts; a consultation's while
+    `confirmed` and `paid` before its start (an instant one: for an hour after acceptance).
+11. **No new switch, route (besides the admin read) or index.** The four English pairs above are the switches.
+
+#### 27.13.5 Switches, deploy, rollback
+
+- **Switches** (all off): `SMS_NOTICES_ENABLED`; `SMS_<MSG>_EN_TEMPLATE` and `SMS_<MSG>_EN_ENABLED` for `BOOKED`,
+  `RX_READY`, `REPORT_READY`, `CANCELLED_MOVED`. `SMS_NOTICES_FROM` stays empty until the Jansetu header is approved
+  (notices then use `SMS_FROM`).
+- **Deploy:** no new index (5a's `sync-indexes` covers it). Register the four texts of §27.13.3 on DLT; set their ids;
+  one admin test send each (`POST /admin/sms-notices/test`); then the master switch and the four pairs.
+- **Rollback:** `SMS_NOTICES_ENABLED=false` (due rows become `skipped: switched_off`); a pair switch stops one message.
+  Older code ignores the rows.
+
+#### 27.13.6 Checks
+
+`test/assisted/r31-phase5b.integration.ts`, 19 checks (a fake gateway through `setSmsProvider`):
+1–7. one "booked" row per create path, the exact text and template: 1a (a replay and three racing identical creates add
+   none), 1b (nothing while unpaid; verify and reconcile racing → one), 2e, 2a/2b (a family member's name; `kha` falls
+   back to English), 2c (a walk-in: none), 3b (the lab, never the doctor), 3e (nothing before acceptance; the doctor's
+   cancel → "cancelled");
+8. prescription ready: two racing first saves → one; a later save → none; withdrawn before the tick → `stale`;
+9. report ready: two racing first releases → one; partner-made, desk and walk-in rows;
+10. cancelled: booker, doctor, admin, lab reject (partner-made and desk), booker lab cancel, desk cancel; repeats none;
+11. moved: booker move (version = the new start), the booker's accept of a lab's time (the proposal sends nothing), the
+    lab's no-show rebook (its replay adds none);
+12. stale at send: booked then cancelled → "booked" skipped; moved twice → the first skipped;
+13. account move: "moved to another number" to the old number with its own name; "booked" `move:1` to the new number;
+    the old queued "booked" stale;
+14. no SMS: the patient cancels (consultation, lab) or accepts a new time in the app; a lab proposal; unpaid card
+    bookings cancelled; a customer's own booking;
+15. not mine: later notices `disputed`; the move's "moved to another number" still sent;
+16. SMS on and off: the same answers and stored bookings (consultation create, move, cancel; lab create, cancel; desk
+    create); off → nothing queued;
+17. a hanging gateway is never called by a request (the drain cuts it and retries); a missing outbox index queues
+    nothing and the booking still answers 201;
+18. the admin per-booking read;
+19. no phone number, name, text or template id in any outbox row or log line.
+
+**Mutation check.** Each of these, undone alone, makes its check fail: the "not when the patient cancelled" guard
+(14), the walk-in rule (2c, and the checks after it, which then meet the walk-in's extra row), the `disputed` skip (15),
+the current-holder rule of "booked" (13), the "confirmed and paid" test of "booked" (12). Queuing the prescription
+notice twice per save changes nothing (the marker), so "first" is a cost saving there, not a correctness guard.
+
+**Full regression** (`prun.sh … 2` on `ddf6aacc`): 81 entries, 81 passed (`r25-phase5a` and `r31-phase5b` among them),
+`tsc` 17 as before.
+
+#### 27.13.7 Review follow-ups (r31b, 2026-11-25)
+
+The r31 review (Opus xhigh) found it safe for stage with no must-fix. Merged `origin/stage` (`88e152ed`: r29, phase 3c
+doctor card lab bookings and the "Jansetu" prescription heading) without conflict: a doctor's card lab booking is
+confirmed through the same lab follow-up, so `notifyLabBooked` queues its "booked" too. Then the two later items:
+
+1. **A move back to an earlier time is told.** The "moved" version was the new start alone, so B → C → B was silent
+   (the key `(moved, B)` already existed). It is now `<new start, epoch minutes>:<the move's write, epoch ms>`
+   (`moveVersionOf`, `smsNotices/events.ts`): every move writes the booking, so every move has its own key, and phase
+   5 still stores nothing on a booking. At send time a "moved" is true while the booking still starts at that time,
+   before it, not cancelled, **and no later "moved" row exists for the booking** (`stillTrue`), so several moves before
+   one tick send only the latest (C → D → C: one SMS, the earlier two `stale`).
+2. **Hooks are fire and forget.** Every hook call is `void smsX(...)`: a request never waits for the outbox (they never
+   throw). `smsHooksSettled()` waits for the enqueues still running (the suite reads the outbox after it).
+   Consequence for SM2: a card confirmation's follow-up may now finish a few milliseconds before its enqueue, so a crash
+   in that window loses that SMS like any other (best effort); the marker still keeps one when the follow-up runs again.
+
+**Checks.** The suite has 20 checks: the new one moves a consultation B → C (sent), back to B (its own row, sent), then
+C → D → C before one tick (one SMS, the latest); and a 3 s outbox insert no longer delays an answer (answered before it
+ends, the row queued after). Mutations: the old minutes-only version fails the new check; dropping the "latest move"
+rule fails it; awaiting a hook again fails the slow-outbox check.
+
+**Single suites** on `c962a415` (own mongod): `r31-phase5b` 20/20, `r25-phase5a` 11/11, `r29-phase3c` 21/21,
+`r26-phase3b` 14/14, `r21-phase2e` 18/18, `r14-phase2b` 24/24, `r10-phase1b` 19/19, `r10b-phase1b-fixes` 23/23. `tsc` 17.
+
+**Full regression** (`prun.sh … 2` on `3007027f`): 82 entries, 82 passed (`r29-phase3c` and `r31-phase5b` among them),
+`tsc` 17.
+
+**Stage merge 2** (`622912a7`: r33 referral gaps, r30 phase 3f). The only conflict was the imports of
+`bookings/services/index.ts`; both are kept. 3f's read-then-cancel alert (`alertReadThenCancelIn`) stays inside the
+transactions of `cancelBookingSettlement`, `cancelAccepted` and `markNoShow`; the `void sms…` hooks stay after the
+commit. Single suites on the merge (`ce2d108b`, own mongod): `r31-phase5b` 20/20, `r30-phase3f` 22/22, `r25-phase5a`
+11/11, `r29-phase3c` 21/21, `r26-phase3b` 14/14, `q16a-bookings-money` 41/41, `q4b-instant` 25/25. `tsc` 17.

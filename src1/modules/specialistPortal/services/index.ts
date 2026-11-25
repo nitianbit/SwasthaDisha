@@ -28,6 +28,8 @@ import { ageFromDob, escapeHtml, formatDisplayDate, recommendationBoxHtml, write
 import { recommendTestsAtSave } from '@/modules/testRecommendations/service';
 import { formatRecommendationCode } from '@/modules/testRecommendations/code';
 import { bookerOfBooking, ensureDispensingCopy } from '@/modules/assisted/dispensingCopy';
+import { hasPrescription } from '@/modules/assisted/rxAccess';
+import { smsRxReady } from '@/modules/smsNotices/events';
 import logger from '@/services/logger';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
 import { assistedFlags } from '@/modules/assisted/flags';
@@ -413,6 +415,8 @@ export class SpecialistPortalService {
           error: error instanceof Error ? error.message : String(error) });
       }
     }
+    // Phase 5b: the patient's "prescription ready" SMS, on the first save only (partner-made consultations).
+    if (!hasPrescription(booking)) void smsRxReady(updated);
 
     return updated;
   }

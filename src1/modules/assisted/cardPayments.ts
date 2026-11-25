@@ -21,6 +21,7 @@ import { freeLease, withDeadline } from '@/modules/common/utils/lease';
 import type { AssistedBookingKind } from '@/modules/assisted/types';
 import { bookerAuditFields, payerRefOf, type BookerLike, type PayerRef } from '@/modules/assisted/bookers';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices, type AssistedNotice } from '@/modules/assisted/support';
+import { smsBooked } from '@/modules/smsNotices/events';
 
 /**
  * Assisted booking phase 1b (design §6.4): a booker (pharmacy) pays an assisted consultation by card/UPI.
@@ -144,6 +145,8 @@ const KINDS: Record<AssistedBookingKind, CardKind> = {
       await bestEffort('reminders', () => fx.reminders(withMeet), undefined);
       const { bookedNotices } = await import('@/modules/assisted/consultations');
       await sendAssistedNotices(await bookedNotices(withMeet) as AssistedNotice[]);
+      // Phase 5b: the patient's SMS (resumed with the follow-up until done; the outbox marker keeps one).
+      void smsBooked('booking', withMeet);
       return withMeet;
     },
   },

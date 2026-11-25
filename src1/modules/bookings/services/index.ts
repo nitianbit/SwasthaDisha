@@ -56,6 +56,7 @@ import {
 } from '@/modules/meet/service';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
+import { smsMoved } from '@/modules/smsNotices/events';
 import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 
 interface BookingPaymentInitResponse {
@@ -1753,6 +1754,8 @@ export class BookingService {
         requestHash: noShowRescheduleHash(input.slotId), startedClock: clock },
     });
     if (isReplayedBooking(updated)) return { ...updated, replayed: true };
+    // Phase 5b (r31): a partner-made consultation's patient gets the "moved" SMS (other bookings are out of its scope).
+    void smsMoved('booking', updated);
     try {
       await this.notificationService.create({
         userId: String(updated.userId), type: 'general', title: 'Your missed appointment has a new time',
@@ -1868,6 +1871,8 @@ export class BookingService {
       ...(requester.userType === 'admin' ? {} : { refuseStartedSource: () => new Date(), recordOriginalAppointment: true }),
       patch: { ...updatePayload, lifecycle: this.buildLifecyclePatch(booking.lifecycle, { rescheduled: true }) },
     });
+    // Phase 5b (r31): an admin's move of a partner-made consultation sends the patient the "moved" SMS.
+    void smsMoved('booking', updated);
 
     if (updated.status === 'confirmed') {
       await this.bookingReminderScheduler.scheduleBookingReminders(updated);

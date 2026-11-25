@@ -26,8 +26,9 @@ import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { assistedEffects, auditIn, bestEffort, sendAssistedNotices } from '@/modules/assisted/support';
 import { bookerNoticeUserId } from '@/modules/assisted/bookers';
-import { isDeskRow } from '@/modules/assisted/deskViews';
+import { partnerOriginOf } from '@/modules/assisted/deskViews';
 import { linkLabIn } from '@/modules/assisted/patient';
+import { smsMovedOff } from '@/modules/smsNotices/events';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
 
 /**
@@ -71,24 +72,8 @@ export async function reportNotMine(userId: string, bookingId: string, note?: st
   return { reported: true, reviewItemId: out.itemId };
 }
 
-/**
- * r12b: who made a partner-made lab row, and where its identity review lives: `assisted` (a pharmacy booked and paid it)
- * or `desk` (the lab desk booked it, paid at the lab: no money ever moves with a review or a move). `notifyId` is who
- * hears about it (the pharmacy; the desk member who booked, none when an admin did). Null: a customer's own booking.
- */
-function labOrigin(b: IPartnerLabBooking) {
-  if (b.assisted) {
-    const a = b.assisted;
-    return { root: 'assisted' as const, org: { kind: a.bookedBy.kind, id: a.bookedBy.id }, name: a.bookedBy.name as string | null, notifyId: a.bookedBy.id as string | null,
-      ref: a.shortRef, disputed: a.identity?.disputed, moves: a.moves ?? [], preferredLanguage: a.preferredLanguage };
-  }
-  if (isDeskRow(b) && b.desk) {
-    const d = b.desk;
-    return { root: 'desk' as const, org: { kind: 'lab' as const, id: lower(b.partnerId) }, name: null, notifyId: Types.ObjectId.isValid(d.memberId) ? d.memberId : null,
-      ref: String(b._id).slice(-8).toUpperCase(), disputed: d.identity?.disputed, moves: d.moves ?? [], preferredLanguage: d.preferredLanguage };
-  }
-  return null;
-}
+/** r12b: who made a partner-made lab row (r31: shared with the SMS notices, assisted/deskViews.ts). */
+const labOrigin = (b: IPartnerLabBooking) => partnerOriginOf(b);
 
 /**
  * r11 (§24.4.4): POST /lab-bookings/:id/not-mine — the holder flags a partner-made LAB booking (r12b: a lab desk row too);
@@ -322,7 +307,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
   const fromUserId = (moved as IBooking & { __fromUserId?: string }).__fromUserId;
   if (!fromUserId) return { booking: moveView(moved), replayed: true };
   // After the commit: reminders follow the new holder; in-app notices to the old holder, the new holder and the booker
-  // (no health details). SMS waits for phase 5.
+  // (no health details); the SMS of phase 5b (the old number "moved to another number", the new one "booked").
   const fx = assistedEffects();
   await bestEffort('reminders', async () => { await fx.clearReminders(String(moved._id)); if (moved.status === 'confirmed') await fx.reminders(moved); }, undefined);
   const id = String(moved._id);
@@ -338,6 +323,7 @@ export async function moveAssistedBooking(admin: { _id: string }, bookingId: str
     { audience: 'booker', userId: bookerNoticeUserId(moved.assisted!.bookedBy), type: 'general', title: 'Booking moved to another account',
       message: `Booking Ref ${ref} was moved to the correct patient account by the Jansetu team.`, bookingId: id, key: `assisted:${id}:moved:booker:${input.requestKey}` },
   ]);
+  void smsMovedOff('booking', moved, fromUserId);
   const { __fromUserId: _f, ...clean } = moved as IBooking & { __fromUserId?: string };
   return { booking: moveView(clean as IBooking), replayed: false };
 }
@@ -494,6 +480,7 @@ async function moveAssistedLabBooking(adminId: string, b0: IPartnerLabBooking, i
       message: `Lab booking Ref ${o.ref} was moved to the correct patient account by the Jansetu team.`, bookingId,
       key: `assisted:lab:${bookingId}:moved:booker:${input.requestKey}`, data: { bookingKind: 'lab_booking' } }] : []),
   ]);
+  void smsMovedOff('lab_booking', clean, fromUserId);
   return { booking: labMoveView(clean), replayed: false };
 }
 

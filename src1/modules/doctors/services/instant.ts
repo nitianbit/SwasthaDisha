@@ -36,6 +36,7 @@ import { IDENTITY_NOTE, assistedPublicView } from '@/modules/assisted/views';
 import type { InstantAssistedBlock } from '@/modules/assisted/types';
 import { alertReadThenCancelIn } from '@/modules/recordAccess/alert';
 import { assertReferralIndexes, snapshotCuts } from '@/modules/referralCuts/service';
+import { smsBooked, smsCancelled } from '@/modules/smsNotices/events';
 
 export const OFFER_MS = 5 * 60_000;
 export const INACTIVITY_MS = 30 * 60_000;
@@ -702,7 +703,6 @@ export class InstantConsultService {
       console.error('instant consult meet link failed', (e as Error)?.message);
     }
     const a = r.assisted;
-    // SMS phase 5: BOOKED_LINK to the patient (a partner's instant consultation, a doctor is joining).
     await this.notify({ userId: r.userId, userType: 'user', title: 'Your doctor is joining',
       message: a ? `${a.bookedBy.name} booked an instant consultation; a doctor is joining.` : 'A doctor accepted your consultation.',
       key: `instant:${r._id}:accepted`, data: { requestId: String(r._id), bookingId: String(booking._id) } });
@@ -710,6 +710,7 @@ export class InstantConsultService {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_confirmed', title: 'Doctor accepted',
         message: `Doctor accepted, Ref ${a.shortRef}: join now.`, bookingId: String(booking._id), key: `assisted_instant:${r._id}:accepted:booker`,
         data: { requestId: String(r._id), shortRef: a.shortRef } }]);
+      void smsBooked('booking', booking);
     }
   }
 
@@ -933,7 +934,7 @@ export class InstantConsultService {
         await reverseRedemptionIn('instant_request', String(r._id), s);
         if (b.assisted?.join) await BookingModel.updateOne({ _id: id }, { $inc: { 'assisted.join.linkVersion': 1 } }, { session: s });
         await releaseInterval('instant', id, s);
-        return { userId: r.userId, refunded: rupees(back), assisted: r.assisted };
+        return { userId: r.userId, refunded: rupees(back), assisted: r.assisted, booking: b };
       }
       const already = r.refunded ?? { walletMinor: 0, gatewayMinor: 0, totalMinor: 0 };
       const wallet = r.allocated.walletMinor - already.walletMinor;
@@ -948,16 +949,16 @@ export class InstantConsultService {
       const records = await PaymentRecordModel.find({ context: 'instant_request', contextId: String(r._id) }).session(s).lean();
       await undoCouponUsageIn(records.map((x) => String(x._id)), s);
       await releaseInterval('instant', id, s);
-      return { userId: r.userId, refunded: rupees(wallet + gateway), assisted: undefined as InstantAssistedBlock | undefined };
+      return { userId: r.userId, refunded: rupees(wallet + gateway), assisted: undefined as InstantAssistedBlock | undefined, booking: undefined as IBooking | undefined };
     });
     const a = out.assisted;
-    // SMS phase 5: CANCELLED_MOVED to the patient of a partner's consultation.
     await this.notify({ userId: out.userId, userType: 'user', title: 'Consultation cancelled',
       message: a ? `${reason}.` : `${reason}. ₹${out.refunded.toFixed(2)} is back in your wallet.`, key: `instant-booking:${id}:cancelled`, data: { bookingId: id } });
     if (a) {
       await sendAssistedNotices([{ audience: 'booker', userId: a.bookedBy.id, type: 'booking_cancelled', title: 'Consultation cancelled',
         message: `Ref ${a.shortRef}: cancelled by ${requester.userType === 'admin' ? 'the Jansetu team' : 'the doctor'}. ₹${out.refunded.toFixed(2)} is back in your wallet.`,
         bookingId: id, key: `assisted_instant:${id}:cancelled:booker`, data: { shortRef: a.shortRef } }]);
+      void smsCancelled('booking', out.booking);
     }
     return { userId: out.userId, refunded: out.refunded };
   }
