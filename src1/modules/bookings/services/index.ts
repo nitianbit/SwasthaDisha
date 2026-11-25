@@ -41,6 +41,7 @@ import {
 import { SlotRepository } from '@/modules/slots/repository';
 import { UserRepository } from '@/modules/user/repository';
 import { EmailService } from '@/modules/email/services';
+import { assertBookableDoctor, assertNotIneligibleDoctor, loadBookableDoctor } from '@/modules/specialists/eligibility';
 import {
   buildPaidBookingEmailContent,
   cancelBookingMeet,
@@ -690,6 +691,9 @@ export class BookingService {
     // The payment deadline concerns priced bookings only: a free one is always finished (it never expires).
     const pricedAndLate = Number(booking.price || 0) > 0 && paymentDeadlinePassed(booking, new Date());
     if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !pricedAndLate) {
+      // S5 review: finishing an interrupted create books the doctor now: only a verified, active one (a pure replay of a
+      // finished create below still answers its receipt).
+      if (booking.specialistId) await assertNotIneligibleDoctor(booking.specialistId);
       const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
@@ -739,13 +743,8 @@ export class BookingService {
     const specialistId = followUpConfig.specialistIdOverride || data.specialistId;
     const specialist = await this.specialistService.getById(specialistId);
 
-    if (!specialist.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'SPECIALIST_NOT_ACTIVE',
-        message: 'Specialist is not active',
-      });
-    }
+    // S5: only a verified, active doctor can be booked (inactive: SPECIALIST_NOT_ACTIVE, unverified: SPECIALIST_NOT_VERIFIED).
+    assertBookableDoctor(specialist);
 
     await this.validateBookingDateAndSlot(data.bookingDate, data.slotId);
 
@@ -786,7 +785,7 @@ export class BookingService {
       dependentId: data.dependentId,
       corporateId: data.corporateId,
       specialistId,
-      doctorName: data.doctorName?.trim() || specialist.name,
+      doctorName: specialist.name, // S5: from the doctor's record, never the request
       primaryConcern: data.primaryConcern,
       consultationMode: data.consultationMode,
       slotId: data.slotId,
@@ -973,6 +972,9 @@ export class BookingService {
       });
     }
 
+    // S5: a named doctor must exist and be verified and active; the doctor's name comes from its record only.
+    const surgeon = data.specialistId ? await loadBookableDoctor(data.specialistId) : undefined;
+
     const booking: IBooking = {
       bookingType: 'surgery',
       userId: data.userId,
@@ -982,7 +984,7 @@ export class BookingService {
       wellnessPackageId: data.wellnessPackageId,
       packageName: data.packageName?.trim(),
       specialistId: data.specialistId,
-      doctorName: data.doctorName?.trim(),
+      doctorName: surgeon?.name,
       primaryConcern: data.primaryConcern,
       consultationMode: data.consultationMode,
       slotId: data.slotId,
@@ -1548,6 +1550,10 @@ export class BookingService {
     }
 
     const nextSlot = await this.slotService.getById(data.slotId);
+    // S5: never moved to (or kept with) a doctor who is not verified and active.
+    for (const doctorId of new Set([booking.specialistId, nextSlot.specialistId].filter(Boolean).map((x) => String(x).toLowerCase()))) {
+      await assertNotIneligibleDoctor(doctorId);
+    }
     const nextBookingDate = data.bookingDate || nextSlot.date;
     const nextBookingTime = data.bookingTime || nextSlot.startTime;
 
@@ -1716,6 +1722,9 @@ export class BookingService {
         throw new AppError({ status: 400, code: 'BOOKING_CANCELLED', message: 'Cannot retry payment for a cancelled booking' });
       }
     }
+    // S5 review: no new or resumed order for a doctor who is not verified and active. Earlier attempts were checked just
+    // above, so a capture already made is recorded (and returned to the wallet), never lost.
+    if (booking.specialistId) await assertNotIneligibleDoctor(booking.specialistId);
     // Paying again on the same terms reuses the open order: an order captures at most once, so a late capture of a
     // replaced order can no longer charge a second time. A new order only when the terms change (coupon / wallet).
     // Only when the open order is for exactly what is due now (price minus wallet funding); otherwise a new order.

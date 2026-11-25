@@ -500,7 +500,7 @@ export class HRService {
         .limit(limit)
         .lean(),
       specialistIds.length
-        ? SpecialistModel.find({ _id: { $in: specialistIds } })
+        ? SpecialistModel.find({ _id: { $in: specialistIds }, isActive: true, isVerified: true }) // S5: verified, active doctors only
             .select(
               '_id name specialization consultationFee isConsultationFree rating isActive isVerified createdAt updatedAt'
             )

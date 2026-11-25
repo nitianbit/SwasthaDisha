@@ -2,6 +2,10 @@ import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { SlotService } from '@/modules/slots/services';
+// S5: slots of an unverified or inactive doctor are not shown to patients (admins and the doctor itself see them).
+import { visibleSlots } from '@/modules/specialists/eligibility';
+import { AuthRequest } from '@/modules/middleware/auth';
+import { AppError } from '@/modules/common/types';
 import {
   CreateSlotRequest,
   UpdateSlotRequest,
@@ -29,6 +33,9 @@ export class SlotController {
   getById = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const result = await this.slotService.getById(id);
+    if (!(await visibleSlots([result], (req as AuthRequest).user)).length) {
+      throw new AppError({ status: 404, code: 'SLOT_NOT_FOUND', message: 'Slot not found' });
+    }
 
     res.status(200).json({
       success: true,
@@ -61,6 +68,10 @@ export class SlotController {
     };
 
     const result = await this.slotService.getAll(queryParams);
+    const shown = await visibleSlots(result.data, (req as AuthRequest).user);
+    // One doctor's hidden slots: the page and its total are empty (a mixed listing's total may still count hidden rows).
+    if (shown.length < result.data.length && queryParams.specialistId && result.total !== undefined) Object.assign(result, { total: 0, totalPages: 0 });
+    result.data = shown;
 
     if (result.total !== undefined) {
       // Paginated response
@@ -112,7 +123,7 @@ export class SlotController {
   ) => {
     const { specialistId } = req.params;
     const date = req.query.date as string | undefined;
-    const result = await this.slotService.getBySpecialistId(specialistId, date);
+    const result = await visibleSlots(await this.slotService.getBySpecialistId(specialistId, date), (req as AuthRequest).user);
 
     res.status(200).json({
       success: true,
@@ -156,7 +167,7 @@ export class SlotController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: await visibleSlots(result, (req as AuthRequest).user),
     });
   };
 

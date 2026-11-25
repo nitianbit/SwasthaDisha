@@ -3,6 +3,8 @@ import { withFiles } from '@/modules/file/access';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
+import { seesDoctor } from '@/modules/specialists/eligibility';
+import { AppError } from '@/modules/common/types';
 import { SpecialistService } from '@/modules/specialists/services';
 import { SpecialistPortalService } from '@/modules/specialistPortal/services';
 import {
@@ -43,6 +45,10 @@ export class SpecialistController {
   getById = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const result = await this.specialistService.getById(id);
+    // S5: an unverified or inactive doctor is not shown to patients (admins and the doctor itself still see it).
+    if (!seesDoctor((req as AuthRequest).user, result)) {
+      throw new AppError({ status: 404, code: 'SPECIALIST_NOT_FOUND', message: 'Specialist not found' });
+    }
 
     res.status(200).json({
       success: true,

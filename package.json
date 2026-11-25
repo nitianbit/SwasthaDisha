@@ -17,6 +17,7 @@
     "migrate:pharmacy-inventory-batches": "tsx src1/scripts/migratePharmacyInventoryBatches.ts",
     "test:api": "tsx test/test-api.ts",
     "test:pharmacy": "tsx --test test/pharmacy.integration.test.ts",
+    "audit:s5-unverified-doctors": "tsx src1/scripts/auditS5UnverifiedDoctors.ts",
     "update-images": "tsx test/update-images.ts",
     "create-corporates": "tsx test/create-corporates.ts"
   },

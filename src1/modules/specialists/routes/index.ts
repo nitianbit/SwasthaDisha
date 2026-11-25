@@ -4,6 +4,10 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { requireAdmin, requireSpecialist } from '@/modules/middleware/auth';
 import { SpecialistController } from '@/modules/specialists/controller';
+// S5: only verified, active doctors do what patients see or book; identity fields are admin-only after verification.
+import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialists/eligibility';
+import { requireEligibleDoctorUnlessCancel, restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
+import { takeVerificationFence, fenceAndRecordVerification } from '@/modules/specialists/verification';
 import {
   createSpecialistSchema,
   updateSpecialistSchema,
@@ -32,6 +36,7 @@ specialistRouter.post(
   '/',
   requireAdmin,
   validate(createSpecialistSchema, 'body'),
+  catchAsync(fenceAndRecordVerification),
   catchAsync(specialistController.create)
 );
 
@@ -74,6 +79,7 @@ specialistRouter.put(
   '/me/profile',
   requireSpecialist,
   validate(specialistProfileUpdateSchema, 'body'),
+  catchAsync(lockVerifiedIdentity),
   catchAsync(specialistController.updateMyProfile)
 );
 
@@ -88,6 +94,7 @@ specialistRouter.post(
   '/me/slots',
   requireSpecialist,
   validate(specialistCreateSlotSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.createMySlot)
 );
 
@@ -96,6 +103,7 @@ specialistRouter.put(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(specialistUpdateSlotSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.updateMySlot)
 );
 
@@ -110,6 +118,7 @@ specialistRouter.get(
   '/me/appointments',
   requireSpecialist,
   validate(specialistAppointmentsQuerySchema, 'query'),
+  catchAsync(restrictIneligibleDoctorReads),
   catchAsync(specialistController.listMyAppointments)
 );
 
@@ -117,6 +126,7 @@ specialistRouter.get(
   '/me/appointments/:id',
   requireSpecialist,
   validate(idParamSchema, 'params'),
+  catchAsync(restrictIneligibleDoctorReads),
   catchAsync(specialistController.getMyAppointmentById)
 );
 
@@ -125,6 +135,7 @@ specialistRouter.patch(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(updateAppointmentStatusSchema, 'body'),
+  catchAsync(requireEligibleDoctorUnlessCancel),
   catchAsync(specialistController.updateMyAppointmentStatus)
 );
 
@@ -133,6 +144,7 @@ specialistRouter.post(
   requireSpecialist,
   validate(idParamSchema, 'params'),
   validate(specialistAppointmentPrescriptionSchema, 'body'),
+  catchAsync(requireEligibleDoctor),
   catchAsync(specialistController.createMyAppointmentPrescription)
 );
 
@@ -140,6 +152,7 @@ specialistRouter.get(
   '/me/patients/:userId/history',
   requireSpecialist,
   validate(patientUserIdParamSchema, 'params'),
+  catchAsync(restrictIneligibleDoctorReads),
   catchAsync(specialistController.getMyPatientHistory)
 );
 
@@ -162,8 +175,10 @@ specialistRouter.get(
 specialistRouter.put(
   '/:id',
   requireAdmin,
+  takeVerificationFence,
   validate(idParamSchema, 'params'),
   validate(updateSpecialistSchema, 'body'),
+  catchAsync(fenceAndRecordVerification),
   catchAsync(specialistController.update)
 );
 

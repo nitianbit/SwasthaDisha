@@ -2,6 +2,9 @@ import 'reflect-metadata';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
+import { requireAdmin } from '@/modules/middleware/auth';
+import { adminClearBodySchema, clearBookingPrescription, clearBookingReport } from '@/modules/bookings/adminClear';
+import { restrictIneligibleDoctorReads } from '@/modules/specialists/eligibility';
 import { BookingController } from '@/modules/bookings/controller';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
@@ -23,6 +26,10 @@ import { dropServerOwnedCreateFields } from '@/modules/bookings/serverOwnedField
 const bookingRouter = Router();
 
 const bookingController = new BookingController();
+
+// S5 review: a doctor that is not verified and active reads its existing bookings without patient contacts, meeting
+// link, concern, notes, documents, prescription or report (only id, type, time, mode and status).
+bookingRouter.use(catchAsync(restrictIneligibleDoctorReads));
 
 // S2: these generic booking routes serve customers, admins, HR, specialists and pharmacies only (partner and any other
 // role is refused). Each handler then scopes the booking to the caller.
@@ -142,6 +149,23 @@ bookingRouter.delete(
   validate(idParamSchema, 'params'),
   validate(bookingQuerySchema, 'query'),
   catchAsync(bookingController.delete)
+);
+
+// S5: an admin removes a planted prescription (and its marker) or report; reason required, audited.
+bookingRouter.delete(
+  '/:id/prescription',
+  requireAdmin,
+  validate(idParamSchema, 'params'),
+  validate(adminClearBodySchema, 'body'),
+  catchAsync(clearBookingPrescription)
+);
+
+bookingRouter.delete(
+  '/:id/report',
+  requireAdmin,
+  validate(idParamSchema, 'params'),
+  validate(adminClearBodySchema, 'body'),
+  catchAsync(clearBookingReport)
 );
 
 export default bookingRouter;

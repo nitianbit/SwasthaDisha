@@ -1,5 +1,6 @@
 import mongoose, { isValidObjectId } from 'mongoose';
 import { AppError } from '@/modules/common/types';
+import { doctorIsEligible } from '@/modules/specialists/eligibility';
 import type { AuthRequest } from '@/modules/middleware/auth';
 import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
@@ -32,11 +33,22 @@ async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
   if (!b) return false;
   switch (r.userType) {
     case 'user': return id(b.userId) === id(r._id);
-    case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r);
+    // S5 review: a doctor reads a booking's files only while verified and active (its own profile documents are judged
+    // by their 'specialist' binding, not here).
+    case 'specialist': return !!b.specialistId && id(b.specialistId) === specialistOf(r) && await doctorIsEligible(specialistOf(r));
     case 'pharmacy': return !!b.pharmacyId && id(b.pharmacyId) === pharmacyOf(r);
     case 'hr': return !!r.corporateId && !!b.corporateId && id(b.corporateId) === id(r.corporateId);
     default: return false;
   }
+}
+
+/**
+ * S5 review: the server-written prescription PDF of a booking is readable (by the booking's parties) only while the
+ * booking's prescription still names it; an admin clear or a newer prescription withdraws it. Admins still read it.
+ */
+async function bookingStillHoldsPrescription(bookingId: string, rel: string): Promise<boolean> {
+  const b = await BookingModel.findById(bookingId).select({ 'prescription.fileUrls': 1 }).lean();
+  return !!b && valuesAt(b, 'prescription.fileUrls').some((v) => uploadPathOf(v) === rel);
 }
 
 async function canReadPharmacyOrder(r: Reader, orderId: string): Promise<boolean> {
@@ -219,7 +231,7 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     if (upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
-    if (rx && await canReadBooking(reader, rx[1]!)) return ok;
+    if (rx && await canReadBooking(reader, rx[1]!) && await bookingStillHoldsPrescription(rx[1]!, rel)) return ok;
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }

@@ -65,6 +65,9 @@ async function main() {
     const custA = oid(); const custB = oid();
     await UserModel.collection.insertMany([custA, custB].map((id, i) => ({ _id: new Types.ObjectId(id), userType: 'user', phone: '96000000' + (10 + i) })) as never);
     const specA = oid(); const specB = oid(); const pharmA = oid(); const pharmB = oid(); const corpX = oid();
+    // S5 review: the doctors are verified, active accounts (an ineligible doctor reads its bookings without patient details).
+    await mongoose.connection.collection('specialists').insertMany([specA, specB].map((id) => ({ _id: new Types.ObjectId(id), name: 'Dr ' + id.slice(-4),
+      isActive: true, isVerified: true })));
     const tokens = {
       custA: sign({ _id: custA, userType: 'user' }),
       custB: sign({ _id: custB, userType: 'user' }),

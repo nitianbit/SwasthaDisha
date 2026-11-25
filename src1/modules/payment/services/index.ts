@@ -41,6 +41,7 @@ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/services/sideEffects';
 import { SpecialistRepository } from '@/modules/specialists/repository';
+import { doctorExistsIneligible } from '@/modules/specialists/eligibility';
 import { SlotRepository } from '@/modules/slots/repository';
 import {
   buildPaidBookingEmailContent,
@@ -1045,12 +1046,16 @@ export class PaymentService {
     // cancelled/closed or already paid by another payment. Same transaction as the booking money ledger, so it cannot
     // race a cancellation refund or an excess return into paying twice (bookingWalletFunding.ts).
     const thisRecord = String(paymentRecord._id);
+    // S5 review: a capture for a booking whose doctor is not verified and active is recorded but not applied - it goes
+    // back to the customer's wallet, exactly as a late capture for a cancelled booking does, and the booking stays
+    // unconfirmed (its payment window then expires it). Nothing is lost; a capture already applied stays applied.
+    const doctorBlocked = !!booking.specialistId && await doctorExistsIneligible(booking.specialistId);
     const capture = await recordGatewayCapture({
       model: BookingModel, kind: 'booking', bookingId: String(booking._id), userId: booking.userId, recordId: thisRecord,
       amount: Number(paymentRecord.finalAmount || 0),
       gross: Math.max(0, Number(paymentRecord.baseAmount || 0) - Number(paymentRecord.discountAmount || 0)),
       legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0),
-      applicable: (b) => b.status !== 'cancelled' && !['paid', 'refunded'].includes(String(b.paymentStatus))
+      applicable: (b) => !doctorBlocked && b.status !== 'cancelled' && !['paid', 'refunded'].includes(String(b.paymentStatus))
         || (b.paymentStatus === 'paid' && String(b.paymentTransactionId) === thisRecord),
       applyPatch: {
         paymentStatus: 'paid',
@@ -1959,7 +1964,16 @@ export class PaymentService {
       module: data.module,
     });
     const paymentRecord = await this.verifyAndMarkPaid(data);
-    return this.processVerifiedPayment(paymentRecord, data.module);
+    const result = await this.processVerifiedPayment(paymentRecord, data.module);
+    // S5 review: the capture was recorded and returned to the wallet (processBookingPayment); the payer is told why.
+    if (result.context === 'booking' && result.paymentRecord.status === 'refunded') {
+      const booking = await this.bookingRepository.findById(paymentRecord.contextId);
+      if (booking?.specialistId && await doctorExistsIneligible(booking.specialistId)) {
+        throw new AppError({ status: 400, code: 'SPECIALIST_NOT_VERIFIED',
+          message: 'This doctor is not available for booking. Your payment was added to your wallet.' });
+      }
+    }
+    return result;
   }
 
   /**
