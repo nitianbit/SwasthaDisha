@@ -6343,10 +6343,10 @@ discount. A provider-funded coupon earns list − discount, as today. No migrati
 | Movements | `pharmacyWallet/walletCore.ts` | Kinds `withdrawal_hold` (a debit), `withdrawal_release`, `withdrawal_void` (credits). A hold carries `lotsWithdrawableAt`: it takes only card money withdrawable then (fee known, no dispute, past its card hold), oldest first, and is refused (409 `WITHDRAWAL_ABOVE_AVAILABLE`) when those lots do not cover it. Release and void restore exactly the held allocations; credits always post |
 | Lots | `pharmacyWallet/walletLots.ts`, `model/lots.ts` | `withdrawableNowOf(ref, now)` (`nowMinor`, `later[{ amountMinor, availableAt }]`) and `withdrawableNowFilter(now)`: past `withdrawableAfter`, or — for a lot written before the field — `createdAt + 7 days`. `consumeLots` takes an optional filter; `planLots` is its read-only twin (the withdrawal's fee is computed on the same lots). The stored `withdrawableOfIn` is unchanged (M5). Lot `chargedBackAt`; index `{walletRef.kind, walletRef.id, withdrawableAfter}` |
 | Card hold | `pharmacyWallet/ledger.ts`, `scripts/lotWithdrawableAfter.ts` | Pharmacy top-ups get `cardHoldDays: 7` (new lots carry `withdrawableAfter`). `npm run migrate:lot-withdrawable-after` (dry run, then `--commit`; rerunnable) writes `createdAt + 7 days` where missing |
-| Cap ₹50,000 | `walletCore.ts` `WALLET_POLICY`, `assertTopupWithinCap`; `pharmacyWallet/services` | One cap check for every top-up kind (balance + unpaid top-ups of the last 30 minutes + the new amount ≤ ₹50,000, else 409 `WALLET_LIMIT_REACHED` with the room left); the pharmacy's own card top-up now uses it (the lab/doctor check moved here). A credit that leaves any wallet above the cap still posts and raises the alert `wallet_over_limit` (once a day per wallet; M6) |
+| Cap ₹50,000 | `walletCore.ts` `WALLET_POLICY`, `assertTopupWithinCap`; `pharmacyWallet/services` | *r32b: the pharmacy's only while `WALLET_BALANCE_CAP_ENABLED` is on.* One cap check for every top-up kind (balance + unpaid top-ups of the last 30 minutes + the new amount ≤ ₹50,000, else 409 `WALLET_LIMIT_REACHED` with the room left); the pharmacy's own card top-up now uses it (the lab/doctor check moved here). A credit that leaves any wallet above the cap still posts and raises the alert `wallet_over_limit` (once a day per wallet; M6) |
 | Withdrawals | `walletWithdrawals/` (new: model, service, routes, validation) | `wallet_withdrawals` as §26.8.1. Request, cancel, reject, paid and void as §26.8.3, each in one transaction with its audit (`withdrawal.*` in `assisted_audit_events`); paid writes a `withdrawal_paid` SettlementEvent on the home account (M7). Home account: lab `partner`, doctor `doctor`, pharmacy `pharmacy_referral` (opened on first use) |
 | The fee (owner, 25 Nov) | `walletWithdrawals/service.ts` | Each lot's gateway fee in proportion to what is withdrawn from it (`floor(fee × withdrawn / lot amount)`); the money a booking already spent from that lot never pays its share. `feeMinor = Σ`, `transferMinor = grossMinor − feeMinor`. The answer's `feeLine` and the hold entry's description say it ("card fee ₹x on unspent card money; you receive ₹y") |
-| Chargebacks | `walletCore.ts` `recordTopupChargebackIn`, `recoverTopupIn`; `assisted/controller/phase1a.ts` | **Every top-up kind is flagged only** — the pharmacy's too (it was `take`): the top-up gets `chargebackAt`, its lot `disputeState: 'lost'`; nothing is debited or frozen. The new **Recover** runs the take explicitly (debit up to the balance, the shortfall owed as a receivable, the wallet frozen), once per top-up, also for a top-up credited without a lot or closed as compensated. `TopupKind.chargeback` and the pharmacy-only `recordChargebackIn` are gone |
+| Chargebacks | `walletCore.ts` `recordTopupChargebackIn`, `recoverTopupIn`; `assisted/controller/phase1a.ts` | **Every top-up kind is flagged only** — the pharmacy's too (it was `take`): the top-up gets `chargebackAt`, its lot `disputeState: 'lost'`; nothing is debited or frozen. The new **Recover** runs the take explicitly (debit up to the balance, the shortfall owed as a receivable, the wallet frozen), once per top-up, also for a top-up credited without a lot or closed as compensated. *r32b (§26.17.7): for the pharmacy only while `WALLET_CHARGEBACK_FLAG_ONLY` is on; off, the production take stays* |
 | Pharmacy destination | `walletWithdrawals/service.ts`, `partners/services/finance.ts`, `partners/model/settlement.ts` | `PUT /api/v1/pharmacy-assisted/finance/payout-details` sets the `pharmacy_referral` account's details with the Q5 versioned rules; `FinanceActor` and SettlementEvent `byKind` gain `pharmacy` |
 | Errors | `middleware/errorHandler.ts` | Safe details for `WITHDRAWAL_BELOW_MINIMUM` (`minimumMinor`), `WITHDRAWAL_ABOVE_AVAILABLE` (`withdrawableNowMinor`), `WITHDRAWAL_WEEKLY_LIMIT` (`nextAllowedAt`, ISO) |
 | Switches | `assisted/flags.ts` | `WALLET_WITHDRAWALS_ENABLED` (off: new requests 503 `WITHDRAWALS_DISABLED`; everything else runs), `WALLET_WITHDRAWAL_MIN_MINOR` (default 50,000 = ₹500) |
@@ -6417,9 +6417,9 @@ Admin (`requireAdmin`):
 - **Order:** 1. deploy; 2. `npm run sync-indexes`; 3. `npm run migrate:lot-withdrawable-after` (dry run, then
   `-- --commit`); 4. restart. `WALLET_WITHDRAWALS_ENABLED` waits for GATE-RBI; `EARNING_RULE_V2_FOR_ALL` waits until
   providers are told.
-- **Live at the deploy (no switch):** pharmacy chargebacks become flag-only (admins use Recover to take the money); the
-  pharmacy card top-up's ₹50,000 cap; the `wallet_over_limit` alert; pharmacy card money waits 7 days (it only matters
-  to withdrawals, which are off).
+- **Live at the deploy (no switch):** the `wallet_over_limit` alert (only once `assisted_alerts` exists, r32b); new
+  pharmacy lots carry `withdrawableAfter` (it only matters to withdrawals, which are off). *Corrected by r32b
+  (§26.17.7):* pharmacy chargebacks and the pharmacy top-up cap are behind their own switches, off.
 - **Rollback:** never roll the code back while a withdrawal is `requested` or a hold is unreleased
   (`db.wallet_withdrawals.countDocuments({ state: 'requested' })` = 0), or while a booking made with
   `EARNING_RULE_V2_FOR_ALL` on is not yet completed (older code would read its earning from the price).
@@ -6437,11 +6437,39 @@ freeze, once); the lab and doctor routes.
 
 Existing suites changed for the chargeback decision (the take is now Recover): `phase1a-review` checks 7, 12, 16 and 17
 and `r9b-followups` check 1 call Recover after the chargeback and read its answer and audit (`wallet.recovered`).
+*Reverted by r32b (§26.17.7): with the switch off they test the production take unchanged.*
 
 Each suite alone on its own database: `r32-phase4cd` 15/15, `phase1a-review` 20/20, `r9b-followups` 5/5,
 `r9-owner-decisions` 10/10, `r13-phase2d` 18/18, `r20-phase3a` 15/15, `r10-phase1b` 19/19. The full regression
 (`prun.sh … 2`): 83 of 84 pass, tsc 17 (unchanged); the one failure, `r10f-card-last` check 1 (a 1.5-second timing bound
 under load), passes alone (2/2).
+
+#### 26.17.7 r32b: the live pharmacy path unchanged with every switch off (review of r32)
+
+The review found three 4d changes acting on the LIVE pharmacy path (S6) with every switch off. Production must not
+change behaviour until the owner decides. Where this section and §26.17.1–6 differ, this one wins.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The ₹50,000 cap refused pharmacy card top-ups | `WALLET_BALANCE_CAP_ENABLED` (off): the cap on the PHARMACY's own card top-up order only while it is on; off, the pharmacy top-up is exactly as before. Lab and doctor wallets keep their cap (2d/3a) whatever it says |
+| 2 | Pharmacy chargebacks became flag-only | `WALLET_CHARGEBACK_FLAG_ONLY` (off) governs the **pharmacy** top-up kind only (`TopupKind.chargeback()`): off, a lost dispute on a pharmacy top-up is taken at once exactly as on production (the lot route's `recordChargebackIn`; the payment route's take, also without a lot or after a compensated close; same answers and audits); on, flagged only and taken back with Recover. **Lab and doctor top-ups stay flag-only whatever it says** (2d/3a). The take and Recover share one function (`takeTopupIn`). `phase1a-review` and `r9b-followups` are back to their production expectations (the switch is off in them); the r32 suite tests each mode explicitly |
+| 3 | The `wallet_over_limit` alert was written inside every credit transaction | `npm run sync-indexes` creates `assisted_alerts` (every model's collection is created; it has a unique `key` index). In addition the alert is written only once that collection exists (checked outside the transaction, remembered); otherwise a warning with ids only — a credit never creates a collection in its transaction and never fails for an alert |
+| 4 | Paid could pay out money disputed since the request | `paid` refuses with 409 `WITHDRAWAL_LOT_DISPUTED` when a held lot has a recorded dispute (or was charged back); reject releases it |
+| 5 | A repeat chargeback of a lot taken the old way would flag, audit and alert again once the switch is on | A lot whose `chargeback:<lot>` entry exists answers flagged and replayed: nothing is marked, audited or alerted |
+| 6 | The backfill could write a date from a missing `createdAt` | Only lots whose `createdAt` is a date are filled |
+| 7 | 4c pay-again without an earlier payment record named no coupon, so a platform coupon's discount was treated as provider-funded | The booking's own frozen split decides: its coupon (and, when that coupon can no longer be read, its recorded funding) |
+
+**Switches added:** `WALLET_BALANCE_CAP_ENABLED`, `WALLET_CHARGEBACK_FLAG_ONLY` (both off unless exactly `"true"`).
+**Rollback:** none needed for these: with both off the pharmacy path is as before r32. Turning `WALLET_CHARGEBACK_FLAG_ONLY`
+off again after flags were recorded leaves those top-ups flagged (an admin Recovers them).
+
+**API changes for the web:** with the flag-only switch off, the pharmacy chargeback answers are the production ones
+(`{ entry, wallet, replayed }` on the lot route; `{ blockedUncredited: false, entry, wallet, replayed, lotId,
+paymentRecordId, withoutLot }` on the payment route). Admin paid: 409 `WITHDRAWAL_LOT_DISPUTED`.
+
+Checks: `test/assisted/r32-phase4cd.integration.ts` (now 18): the cap off and on; chargebacks with the switch off (a
+pharmacy lot taken at once on both routes, once; a doctor's flagged only) and the old-way lot replayed once the switch is
+on; the switch on (flag, then Recover); paid refused on disputed money; 4c pay-again keeps the coupon's funding.
 
 **Seen, not changed:**
 - `assisted/consultations.ts` and `assisted/labBookings.ts` keep a one-line alias `const fundedByOf = couponFundedBy`.

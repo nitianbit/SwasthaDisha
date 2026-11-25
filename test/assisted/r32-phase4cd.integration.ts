@@ -597,7 +597,7 @@ async function main() {
       assert.deepEqual([alert.bookerKind, alert.detail.balanceMinor, alert.detail.maxBalanceMinor], ['pharmacy', 6_000_000, 5_000_000]);
     });
 
-    await check('4d chargebacks with WALLET_CHARGEBACK_FLAG_ONLY off (production): a pharmacy lot is taken at once (lot and payment routes, once); a doctor's (as a lab's) top-up is flagged only', async () => {
+    await check('4d chargebacks with WALLET_CHARGEBACK_FLAG_ONLY off (production): a pharmacy lot is taken at once (lot and payment routes, once); a doctor\'s (as a lab\'s) top-up is flagged only', async () => {
       const ph = await freshPharmacy();
       const rid = await cardTopup('pharmacy', ph.id, 100_000, 2000, 8);
       await spend('pharmacy', ph.id, 70_000);
