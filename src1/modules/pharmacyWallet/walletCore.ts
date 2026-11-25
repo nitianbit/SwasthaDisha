@@ -6,7 +6,10 @@ import { WalletTopupLotModel, type IWalletTopupLot } from '@/modules/pharmacyWal
 import { assertUniqueIndex } from '@/modules/common/utils/requiredIndex';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
-import { consumeLots, openLotIn, openLotsMinorIn, restoreLots, withdrawableOfIn, type LotAllocation, type WalletRef } from '@/modules/pharmacyWallet/walletLots';
+import {
+  CARD_HOLD_DAYS, consumeLots, openLotIn, openLotsMinorIn, restoreLots, withdrawableNowFilter, withdrawableOfIn, type LotAllocation, type WalletRef,
+} from '@/modules/pharmacyWallet/walletLots';
+import { raiseAlertIn } from '@/modules/assisted/limits';
 
 /**
  * r13 (round 2d, owner 25 Nov: one implementation, parameterised by store): the wallet money rules every partner wallet
@@ -23,8 +26,18 @@ import { consumeLots, openLotIn, openLotsMinorIn, restoreLots, withdrawableOfIn,
  *   credits ALWAYS post, and a credit clears an owed receivable first (`receivable_setoff`);
  * - lots: a card top-up credit opens a lot; a spend consumes lots oldest first (D9) and records `lotAllocations`; a
  *   refund restores exactly those (never a closed lot); `withdrawableMinor` is recomputed on every movement.
+ * - r32 (round 4d, §26.8): withdrawals — a `withdrawal_hold` debit takes only card money withdrawable NOW (past its 7-day
+ *   card hold), oldest first; `withdrawal_release` and `withdrawal_void` are credits that restore exactly those lots. A
+ *   credit that leaves the wallet above the O2 cap still posts and raises the alert `wallet_over_limit` (M6).
  */
 export interface WalletState { balanceMinor: number; withdrawableMinor: number; receivableMinor: number; frozen: boolean; isActive: boolean }
+
+/**
+ * O2 (owner, 25 Nov), every partner wallet (pharmacy, lab, doctor): at most ₹50,000 held (checked when a card top-up is
+ * ordered; a credit always posts and raises an alert above it), one withdrawal per rolling 7 days, card money withdrawable
+ * 7 days after payment.
+ */
+export const WALLET_POLICY = { maxBalanceMinor: 5_000_000, withdrawalsPerWeek: 1, cardHoldDays: CARD_HOLD_DAYS } as const;
 
 /** A wallet write (compare-and-set on the version read). `freeze`: set with a reason, `null` = clear, absent = unchanged. */
 export interface WalletWrite {
@@ -66,9 +79,9 @@ export interface WalletStore<W = any, E = any> {
 }
 
 /**
- * How a card top-up record names its wallet. `chargeback` is the rule for a card dispute lost on a top-up: `take`
- * (pharmacy, §5.3: the lot's money is debited, a shortfall owed, the wallet frozen) or `flag` (labs, owner decision C4
- * for card disputes: recorded and flagged only).
+ * How a card top-up record names its wallet. r32 (§26.8.4, owner decision 6): a card dispute lost on any top-up is
+ * recorded and FLAGGED only (`recordTopupChargebackIn`); taking the money back is the admin's explicit "Recover"
+ * (`recoverTopupIn`).
  */
 export interface TopupKind<W = any, E = any> {
   readonly kind: 'pharmacy' | 'lab' | 'doctor';
@@ -82,7 +95,6 @@ export interface TopupKind<W = any, E = any> {
   ownerOf(r: Record<string, any>): string;
   storeFor(r: Record<string, any>): WalletStore<W, E>;
   store(ownerId: string): WalletStore<W, E>;
-  readonly chargeback: 'take' | 'flag';
   /** A captured top-up opens a lot only while its switch is on and the lot index is built (otherwise non-withdrawable). */
   lotsWritable(): Promise<boolean>;
   /** Fail closed before a credit (503 INDEXES_OUTDATED) when the store's exactly-once indexes are missing. */
@@ -92,8 +104,8 @@ export interface TopupKind<W = any, E = any> {
   readonly cardHoldDays?: number;
 }
 
-export type MovementKind = 'credit' | 'booking_debit' | 'refund_credit';
-const DEBITS: MovementKind[] = ['booking_debit'];
+export type MovementKind = 'credit' | 'booking_debit' | 'refund_credit' | 'withdrawal_hold' | 'withdrawal_release' | 'withdrawal_void';
+const DEBITS: MovementKind[] = ['booking_debit', 'withdrawal_hold'];
 
 export interface Movement {
   kind: MovementKind;
@@ -110,6 +122,11 @@ export interface Movement {
   lot?: { paymentRecordId: string; gatewayFeeMinor?: number | null; withdrawableAfter?: Date };
   /** A refund: the allocations of the spend it reverses. */
   restore?: LotAllocation[];
+  /**
+   * r32: a withdrawal hold takes ONLY card money withdrawable at this time (past its card hold, oldest first); when those
+   * lots do not cover the amount it is refused (409 WITHDRAWAL_ABOVE_AVAILABLE).
+   */
+  lotsWithdrawableAt?: Date;
   /** Admin top-ups: the request's content hash and the admin (stored on the row). */
   requestHash?: string;
   actor?: { kind: 'admin' | 'member'; id: string };
@@ -156,7 +173,12 @@ export async function postMovementIn<W, E>(store: WalletStore<W, E>, m: Movement
   const signed = debit ? -m.amountMinor : m.amountMinor;
   const after = before + signed;
   let lotAllocations: LotAllocation[] | undefined;
-  if (debit) lotAllocations = await consumeLots(store.ref, m.amountMinor, s);
+  if (debit && m.lotsWithdrawableAt) {
+    lotAllocations = await consumeLots(store.ref, m.amountMinor, s, withdrawableNowFilter(m.lotsWithdrawableAt));
+    if (lotAllocations.reduce((a, l) => a + l.amountPaise, 0) !== m.amountMinor) {
+      throw err(409, 'WITHDRAWAL_ABOVE_AVAILABLE', 'That is more than the card money you can withdraw now');
+    }
+  } else if (debit) lotAllocations = await consumeLots(store.ref, m.amountMinor, s);
   else if (m.restore?.length) lotAllocations = await restoreLots(m.restore, s);
   if (m.lot) await openLotIn(store.ref, { ...m.lot, amountMinor: m.amountMinor }, s);
   const withdrawableAfter = await withdrawableOfIn(store.ref, s);
@@ -168,6 +190,11 @@ export async function postMovementIn<W, E>(store: WalletStore<W, E>, m: Movement
     operationKey: m.operationKey, withdrawableDeltaMinor: withdrawableAfter - w.withdrawableMinor, ...(lotAllocations?.length ? { lotAllocations } : {}),
     ...(m.requestHash ? { requestHash: m.requestHash } : {}), ...(m.actor ? { actor: m.actor } : {}),
   }, s);
+  // r32 (O2, M6): a credit above the cap still posts (money is never stranded) and raises an alert, once a day per wallet.
+  if (!debit && after > WALLET_POLICY.maxBalanceMinor) {
+    await raiseAlertIn({ kind: 'wallet_over_limit', subject: `${store.ref.kind}:${store.ref.id}`, bookerKind: store.ref.kind, bookerId: store.ref.id,
+      detail: { walletKind: store.ref.kind, ownerId: store.ref.id, balanceMinor: after, maxBalanceMinor: WALLET_POLICY.maxBalanceMinor, movement: m.kind } }, s);
+  }
   // Chargebacks (§5.3): a credit arriving on a wallet that owes a receivable clears it first (`receivable_setoff`).
   const now = store.state(updated);
   if (!debit && now.receivableMinor > 0) {
@@ -199,7 +226,7 @@ export async function refreshWithdrawableIn(store: WalletStore, s: ClientSession
 }
 
 /**
- * Chargebacks, `take` rule (§5.3, production gate): an admin records a card dispute LOST on a top-up lot of this store.
+ * Chargebacks, the take (§5.3; r32: run only by the admin's explicit "Recover", §26.8.4): a card dispute LOST on a top-up lot of this store.
  * In the caller's transaction, exactly once per lot: the lot is closed for good (never restored or withdrawable again);
  * the wallet is debited the lot's amount — what the balance cannot cover becomes `receivableMinor`, owed by the partner
  * (the balance itself never goes below zero, so balance = Σ entries holds); the wallet is frozen. A frozen wallet or
@@ -209,8 +236,9 @@ export async function chargeBackLotIn<W, E>(store: WalletStore<W, E>, lot: IWall
   const key = `chargeback:${String(lot._id)}`;
   const prior = await store.entryIn(key, s);
   if (prior) return { entry: prior, wallet: (await store.findIn(s)) as W, replayed: true };
-  const closed = await WalletTopupLotModel.updateOne({ _id: lot._id, disputeState: { $ne: 'lost' } },
-    { $set: { closed: true, disputeState: 'lost', remainingMinor: 0 } }, { session: s });
+  // r32: a flagged lot is already `disputeState: 'lost'`; the take happens once per lot (`chargedBackAt`, and the key above).
+  const closed = await WalletTopupLotModel.updateOne({ _id: lot._id, chargedBackAt: { $exists: false } },
+    { $set: { closed: true, disputeState: 'lost', remainingMinor: 0, chargedBackAt: new Date() } }, { session: s });
   if (closed.modifiedCount !== 1) throw changed('The top-up changed; please retry');
   const wallet = await store.walletIn(s);
   const w = store.state(wallet);
@@ -287,26 +315,21 @@ export async function resolveTopupRecord(paymentId: string, kinds: TopupKind[], 
 
 /**
  * A card dispute lost on a top-up, named by its payment record (as resolved by `resolveTopupRecord`; re-read here, in the
- * transaction):
- * - `taken` (`take` rule): a top-up WITH a lot goes through `chargeBackLotIn` (same operation key, so the lot and payment
- *   paths never charge one payment back twice); one credited without a lot (switch off, before sync-indexes or before
- *   phase 1a) gets a lot recorded now, already closed (`openedAtChargeback`), charged back exactly as a lot; one closed
- *   as compensated (r9b) takes back the amount support paid by hand the same way. The lot's unique `paymentRecordId`
- *   index makes this once per payment under concurrency; it is checked first, fail closed (503 INDEXES_OUTDATED).
- * - `flagged` (`flag` rule, owner C4): a credited (or compensated) top-up gets `chargebackAt` once and its lot is marked
- *   `disputeState: 'lost'` (its money is no longer withdrawable). No debit, no receivable, no freeze: recovering the
- *   money is an admin decision.
- * - `blocked` (both rules; review of db252c1, item a): a top-up never credited is blocked in this transaction
- *   (`chargebackAt`, status `failed`; a refunded one keeps its status), guarded on the status read and on no credit
- *   claim, so verify, reconcile, the top-up check and the sweep refuse it (409 TOPUP_BLOCKED) and it is never credited.
- *   The credit claims the record with a write in its own transaction, so the block and a credit never pass each other.
+ * transaction). r32 (§26.8.4, owner decision 6): every top-up kind — the pharmacy's too — is FLAGGED only:
+ * - `flagged`: a credited (or compensated) top-up gets `chargebackAt` once and its lot is marked `disputeState: 'lost'`
+ *   (its money is no longer withdrawable). No debit, no receivable, no freeze: recovering the money is the admin's
+ *   explicit "Recover" (`recoverTopupIn`).
+ * - `blocked` (review of db252c1, item a): a top-up never credited is blocked in this transaction (`chargebackAt`, status
+ *   `failed`; a refunded one keeps its status), guarded on the status read and on no credit claim, so verify, reconcile,
+ *   the top-up check and the sweep refuse it (409 TOPUP_BLOCKED) and it is never credited. The credit claims the record
+ *   with a write in its own transaction, so the block and a credit never pass each other.
  */
-export type TopupChargeback<W = any, E = any> =
-  | (Posted<W, E> & { outcome: 'taken'; paymentRecordId: string; ownerId: string; lotId: string; withoutLot: boolean; compensated?: true })
+export type TopupChargeback =
   | { outcome: 'flagged'; replayed: boolean; paymentRecordId: string; ownerId: string; lotId: string | null; compensated?: true }
   | { outcome: 'blocked'; replayed: boolean; paymentRecordId: string; ownerId: string };
 
-export async function recordTopupChargebackIn<W, E>(kind: TopupKind<W, E>, paymentRecordIdIn: string, s: ClientSession): Promise<TopupChargeback<W, E>> {
+/** The record, its owner, store and lot, read in the transaction (the one 404 for anything else). */
+async function topupInIn<W, E>(kind: TopupKind<W, E>, paymentRecordIdIn: string, s: ClientSession) {
   const notFound = () => err(404, 'TOPUP_NOT_FOUND', 'Top-up not found');
   if (!HEX24.test(String(paymentRecordIdIn ?? ''))) throw notFound();
   const record = await PaymentRecordModel.findById(paymentRecordIdIn).session(s).lean() as Record<string, any> | null;
@@ -315,13 +338,17 @@ export async function recordTopupChargebackIn<W, E>(kind: TopupKind<W, E>, payme
   const ownerId = kind.ownerOf(record);
   if (!Types.ObjectId.isValid(ownerId)) throw notFound();
   const store = kind.storeFor(record);
-  const base = { paymentRecordId, ownerId };
-  const compensated = record.compensatedAt ? { compensated: true as const } : {};
   await assertUniqueIndex(WalletTopupLotModel, { paymentRecordId: 1 });
   const existing = await WalletTopupLotModel.findOne({ paymentRecordId: { $eq: paymentRecordId } }).session(s).lean();
   if (existing && (existing.walletRef.kind !== store.ref.kind || existing.walletRef.id !== store.ref.id)) throw notFound();
   const credit = existing ? null : await store.rechargeCreditIn(paymentRecordId, s);
-  const credited = !!existing || !!credit;
+  return { record, paymentRecordId, ownerId, store, existing, credit, credited: !!existing || !!credit, notFound,
+    compensated: record.compensatedAt ? { compensated: true as const } : {} };
+}
+
+export async function recordTopupChargebackIn<W, E>(kind: TopupKind<W, E>, paymentRecordIdIn: string, s: ClientSession): Promise<TopupChargeback> {
+  const { record, paymentRecordId, ownerId, store, existing, credited, compensated } = await topupInIn(kind, paymentRecordIdIn, s);
+  const base = { paymentRecordId, ownerId };
   if (!credited && !record.compensatedAt) {
     if (record.chargebackAt) return { outcome: 'blocked', replayed: true, ...base };
     const blocked = await PaymentRecordModel.updateOne({ _id: record._id, status: record.status, chargebackAt: { $exists: false }, walletCreditedAt: { $exists: false } },
@@ -329,44 +356,77 @@ export async function recordTopupChargebackIn<W, E>(kind: TopupKind<W, E>, payme
     if (blocked.modifiedCount !== 1) throw changed('The top-up changed; please retry');
     return { outcome: 'blocked', replayed: false, ...base };
   }
-  if (kind.chargeback === 'flag') {
-    const lotId = existing ? String(existing._id) : null;
-    if (record.chargebackAt) return { outcome: 'flagged', replayed: true, ...base, lotId, ...compensated };
-    const marked = await PaymentRecordModel.updateOne({ _id: record._id, chargebackAt: { $exists: false } }, { $set: { chargebackAt: new Date() } }, { session: s });
-    if (marked.modifiedCount !== 1) throw changed('The top-up changed; please retry');
-    if (existing && existing.disputeState === 'none') {
-      await WalletTopupLotModel.updateOne({ _id: existing._id, disputeState: 'none' }, { $set: { disputeState: 'lost' } }, { session: s });
-      await refreshWithdrawableIn(store, s);
-    }
-    return { outcome: 'flagged', replayed: false, ...base, lotId, ...compensated };
+  const lotId = existing ? String(existing._id) : null;
+  if (record.chargebackAt) return { outcome: 'flagged', replayed: true, ...base, lotId, ...compensated };
+  const marked = await PaymentRecordModel.updateOne({ _id: record._id, chargebackAt: { $exists: false } }, { $set: { chargebackAt: new Date() } }, { session: s });
+  if (marked.modifiedCount !== 1) throw changed('The top-up changed; please retry');
+  if (existing && existing.disputeState === 'none') {
+    await WalletTopupLotModel.updateOne({ _id: existing._id, disputeState: 'none' }, { $set: { disputeState: 'lost' } }, { session: s });
+    await refreshWithdrawableIn(store, s);
   }
+  return { outcome: 'flagged', replayed: false, ...base, lotId, ...compensated };
+}
+
+/**
+ * r32 (§26.8.4, owner decision 6): the admin's explicit "Recover" of a top-up whose lost card dispute was recorded
+ * (flagged): today's take, in the caller's transaction, exactly once per top-up —
+ * - a top-up WITH a lot goes through `chargeBackLotIn` (debit up to the balance, the shortfall owed as a receivable, the
+ *   wallet frozen; operation key `chargeback:<lot>`). A lot already withdrawn and paid is allowed: the shortfall is owed;
+ * - one credited without a lot (switch off, before sync-indexes or before phase 1a) gets a lot recorded now, already
+ *   closed (`openedAtChargeback`), charged back exactly as a lot; one closed as compensated (r9b) takes back the amount
+ *   support paid by hand the same way. The lot's unique `paymentRecordId` index makes this once per payment.
+ * Refused: no dispute recorded yet (409 DISPUTE_NOT_RECORDED); a top-up never credited (blocked) has nothing to recover
+ * (409 NOTHING_TO_RECOVER).
+ */
+export type TopupRecovery<W = any, E = any> = Posted<W, E> & { outcome: 'recovered'; paymentRecordId: string; ownerId: string; lotId: string;
+  withoutLot: boolean; compensated?: true };
+
+export async function recoverTopupIn<W, E>(kind: TopupKind<W, E>, paymentRecordIdIn: string, s: ClientSession): Promise<TopupRecovery<W, E>> {
+  const { record, paymentRecordId, ownerId, store, existing, credit, credited, notFound, compensated } = await topupInIn(kind, paymentRecordIdIn, s);
+  const base = { outcome: 'recovered' as const, paymentRecordId, ownerId };
+  if (!record.chargebackAt) throw err(409, 'DISPUTE_NOT_RECORDED', 'Record the lost card dispute first (chargeback), then recover');
+  if (!credited && !record.compensatedAt) throw err(409, 'NOTHING_TO_RECOVER', 'This top-up was never credited (it was blocked); there is nothing to recover');
   if (existing) {
     const r = await chargeBackLotIn(store, existing, s);
-    return { ...r, outcome: 'taken', ...base, lotId: String(existing._id), withoutLot: existing.openedAtChargeback === true, ...compensated };
+    return { ...r, ...base, lotId: String(existing._id), withoutLot: existing.openedAtChargeback === true, ...compensated };
   }
   // r9b: a top-up closed as compensated was paid to the owner by hand; a lost dispute takes that amount back exactly as for
-  // a credited top-up. The record is marked `chargebackAt` too (the S6 audit lists both).
+  // a credited top-up.
   let amountMinor: number;
   let fee: number | null = null;
   if (!credited) {
     amountMinor = Number.isSafeInteger(record.compensation?.amountPaise) ? Number(record.compensation.amountPaise) : recordPaiseOf(record);
-    if (!(amountMinor > 0)) throw notFound();
-    // (A record an r9 chargeback already marked without taking anything keeps its mark and is charged back now.)
-    if (!record.chargebackAt) {
-      const marked = await PaymentRecordModel.updateOne({ _id: record._id, compensatedAt: { $exists: true }, chargebackAt: { $exists: false } },
-        { $set: { chargebackAt: new Date() } }, { session: s });
-      if (marked.modifiedCount !== 1) throw changed('The top-up changed; please retry');
-    }
   } else {
     amountMinor = credit!.amountMinor;
-    if (!(amountMinor > 0)) throw notFound();
     fee = typeof record.gatewayFeeMinor === 'number' && Number.isSafeInteger(record.gatewayFeeMinor) && record.gatewayFeeMinor >= 0 ? record.gatewayFeeMinor : null;
   }
+  if (!(amountMinor > 0)) throw notFound();
   const [lot] = await WalletTopupLotModel.create([{ walletRef: store.ref, paymentRecordId, amountMinor,
     ...(fee !== null ? { gatewayFeeMinor: fee } : {}), feeState: fee !== null ? 'known' : 'unknown', disputeState: 'none', closed: true, remainingMinor: 0,
     openedAtChargeback: true }], { session: s });
   const r = await chargeBackLotIn(store, lot!.toObject() as IWalletTopupLot & { _id: unknown }, s);
-  return { ...r, outcome: 'taken', ...base, lotId: String(lot!._id), withoutLot: true, ...compensated };
+  return { ...r, ...base, lotId: String(lot!._id), withoutLot: true, ...compensated };
+}
+
+/**
+ * O2 (§26.8.1, r32 for pharmacies): a new card top-up order is refused when the wallet's balance, the owner's unpaid
+ * top-ups of the last 30 minutes and this amount would pass ₹50,000 (409 WALLET_LIMIT_REACHED, with the room left). A paid
+ * top-up is always credited (M6). One check for every top-up kind.
+ */
+export async function assertTopupWithinCap(kind: TopupKind, ownerIdIn: string, amountMinor: number): Promise<void> {
+  const raw = String(ownerIdIn);
+  const store = kind.store(raw);
+  const wallet = await store.findIn(null);
+  const balance = wallet ? store.state(wallet).balanceMinor : 0;
+  const pending = await PaymentRecordModel.find({ [kind.payerField]: { $in: [...new Set([raw, raw.toLowerCase()])] }, context: 'wallet_recharge',
+    'notes.flow': kind.flow, status: 'created', createdAt: { $gte: new Date(Date.now() - 30 * 60_000) } })
+    .select({ finalAmount: 1, finalAmountPaise: 1 }).lean() as Record<string, any>[];
+  const pendingMinor = pending.reduce((a, r) => a + (Number.isSafeInteger(r.finalAmountPaise) ? Number(r.finalAmountPaise) : Math.round(Number(r.finalAmount) * 100)), 0);
+  const max = WALLET_POLICY.maxBalanceMinor;
+  if (balance + pendingMinor + amountMinor > max) {
+    throw Object.assign(err(409, 'WALLET_LIMIT_REACHED', `A ${kind.kind} wallet holds at most ₹${(max / 100).toLocaleString('en-IN')}`),
+      { details: { maxBalanceMinor: max, balanceMinor: balance, pendingMinor, allowedMinor: Math.max(0, max - balance - pendingMinor) } });
+  }
 }
 
 /**

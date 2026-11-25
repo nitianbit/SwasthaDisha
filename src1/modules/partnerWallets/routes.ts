@@ -16,6 +16,7 @@ import { freezeSchema } from '@/modules/assisted/validation';
 import { ADMIN_TOPUP_KEY } from '@/modules/pharmacyWallet/validation';
 import * as svc from '@/modules/partnerWallets/service';
 import { adminKeyParamSchema, adminLabTopupSchema, walletTopupSchema, pageQuerySchema } from '@/modules/partnerWallets/validation';
+import { mountWithdrawalRoutes } from '@/modules/walletWithdrawals/routes';
 
 /**
  * r13 (round 2d, §24.7.3) and r20 (round 3a, §25.4.2) routes.
@@ -70,6 +71,9 @@ labWalletWorkspaceRouter.post('/payments/verify', ...labMember(['wallet.manage',
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.verifyLabPayment(LAB, memberOf(req), req.body))));
 labWalletWorkspaceRouter.post('/payments/reconcile', ...labMember(['wallet.manage', 'assisted.book']), validate(reconcilePaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.reconcileLabPayment(LAB, memberOf(req), String(req.body.paymentTransactionId)))));
+// r32 (round 4d, §26.8.2): the lab's withdrawals — wallet.view reads, wallet.manage acts; a new request needs an operational lab.
+mountWithdrawalRoutes(labWalletWorkspaceRouter, { read: labMember('wallet.view'), act: labMember('wallet.manage'),
+  request: labMember('wallet.manage', { operational: true }) }, (req) => ({ kind: 'lab', id: labOf(req), actor: { kind: 'member', id: memberOf(req).memberId } }));
 
 /**
  * r20 (§25.4.2): the doctor's own wallet, mounted at `/api/v1/specialists/me/assisted`. Reads and new top-ups need an
@@ -86,6 +90,9 @@ doctorWalletRouter.post('/wallet/topups', ...eligibleDoctor, validate(walletTopu
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.createTopup(DOCTOR, doctorOf(req), doctorOf(req), req.body))));
 doctorWalletRouter.post('/wallet/topups/:paymentTransactionId/check', requireSpecialist,
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.checkDoctorTopup(DOCTOR, doctorOf(req), req.params.paymentTransactionId))));
+// r32 (round 4d, §26.8.2): the doctor's withdrawals (an eligible doctor, S5).
+mountWithdrawalRoutes(doctorWalletRouter, { read: eligibleDoctor, act: eligibleDoctor, request: eligibleDoctor },
+  (req) => ({ kind: 'doctor', id: doctorOf(req), actor: { kind: 'doctor', id: doctorOf(req) } }));
 
 const adminId = (req: AuthRequest) => String(req.user?._id ?? '');
 /** The admin wallet tools of one owner kind: mounted at `/api/v1/admin/labs` (LAB) and `/api/v1/admin/doctors` (DOCTOR). */

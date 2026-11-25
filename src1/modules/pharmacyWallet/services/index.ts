@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { startSession, Types } from 'mongoose';
 import { pharmacyStore, pharmacyTopups } from '@/modules/pharmacyWallet/ledger';
-import { adminTopup, checkTopup } from '@/modules/pharmacyWallet/walletCore';
+import { adminTopup, assertTopupWithinCap, checkTopup } from '@/modules/pharmacyWallet/walletCore';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { BookingRepository } from '@/modules/bookings/repository';
@@ -69,6 +69,9 @@ export class PharmacyWalletService {
     }
 
     await this.getOrCreateWallet(pharmacyId);
+    // r32 (O2, §26.8.1): the balance, this pharmacy's unpaid top-ups of the last 30 minutes and this one may not pass
+    // ₹50,000 (409 WALLET_LIMIT_REACHED); a paid top-up is always credited.
+    await assertTopupWithinCap(pharmacyTopups, pharmacyId, Math.round(Number(req.amount) * 100));
     const createdOrder = await this.paymentService.createOrder({
       userId: actorUserId,
       payerUserId: actorUserId,

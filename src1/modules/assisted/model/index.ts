@@ -24,7 +24,9 @@ export const ASSISTED_AUDIT_ACTIONS = ['rx_order.created', 'patient.lookup', 'bo
   /** Phase 3d: a pharmacy or doctor loaded a doctor's recommended tests by code and phone (§25.7.4). */
   'recommendation.lookup',
   /** r17: the booker offered its instant request again (another doctor, or any online doctor). */
-  'instant.reoffered'] as const;
+  'instant.reoffered',
+  /** r32 (§26.8): an admin recovered a disputed top-up (the take); wallet withdrawals (request, cancel, reject, paid, void). */
+  'wallet.recovered', 'withdrawal.requested', 'withdrawal.cancelled', 'withdrawal.rejected', 'withdrawal.paid', 'withdrawal.voided'] as const;
 export type AssistedAuditAction = typeof ASSISTED_AUDIT_ACTIONS[number];
 
 export interface IAssistedAuditEvent {

@@ -11,7 +11,11 @@ import { recommendationLookupSchema } from '@/modules/testRecommendations/valida
 import * as instant from '@/modules/assisted/controller/phase3e';
 import * as referral from '@/modules/referralCuts/controller';
 import * as rv from '@/modules/referralCuts/validation';
-import { statementQuerySchema } from '@/modules/partners/validation/finance';
+import { payoutDetailsSchema, statementQuerySchema } from '@/modules/partners/validation/finance';
+import { mountWithdrawalRoutes } from '@/modules/walletWithdrawals/routes';
+import { setPharmacyPayoutDetails } from '@/modules/walletWithdrawals/service';
+import { recoverSchema } from '@/modules/walletWithdrawals/validation';
+import type { AuthRequest } from '@/modules/middleware/auth';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -62,6 +66,15 @@ pharmacyAssistedRouter.post('/instant/requests/:id/refund', validate(v.idParamSc
 pharmacyAssistedRouter.get('/referral-rules', catchAsync(referral.pharmacyRules));
 pharmacyAssistedRouter.get('/referral', catchAsync(referral.pharmacyReferral));
 pharmacyAssistedRouter.get('/referral/statement', validate(statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferralStatement));
+// r32 (round 4d, §26.8.2): the pharmacy's wallet withdrawals (built, off: WALLET_WITHDRAWALS_ENABLED) and its payout destination.
+mountWithdrawalRoutes(pharmacyAssistedRouter, { read: [], act: [], request: [] }, (req: AuthRequest) => {
+  const a = c.actorOf(req);
+  return { kind: 'pharmacy', id: a.pharmacyId, actor: { kind: 'pharmacy', id: a.actorId } };
+});
+pharmacyAssistedRouter.put('/finance/payout-details', validate(payoutDetailsSchema, 'body'), catchAsync(async (req: AuthRequest, res) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.status(200).json({ success: true, data: await setPharmacyPayoutDetails(c.actorOf(req).pharmacyId, req.body) });
+}));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);
@@ -82,6 +95,10 @@ adminAssistedRouter.get('/pharmacies/:id/wallet/lots', validate(v.idParamSchema,
 adminAssistedRouter.post('/wallet-lots/:lotId/chargeback', validate(v.lotIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'), catchAsync(c.chargeback));
 adminAssistedRouter.post('/wallet-payments/:paymentId/chargeback', validate(v.paymentIdParamSchema, 'params'), validate(v.chargebackSchema, 'body'),
   catchAsync(c.paymentChargeback));
+// r32 (§26.8.4): chargebacks are flagged only; the admin takes the money back explicitly (debit, receivable, freeze).
+adminAssistedRouter.post('/wallet-lots/:lotId/recover', validate(v.lotIdParamSchema, 'params'), validate(recoverSchema, 'body'), catchAsync(c.recoverLot));
+adminAssistedRouter.post('/wallet-payments/:paymentId/recover', validate(v.paymentIdParamSchema, 'params'), validate(recoverSchema, 'body'),
+  catchAsync(c.recoverPayment));
 // r9: a top-up support already paid by hand is closed as compensated (never credited); and its by-key read.
 adminAssistedRouter.get('/wallet-payments/close-compensated/by-key/:key', validate(v.keyParamSchema, 'params'), catchAsync(c.closeCompensatedByKey));
 adminAssistedRouter.post('/wallet-payments/:paymentId/close-compensated', validate(v.paymentIdParamSchema, 'params'), validate(v.closeCompensatedSchema, 'body'),

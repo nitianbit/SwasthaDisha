@@ -10,8 +10,8 @@ import { AssistedAlertModel, AssistedReconciliationReportModel } from '@/modules
 import { assertAdminToolsOn } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { inTransaction } from '@/modules/partners/services';
-import { pharmacyStore, recordChargebackIn } from '@/modules/pharmacyWallet/ledger';
-import { closeTopupCompensatedIn, recordTopupChargebackIn, resolveTopupRecord, setFrozenIn, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
+import { pharmacyStore } from '@/modules/pharmacyWallet/ledger';
+import { closeTopupCompensatedIn, recordTopupChargebackIn, recoverTopupIn, resolveTopupRecord, setFrozenIn, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
 import { lotsOf } from '@/modules/pharmacyWallet/walletLots';
 import { TOPUP_KINDS, topupKindOf, topupKindOfWallet } from '@/modules/partnerWallets/topupKinds';
 import { raiseAlertIn } from '@/modules/assisted/limits';
@@ -102,66 +102,68 @@ export const freeze = async (req: AuthRequest, res: Response) => {
 /** GET /admin/pharmacies/:id/wallet/lots — the pharmacy's top-up lots (to pick the one a chargeback is for). */
 export const lots = async (req: AuthRequest, res: Response) => send(res, await lotsOf({ kind: 'pharmacy', id: req.params.id }));
 
+/** The top-up a lot belongs to (the lot routes): its kind and payment record; anything else is the one 404. */
+async function lotTopup(lotId: string): Promise<{ kind: TopupKind; paymentRecordId: string }> {
+  const lot = Types.ObjectId.isValid(lotId) ? await WalletTopupLotModel.findById(lotId).select({ walletRef: 1, paymentRecordId: 1 }).lean() : null;
+  const kind = lot ? topupKindOfWallet(lot.walletRef.kind) : null;
+  if (!lot || !kind) throw new AppError({ status: 404, code: 'LOT_NOT_FOUND', message: 'Top-up not found' });
+  return { kind, paymentRecordId: lot.paymentRecordId };
+}
+/** A top-up named by its payment (record id, Razorpay order id or payment id; it may ask the gateway, read only). */
+async function paymentTopup(paymentId: string): Promise<{ kind: TopupKind; paymentRecordId: string }> {
+  const { Container } = await import('typedi');
+  const { PaymentService } = await import('@/modules/payment/services');
+  return resolveTopupRecord(paymentId, TOPUP_KINDS, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
+}
+
 /**
- * POST /admin/wallet-lots/:lotId/chargeback { reason } — a card dispute lost on a top-up: the lot is closed for good,
- * the wallet debited (a shortfall is owed as `receivableMinor`), frozen, audited. Once per lot (a repeat answers replayed).
+ * POST /admin/wallet-lots/:lotId/chargeback { reason } — a card dispute lost on a top-up lot. r32 (§26.8.4, owner decision
+ * 6): flagged only, for every wallet kind (the pharmacy's included): the top-up is marked, its lot's money stops being
+ * withdrawable; nothing is debited and nothing is frozen. Taking the money back is the admin's explicit Recover (below).
  */
 export const chargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
-  const reason = String(req.body.reason).trim();
-  // r13: a lab lot's dispute is recorded on its top-up and flagged only (owner C4); pharmacy lots are charged back.
-  const lot = Types.ObjectId.isValid(req.params.lotId)
-    ? await WalletTopupLotModel.findById(req.params.lotId).select({ walletRef: 1, paymentRecordId: 1 }).lean() : null;
-  const kind = lot ? topupKindOfWallet(lot.walletRef.kind) : null;
-  if (lot && kind?.chargeback === 'flag') return send(res, await topupChargeback(kind, lot.paymentRecordId, String(req.user?._id).toLowerCase(), reason));
-  const out = await inTransaction(async (s) => {
-    const r = await recordChargebackIn(req.params.lotId, s);
-    if (!r.replayed) {
-      await auditIn({ actorKind: 'admin', actorId: String(req.user?._id).toLowerCase(), orgKind: 'pharmacy', orgId: String(r.entry.pharmacyId).toLowerCase(),
-        action: 'wallet.chargeback', detail: { lotId: req.params.lotId, reason, debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise } }, s);
-    }
-    return r;
-  });
-  send(res, { entry: out.entry, wallet: out.wallet, replayed: out.replayed });
+  const { kind, paymentRecordId } = await lotTopup(req.params.lotId);
+  send(res, await topupChargeback(kind, paymentRecordId, String(req.user?._id).toLowerCase(), String(req.body.reason).trim()));
 };
 
 /**
- * POST /admin/wallet-payments/:paymentId/chargeback { reason } — review of 800dfc0 (item 1): a card dispute lost on a
- * top-up named by its payment (payment record id, Razorpay order id or Razorpay payment id), for top-ups credited without a lot. Same rules
- * and the same once-per-payment key as the lot route (a top-up with a lot is charged back through its lot). Audited in
- * the same transaction. A racing twin that inserted the payment's lot first: this attempt runs once more and answers
- * replayed. Review of db252c1 (item a): a top-up never credited is blocked instead (200, `blockedUncredited: true`,
- * `credited: false`): nothing was in the wallet to take, and it can never be credited now.
+ * POST /admin/wallet-payments/:paymentId/chargeback { reason } — the same, for a top-up named by its payment (payment record
+ * id, Razorpay order id or Razorpay payment id; also for top-ups credited without a lot). Review of db252c1 (item a): a
+ * top-up never credited is blocked instead (200, `blockedUncredited: true`, `credited: false`).
  */
 export const paymentChargeback = async (req: AuthRequest, res: Response) => {
   assertAdminToolsOn();
-  const reason = String(req.body.reason).trim();
-  // Outside the transaction (it may ask the gateway, read only): the top-up the admin named (r13: pharmacy or lab).
-  const { Container } = await import('typedi');
-  const { PaymentService } = await import('@/modules/payment/services');
-  const { paymentRecordId, kind } = await resolveTopupRecord(req.params.paymentId, TOPUP_KINDS, (id) => Container.get(PaymentService).gatewayOrderIdOfPayment(id));
-  send(res, await topupChargeback(kind, paymentRecordId, String(req.user?._id).toLowerCase(), reason));
+  const { kind, paymentRecordId } = await paymentTopup(req.params.paymentId);
+  send(res, await topupChargeback(kind, paymentRecordId, String(req.user?._id).toLowerCase(), String(req.body.reason).trim()));
 };
 
 /**
- * A lost card dispute on a top-up (`recordTopupChargebackIn`), audited `wallet.chargeback` in the same transaction (a
- * flagged one also raises the alert `wallet_topup_chargeback`). A racing twin that inserted the payment's lot first: this
- * attempt runs once more and answers replayed.
+ * r32 (§26.8.4): POST /admin/wallet-lots/:lotId/recover and /admin/wallet-payments/:paymentId/recover { reason, requestKey }
+ * — after a lost dispute was recorded, the admin takes the money back explicitly (`recoverTopupIn`): the wallet is debited up
+ * to its balance, the shortfall is owed as a receivable and the wallet is frozen. Exactly once per top-up (a repeat
+ * answers replayed); the request key is recorded in the audit. 409 DISPUTE_NOT_RECORDED before a chargeback was recorded.
  */
-async function topupChargeback(kind: TopupKind, paymentRecordId: string, actorId: string, reason: string) {
+export const recoverLot = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  const { kind, paymentRecordId } = await lotTopup(req.params.lotId);
+  send(res, await topupRecover(kind, paymentRecordId, String(req.user?._id).toLowerCase(), req.body));
+};
+export const recoverPayment = async (req: AuthRequest, res: Response) => {
+  assertAdminToolsOn();
+  const { kind, paymentRecordId } = await paymentTopup(req.params.paymentId);
+  send(res, await topupRecover(kind, paymentRecordId, String(req.user?._id).toLowerCase(), req.body));
+};
+
+/** Recover in one transaction with its audit `wallet.recovered`; a racing twin that inserted the payment's lot first runs once more. */
+async function topupRecover(kind: TopupKind, paymentRecordId: string, actorId: string, body: { reason: string; requestKey: string }) {
   const run = () => inTransaction(async (s) => {
-    const r = await recordTopupChargebackIn(kind, paymentRecordId, s);
-    if (r.replayed) return r;
-    const audit = (detail: Record<string, unknown>) => auditIn({ actorKind: 'admin', actorId, orgKind: kind.kind, orgId: r.ownerId, action: 'wallet.chargeback', detail }, s);
-    if (r.outcome === 'blocked') {
-      await audit({ paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 });
-    } else if (r.outcome === 'flagged') {
-      await audit({ paymentRecordId, lotId: r.lotId, flaggedOnly: true, ...(r.compensated ? { compensated: true } : {}), reason, debitedPaise: 0 });
-      await raiseAlertIn({ kind: 'wallet_topup_chargeback', subject: `${kind.kind}:${paymentRecordId}`,
-        detail: { walletKind: kind.kind, ownerId: r.ownerId, paymentRecordId, lotId: r.lotId } }, s);
-    } else {
-      await audit({ lotId: r.lotId, paymentRecordId, withoutLot: r.withoutLot, ...(r.compensated ? { compensated: true } : {}), reason,
-        debitedPaise: r.entry.amountPaise, receivableDeltaPaise: r.entry.receivableDeltaPaise });
+    const r = await recoverTopupIn(kind, paymentRecordId, s);
+    if (!r.replayed) {
+      const e = r.entry as Record<string, any>;
+      await auditIn({ actorKind: 'admin', actorId, orgKind: kind.kind, orgId: r.ownerId, action: 'wallet.recovered', requestKey: body.requestKey,
+        detail: { lotId: r.lotId, paymentRecordId, withoutLot: r.withoutLot, ...(r.compensated ? { compensated: true } : {}), reason: String(body.reason).trim(),
+          debitedMinor: Number(e.amountPaise ?? Math.abs(Number(e.amountMinor ?? 0))), receivableDeltaMinor: Number(e.receivableDeltaPaise ?? e.receivableDeltaMinor ?? 0) } }, s);
     }
     return r;
   });
@@ -170,17 +172,35 @@ async function topupChargeback(kind: TopupKind, paymentRecordId: string, actorId
     if (!isDuplicateKeyError(e)) throw e;
     out = await run();
   }
+  return { recovered: true, replayed: out.replayed, entry: out.entry, wallet: out.wallet, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
+    walletKind: kind.kind, [kind.ownerField]: out.ownerId, withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) };
+}
+
+/**
+ * A lost card dispute on a top-up (`recordTopupChargebackIn`), audited `wallet.chargeback` in the same transaction (a
+ * flagged one also raises the alert `wallet_topup_chargeback`).
+ */
+async function topupChargeback(kind: TopupKind, paymentRecordId: string, actorId: string, reason: string) {
+  const out = await inTransaction(async (s) => {
+    const r = await recordTopupChargebackIn(kind, paymentRecordId, s);
+    if (r.replayed) return r;
+    const audit = (detail: Record<string, unknown>) => auditIn({ actorKind: 'admin', actorId, orgKind: kind.kind, orgId: r.ownerId, action: 'wallet.chargeback', detail }, s);
+    if (r.outcome === 'blocked') {
+      await audit({ paymentRecordId, blockedUncredited: true, reason, debitedPaise: 0 });
+    } else {
+      await audit({ paymentRecordId, lotId: r.lotId, flaggedOnly: true, ...(r.compensated ? { compensated: true } : {}), reason, debitedPaise: 0 });
+      await raiseAlertIn({ kind: 'wallet_topup_chargeback', subject: `${kind.kind}:${paymentRecordId}`,
+        detail: { walletKind: kind.kind, ownerId: r.ownerId, paymentRecordId, lotId: r.lotId } }, s);
+    }
+    return r;
+  });
   if (out.outcome === 'blocked') {
     return { blockedUncredited: true, credited: false, replayed: out.replayed, paymentRecordId: out.paymentRecordId,
       message: 'Nothing was credited for this top-up, so nothing was taken from the wallet. The top-up is now blocked and will never be credited.' };
   }
-  if (out.outcome === 'flagged') {
-    return { blockedUncredited: false, flagged: true, credited: true, replayed: out.replayed, paymentRecordId: out.paymentRecordId, lotId: out.lotId,
-      walletKind: kind.kind, [kind.ownerField]: out.ownerId, ...(out.compensated ? { compensated: true } : {}),
-      message: 'Recorded and flagged only: nothing was taken from the wallet and it was not frozen; this card money is no longer withdrawable. Recovering the amount is an admin decision.' };
-  }
-  return { blockedUncredited: false, entry: out.entry, wallet: out.wallet, replayed: out.replayed, lotId: out.lotId, paymentRecordId: out.paymentRecordId,
-    withoutLot: out.withoutLot, ...(out.compensated ? { compensated: true } : {}) };
+  return { blockedUncredited: false, flagged: true, credited: true, replayed: out.replayed, paymentRecordId: out.paymentRecordId, lotId: out.lotId,
+    walletKind: kind.kind, [kind.ownerField]: out.ownerId, ...(out.compensated ? { compensated: true } : {}),
+    message: 'Recorded and flagged only: nothing was taken from the wallet and it was not frozen; this card money is no longer withdrawable. Recovering the amount is an admin decision (Recover).' };
 }
 
 /** r9: what the close-compensated route and its by-key read answer (ids, amount in paise, times; no names). r13/r20: a lab or doctor top-up names its owner. */

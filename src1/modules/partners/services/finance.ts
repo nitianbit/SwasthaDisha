@@ -28,7 +28,9 @@ import { RequestKeyModel } from '@/modules/requestKeys/model';
 export type FinanceActor =
   | { kind: 'admin'; id: string }
   | { kind: 'member'; partner: PartnerActor }
-  | { kind: 'doctor'; id: string };
+  | { kind: 'doctor'; id: string }
+  /** r32 (§26.8.1): a pharmacy sets the payout details of its home account (`pharmacy_referral`). */
+  | { kind: 'pharmacy'; id: string };
 
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const MAX_MINOR = 1_000_000_000_00; // ₹1,00,00,00,000 — far above any single payout or adjustment
@@ -100,7 +102,7 @@ export function accountView(a: ISettlementAccount, full: boolean) {
   };
 }
 
-function destinationLabel(d: IPayoutDetails): string {
+export function destinationLabel(d: IPayoutDetails): string {
   return d.method === 'upi' ? `UPI ${d.upiId}` : `${d.bankName ? d.bankName + ' ' : ''}${d.ifsc} ${maskNumber(d.accountNumber)}`;
 }
 

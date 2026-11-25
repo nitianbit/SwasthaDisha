@@ -7,7 +7,7 @@ import SpecialistModel from '@/modules/specialists/model';
 import { isEligibleDoctor } from '@/modules/specialists/eligibility';
 import PartnerModel from '@/modules/partners/model';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
-import { ADMIN_TOPUP_MAX_MINOR, postMovementIn, type Posted, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { ADMIN_TOPUP_MAX_MINOR, postMovementIn, WALLET_POLICY, type Posted, type TopupKind, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
 import { lotsWritableWhen, type LotAllocation } from '@/modules/pharmacyWallet/walletLots';
 import {
   PartnerWalletEntryModel, PartnerWalletModel, type IPartnerWallet, type IPartnerWalletEntry, type PartnerWalletEntryKind, type PartnerWalletOwnerKind,
@@ -25,10 +25,10 @@ import {
  * Admin top-ups: at most ₹2,00,000 each (as the pharmacy admin form), never withdrawable (L20).
  */
 export const PARTNER_WALLET_POLICY = {
-  maxBalanceMinor: 5_000_000,
+  maxBalanceMinor: WALLET_POLICY.maxBalanceMinor,
   minTopupMinor: 100,
-  withdrawalsPerWeek: 1,
-  cardHoldDays: 7,
+  withdrawalsPerWeek: WALLET_POLICY.withdrawalsPerWeek,
+  cardHoldDays: WALLET_POLICY.cardHoldDays,
   adminTopupMaxMinor: ADMIN_TOPUP_MAX_MINOR,
 } as const;
 
@@ -122,7 +122,6 @@ TopupKind<IPartnerWallet, IPartnerWalletEntry> {
     ownerOf: (r) => lower(r[o.payerField]),
     storeFor: (r) => store(String(r[o.payerField])),
     store,
-    chargeback: 'flag',
     lotsWritable: lotsWritableWhen(o.on),
     assertCreditable: assertPartnerWalletIndexes,
     rechargeDescription: o.description,
