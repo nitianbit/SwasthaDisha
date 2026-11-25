@@ -380,7 +380,7 @@ async function main() {
       assert.ok(lines.some((l) => /^Referral · consultation · .* · Ref [A-Z2-7]{8}$/.test(l.description)), JSON.stringify(lines.map((l) => l.description)));
       assert.ok(!JSON.stringify(lines).includes('Rina'));
       // r33: the totals also report the cut switch.
-      assert.deepEqual((await expect('Q', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
+      assert.deepEqual((await expect('Q', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, setOffMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
       const doctorAccount = await SettlementAccountModel.findOne({ ownerKind: 'doctor', ownerId: D }).lean() as any;
       const docLines = (await statementPage(doctorAccount, {})).lines;
       const row = docLines.find((l) => l.sourceId === firstId)!;

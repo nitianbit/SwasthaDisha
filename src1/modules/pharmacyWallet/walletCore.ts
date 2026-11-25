@@ -140,7 +140,8 @@ export interface Posted<W = any, E = any> { entry: E; wallet: W; replayed: boole
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const changed = (message = 'The wallet changed; please retry') => Object.assign(err(409, 'WALLET_CHANGED', message), { retryable: true });
 const HEX24 = /^[0-9a-fA-F]{24}$/;
-const recordPaiseOf = (r: Record<string, any>) => (Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100));
+/** A card top-up record's amount in paise (records from before paise: from the rupee amount). r35b: exported, the one reader. */
+export const recordPaiseOf = (r: Record<string, any>) => (Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100));
 
 /** r9: a top-up closed as compensated is never credited (same code as a blocked one). */
 export const topupClosedCompensated = () => err(409, 'TOPUP_BLOCKED',

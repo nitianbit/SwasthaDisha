@@ -4,7 +4,7 @@ import { AppError } from '@/modules/common/types';
 import {
   SettlementAccountModel, LedgerEntryModel, LedgerHistoryRefModel, SettlementPayoutModel, SettlementEventModel,
   ISettlementAccount, ILedgerEntry, IPayoutDetails, ISettlementPayout,
-  isReferralOwnerKind, type SettlementOwnerKind,
+  homeKindOf, isReferralOwnerKind, type SettlementOwnerKind,
 } from '@/modules/partners/model/settlement';
 import { assistedFlags } from '@/modules/assisted/flags';
 import { WalletWithdrawalModel } from '@/modules/walletWithdrawals/model';
@@ -107,6 +107,21 @@ export function accountView(a: ISettlementAccount, full: boolean) {
 export function destinationLabel(d: IPayoutDetails): string {
   return d.method === 'upi' ? `UPI ${d.upiId}` : `${d.bankName ? d.bankName + ' ' : ''}${d.ifsc} ${maskNumber(d.accountNumber)}`;
 }
+
+/**
+ * r35 (WQ29): an account's destination as its owner reads it — its state, one masked line, the version to send back and,
+ * with `details`, the details as the finance reads show them (never the full account number; otherwise null). r35b: here,
+ * for the withdrawal reads and the admin's home block.
+ */
+export const destinationOf = (a: ISettlementAccount | null, details = true) => (a?.payoutDetails
+  ? { state: a.payoutDetailsState, masked: destinationLabel(a.payoutDetails), detailsVersion: a.payoutDetailsVersion ?? 0, details: details ? detailsView(a.payoutDetails, false) : null }
+  : { state: 'none' as const, masked: null, detailsVersion: a?.payoutDetailsVersion ?? 0, details: null });
+/** r35b: a lab's or a doctor's referral account has no destination of its own (§5.4): its home account's is used. */
+const assertOwnDestination = (a: ISettlementAccount) => {
+  if (homeKindOf(a.ownerKind) !== a.ownerKind) {
+    throw err(409, 'REFERRAL_ACCOUNT_USES_HOME', 'This referral account is paid to the lab\'s or doctor\'s own account; change or verify the details there');
+  }
+};
 
 // ── Audit ──
 
@@ -291,10 +306,10 @@ export async function statementPage(account: ISettlementAccount | null, opts: { 
 }
 
 const rupees = (minor: number) => (minor / 100).toFixed(2);
-/** CSV cell: quoted, and formula-leading text neutralised (spreadsheet injection). */
+/** CSV cell: quoted, and formula-leading text neutralised (spreadsheet injection); r35b: a plain negative number stays a number. */
 const cell = (v: unknown) => {
   let s = v === undefined || v === null ? '' : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (/^[=+\-@\t\r]/.test(s) && !/^-\d+(\.\d+)?$/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 };
 const istStamp = (d: Date) => new Date(new Date(d).getTime() + 330 * 60_000).toISOString().slice(0, 16).replace('T', ' ');
@@ -426,6 +441,7 @@ export async function setPayoutDetails(target: { ownerKind: 'partner' | 'doctor'
   if (actor.kind === 'member' && actor.partner.role !== 'owner') throw err(403, 'OWNER_REQUIRED', 'Only an owner can change where payouts are sent');
   const details = normalizeDetails(input);
   const base = 'accountId' in target ? await accountById(canon(target.accountId)) : await ensureOwnerAccount(target.ownerKind, target.ownerId);
+  assertOwnDestination(base);
   const updated = await inTransaction(async (s) => {
     const current = await bumpFinance(String(base._id), s);
     if (input.expectedDetailsVersion !== undefined && (current.payoutDetailsVersion ?? 0) !== input.expectedDetailsVersion) {
@@ -451,6 +467,7 @@ export async function verifyPayoutDetails(rawAccountId: string, version: number,
   const accountId = canon(rawAccountId);
   const updated = await inTransaction(async (s) => {
     const before = await accountById(accountId, s);
+    assertOwnDestination(before);
     if (before.payoutDetailsState === 'verified' && before.payoutDetailsVersion === version) return before;
     if (before.payoutDetailsState !== 'unverified' || before.payoutDetailsVersion !== version) {
       throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
@@ -548,10 +565,9 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
 }
 
 /** r35 (§5.4): the account whose payout details a payout to `a` uses — the owner's home account for a lab or doctor referral account. */
-const HOME_OF: Partial<Record<SettlementOwnerKind, 'partner' | 'doctor'>> = { lab_referral: 'partner', doctor_referral: 'doctor' };
 async function homeAccountIn(a: ISettlementAccount, s: ClientSession): Promise<ISettlementAccount | null> {
-  const kind = HOME_OF[a.ownerKind];
-  if (!kind) return a;
+  const kind = homeKindOf(a.ownerKind);
+  if (kind === a.ownerKind) return a;
   return await SettlementAccountModel.findOne({ ownerKind: kind, ownerId: canon(a.ownerId) }).session(s).lean() as ISettlementAccount | null;
 }
 
@@ -702,11 +718,23 @@ export async function adminListAccounts(q: { ownerKind?: SettlementOwnerKind | '
     } },
   ]);
   const meta = out?.meta?.[0] ?? { total: 0, totalDueMinor: 0 };
+  const rows = (out?.rows ?? []) as (ISettlementAccount & { balanceMinor: number })[];
+  // r35b (§5.4): a lab's or a doctor's referral row shows its HOME account's destination (masked), read in one query.
+  const away = rows.filter((a) => homeKindOf(a.ownerKind) !== a.ownerKind);
+  const homes = away.length ? await SettlementAccountModel.find({ $or: away.map((a) => ({ ownerKind: homeKindOf(a.ownerKind), ownerId: canon(a.ownerId) })) })
+    .lean() as ISettlementAccount[] : [];
+  const homeOf = (a: ISettlementAccount) => {
+    const h = homes.find((x) => x.ownerKind === homeKindOf(a.ownerKind) && x.ownerId === canon(a.ownerId));
+    if (!h) return null;
+    const { state, masked, detailsVersion } = destinationOf(h, false);
+    return { accountId: String(h._id), masked, detailsVersion, state };
+  };
   return {
     total: meta.total, totalDueMinor: meta.totalDueMinor,
     // r35 (§26.9): a referral account's payouts are paused while REFERRAL_PAYOUTS_ENABLED is off (O1).
-    rows: (out?.rows ?? []).map((a: ISettlementAccount & { balanceMinor: number }) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor,
-      ...(isReferralOwnerKind(a.ownerKind) ? { payoutsPaused: !assistedFlags.referralPayouts() } : {}) })),
+    rows: rows.map((a) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor,
+      ...(isReferralOwnerKind(a.ownerKind) ? { payoutsPaused: !assistedFlags.referralPayouts() } : {}),
+      ...(homeKindOf(a.ownerKind) !== a.ownerKind ? { home: homeOf(a) } : {}) })),
   };
 }
 

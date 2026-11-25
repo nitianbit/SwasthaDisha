@@ -1,4 +1,4 @@
-import type { TopupKind } from '@/modules/pharmacyWallet/walletCore';
+import { recordPaiseOf, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
 import { WalletTopupLotModel, type IWalletTopupLot } from '@/modules/pharmacyWallet/model/lots';
 import PaymentRecordModel from '@/modules/payment/model';
 import { pharmacyTopups } from '@/modules/pharmacyWallet/ledger';
@@ -42,18 +42,19 @@ export async function topupDisputes(q: { state?: 'flagged' | 'recovered' | 'bloc
   const ids = [...new Set([...lots.map((l) => l.paymentRecordId), ...records.map((r) => String(r._id))])];
   const missing = ids.filter((id) => !recordOf.has(id));
   for (const r of missing.length ? await PaymentRecordModel.find({ _id: { $in: missing } }).lean() as Record<string, any>[] : []) recordOf.set(String(r._id), r);
-  const rows = ids.map((id) => {
+  const rows = (await Promise.all(ids.map(async (id) => {
     const r = recordOf.get(id);
     const lot = lotOf.get(id);
     const kind = r ? topupKindOf(r) : null;
     const walletKind = lot?.walletRef.kind ?? kind?.kind ?? null;
-    const credited = !!lot || !!r?.walletCreditedAt || !!r?.compensatedAt;
+    // r35b: an old top-up credited without a lot and without `walletCreditedAt` is found by the wallet's own credit row.
+    const credited = !!lot || !!r?.walletCreditedAt || !!r?.compensatedAt || (!!r && !!kind && !!(await kind.storeFor(r).rechargeCreditIn(id, null)));
     const state = !credited ? 'blocked' as const : lot?.closed === true && lot.disputeState === 'lost' ? 'recovered' as const : 'flagged' as const;
     return { paymentRecordId: id, walletKind, ownerId: lot?.walletRef.id ?? (r && kind ? kind.ownerOf(r) : null), lotId: lot ? String(lot._id) : null,
-      amountMinor: lot ? Number(lot.amountMinor) : r ? (Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100)) : null,
+      amountMinor: lot ? Number(lot.amountMinor) : r ? recordPaiseOf(r) : null,
       remainingMinor: lot ? Number(lot.remainingMinor) : null, state, chargebackAt: r?.chargebackAt ?? null, recoveredAt: lot?.chargedBackAt ?? null,
       at: r?.chargebackAt ?? lot?.chargedBackAt ?? lot?.updatedAt ?? null };
-  }).filter((x) => (!q.state || x.state === q.state) && (!q.walletKind || x.walletKind === q.walletKind));
+  }))).filter((x) => (!q.state || x.state === q.state) && (!q.walletKind || x.walletKind === q.walletKind));
   return rows.sort((a, b) => new Date(b.at ?? 0).getTime() - new Date(a.at ?? 0).getTime()).slice(0, limit);
 }
 
@@ -75,7 +76,7 @@ export async function topupsWithoutLot(walletKind: 'pharmacy' | 'lab' | 'doctor'
     const credit = r.walletCreditedAt ? null : await kind.storeFor(r).rechargeCreditIn(String(r._id), null);
     if (!r.walletCreditedAt && !credit) continue;
     rows.push({ paymentRecordId: String(r._id), walletKind, ownerId: kind.ownerOf(r), razorpayPaymentId: r.razorpayPaymentId ?? null,
-      amountMinor: credit?.amountMinor ?? (Number.isSafeInteger(r.baseAmountPaise) ? Number(r.baseAmountPaise) : Math.round(Number(r.baseAmount ?? 0) * 100)),
+      amountMinor: credit?.amountMinor ?? recordPaiseOf(r),
       paidAt: r.paidAt ?? null, creditedAt: r.walletCreditedAt ?? null, chargebackAt: r.chargebackAt ?? null });
     if (rows.length >= 200) break;
   }

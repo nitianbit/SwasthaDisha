@@ -7,6 +7,10 @@
  * 4f — finance reads: the pharmacy's `/finance` blocks and its statement (wallet rows as `transactionView`, the referral
  *   statement) with the one CSV; the lab's and doctor's `/finance` blocks; the admin disputes list, the top-ups credited
  *   without a lot, the withdrawal quote's reason; another owner's data never shows.
+ * r35b (§26.18.6) — an old credited top-up is flagged, not blocked; the lab's request answers the switch before the scope,
+ *   and a member cancels or abandons its own request; one eligibility rule (WALLET_INACTIVE, LAB_NOT_VERIFIED); the referral
+ *   rows' home block and REFERRAL_ACCOUNT_USES_HOME; `setOffMinor`; the set-off wallet row as `adjustment`; the opening
+ *   balance aggregate; `lastPaidAt` paid only; the destination's details by finance.view; negative numbers in the CSV.
  * Real routes over HTTP (configureRoutes) on MongoDB.
  *
  * Run (throwaway DB only; the script drops its database):
@@ -43,7 +47,8 @@ import { pharmacyStore, pharmacyTopups } from '@/modules/pharmacyWallet/ledger';
 import { creditTopupIn, postMovementIn, walletTransaction, type TopupKind } from '@/modules/pharmacyWallet/walletCore';
 import { BannerService } from '@/modules/banners/services';
 import { BannerRepository } from '@/modules/banners/repository';
-import { LedgerEntryModel } from '@/modules/partners/model/settlement';
+import { LedgerEntryModel, SettlementAccountModel } from '@/modules/partners/model/settlement';
+import MemberModel from '@/modules/partners/model/member';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
@@ -52,7 +57,7 @@ import { PartnerService } from '@/modules/partners/services';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
 import { LabBookingService } from '@/modules/partners/services/labBookings';
 import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/services/settlement';
-import { setPayoutDetails } from '@/modules/partners/services/finance';
+import { setPayoutDetails, statementCsvOf } from '@/modules/partners/services/finance';
 import { doctorTopups, labTopups, partnerStore } from '@/modules/partnerWallets/ledger';
 import { PartnerWalletModel } from '@/modules/partnerWallets/model';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -267,6 +272,13 @@ async function main() {
         assert.equal(await AssistedAuditEventModel.countDocuments({ orgId: W, action: 'wallet.referral_setoff' }), 2);
         const st = (await expect('ADMIN', 'GET', `/api/v1/settlements/accounts/${acc}/statement`, 200)).json.data.lines;
         assert.ok(st.some((l: any) => l.source === 'receivable_setoff' && l.description === 'Owed wallet amount paid from referral earnings'));
+        // r35b: the referral block says what the set-offs took (earned − paid − set off = due), and the wallet row is its own
+        // type: `adjustment`, `amount` 0 (the released app shows "−₹0" under its title, never a credit), `amountPaise` kept.
+        tokens[W] = sign({ _id: W, pharmacyId: W, userType: 'pharmacy' });
+        assert.deepEqual((await expect(W, 'GET', '/api/v1/pharmacy-assisted/finance', 200)).json.data.referral,
+          { earnedMinor: 70_000, paidMinor: 0, setOffMinor: 18_000, dueMinor: 52_000, cutsEnabled: false, payoutsEnabled: true });
+        const rows = (await expect(W, 'GET', '/api/v1/pharmacy-assisted/finance/statement?kind=wallet', 200)).json.data.filter((t: any) => t.movementType === 'receivable_setoff');
+        assert.deepEqual(rows.map((t: any) => [t.transactionType, t.amount, t.amountPaise, t.signedAmountPaise]).sort(), [['adjustment', 0, 12_000, 0], ['adjustment', 0, 6000, 0]].sort());
         await expect('ADMIN', 'POST', `/api/v1/admin/wallets/pharmacy/${oid()}/receivable/setoff-from-referral`, 404, { amountMinor: 100, requestKey: newKey() }, 'WALLET_NOT_FOUND');
       } finally { delete process.env.REFERRAL_PAYOUTS_ENABLED; }
     });
@@ -278,7 +290,16 @@ async function main() {
       const ph = (await expect('ADMIN', 'GET', '/api/v1/settlements/accounts?ownerKind=pharmacy_referral', 200)).json.data;
       assert.ok(ph.rows.length >= 2 && ph.rows.every((r: any) => r.ownerKind === 'pharmacy_referral'));
       const partners = (await expect('ADMIN', 'GET', '/api/v1/settlements/accounts?ownerKind=partner', 200)).json.data;
-      assert.ok(partners.rows.every((r: any) => r.payoutsPaused === undefined), 'partner rows unchanged');
+      assert.ok(partners.rows.every((r: any) => r.payoutsPaused === undefined && r.home === undefined), 'partner rows unchanged');
+      // r35b: a lab's or a doctor's referral row shows its home account's destination; a pharmacy's referral account is its own.
+      const labHome = await SettlementAccountModel.findOne({ ownerKind: 'partner', ownerId: L.toLowerCase() }).lean() as any;
+      const labRow = all.rows.find((r: any) => r.ownerKind === 'lab_referral');
+      assert.deepEqual(labRow.home, { accountId: String(labHome._id), masked: 'UPI metro@okbank', detailsVersion: labHome.payoutDetailsVersion, state: 'unverified' });
+      assert.equal(all.rows.find((r: any) => r.ownerKind === 'doctor_referral').home, null, 'the doctor has no account yet');
+      assert.ok(ph.rows.every((r: any) => !('home' in r)));
+      // Its own details cannot be set or verified (409 REFERRAL_ACCOUNT_USES_HOME).
+      await expect('ADMIN', 'PUT', `/api/v1/settlements/accounts/${labRow._id}/payout-details`, 409, { method: 'upi', upiId: 'ref@okbank' }, 'REFERRAL_ACCOUNT_USES_HOME');
+      await expect('ADMIN', 'POST', `/api/v1/settlements/accounts/${labRow._id}/payout-details/verify`, 409, { version: 1 }, 'REFERRAL_ACCOUNT_USES_HOME');
       process.env.REFERRAL_PAYOUTS_ENABLED = 'true';
       try { assert.ok((await expect('ADMIN', 'GET', '/api/v1/settlements/accounts?ownerKind=referral', 200)).json.data.rows.every((r: any) => r.payoutsPaused === false)); }
       finally { delete process.env.REFERRAL_PAYOUTS_ENABLED; }
@@ -291,7 +312,7 @@ async function main() {
       assert.deepEqual(Object.keys(f).sort(), ['payoutDetails', 'referral', 'wallet', 'withdrawals']);
       assert.deepEqual(Object.keys(f.wallet).sort(), ['availableLater', 'balanceMinor', 'frozen', 'receivableMinor', 'withdrawableNowMinor']);
       assert.deepEqual([f.wallet.balanceMinor, f.wallet.withdrawableNowMinor, f.wallet.receivableMinor, f.wallet.frozen], [80_000, 80_000, 0, false]);
-      assert.deepEqual(f.referral, { earnedMinor: 50_000, paidMinor: 10_000, dueMinor: 40_000, cutsEnabled: false, payoutsEnabled: false });
+      assert.deepEqual(f.referral, { earnedMinor: 50_000, paidMinor: 10_000, setOffMinor: 0, dueMinor: 40_000, cutsEnabled: false, payoutsEnabled: false });
       assert.deepEqual(f.withdrawals, { openCount: 0, lastPaidAt: null, enabled: false });
       assert.deepEqual([f.payoutDetails.state, f.payoutDetails.masked, f.payoutDetails.detailsVersion], ['verified', 'HDFC HDFC0001234 XXXX9012', 1]);
       assert.deepEqual(f.payoutDetails.details, { method: 'bank', accountName: 'Holder', ifsc: 'HDFC0001234', bankName: 'HDFC', accountNumberLast4: '9012',
@@ -320,6 +341,7 @@ async function main() {
       assert.equal(lines[0], '"Date (IST)","Type","Description","Reference","Note","Amount (INR)","Balance (INR)"');
       assert.match(lines[1]!, /"Opening balance".*"0\.00"/);
       assert.match(lines[lines.length - 1]!, /"Closing balance".*"500\.00"/);
+      assert.ok(lines.some((l) => l.includes('"-300.00"')), 'r35b: a negative amount stays a number');
       const rcsv = await call('P', 'GET', '/api/v1/pharmacy-assisted/finance/statement.csv?kind=referral');
       assert.match(rcsv.text.trim().split('\n').pop()!, /"Closing balance".*"400\.00"/);
       assert.equal((await expect('P2', 'GET', '/api/v1/pharmacy-assisted/finance/statement?kind=wallet', 200)).json.data.length, 0, 'never another pharmacy\'s rows');
@@ -329,7 +351,7 @@ async function main() {
     await check('4f lab /finance and doctor /me/finance add the referral and withdrawals blocks; the existing fields stay', async () => {
       const lab = (await expect('LAB', 'GET', '/api/v1/partner-workspace/finance', 200)).json.data;
       assert.ok('balanceMinor' in lab && 'totals' in lab && 'account' in lab, 'the existing summary');
-      assert.deepEqual(lab.referral, { earnedMinor: 40_000, paidMinor: 15_000, dueMinor: 25_000, cutsEnabled: false, payoutsEnabled: false });
+      assert.deepEqual(lab.referral, { earnedMinor: 40_000, paidMinor: 15_000, setOffMinor: 0, dueMinor: 25_000, cutsEnabled: false, payoutsEnabled: false });
       assert.deepEqual(lab.withdrawals, { openCount: 0, lastPaidAt: null, enabled: false });
       const doc = (await expect('D', 'GET', '/api/v1/specialists/me/finance', 200)).json.data;
       assert.ok('balanceMinor' in doc && 'totals' in doc);
@@ -353,9 +375,15 @@ async function main() {
           finalAmount: 50, baseAmountPaise: 5000, finalAmountPaise: 5000, discountAmount: 0, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: `order_${oid()}`,
           status: 'paid', notes: { flow: 'pharmacy_wallet_recharge' } } as never);
         await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${String(never._id)}/chargeback`, 200, { reason: 'dispute lost early' });
+        // r35b: an old top-up credited without a lot and without `walletCreditedAt` (its credit row only) is flagged, not blocked.
+        const old = await cardTopup('pharmacy', X1, 7000, { lot: false });
+        await PaymentRecordModel.updateOne({ _id: old }, { $unset: { walletCreditedAt: 1 } });
+        await expect('ADMIN', 'POST', `/api/v1/admin/wallet-payments/${old}/chargeback`, 200, { reason: 'dispute lost on an old one' });
         const rows = (await expect('ADMIN', 'GET', '/api/v1/admin/wallet-disputes', 200)).json.data;
         const byId = new Map(rows.map((r: any) => [r.paymentRecordId, r]));
-        assert.deepEqual([(byId.get(flagged) as any).state, (byId.get(recovered) as any).state, (byId.get(String(never._id)) as any).state], ['flagged', 'recovered', 'blocked']);
+        assert.deepEqual([(byId.get(flagged) as any).state, (byId.get(recovered) as any).state, (byId.get(String(never._id)) as any).state, (byId.get(old) as any).state],
+          ['flagged', 'recovered', 'blocked', 'flagged']);
+        assert.deepEqual([(byId.get(old) as any).amountMinor, (byId.get(old) as any).lotId], [7000, null]);
         assert.deepEqual(Object.keys(byId.get(flagged) as object).sort(), ['amountMinor', 'at', 'chargebackAt', 'lotId', 'ownerId', 'paymentRecordId', 'recoveredAt',
           'remainingMinor', 'state', 'walletKind']);
         assert.ok((await expect('ADMIN', 'GET', '/api/v1/admin/wallet-disputes?state=recovered', 200)).json.data.every((r: any) => r.state === 'recovered'));
@@ -456,24 +484,108 @@ async function main() {
       } finally { delete process.env.WALLET_WITHDRAWALS_ENABLED; delete process.env.WALLET_CHARGEBACK_FLAG_ONLY; }
     });
 
-    await check('WQ29 lab scope: a branch-limited member with wallet.manage cannot request or cancel a withdrawal (403 FINANCE_SCOPE_REQUIRED); the owner can', async () => {
+    const LWW = '/api/v1/partner-workspace/assisted/wallet';
+    await check('WQ29 lab scope (r35b): the switch answers first (503); a branch-limited member cannot request, nor cancel or abandon another\'s (403 FINANCE_SCOPE_REQUIRED); the member who requested may cancel its own; the details by finance.view', async () => {
+      const own = { memberId: String(owner._id), partnerId: L, role: 'owner', permissions: [], branchIds: [] } as never;
+      const branch = await partnerSvc.createBranch(own, { name: 'Branch One', phone: '9876500000', holidays: [], hours: {},
+        services: { homeCollection: true, inLab: true, inClinic: false }, address: { line1: '1 Road', city: 'Shillong', state: 'Meghalaya', stateCode: '17', pincode: '793001' } } as never);
+      const staff = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Branch Staff', role: 'staff', permissions: ['wallet.view', 'wallet.manage'],
+        branchIds: [String(branch._id)] } as never);
+      const wide = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Wide Staff', role: 'staff', permissions: ['wallet.view', 'wallet.manage'], branchIds: [] } as never);
+      tokens.STAFF = sign({ _id: String(staff._id), memberId: String(staff._id), partnerId: L, userType: 'partner' });
+      tokens.WIDE = sign({ _id: String(wide._id), memberId: String(wide._id), partnerId: L, userType: 'partner' });
+      await cardTopup('lab', L, 100_000);
+      const lv = await verified('partner', L, '998877665544');
+      const body = { amountMinor: 50_000, requestKey: newKey(), detailsVersion: lv.version };
+      await expect('STAFF', 'POST', `${LWW}/withdrawals`, 503, body, 'WITHDRAWALS_DISABLED');
       process.env.WALLET_WITHDRAWALS_ENABLED = 'true';
       try {
-        const own = { memberId: String(owner._id), partnerId: L, role: 'owner', permissions: [], branchIds: [] } as never;
-        const branch = await partnerSvc.createBranch(own, { name: 'Branch One', phone: '9876500000', holidays: [], hours: {},
-          services: { homeCollection: true, inLab: true, inClinic: false }, address: { line1: '1 Road', city: 'Shillong', state: 'Meghalaya', stateCode: '17', pincode: '793001' } } as never);
-        const staff = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Branch Staff', role: 'staff', permissions: ['wallet.view', 'wallet.manage'],
-          branchIds: [String(branch._id)] } as never);
-        tokens.STAFF = sign({ _id: String(staff._id), memberId: String(staff._id), partnerId: L, userType: 'partner' });
-        await cardTopup('lab', L, 100_000);
-        const lv = await verified('partner', L, '998877665544');
-        const body = { amountMinor: 50_000, requestKey: newKey(), detailsVersion: lv.version };
-        await expect('STAFF', 'POST', '/api/v1/partner-workspace/assisted/wallet/withdrawals', 403, body, 'FINANCE_SCOPE_REQUIRED');
-        assert.equal((await expect('STAFF', 'GET', '/api/v1/partner-workspace/assisted/wallet/withdrawable', 200)).json.data.enabled, true, 'reads stay with wallet.view');
-        const w = (await expect('LAB', 'POST', '/api/v1/partner-workspace/assisted/wallet/withdrawals', 201, body)).json.data.withdrawal;
-        await expect('STAFF', 'POST', `/api/v1/partner-workspace/assisted/wallet/withdrawals/${w._id}/cancel`, 403, { expectedVersion: 0 }, 'FINANCE_SCOPE_REQUIRED');
+        await expect('STAFF', 'POST', `${LWW}/withdrawals`, 403, body, 'FINANCE_SCOPE_REQUIRED');
+        const sw = (await expect('STAFF', 'GET', `${LWW}/withdrawable`, 200)).json.data;
+        assert.deepEqual([sw.enabled, sw.destination.masked, sw.destination.details], [true, 'HDFC HDFC0001234 XXXX5544', null], 'a branch-limited member: the masked line only');
+        assert.equal((await expect('WIDE', 'GET', `${LWW}/withdrawable`, 200)).json.data.destination.details, null, 'partner-wide without finance.view: the masked line only');
+        assert.equal((await expect('LAB', 'GET', `${LWW}/withdrawable`, 200)).json.data.destination.details.accountName, 'Holder', 'the owner (finance.view, partner-wide)');
+        const w = (await expect('LAB', 'POST', `${LWW}/withdrawals`, 201, body)).json.data.withdrawal;
+        await expect('STAFF', 'POST', `${LWW}/withdrawals/${w._id}/cancel`, 403, { expectedVersion: 0 }, 'FINANCE_SCOPE_REQUIRED');
+        await expect('STAFF', 'POST', `${LWW}/withdrawals/by-key/${body.requestKey}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');
+        await expect('STAFF', 'POST', `${LWW}/withdrawals/by-key/${newKey()}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');
         await expect('LAB', 'PUT', '/api/v1/partner-workspace/finance/payout-details', 409, { method: 'upi', upiId: 'metro@okbank' }, 'WITHDRAWAL_OPEN');
-        await expect('LAB', 'POST', `/api/v1/partner-workspace/assisted/wallet/withdrawals/${w._id}/cancel`, 200, { expectedVersion: 0 });
+        await expect('LAB', 'POST', `${LWW}/withdrawals/${w._id}/cancel`, 200, { expectedVersion: 0 });
+        // A member who requested, then was limited to a branch, may still cancel (and look up) its own request.
+        const mine = { amountMinor: 50_000, requestKey: newKey(), detailsVersion: lv.version };
+        const w2 = (await expect('WIDE', 'POST', `${LWW}/withdrawals`, 201, mine)).json.data.withdrawal;
+        await MemberModel.updateOne({ _id: wide._id }, { $set: { branchIds: [branch._id] } });
+        await expect('WIDE', 'POST', `${LWW}/withdrawals`, 403, { ...mine, requestKey: newKey() }, 'FINANCE_SCOPE_REQUIRED');
+        assert.equal((await expect('WIDE', 'POST', `${LWW}/withdrawals/by-key/${mine.requestKey}/abandon`, 200)).json.data.state, 'used');
+        await expect('WIDE', 'POST', `${LWW}/withdrawals/by-key/${newKey()}/abandon`, 403, undefined, 'FINANCE_SCOPE_REQUIRED');
+        assert.equal((await expect('WIDE', 'POST', `${LWW}/withdrawals/${w2._id}/cancel`, 200, { expectedVersion: 0 })).json.data.withdrawal.state, 'cancelled');
+        assert.equal((await expect('LAB', 'POST', `${LWW}/withdrawals/by-key/${newKey()}/abandon`, 200)).json.data.state, 'abandoned');
+      } finally { delete process.env.WALLET_WITHDRAWALS_ENABLED; }
+    });
+
+    await check('r35b one eligibility rule: the quote and the request agree — WALLET_INACTIVE (409); an unverified lab LAB_NOT_VERIFIED (request 403 PARTNER_NOT_VERIFIED, 503 while off); verified, it goes through', async () => {
+      const ph = await freshPharmacy();
+      await PharmacyWalletModel.updateOne({ pharmacyId: ph.id }, { $set: { isActive: false } });
+      const { partner: p2, owner: o2 } = await partnerSvc.createPartner({ kind: 'lab', name: 'New Labs', contactPhone: nextPhone(), invoiceSeriesPrefix: 'NL',
+        firstOwner: { phone: nextPhone(), name: 'Owner Two' }, taxRegime: 'unregistered' } as never);
+      const L2 = String(p2._id);
+      tokens.NEWLAB = sign({ _id: String(o2._id), memberId: String(o2._id), partnerId: L2, userType: 'partner' });
+      await cardTopup('lab', L2, 100_000);
+      const v2 = await verified('partner', L2);
+      const labBody = { amountMinor: 60_000, requestKey: newKey(), detailsVersion: v2.version };
+      await expect('NEWLAB', 'POST', `${LWW}/withdrawals`, 503, labBody, 'WITHDRAWALS_DISABLED');
+      process.env.WALLET_WITHDRAWALS_ENABLED = 'true';
+      try {
+        const q = (await expect(ph.id, 'GET', '/api/v1/pharmacy-assisted/wallet/withdrawable?amountMinor=60000', 200)).json.data.quote;
+        assert.deepEqual([q.reason, q.available], ['WALLET_INACTIVE', false]);
+        await expect(ph.id, 'POST', '/api/v1/pharmacy-assisted/wallet/withdrawals', 409, { amountMinor: 60_000, requestKey: newKey(), detailsVersion: ph.version }, 'WALLET_INACTIVE');
+        const lq = (await expect('NEWLAB', 'GET', `${LWW}/withdrawable?amountMinor=60000`, 200)).json.data.quote;
+        assert.deepEqual([lq.reason, lq.available], ['LAB_NOT_VERIFIED', false]);
+        await expect('NEWLAB', 'POST', `${LWW}/withdrawals`, 403, labBody, 'PARTNER_NOT_VERIFIED');
+        await partnerSvc.verifyPartner(L2, 'admin');
+        assert.equal((await expect('NEWLAB', 'GET', `${LWW}/withdrawable?amountMinor=60000`, 200)).json.data.quote.reason, null);
+        assert.equal((await expect('NEWLAB', 'POST', `${LWW}/withdrawals`, 201, labBody)).json.data.withdrawal.grossMinor, 60_000);
+      } finally { delete process.env.WALLET_WITHDRAWALS_ENABLED; }
+    });
+
+    await check('r35b reads: the wallet CSV opening balance in one aggregate (an old row from its rupee balances); lastPaidAt counts paid only; the CSV keeps negative numbers', async () => {
+      const id = oid();
+      await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(id), name: `Old ${id.slice(-4)}`, phone: nextPhone(), isActive: true, isVerified: true } as never);
+      tokens[id] = sign({ _id: id, pharmacyId: id, userType: 'pharmacy' });
+      await pharmacyStore(id).ensure();
+      const wal = await PharmacyWalletModel.findOne({ pharmacyId: id }).lean() as any;
+      const at = new Date(Date.now() - 3 * DAY);
+      const row = (x: Record<string, unknown>) => ({ pharmacyId: new Types.ObjectId(id), walletId: String(wal._id), referenceType: 'legacy', referenceId: oid(),
+        description: 'Legacy row', transactionDate: '20261101', createdAt: at, updatedAt: at, ...x });
+      await PharmacyWalletTransactionModel.collection.insertMany([
+        row({ transactionType: 'credit', amount: 123.45, balanceBefore: 0, balanceAfter: 123.45, status: 'completed' }),
+        row({ transactionType: 'debit', amount: 20, amountPaise: 2000, balanceBefore: 123.45, balanceAfter: 103.45, signedAmountPaise: -2000, status: 'completed' }),
+        row({ transactionType: 'credit', amount: 999, balanceBefore: 0, balanceAfter: 999, signedAmountPaise: 99_900, status: 'pending' }),
+      ] as never);
+      const csv = (await call(id, 'GET', `/api/v1/pharmacy-assisted/finance/statement.csv?kind=wallet&from=${today}`)).text.trim().split('\n');
+      assert.match(csv[1]!, /"Opening balance".*"103\.45"/);
+      assert.match(csv[csv.length - 1]!, /"Closing balance".*"103\.45"/);
+      // The one CSV cell rule: a plain negative number stays a number; any other text starting with - (or = + @) is neutralised.
+      const one = statementCsvOf(0, [{ at: new Date(), type: 'adjustment', description: '-cmd', reference: '-12', note: '=1+1', amountMinor: -1234 }]).split('\n')[2]!;
+      assert.ok(one.includes(`"'-cmd"`) && one.includes('"-12"') && one.includes(`"'=1+1"`) && one.includes('"-12.34"'), one);
+      assert.ok(statementCsvOf(0, [{ at: new Date(), type: 't', description: '-1+2', amountMinor: 0 }]).includes(`"'-1+2"`));
+      // lastPaidAt: a paid withdrawal later voided is not the last paid one.
+      process.env.WALLET_WITHDRAWALS_ENABLED = 'true';
+      try {
+        const ph = await freshPharmacy();
+        const lastPaid = async () => (await expect(ph.id, 'GET', '/api/v1/pharmacy-assisted/finance', 200)).json.data.withdrawals.lastPaidAt;
+        const pay = async () => {
+          const w = (await expect(ph.id, 'POST', '/api/v1/pharmacy-assisted/wallet/withdrawals', 201, { amountMinor: 50_000, requestKey: newKey(), detailsVersion: ph.version }))
+            .json.data.withdrawal;
+          return (await expect('ADMIN', 'POST', `/api/v1/admin/wallet-withdrawals/${w._id}/paid`, 200, { method: 'bank_transfer', reference: `UTR${oid().slice(-10)}`,
+            paidOn: today, detailsVersion: ph.version, expectedVersion: 0, requestKey: newKey() })).json.data.withdrawal;
+        };
+        const first = await pay();
+        assert.equal(await lastPaid(), first.paid.at);
+        await expect('ADMIN', 'POST', `/api/v1/admin/wallet-withdrawals/${first._id}/void`, 200, { reason: 'the transfer bounced', expectedVersion: 1 });
+        assert.equal(await lastPaid(), null, 'a voided one does not count');
+        const second = await pay();
+        assert.equal(await lastPaid(), second.paid.at);
       } finally { delete process.env.WALLET_WITHDRAWALS_ENABLED; }
     });
   } finally {

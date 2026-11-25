@@ -6,7 +6,7 @@ import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { assistedFlags, withdrawalMinMinor } from '@/modules/assisted/flags';
 import { auditIn } from '@/modules/assisted/support';
 import { assertBookerWalletIndexes } from '@/modules/assisted/bookerWallet';
-import { postMovementIn, walletTransaction, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
+import { postMovementIn, walletTransaction, type WalletState, type WalletStore } from '@/modules/pharmacyWallet/walletCore';
 import { planLots, withdrawableNowFilter, withdrawableNowOf, type WalletRef } from '@/modules/pharmacyWallet/walletLots';
 import { WalletTopupLotModel } from '@/modules/pharmacyWallet/model/lots';
 import { pharmacyStore } from '@/modules/pharmacyWallet/ledger';
@@ -14,9 +14,10 @@ import { partnerStore } from '@/modules/partnerWallets/ledger';
 import PharmacyModel from '@/modules/pharmacies/model';
 import PartnerOrgModel from '@/modules/partners/model';
 import SpecialistModel from '@/modules/specialists/model';
-import { SettlementAccountModel, SettlementEventModel, type ISettlementAccount } from '@/modules/partners/model/settlement';
+import { HOME_KIND, SettlementAccountModel, SettlementEventModel, type ISettlementAccount } from '@/modules/partners/model/settlement';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
-import { accountView, destinationLabel, setPayoutDetails, type PayoutDetailsInput } from '@/modules/partners/services/finance';
+import { assertPartnerFinanceReader, destinationLabel, destinationOf, setPayoutDetails, type PayoutDetailsInput } from '@/modules/partners/services/finance';
+import { hasGlobalScope, type PartnerActor } from '@/modules/partners/services';
 import { isRealDate, istDate } from '@/modules/partners/services/slots';
 import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -44,11 +45,23 @@ const WEEK_MS = 7 * 86_400_000;
 const notFound = () => err(404, 'WITHDRAWAL_NOT_FOUND', 'Withdrawal not found');
 const rupees = (m: number) => (m / 100).toFixed(2);
 
-/** Who withdraws: the wallet (its kind and owner id) and the person acting for it. */
-export interface WithdrawalOwner { kind: WithdrawalWalletKind; id: string; actor: { kind: 'pharmacy' | 'member' | 'doctor'; id: string } }
+/**
+ * Who withdraws: the wallet (its kind and owner id) and the person acting for it. r35b: `member`, a lab's acting member as
+ * re-read for the request (role, permissions, branch scope); absent for a pharmacy or a doctor (the owner itself).
+ */
+export interface WithdrawalOwner { kind: WithdrawalWalletKind; id: string; actor: { kind: 'pharmacy' | 'member' | 'doctor'; id: string }; member?: PartnerActor }
 
-/** §5.4: where an owner's withdrawals go — a lab's `partner` account, a doctor's `doctor` account, a pharmacy's `pharmacy_referral` (4a). */
-const HOME_KIND = { pharmacy: 'pharmacy_referral', lab: 'partner', doctor: 'doctor' } as const;
+/**
+ * r35b (coordinator): a lab member requests with partner-wide scope (403 FINANCE_SCOPE_REQUIRED); cancels and abandons with
+ * it, or when the withdrawal is its own request. The destination's details (its account name) go to a partner-wide member
+ * holding `finance.view` (owners hold all); others read the masked line only.
+ */
+function assertActs(o: WithdrawalOwner, w?: Pick<IWalletWithdrawal, 'requestedBy'> | null): void {
+  if (o.member && !(w?.requestedBy.kind === 'member' && w.requestedBy.id === lower(o.actor.id))) assertPartnerFinanceReader(o.member);
+}
+const seesDetails = (o: WithdrawalOwner) => !o.member || (hasGlobalScope(o.member) && (o.member.role === 'owner' || o.member.permissions.includes('finance.view')));
+
+/** §5.4: where an owner's withdrawals go (`HOME_KIND`, the one map). */
 const storeOf = (kind: WithdrawalWalletKind, id: string): WalletStore => (kind === 'pharmacy' ? pharmacyStore(id) : partnerStore(kind, id));
 const refOf = (kind: WithdrawalWalletKind, id: string) => ({ 'walletRef.kind': kind, 'walletRef.id': lower(id) });
 const keyScope = (kind: WithdrawalWalletKind, id: string) => `wallet_withdrawal:${kind}:${lower(id)}`;
@@ -63,14 +76,9 @@ async function ownerName(kind: WithdrawalWalletKind, id: string): Promise<string
 async function homeAccount(kind: WithdrawalWalletKind, id: string): Promise<ISettlementAccount> {
   return ensureSettlementAccount(HOME_KIND[kind], lower(id), await ownerName(kind, id));
 }
-/**
- * The owner's destination: its state, one masked line, the version to send back, and (r35, WQ29) the owner's own details
- * as the finance reads show them (`accountName`, `ifsc`, `bankName`, `accountNumberLast4`, `accountNumberMasked`; or
- * `upiId`, `accountName`) so the payout form can start filled; never the full account number.
- */
-const destinationOf = (a: ISettlementAccount | null) => (a?.payoutDetails
-  ? { state: a.payoutDetailsState, masked: destinationLabel(a.payoutDetails), detailsVersion: a.payoutDetailsVersion ?? 0, details: accountView(a, false).payoutDetails }
-  : { state: 'none' as const, masked: null, detailsVersion: a?.payoutDetailsVersion ?? 0, details: null });
+/** The owner's home account as it is (never opened by a read). */
+const homeAccountRead = async (kind: WithdrawalWalletKind, id: string, s: ClientSession | null) =>
+  await SettlementAccountModel.findOne({ ownerKind: HOME_KIND[kind], ownerId: lower(id) }).session(s).lean() as ISettlementAccount | null;
 
 /** Writers fail closed until sync-indexes has run (503 INDEXES_OUTDATED). */
 async function assertWithdrawalIndexes(kind: WithdrawalWalletKind): Promise<void> {
@@ -116,27 +124,98 @@ async function planTake(ref: WalletRef, amount: number, now: Date, s: ClientSess
   return { lots, covered, feeMinor: lots.reduce((a, l) => a + l.feeMinor, 0) };
 }
 
+// ── Eligibility (r35b: one rule for the quote's reason and the request's refusal) ──
+
+/** What a withdrawal now depends on beyond the switch and the minimum; `plan` only for an amount. */
+interface Facts {
+  labVerified: boolean; account: ISettlementAccount | null; wallet: WalletState | null; last: IWalletWithdrawal | null;
+  plan: Awaited<ReturnType<typeof planTake>> | null;
+}
+/** Read in `s` (the request's transaction) or outside one (the quote, which passes the wallet it already read). */
+async function factsIn(o: WithdrawalOwner, amount: number | null, now: Date, s: ClientSession | null, wallet?: WalletState | null): Promise<Facts> {
+  const store = storeOf(o.kind, o.id);
+  const lab = o.kind === 'lab' ? await PartnerOrgModel.findById(o.id).select({ 'verification.state': 1 }).session(s).lean() as { verification?: { state?: string } } | null : null;
+  const account = await homeAccountRead(o.kind, o.id, s);
+  let state = wallet;
+  if (state === undefined) {
+    const w = await store.findIn(s);
+    state = w ? store.state(w) : null;
+  }
+  return { labVerified: o.kind !== 'lab' || lab?.verification?.state === 'verified', account, wallet: state, last: await lastCounted(o.kind, o.id, now, s),
+    plan: amount === null ? null : await planTake(store.ref, amount, now, s) };
+}
+
+/** Why a withdrawal is refused (the quote's `reason`). */
+export type WithdrawalRefusal = 'WITHDRAWALS_DISABLED' | 'BELOW_MINIMUM' | 'LAB_NOT_VERIFIED' | 'DESTINATION_NOT_VERIFIED' | 'WALLET_RECEIVABLE'
+  | 'WALLET_FROZEN' | 'WALLET_INACTIVE' | 'WEEKLY_LIMIT' | 'ABOVE_WITHDRAWABLE';
+/**
+ * The ONE eligibility rule: the first reason a request of `amount` is refused, in the request's order, else null. Without
+ * facts only what needs no read (the switch, the minimum), which the request checks before it reads or writes anything.
+ * The lab's verified-lab rule is here (a lab's request route admits an unverified lab, so the switch answers first).
+ */
+function refusalOf(amount: number, f?: Facts): WithdrawalRefusal | null {
+  if (!assistedFlags.withdrawals()) return 'WITHDRAWALS_DISABLED';
+  if (!Number.isSafeInteger(amount) || amount < withdrawalMinMinor()) return 'BELOW_MINIMUM';
+  if (!f) return null;
+  if (!f.labVerified) return 'LAB_NOT_VERIFIED';
+  if (!f.account?.payoutDetails || f.account.payoutDetailsState !== 'verified') return 'DESTINATION_NOT_VERIFIED';
+  if (f.wallet && f.wallet.receivableMinor > 0) return 'WALLET_RECEIVABLE';
+  if (f.wallet?.frozen) return 'WALLET_FROZEN';
+  if (f.wallet && !f.wallet.isActive) return 'WALLET_INACTIVE';
+  if (f.last) return 'WEEKLY_LIMIT';
+  return f.plan?.covered === amount ? null : 'ABOVE_WITHDRAWABLE';
+}
+const nextAllowedOf = (last: IWalletWithdrawal) => new Date(new Date(last.createdAt!).getTime() + WEEK_MS);
+/** The request's error for a refusal (codes as before r35b; a lab not verified as its route guard answered it). */
+function refusalError(r: WithdrawalRefusal, f?: Facts): AppError {
+  switch (r) {
+    case 'WITHDRAWALS_DISABLED': return err(503, 'WITHDRAWALS_DISABLED', 'Withdrawals are not available yet');
+    case 'BELOW_MINIMUM': {
+      const min = withdrawalMinMinor();
+      return err(400, 'WITHDRAWAL_BELOW_MINIMUM', `The smallest withdrawal is ₹${rupees(min)}`, { details: { minimumMinor: min } });
+    }
+    case 'LAB_NOT_VERIFIED': return err(403, 'PARTNER_NOT_VERIFIED', 'Partner verification is required for this operation');
+    case 'DESTINATION_NOT_VERIFIED':
+      return err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Add your bank or UPI details and wait for Jansetu to verify them before withdrawing');
+    case 'WALLET_RECEIVABLE': return err(409, 'WALLET_RECEIVABLE', 'This wallet owes Jansetu money (a lost card dispute); nothing can be withdrawn');
+    case 'WALLET_FROZEN': return err(409, 'WALLET_FROZEN', 'This wallet is frozen; contact Jansetu support');
+    case 'WALLET_INACTIVE': return err(409, 'WALLET_INACTIVE', 'This wallet is not active');
+    case 'WEEKLY_LIMIT': {
+      const nextAllowedAt = nextAllowedOf(f!.last!);
+      return err(409, 'WITHDRAWAL_WEEKLY_LIMIT', `One withdrawal a week: the next one from ${nextAllowedAt.toISOString()}`, { details: { nextAllowedAt } });
+    }
+    default: return err(409, 'WITHDRAWAL_ABOVE_AVAILABLE', 'That is more than the card money you can withdraw now', { details: { withdrawableNowMinor: f?.plan?.covered ?? 0 } });
+  }
+}
+
 // ── Owner ──
 
-/** r35 (§26.10): the owner's home account destination (masked), read only. */
+/**
+ * r35 (§26.10): the owner's home account destination, read only — its state, one masked line, the version to send back and
+ * the owner's own details as the finance reads show them (never the full account number).
+ */
 export async function destinationFor(kind: WithdrawalWalletKind, id: string) {
-  return destinationOf(await SettlementAccountModel.findOne({ ownerKind: HOME_KIND[kind], ownerId: lower(id) }).lean() as ISettlementAccount | null);
+  return destinationOf(await homeAccountRead(kind, id, null));
 }
 
-/** r35 (§26.10): the wallet block of the finance reads — the balance, card money withdrawable now and later, what is owed. */
-export async function walletSummary(kind: WithdrawalWalletKind, id: string, now: Date = new Date()) {
+/** The one wallet read of the finance block and the quote: the wallet's state, its card money withdrawable now and later. */
+async function walletRead(kind: WithdrawalWalletKind, id: string, now: Date) {
   const store = storeOf(kind, id);
   const w = await store.findIn(null);
-  const st = w ? store.state(w) : { balanceMinor: 0, receivableMinor: 0, frozen: false };
   const { nowMinor, later } = await withdrawableNowOf(store.ref, now);
-  return { balanceMinor: st.balanceMinor, withdrawableNowMinor: nowMinor, availableLater: later, receivableMinor: st.receivableMinor, frozen: st.frozen };
+  return { state: w ? store.state(w) : null, nowMinor, later };
+}
+/** r35 (§26.10): the wallet block of the finance reads — the balance, card money withdrawable now and later, what is owed. */
+export async function walletSummary(kind: WithdrawalWalletKind, id: string, now: Date = new Date()) {
+  const { state: st, nowMinor, later } = await walletRead(kind, id, now);
+  return { balanceMinor: st?.balanceMinor ?? 0, withdrawableNowMinor: nowMinor, availableLater: later, receivableMinor: st?.receivableMinor ?? 0, frozen: st?.frozen ?? false };
 }
 
-/** r35 (§26.10): the withdrawals block — requested ones waiting for an admin, the last paid one, the switch. */
+/** r35 (§26.10): the withdrawals block — requested ones waiting for an admin, the last paid one (r35b: a voided one is not), the switch. */
 export async function withdrawalsSummary(kind: WithdrawalWalletKind, id: string) {
   const [openCount, lastPaid] = await Promise.all([
     WalletWithdrawalModel.countDocuments({ ...refOf(kind, id), state: 'requested' }),
-    WalletWithdrawalModel.findOne({ ...refOf(kind, id), state: { $in: ['paid', 'voided'] }, 'paid.at': { $exists: true } }).sort({ 'paid.at': -1 })
+    WalletWithdrawalModel.findOne({ ...refOf(kind, id), state: 'paid', 'paid.at': { $exists: true } }).sort({ 'paid.at': -1 })
       .select({ 'paid.at': 1 }).lean() as unknown as Promise<{ paid?: { at?: Date } } | null>,
   ]);
   return { openCount, lastPaidAt: lastPaid?.paid?.at ?? null, enabled: assistedFlags.withdrawals() };
@@ -144,28 +223,20 @@ export async function withdrawalsSummary(kind: WithdrawalWalletKind, id: string)
 
 /**
  * GET …/wallet/withdrawable: what may be withdrawn now (card money past its 7-day hold), what becomes withdrawable later,
- * the next allowed request time, the destination (masked) and, with `?amountMinor=`, the quote (gross, card fee, transfer).
+ * the next allowed request time, the destination (masked; r35b: its details only to whom `seesDetails`) and, with
+ * `?amountMinor=`, the quote (gross, card fee, transfer) with `reason` — the request's own eligibility rule (`refusalOf`):
+ * `available` = the request would go through (for a caller allowed to request).
  */
 export async function withdrawableOf(o: WithdrawalOwner, q: { amountMinor?: number } = {}, now: Date = new Date()) {
-  const store = storeOf(o.kind, o.id);
-  const { nowMinor, later } = await withdrawableNowOf(store.ref, now);
-  const last = await lastCounted(o.kind, o.id, now, null);
-  const destination = await destinationFor(o.kind, o.id);
+  const { state, nowMinor, later } = await walletRead(o.kind, o.id, now);
   const amount = Number(q.amountMinor);
-  const quote = Number.isSafeInteger(amount) && amount > 0 ? await planTake(store.ref, amount, now, null) : null;
-  let reason: string | null = null;
-  if (quote) {
-    // r35 (WQ29): why a request of this amount would be refused now (the request's own order of checks), else null.
-    const w = await store.findIn(null);
-    const st = w ? store.state(w) : null;
-    reason = !assistedFlags.withdrawals() ? 'WITHDRAWALS_DISABLED' : amount < withdrawalMinMinor() ? 'BELOW_MINIMUM'
-      : destination.state !== 'verified' ? 'DESTINATION_NOT_VERIFIED' : st && st.receivableMinor > 0 ? 'WALLET_RECEIVABLE' : st?.frozen ? 'WALLET_FROZEN'
-        : last ? 'WEEKLY_LIMIT' : quote.covered !== amount ? 'ABOVE_WITHDRAWABLE' : null;
-  }
+  const quoted = Number.isSafeInteger(amount) && amount > 0;
+  const f = await factsIn(o, quoted ? amount : null, now, null, state);
+  const reason = quoted ? refusalOf(amount, f) : null;
   return {
     enabled: assistedFlags.withdrawals(), minimumMinor: withdrawalMinMinor(), withdrawableNowMinor: nowMinor, availableLater: later,
-    nextAllowedAt: last ? new Date(new Date(last.createdAt!).getTime() + WEEK_MS) : null, destination,
-    ...(quote ? { quote: { grossMinor: amount, feeMinor: quote.feeMinor, transferMinor: amount - quote.feeMinor, available: reason === null, reason } } : {}),
+    nextAllowedAt: f.last ? nextAllowedOf(f.last) : null, destination: destinationOf(f.account, seesDetails(o)),
+    ...(quoted && f.plan ? { quote: { grossMinor: amount, feeMinor: f.plan.feeMinor, transferMinor: amount - f.plan.feeMinor, available: reason === null, reason } } : {}),
   };
 }
 
@@ -175,12 +246,11 @@ export async function withdrawableOf(o: WithdrawalOwner, q: { amountMinor?: numb
  */
 export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor: number; requestKey: string; detailsVersion: number; expectedTransferMinor?: number },
   now: Date = new Date()) {
-  if (!assistedFlags.withdrawals()) throw err(503, 'WITHDRAWALS_DISABLED', 'Withdrawals are not available yet');
   const amount = Number(body.amountMinor);
-  const min = withdrawalMinMinor();
-  if (!Number.isSafeInteger(amount) || amount < min) {
-    throw err(400, 'WITHDRAWAL_BELOW_MINIMUM', `The smallest withdrawal is ₹${rupees(min)}`, { details: { minimumMinor: min } });
-  }
+  // r35b: the switch and the minimum before anything is read or written (the switch before a lab member's scope).
+  const early = refusalOf(amount);
+  if (early) throw refusalError(early);
+  assertActs(o);
   await assertWithdrawalIndexes(o.kind);
   const store = storeOf(o.kind, o.id);
   // r35 (WQ29): `expectedTransferMinor` (what the screen showed) is part of the request only when sent.
@@ -201,29 +271,16 @@ export async function requestWithdrawal(o: WithdrawalOwner, body: { amountMinor:
       const again = await replay(s);
       if (again) return again;
       await claimRequestKey(keyScope(o.kind, o.id), body.requestKey, s);
-      // r35 (WQ29): the destination is checked AND the home account written (its finance version) in this transaction, so a
+      // r35b: the one eligibility rule, on what this transaction reads.
+      const f = await factsIn(o, amount, now, s);
+      const refused = refusalOf(amount, f);
+      if (refused) throw refusalError(refused, f);
+      const plan = f.plan!;
+      // r35 (WQ29): the home account written (its finance version) in this transaction at the version the owner saw, so a
       // payout-details change (refused while a withdrawal is requested, 409 WITHDRAWAL_OPEN) and a request never pass each other.
       const a = await SettlementAccountModel.findOneAndUpdate({ _id: account._id, payoutDetailsState: 'verified', payoutDetailsVersion: Number(body.detailsVersion) },
         { $inc: { financeVersion: 1 } }, { new: true, session: s }).lean() as ISettlementAccount | null;
-      if (!a?.payoutDetails) {
-        const now2 = await SettlementAccountModel.findById(account._id).session(s).lean() as ISettlementAccount | null;
-        if (!now2?.payoutDetails || now2.payoutDetailsState !== 'verified') {
-          throw err(409, 'PAYOUT_DESTINATION_NOT_VERIFIED', 'Add your bank or UPI details and wait for Jansetu to verify them before withdrawing');
-        }
-        throw err(409, 'PAYOUT_DETAILS_CHANGED', 'Your payout details changed since they were loaded; review them again');
-      }
-      const w = store.state(await store.walletIn(s));
-      if (w.receivableMinor > 0) throw err(409, 'WALLET_RECEIVABLE', 'This wallet owes Jansetu money (a lost card dispute); nothing can be withdrawn');
-      if (w.frozen) throw err(409, 'WALLET_FROZEN', 'This wallet is frozen; contact Jansetu support');
-      const last = await lastCounted(o.kind, o.id, now, s);
-      if (last) {
-        const nextAllowedAt = new Date(new Date(last.createdAt!).getTime() + WEEK_MS);
-        throw err(409, 'WITHDRAWAL_WEEKLY_LIMIT', `One withdrawal a week: the next one from ${nextAllowedAt.toISOString()}`, { details: { nextAllowedAt } });
-      }
-      const plan = await planTake(store.ref, amount, now, s);
-      if (plan.covered !== amount) {
-        throw err(409, 'WITHDRAWAL_ABOVE_AVAILABLE', 'That is more than the card money you can withdraw now', { details: { withdrawableNowMinor: plan.covered } });
-      }
+      if (!a?.payoutDetails) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'Your payout details changed since they were loaded; review them again');
       const id = new Types.ObjectId();
       const transfer = amount - plan.feeMinor;
       if (expected !== undefined && expected !== transfer) {
@@ -291,7 +348,9 @@ export async function ownByKey(o: WithdrawalOwner, key: string) {
   return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
 }
 export async function abandonOwnKey(o: WithdrawalOwner, key: string) {
-  if (await WalletWithdrawalModel.exists({ ...refOf(o.kind, o.id), requestKey: { $eq: key } })) return ownByKey(o, key);
+  const w = await WalletWithdrawalModel.findOne({ ...refOf(o.kind, o.id), requestKey: { $eq: key } }).select({ requestedBy: 1 }).lean() as IWalletWithdrawal | null;
+  assertActs(o, w);
+  if (w) return ownByKey(o, key);
   const state = await abandonRequestKey(keyScope(o.kind, o.id), key);
   return state === 'abandoned' ? { state } : ownByKey(o, key);
 }
@@ -329,7 +388,11 @@ async function release(w0: IWalletWithdrawal, to: 'cancelled' | 'rejected', expe
 
 /** POST …/wallet/withdrawals/:id/cancel { expectedVersion } — only while `requested`; the owner's money comes back at once. */
 export async function cancelOwn(o: WithdrawalOwner, id: string, expectedVersion: number) {
-  return walletTransaction(async (s) => release(await ownRow(o, id, s), 'cancelled', expectedVersion, o.actor, undefined, s));
+  return walletTransaction(async (s) => {
+    const w = await ownRow(o, id, s);
+    assertActs(o, w);
+    return release(w, 'cancelled', expectedVersion, o.actor, undefined, s);
+  });
 }
 
 // ── Admin ──

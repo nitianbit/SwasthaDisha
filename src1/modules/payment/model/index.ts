@@ -156,6 +156,8 @@ paymentRecordSchema.index({ payerPartnerId: 1, createdAt: -1 }, { partialFilterE
 paymentRecordSchema.index({ requestKey: 1 }, { unique: true, partialFilterExpression: { requestKey: { $exists: true } } });
 // r20: a doctor's top-ups, newest first.
 paymentRecordSchema.index({ payerSpecialistId: 1, createdAt: -1 }, { partialFilterExpression: { payerSpecialistId: { $exists: true } } });
+// r35b: the admin's disputes list reads the records with a recorded card dispute, newest first (few; `$exists` as above).
+paymentRecordSchema.index({ chargebackAt: -1 }, { partialFilterExpression: { chargebackAt: { $exists: true } } });
 
 const PaymentRecordModel: Model<IPaymentRecord> = model<IPaymentRecord>(
   'PaymentRecord',

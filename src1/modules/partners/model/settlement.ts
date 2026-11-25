@@ -23,6 +23,13 @@ export interface IPayoutDetails {
 export type ReferralOwnerKind = 'pharmacy_referral' | 'lab_referral' | 'doctor_referral';
 export type SettlementOwnerKind = 'partner' | 'doctor' | ReferralOwnerKind;
 export const isReferralOwnerKind = (k: unknown): k is ReferralOwnerKind => k === 'pharmacy_referral' || k === 'lab_referral' || k === 'doctor_referral';
+/**
+ * §5.4, r35b: the ONE home-account map — where a wallet owner's withdrawals and referral payouts are sent: a lab's
+ * `partner` account, a doctor's `doctor` account, a pharmacy's own referral account (4a).
+ */
+export const HOME_KIND = { pharmacy: 'pharmacy_referral', lab: 'partner', doctor: 'doctor' } as const;
+/** The account whose payout details an account uses: a lab's or a doctor's referral account its owner's home; any other itself. */
+export const homeKindOf = (k: SettlementOwnerKind): SettlementOwnerKind => (k === 'lab_referral' ? HOME_KIND.lab : k === 'doctor_referral' ? HOME_KIND.doctor : k);
 
 export interface ISettlementAccount {
   _id?: string;

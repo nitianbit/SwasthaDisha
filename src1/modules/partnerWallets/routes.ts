@@ -17,7 +17,6 @@ import { ADMIN_TOPUP_KEY } from '@/modules/pharmacyWallet/validation';
 import * as svc from '@/modules/partnerWallets/service';
 import { adminKeyParamSchema, adminLabTopupSchema, walletTopupSchema, pageQuerySchema } from '@/modules/partnerWallets/validation';
 import { mountWithdrawalRoutes } from '@/modules/walletWithdrawals/routes';
-import { assertPartnerFinanceReader } from '@/modules/partners/services/finance';
 import { loadPartnerActor } from '@/modules/partners/controller';
 
 /**
@@ -73,12 +72,12 @@ labWalletWorkspaceRouter.post('/payments/verify', ...labMember(['wallet.manage',
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.verifyLabPayment(LAB, memberOf(req), req.body))));
 labWalletWorkspaceRouter.post('/payments/reconcile', ...labMember(['wallet.manage', 'assisted.book']), validate(reconcilePaymentSchema, 'body'),
   catchAsync(async (req: AuthRequest, res) => send(res, await svc.reconcileLabPayment(LAB, memberOf(req), String(req.body.paymentTransactionId)))));
-// r32 (round 4d, §26.8.2): the lab's withdrawals — wallet.view reads, wallet.manage acts; a new request needs an operational lab.
-// r35 (coordinator, WQ29): requesting, cancelling and abandoning also need partner-wide scope (a branch-limited member
-// cannot withdraw the whole lab wallet), as the finance reads (403 FINANCE_SCOPE_REQUIRED).
-const labWide = catchAsync(async (req: AuthRequest, _res: Response, next: NextFunction) => { assertPartnerFinanceReader(await loadPartnerActor(req)); next(); });
-mountWithdrawalRoutes(labWalletWorkspaceRouter, { read: labMember('wallet.view'), act: [...labMember('wallet.manage'), labWide],
-  request: [...labMember('wallet.manage', { operational: true }), labWide] }, (req) => ({ kind: 'lab', id: labOf(req), actor: { kind: 'member', id: memberOf(req).memberId } }));
+// r32 (round 4d, §26.8.2): the lab's withdrawals — wallet.view reads, wallet.manage acts; a new request needs a verified lab.
+// r35 (coordinator, WQ29): requesting, cancelling and abandoning also need partner-wide scope (403 FINANCE_SCOPE_REQUIRED).
+// r35b: both are the service's, after the switch (503 WITHDRAWALS_DISABLED first): the verified-lab rule is in the one
+// eligibility rule; a member may also cancel or abandon its own request; the destination's details need finance.view.
+mountWithdrawalRoutes(labWalletWorkspaceRouter, { read: labMember('wallet.view'), act: labMember('wallet.manage'), request: labMember('wallet.manage') },
+  async (req) => ({ kind: 'lab', id: labOf(req), actor: { kind: 'member', id: memberOf(req).memberId }, member: await loadPartnerActor(req) }));
 
 /**
  * r20 (§25.4.2): the doctor's own wallet, mounted at `/api/v1/specialists/me/assisted`. Reads and new top-ups need an

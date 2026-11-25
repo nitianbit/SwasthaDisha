@@ -25,11 +25,15 @@ export const REFERRAL_ACCOUNT: Record<BookerKind, ReferralOwnerKind> = { pharmac
 
 /**
  * The referral block (r33's totals, one reader): what the cuts earned, what was paid out and what is due, and the switches.
- * An owner with no referral account answers zeros.
+ * r35b: `setOffMinor`, what paid owed wallet amounts (earned − paid − set off = due, other admin adjustments and voided
+ * payouts aside: both are statement rows). An owner with no referral account answers zeros.
  */
 export async function referralSummary(kind: BookerKind, id: string) {
-  const f = await financeSummary(await findOwnerAccount(REFERRAL_ACCOUNT[kind], lower(id)), false);
-  return { earnedMinor: f.totals.earnedMinor, paidMinor: f.totals.paidOutMinor, dueMinor: f.balanceMinor,
+  const account = await findOwnerAccount(REFERRAL_ACCOUNT[kind], lower(id));
+  const [f, setOff] = await Promise.all([financeSummary(account, false), account
+    ? LedgerEntryModel.aggregate([{ $match: { settlementAccountId: String(account._id), source: 'receivable_setoff' } }, { $group: { _id: null, total: { $sum: '$amountMinor' } } }])
+    : []]);
+  return { earnedMinor: f.totals.earnedMinor, paidMinor: f.totals.paidOutMinor, setOffMinor: -Number(setOff[0]?.total ?? 0), dueMinor: f.balanceMinor,
     cutsEnabled: assistedFlags.referralCuts(), payoutsEnabled: assistedFlags.referralPayouts() };
 }
 

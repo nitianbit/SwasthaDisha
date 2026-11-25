@@ -177,9 +177,9 @@ async function main() {
       assert.deepEqual(none.json.data, []);
       assert.deepEqual(none.json.switches, { cutsEnabled: true, payoutsEnabled: false });
       flag('REFERRAL_PAYOUTS_ENABLED', true);
-      assert.deepEqual((await expect('P', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 12000, paidMinor: 0, dueMinor: 12000, cutsEnabled: true, payoutsEnabled: true });
+      assert.deepEqual((await expect('P', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 12000, paidMinor: 0, setOffMinor: 0, dueMinor: 12000, cutsEnabled: true, payoutsEnabled: true });
       flag('REFERRAL_PAYOUTS_ENABLED', false);
-      assert.deepEqual((await expect('Q', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
+      assert.deepEqual((await expect('Q', 'GET', `${PA}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, setOffMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
     });
 
     await check('statement fields: shortRef and category on referral rows; a lab booking stays one row with its cut lines (mixed or one category); no patient name', async () => {
@@ -225,7 +225,7 @@ async function main() {
       assert.deepEqual([rules.json.data[0].category, rules.json.data[0].fixedMinor, rules.json.data[0].effective], ['consultation', 3000, true]);
       assert.ok(!('updatedBy' in rules.json.data[0]));
       assert.deepEqual(rules.json.switches, { cutsEnabled: true, payoutsEnabled: false });
-      assert.deepEqual((await expect('LO', 'GET', `${LW}/referral`, 200)).json.data, { earnedMinor: 3000, paidMinor: 0, dueMinor: 3000, cutsEnabled: true, payoutsEnabled: false });
+      assert.deepEqual((await expect('LO', 'GET', `${LW}/referral`, 200)).json.data, { earnedMinor: 3000, paidMinor: 0, setOffMinor: 0, dueMinor: 3000, cutsEnabled: true, payoutsEnabled: false });
       const st = await expect('LF', 'GET', `${LW}/referral/statement?limit=10`, 200);
       assert.equal(st.json.data.length, 1);
       assert.deepEqual([st.json.data[0].shortRef, st.json.data[0].category], ['LABC4444', 'consultation']);
@@ -237,7 +237,7 @@ async function main() {
       const admin = await expect('ADMIN', 'GET', `/api/v1/partner-workspace/admin/${L}/workspace/assisted/referral`, 200);
       assert.equal(admin.json.data.earnedMinor, 3000);
       // Another lab sees only its own (nothing yet).
-      assert.deepEqual((await expect('L2', 'GET', `${LW}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
+      assert.deepEqual((await expect('L2', 'GET', `${LW}/referral`, 200)).json.data, { earnedMinor: 0, paidMinor: 0, setOffMinor: 0, dueMinor: 0, cutsEnabled: true, payoutsEnabled: false });
       assert.deepEqual((await expect('L2', 'GET', `${LW}/referral/statement`, 200)).json.data, []);
     });
 

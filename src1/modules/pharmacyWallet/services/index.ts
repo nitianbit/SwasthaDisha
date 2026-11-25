@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { startSession, Types } from 'mongoose';
+import { startSession, Types, type ClientSession } from 'mongoose';
 import { pharmacyStore, pharmacyTopups } from '@/modules/pharmacyWallet/ledger';
 import { adminTopup, assertTopupWithinCap, checkTopup } from '@/modules/pharmacyWallet/walletCore';
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
@@ -26,15 +26,21 @@ import { CSV_MAX_LINES, inSnapshot, parseCursor, range, statementCsvOf } from '@
  * `credit` / `recharge` / `refund` and `debit` / `payment` / `booking`; anything else falls to the title text (a refund
  * of a "booking" would read as a debit). So every row answers with an app type by its sign, and the stored kind as
  * `movementType`. `credit`, `debit` and `refund` rows are unchanged.
+ *
+ * r35b: an owed amount paid from referral earnings (`receivable_setoff`) moves no wallet money: it answers as its own
+ * type, `adjustment`. The released app does not break on it: an unknown type falls to the title ("Owed amount of ₹x paid
+ * from your referral earnings" names none of its words) and then to the sign of `amount` — so `amount` is 0 on that row
+ * (the balance did not move; `amountPaise` keeps the amount): the app shows "−₹0" under that title, never "+₹x".
  */
 const APP_TYPES = ['credit', 'debit', 'refund'];
-const ZERO_DEBIT_KINDS = ['chargeback', 'receivable_setoff', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
+const ZERO_DEBIT_KINDS = ['chargeback', 'booking_debit', 'withdrawal_hold', 'consultation_payment'];
 /** A row's signed paise (rows from before phase 1a: from the rupee balances). */
 const signedPaiseOf = (t: IPharmacyWalletTransaction) => (Number.isFinite(Number(t.signedAmountPaise)) ? Number(t.signedAmountPaise)
   : Math.round(Number(t.balanceAfter ?? 0) * 100) - Math.round(Number(t.balanceBefore ?? 0) * 100));
 export function transactionView(t: IPharmacyWalletTransaction): IPharmacyWalletTransaction & { movementType: string } {
   const kind = String(t.transactionType);
   if (APP_TYPES.includes(kind)) return { ...t, movementType: kind };
+  if (kind === 'receivable_setoff') return { ...t, transactionType: 'adjustment', amount: 0, movementType: kind };
   const signed = signedPaiseOf(t);
   // A zero-amount row (a chargeback the balance could not cover) reads as what its kind is.
   const credit = signed > 0 || (signed === 0 && !ZERO_DEBIT_KINDS.includes(kind));
@@ -63,6 +69,19 @@ export async function walletStatementPage(pharmacyId: string, opts: { before?: s
   return { lines: lines.map(transactionView), nextCursor: rows.length > limit && last ? `${new Date(last.createdAt!).getTime()}_${String(last._id)}` : null };
 }
 
+/**
+ * r35b: Σ the completed rows strictly before an instant (the opening balance of a period), in one aggregate — each row's
+ * `signedAmountPaise`, or for a row from before phase 1a its rupee balances' difference (as `signedPaiseOf` rounds).
+ */
+async function walletBalanceBefore(pharmacyId: string, at: Date, s: ClientSession): Promise<number> {
+  const paise = (f: string) => ({ $floor: { $add: [{ $multiply: [{ $ifNull: [f, 0] }, 100] }, 0.5] } });
+  const [row] = await PharmacyWalletTransactionModel.aggregate([
+    { $match: { pharmacyId: new Types.ObjectId(pharmacyId), status: 'completed', createdAt: { $lt: at } } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ['$signedAmountPaise', { $subtract: [paise('$balanceAfter'), paise('$balanceBefore')] }] } } } },
+  ]).session(s);
+  return Number(row?.total ?? 0);
+}
+
 /** r35 (§26.10): the wallet statement's CSV — the finance CSV writer (`statementCsvOf`) over the completed rows of the period. */
 export async function walletStatementCsv(pharmacyId: string, opts: { from?: string; to?: string }): Promise<string> {
   const period = range(opts.from, opts.to, 'createdAt') as { createdAt?: { $gte?: Date } };
@@ -70,9 +89,7 @@ export async function walletStatementCsv(pharmacyId: string, opts: { from?: stri
     const found = await PharmacyWalletTransactionModel.find({ pharmacyId, status: 'completed', ...period }).sort({ createdAt: 1, _id: 1 })
       .limit(CSV_MAX_LINES + 1).session(s).lean() as (IPharmacyWalletTransaction & { createdAt: Date })[];
     if (found.length > CSV_MAX_LINES) throw new AppError({ status: 400, code: 'EXPORT_TOO_LARGE', message: `More than ${CSV_MAX_LINES} entries in this period; export a shorter period` });
-    const before = period.createdAt?.$gte ? await PharmacyWalletTransactionModel.find({ pharmacyId, status: 'completed', createdAt: { $lt: period.createdAt.$gte } })
-      .select({ signedAmountPaise: 1, balanceBefore: 1, balanceAfter: 1 }).session(s).lean() as IPharmacyWalletTransaction[] : [];
-    return { rows: found, opening: before.reduce((a, t) => a + signedPaiseOf(t), 0) };
+    return { rows: found, opening: period.createdAt?.$gte ? await walletBalanceBefore(pharmacyId, period.createdAt.$gte, s) : 0 };
   });
   return statementCsvOf(opening, rows.map((t) => ({ at: t.createdAt, type: transactionView(t).movementType, description: t.description ?? '',
     reference: t.referenceId, note: t.notes, amountMinor: signedPaiseOf(t) })));

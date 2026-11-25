@@ -18,25 +18,26 @@ const send = (res: Response, data: unknown, status = 200, extra: Record<string, 
 };
 
 export interface OwnerGuards { read: RequestHandler[]; act: RequestHandler[]; request: RequestHandler[] }
-export function mountWithdrawalRoutes(r: Router, g: OwnerGuards, ownerOf: (req: AuthRequest) => svc.WithdrawalOwner): void {
+/** r35b: `ownerOf` may read (a lab's acting member, re-read per request); the scope rules are the service's (`assertActs`). */
+export function mountWithdrawalRoutes(r: Router, g: OwnerGuards, ownerOf: (req: AuthRequest) => svc.WithdrawalOwner | Promise<svc.WithdrawalOwner>): void {
   r.get('/wallet/withdrawable', ...g.read, validate(v.withdrawableQuerySchema, 'query'),
-    catchAsync(async (req: AuthRequest, res) => send(res, await svc.withdrawableOf(ownerOf(req), { amountMinor: Number(req.query.amountMinor) || undefined }))));
+    catchAsync(async (req: AuthRequest, res) => send(res, await svc.withdrawableOf(await ownerOf(req), { amountMinor: Number(req.query.amountMinor) || undefined }))));
   r.post('/wallet/withdrawals', ...g.request, validate(v.withdrawalRequestSchema, 'body'), catchAsync(async (req: AuthRequest, res) => {
-    const out = await svc.requestWithdrawal(ownerOf(req), req.body);
+    const out = await svc.requestWithdrawal(await ownerOf(req), req.body);
     send(res, out, out.replayed ? 200 : 201);
   }));
   r.get('/wallet/withdrawals', ...g.read, validate(v.withdrawalListQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res) => {
-    const out = await svc.listOwn(ownerOf(req), req.query as never);
+    const out = await svc.listOwn(await ownerOf(req), req.query as never);
     send(res, out.items, 200, { pagination: { nextCursor: out.nextCursor } });
   }));
   r.get('/wallet/withdrawals/by-key/:key', ...g.read, validate(v.withdrawalKeyParamSchema, 'params'),
-    catchAsync(async (req: AuthRequest, res) => send(res, await svc.ownByKey(ownerOf(req), req.params.key))));
+    catchAsync(async (req: AuthRequest, res) => send(res, await svc.ownByKey(await ownerOf(req), req.params.key))));
   r.post('/wallet/withdrawals/by-key/:key/abandon', ...g.act, validate(v.withdrawalKeyParamSchema, 'params'),
-    catchAsync(async (req: AuthRequest, res) => send(res, await svc.abandonOwnKey(ownerOf(req), req.params.key))));
+    catchAsync(async (req: AuthRequest, res) => send(res, await svc.abandonOwnKey(await ownerOf(req), req.params.key))));
   r.get('/wallet/withdrawals/:id', ...g.read, validate(v.withdrawalIdParamSchema, 'params'),
-    catchAsync(async (req: AuthRequest, res) => send(res, await svc.getOwn(ownerOf(req), req.params.id))));
+    catchAsync(async (req: AuthRequest, res) => send(res, await svc.getOwn(await ownerOf(req), req.params.id))));
   r.post('/wallet/withdrawals/:id/cancel', ...g.act, validate(v.withdrawalIdParamSchema, 'params'), validate(v.withdrawalCancelSchema, 'body'),
-    catchAsync(async (req: AuthRequest, res) => send(res, await svc.cancelOwn(ownerOf(req), req.params.id, Number(req.body.expectedVersion)))));
+    catchAsync(async (req: AuthRequest, res) => send(res, await svc.cancelOwn(await ownerOf(req), req.params.id, Number(req.body.expectedVersion)))));
 }
 
 /** `/api/v1/admin/wallet-withdrawals` — the queue (oldest first), a detail, reject, paid, void. */
