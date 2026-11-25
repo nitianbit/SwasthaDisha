@@ -74,6 +74,12 @@ export const assistedFlags = {
    * ASSISTED_BOOKING_ENABLED_DOCTOR too. Reads, by-key, cancel, accept, refunds and report access always work.
    */
   doctorLab: () => on('ASSISTED_LAB_BOOKING_ENABLED_DOCTOR'),
+  /**
+   * r30 (§25.9.7): records access — the doctor's request, the holder's allow / deny, the `others` part of the treating
+   * history and file reads under a grant. Off: those requests and decisions answer 503 RECORDS_ACCESS_DISABLED and the
+   * history shows the doctor's own consultations only (still logged). Revoke, the lists and the expiry sweep always run.
+   */
+  records: () => on('RECORDS_ACCESS_ENABLED'),
   /** Phase 4 (GATE-RBI): withdrawals are not built in 1a; the flag is only reported. */
   withdrawals: () => on('WALLET_WITHDRAWALS_ENABLED'),
   rechargeSweepFrom: (): Date | null => {

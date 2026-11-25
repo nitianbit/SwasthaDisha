@@ -236,6 +236,9 @@ export class FileController {
       applyPrivateDocumentHeaders(res);
       if (decision.status === 401) {
         res.status(401).json({ success: false, code: 'UNAUTHORIZED', message: 'Sign in to open this file' });
+      } else if (decision.status === 503) {
+        // r30 (DR25): a read under a records grant is refused when its read-log row cannot be written.
+        res.status(503).json({ success: false, code: 'READ_LOG_UNAVAILABLE', message: 'This file cannot be opened right now; please try again' });
       } else {
         res.status(404).json({ success: false, message: 'File not found' });
       }

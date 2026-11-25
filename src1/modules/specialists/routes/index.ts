@@ -6,10 +6,11 @@ import * as fin from '@/modules/partners/controller/finance';
 import * as clinicDoc from '@/modules/partners/controller/clinic';
 import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
-import { Router } from 'express';
+import { Router, type NextFunction, type Response } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
-import { requireAdmin, requireSpecialist } from '@/modules/middleware/auth';
+import { requireAdmin, requireSpecialist, type AuthRequest } from '@/modules/middleware/auth';
+import { doctorRecordsRequest } from '@/modules/recordAccess/routes';
 import { SpecialistController } from '@/modules/specialists/controller';
 // S5: only verified, active doctors do what patients see or book; identity fields are admin-only after verification.
 import { requireEligibleDoctor, lockVerifiedIdentity } from '@/modules/specialists/eligibility';
@@ -34,6 +35,7 @@ import {
   specialistAppointmentsQuerySchema,
   updateAppointmentStatusSchema,
   patientUserIdParamSchema,
+  patientHistoryQuerySchema,
   specialistAppointmentPrescriptionSchema,
 } from '@/modules/specialistPortal/validation';
 
@@ -224,9 +226,16 @@ specialistRouter.get(
   '/me/patients/:userId/history',
   requireSpecialist,
   validate(patientUserIdParamSchema, 'params'),
+  validate(patientHistoryQuerySchema, 'query'),
+  // r30 (§25.9.3): the treating view (`bookingId`) needs a verified, active doctor (403); the plain history is reduced for one.
+  catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => (req.query.bookingId ? requireEligibleDoctor(req, res, next) : next())),
   catchAsync(restrictIneligibleDoctorReads),
   catchAsync(specialistController.getMyPatientHistory)
 );
+
+// r30 (§25.9.4): the doctor asks the account holder to let it see other providers' records (inside the treating window).
+specialistRouter.post('/me/bookings/:id/records-access/request', requireSpecialist, validate(idParamSchema, 'params'), catchAsync(requireEligibleDoctor),
+  catchAsync(doctorRecordsRequest));
 
 specialistRouter.get(
   '/:id/stats',

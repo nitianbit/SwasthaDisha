@@ -11,7 +11,7 @@ import { recommendationLookupSchema } from '@/modules/testRecommendations/valida
 import * as instant from '@/modules/assisted/controller/phase3e';
 import * as referral from '@/modules/referralCuts/controller';
 import * as rv from '@/modules/referralCuts/validation';
-import { statementQuerySchema } from '@/modules/partners/validation/finance';
+import { csvQuerySchema, statementQuerySchema } from '@/modules/partners/validation/finance';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -58,10 +58,11 @@ pharmacyAssistedRouter.get('/instant/requests/:id', validate(v.idParamSchema, 'p
 pharmacyAssistedRouter.post('/instant/requests/:id/reoffer', validate(v.idParamSchema, 'params'), validate(v.instantReofferSchema, 'body'), catchAsync(instant.reoffer));
 pharmacyAssistedRouter.post('/instant/requests/:id/activity', validate(v.idParamSchema, 'params'), catchAsync(instant.activity));
 pharmacyAssistedRouter.post('/instant/requests/:id/refund', validate(v.idParamSchema, 'params'), validate(v.instantRefundSchema, 'body'), catchAsync(instant.refund));
-// Phase 4a/4b (§26.5.4, §26.6.2): the pharmacy's referral rates (read-only) and what its cuts earned.
-pharmacyAssistedRouter.get('/referral-rules', catchAsync(referral.pharmacyRules));
-pharmacyAssistedRouter.get('/referral', catchAsync(referral.pharmacyReferral));
-pharmacyAssistedRouter.get('/referral/statement', validate(statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferralStatement));
+// Phase 4a/4b (§26.5.4, §26.6.2): the pharmacy's referral rates (read-only) and what its cuts earned; r33: the CSV.
+pharmacyAssistedRouter.get('/referral-rules', catchAsync(referral.pharmacyReferral.rules));
+pharmacyAssistedRouter.get('/referral', catchAsync(referral.pharmacyReferral.summary));
+pharmacyAssistedRouter.get('/referral/statement', validate(statementQuerySchema, 'query'), catchAsync(referral.pharmacyReferral.statement));
+pharmacyAssistedRouter.get('/referral/statement.csv', validate(csvQuerySchema, 'query'), catchAsync(referral.pharmacyReferral.statementCsv));
 
 export const adminAssistedRouter = Router();
 adminAssistedRouter.use(requireAdmin);

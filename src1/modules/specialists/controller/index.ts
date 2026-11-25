@@ -361,7 +361,8 @@ export class SpecialistController {
   ) => {
     const data = await this.specialistPortalService.getPatientHistory(
       this.specialistId(req),
-      req.params.userId
+      req.params.userId,
+      { dependentId: req.query.dependentId as string | undefined, bookingId: req.query.bookingId as string | undefined }
     );
     res.status(200).json({
       success: true,

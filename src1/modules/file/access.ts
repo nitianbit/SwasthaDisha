@@ -13,6 +13,7 @@ import { bookerReportWindowOpen, labAdmissible, labNotDisputed } from '@/modules
 import { dispensingHashOf, WITH_COPY_STATE } from '@/modules/assisted/dispensingCopy';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
+import { grantedFileRead, logRecordRead } from '@/modules/recordAccess';
 
 /**
  * D1 — one access decision for every legacy upload-dir route (/api/static, /api/v1/file/static, /api/v1/file/fetch).
@@ -21,7 +22,8 @@ import { BookingAdminClearModel } from '@/modules/bookings/model/adminClear';
  * Nothing is cached: each request reads the facts.
  */
 export type Reader = NonNullable<AuthRequest['user']>;
-export type Decision = { allow: true; visibility: 'public' | 'private' } | { allow: false; status: 401 | 404 };
+/** r30 (§25.9.5): 503 = a read under a records grant whose read-log row could not be written (nothing is sent). */
+export type Decision = { allow: true; visibility: 'public' | 'private' } | { allow: false; status: 401 | 404 | 503 };
 
 const id = (v: unknown) => (v == null ? '' : String(v));
 /** Canonical record id for binding keys: ObjectId hex is lower-cased, so every spelling of a record maps to one slot. */
@@ -392,7 +394,24 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
   }
   if (await firstMatch(FileGrantModel.find({ path: rel, kind: { $ne: 'public' }, state: 'active' }).lean().cursor() as never,
     async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await grantInForce(reader, g) && await currentOrWithdraw(g))) return ok;
+  if (reader.userType === 'specialist') {
+    const read = await treatingGrantRead(reader, rel);
+    if (read) return await logRecordRead(read).then(() => ok, () => ({ allow: false, status: 503 }) as Decision);
+  }
   return { allow: false, status: 404 };
+}
+
+/**
+ * r30 (§25.9.5, DR26): a treating doctor with the holder's grant reads ANOTHER booking's full prescription PDF (while the
+ * booking still holds it; an admin clear was refused above) or a released partner-lab report (its active binding names
+ * the booking; drafts never) of the same person. Returns the read-log row the caller writes first.
+ */
+async function treatingGrantRead(r: Reader, rel: string) {
+  const rx = BOOKING_PRESCRIPTION.exec(rel);
+  if (rx) return await bookingStillHoldsPrescription(rx[1]!, rel) ? grantedFileRead(specialistOf(r), { kind: 'booking', id: rx[1]!, path: rel }) : null;
+  if (!PARTNER_LAB_REPORT.test(rel)) return null;
+  const g = await FileGrantModel.findOne({ path: rel, kind: 'partner_lab_report', state: 'active', model: 'PartnerLabBooking' }).select({ resourceId: 1 }).lean();
+  return g ? grantedFileRead(specialistOf(r), { kind: 'lab_booking', id: String(g.resourceId), path: rel }) : null;
 }
 
 const STATIC_PREFIXES = ['/api/static/', '/api/v1/file/static/'];

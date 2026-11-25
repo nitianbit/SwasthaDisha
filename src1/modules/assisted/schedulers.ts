@@ -8,6 +8,7 @@ import { runCardRefundsDue } from '@/modules/assisted/cardRefunds';
 let started = false;
 let running = false;
 let refunding = false;
+let expiring = false;
 
 /**
  * Assisted booking phase 1a (§8.8): the daily reconciliation at 02:30 India time while ASSISTED_RECONCILIATION_ENABLED is
@@ -43,5 +44,17 @@ export function runAssistedSchedulers(): void {
     } catch (error) {
       logger.error('Assisted card refunds failed', { error: error instanceof Error ? error.message : String(error) });
     } finally { refunding = false; }
+  });
+  // r30 (§25.9.4, DR21): records-access requests past 24 h or whose treating window closed expire, whatever the switch says.
+  cron.schedule('*/10 * * * *', async () => {
+    if (expiring) return;
+    expiring = true;
+    try {
+      const { expireRecordRequests } = await import('@/modules/recordAccess');
+      const expired = await expireRecordRequests();
+      if (expired) logger.info('Records-access requests expired', { expired });
+    } catch (error) {
+      logger.error('Records-access expiry failed', { error: error instanceof Error ? error.message : String(error) });
+    } finally { expiring = false; }
   });
 }
