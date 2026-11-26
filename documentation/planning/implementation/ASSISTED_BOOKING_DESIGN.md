@@ -6930,6 +6930,82 @@ bookings, as today.
 - `r26-phase3b` adds: a doctor's lab booking with `web-lab-test-v1` is recorded.
 - `phase1a` adds: a consultation with the lab-test statement is 400 `CONSENT_STATEMENT_MISMATCH`.
 
+### 26.22 r38: server support for the simple lab front-desk home, P4 (2026-11-26)
+
+Branch `m0/r38-lab-today` from stage `a6ac7f3f`. Local commits only. The owner was away, so the small choices are the
+builder's (ASSUMED, below). Existing routes and answers are unchanged.
+
+**Shared, no copies.** `today/register.ts` holds the Today register's rules for both registers: the India-day range,
+paging, `order`, the cursor, the day's money, `itemBase` (`madeOn`, `paidToday`), the consultation rows and lines, the
+search terms and phone match, and the "one failing queue answers `null`" helper. `today/validation.ts` holds the query and
+search schemas. The pharmacy register (`assisted/today.ts`) now uses them, and its answers are unchanged. The lab list's
+own filters became one function each: `labBookingsScope(actor, branchId?)` for lab bookings and `invoicesScope(actor,
+branchId?)` for bills. Both lists and the register use them. `paymentSplitsOf` reads a bill payment's parts by method.
+
+**1. `GET /api/v1/partner-workspace/today?date&cursor&limit&order`** — for a lab (another partner kind: 403
+`LAB_PARTNER_REQUIRED`). It admits any one of the readers below, and each source is shown only to a member who holds a
+permission that reads it (owners and admins hold all):
+
+| Source (`kind`) | Rows | Who sees it | Money |
+|---|---|---|---|
+| `lab_booking` | the lab's bookings: desk walk-ins, home collections, patient app bookings, pharmacy and doctor bookings, at branches in the member's scope | `bookings.view`, `bookings.manage`, `reports.upload`, `reports.release` | a desk booking's money is its bill's (`paid: false`, not counted); any other booking is paid through Jansetu and counts as `online` on its `lifecycle.paidAt` day |
+| `bill` | the lab's in-house bills, in branch scope, made that day or paid that day | `invoices.create`, `invoices.cancel`, `payments.record`, `finance.view` | each payment of that day by its parts (`cash`, `upi`, `card`, `bank`; else `other`); `method` is the one method of that day's payments (`other` when mixed; `null` when none); what is still due counts as unpaid |
+| `consultation` | consultations the lab booked (2e), in branch scope | `assisted.book` | as the pharmacy's (wallet or card) |
+| `wallet_topup` | its card top-ups | `wallet.view` and partner-wide | listed, not counted |
+
+- `data: { date, items, totals, pending?, truncated?, nextCursor }`. The items have the pharmacy's shape:
+  `{ kind, id, at, shortRef, patientName, what, whatParts, amountMinor, paid, method, status, madeOn, paidToday, link }`.
+  - `patientName` is the name the lab sees: a booking's patient (the lab view), a bill's customer (as typed on it), or a
+    consultation's patient (the booker names rule).
+  - `shortRef`: a booking's `assisted.shortRef` (null for app or desk rows), or a bill's serial.
+  - `link.kind`: `lab_booking | invoice | booking | wallet_entry`.
+  - `whatParts` adds `lab.tests { first, more, source: self | pharmacy_assisted | doctor_assisted | lab_desk, visit: lab |
+    home }` and `bill.items { first, more }`.
+  - `paidToday` on a bill made earlier is true when a payment fell on this day.
+- `totals: { collectedMinor, byMethod: { cash, upi, card, bank, wallet, online, other }, unpaidMinor, count }`. `bank` is
+  new (the pharmacy's `byMethod` does not have it).
+- `pending` (first page; a queue the member cannot read is absent; one that fails is `null`):
+  - `samplesToCollect: { count, visitCount, homeCount, visitIds, homeIds }`: bookings confirmed for this date (lab visits
+    and home collections);
+  - `reportsDue: { count, toUploadCount, toReleaseCount, toUploadIds, toReleaseIds }`: a sample in and no draft yet, or a
+    draft waiting for release (any day);
+  - `unpaidBills: { count, ids }`: bills issued or part-paid (any day);
+  - `bookingsAwaitingPayment: { count, ids }`: its card consultations waiting for payment;
+  - `consultationsWaiting: { count, ids }`: consultations it booked for this date, still confirmed.
+- `Cache-Control: private, no-store`; 400 `INVALID_DATE`, `INVALID_CURSOR`; `order=desc` as the pharmacy's.
+
+**2. `POST /api/v1/partner-workspace/today/search { date?, q (2–100), cursor?, limit?, order? }`** → `{ date, items,
+nextCursor }`, no-store. A row matches on the name the lab sees, the short ref or bill serial, the line text, or (4+
+digits) a phone the lab holds: a bill's customer phone, a home collection's phone, the account holder of a desk booking
+or of a consultation it made, or a consultation's contact number. Branch scope and permissions apply as in the register.
+
+**3. To-dos for the lab:** `GET/POST /api/v1/partner-workspace/todos`, `PATCH/DELETE …/todos/:id` (r37's module, owner kind
+`lab`, the same shapes). Any active member of the lab may use them (`mountTodoRoutes` now takes route guards).
+`createdBy: { kind: 'member', id, name: <member's name> }`; an admin acting for the lab is `{ kind: 'admin', name:
+'Jansetu' }`.
+
+**ASSUMED (r38, reversible):**
+
+| # | Choice | Why |
+|---|---|---|
+| L1 | Branch-limited members see ALL of the lab's to-dos | They are the team's shared notes (the plan: shared within the lab); a to-do is not a patient or money record. Scoping them by branch needs a branch on each to-do, which a later round can add |
+| L2 | A desk booking's money is its bill's: the booking row is listed, its bill carries the payments | One payment, counted once |
+| L3 | Lab bookings paid through Jansetu (app card, a pharmacy's or doctor's wallet or card) count as collected `online` on their payment day | It is the lab's money, received through Jansetu's settlement; the drawer total is `byMethod.cash/upi/card/bank` |
+| L4 | Top-ups only for partner-wide members with `wallet.view` | The wallet is the whole lab's |
+| L5 | "Bookings waiting for payment" = the lab's own card consultations still pending. App bookings waiting for the patient's online payment are not listed (the desk cannot act), and desk bookings are paid through their bills (`unpaidBills`) | Each waiting item once, where the desk can act |
+| L6 | "Reports to upload or release" = a sample in (`sample_collected`, `visited`, `processing`) with no draft, or any draft waiting | The two report steps the desk takes |
+| L7 | A bill's refund on cancellation is not taken off the day's collected money | As r37b: collected until refunded; bill refunds are a cancellation record, outside this round |
+
+**Checks:** `test/partners/r38-lab-today.integration.ts`, 4 checks:
+- the owner's day (every source in order, shapes, `whatParts`, the desk money on its bill, collected by method including
+  bank and mixed splits, an earlier booking and an earlier bill paid that day, due, every pending queue, `order=desc`);
+- scope and permissions (a branch-limited bookings reader sees only its branch and its two queues; a biller only the bills;
+  a member with no reader permission 403; another lab only its own);
+- the search (names, serials, refs, three kinds of phone, scope, no-store, a short `q` 400);
+- the lab's to-dos (shared, `createdBy` names, another lab 404, any member).
+
+**Deploy:** nothing new (the `todos` indexes are r37's).
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

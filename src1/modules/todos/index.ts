@@ -1,4 +1,4 @@
-import { Router, type Response } from 'express';
+import { Router, type RequestHandler, type Response } from 'express';
 import Joi from 'joi';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
@@ -142,24 +142,26 @@ const send = (res: Response, data: unknown, status = 200, extra: Record<string, 
  * Mounts `GET/POST /todos`, `PATCH/DELETE /todos/:id` on an owner's router (behind its own guards). `ownerOf` names the
  * owner and, as a function (r37b: read only by a create), the acting person with the name shown on each to-do.
  */
-export function mountTodoRoutes(r: Router, ownerOf: (req: AuthRequest) => { owner: TodoOwner; actor: () => Promise<TodoActor> }): void {
-  r.get('/todos', validate(listQuery, 'query'), catchAsync(async (req: AuthRequest, res) => {
+export function mountTodoRoutes(r: Router, ownerOf: (req: AuthRequest) => { owner: TodoOwner; actor: () => Promise<TodoActor> },
+  /** r38: guards placed before each route (a router without a router-level guard, as the partner workspace). */
+  guards: RequestHandler[] = []): void {
+  r.get('/todos', ...guards, validate(listQuery, 'query'), catchAsync(async (req: AuthRequest, res) => {
     const { owner } = ownerOf(req);
     const q = req.query as Record<string, unknown>;
     const out = await listTodos(owner, { done: q.done === undefined ? undefined : String(q.done) === 'true', cursor: q.cursor as string | undefined,
       limit: q.limit === undefined ? undefined : Number(q.limit) });
     send(res, out.items, 200, { pagination: { nextCursor: out.nextCursor } });
   }));
-  r.post('/todos', validate(createBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
+  r.post('/todos', ...guards, validate(createBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
     const { owner, actor } = ownerOf(req);
     const out = await createTodo(owner, actor, req.body);
     send(res, out, out.replayed ? 200 : 201);
   }));
-  r.patch('/todos/:id', validate(idParam, 'params'), validate(patchBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
+  r.patch('/todos/:id', ...guards, validate(idParam, 'params'), validate(patchBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
     const { owner } = ownerOf(req);
     send(res, await updateTodo(owner, req.params.id, req.body));
   }));
-  r.delete('/todos/:id', validate(idParam, 'params'), catchAsync(async (req: AuthRequest, res) => {
+  r.delete('/todos/:id', ...guards, validate(idParam, 'params'), catchAsync(async (req: AuthRequest, res) => {
     const { owner } = ownerOf(req);
     send(res, await deleteTodo(owner, req.params.id));
   }));

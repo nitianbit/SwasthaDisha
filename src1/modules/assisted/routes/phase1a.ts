@@ -17,7 +17,7 @@ import { setPharmacyPayoutDetails } from '@/modules/walletWithdrawals/service';
 import * as wv from '@/modules/walletWithdrawals/validation';
 import * as finance4 from '@/modules/assisted/controller/phase4f';
 import type { AuthRequest } from '@/modules/middleware/auth';
-import Joi from 'joi';
+import { pageQueryOf, todayQuerySchema, todaySearchSchema } from '@/modules/today/validation';
 import { pharmacyToday, pharmacyTodaySearch } from '@/modules/assisted/today';
 import { mountTodoRoutes } from '@/modules/todos';
 import PharmacyModel from '@/modules/pharmacies/model';
@@ -82,16 +82,10 @@ pharmacyAssistedRouter.put('/finance/payout-details', validate(payoutDetailsSche
   res.status(200).json({ success: true, data: await setPharmacyPayoutDetails(c.actorOf(req).pharmacyId, req.body) });
 }));
 // r37 (§26.20): the Today register (one India day, oldest first) and the pharmacy's shared to-dos.
-const todayFields = { date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/), cursor: Joi.string().pattern(/^\d{1,15}_[0-9a-fA-F]{24}$/),
-  limit: Joi.number().integer().min(1).max(200), order: Joi.string().valid('asc', 'desc') };
-const todayQuerySchema = Joi.object(todayFields);
-// r37c: the day searched on the server (a POST: no phone or name in a URL).
-const todaySearchSchema = Joi.object({ ...todayFields, q: Joi.string().trim().min(2).max(100).required() });
+// r37c: the day searched on the server (a POST: no phone or name in a URL). r38: the schemas shared with the lab's register.
 pharmacyAssistedRouter.get('/today', validate(todayQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res) => {
   res.setHeader('Cache-Control', 'private, no-store');
-  const q = req.query as Record<string, string | undefined>;
-  res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), { date: q.date, cursor: q.cursor, limit: q.limit ? Number(q.limit) : undefined,
-    order: q.order as 'asc' | 'desc' | undefined }) });
+  res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), pageQueryOf(req.query as Record<string, unknown>)) });
 }));
 pharmacyAssistedRouter.post('/today/search', validate(todaySearchSchema, 'body'), catchAsync(async (req: AuthRequest, res) => {
   res.setHeader('Cache-Control', 'private, no-store');

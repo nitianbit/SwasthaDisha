@@ -83,6 +83,19 @@ export function paidOf(inv: Pick<IInvoice, 'paidMinor' | 'lifecycleState' | 'tot
   if (events) return events.filter((e) => e.kind === 'payment').reduce((n, e) => n + (typeof e.amountMinor === 'number' ? e.amountMinor : inv.totals.totalMinor), 0);
   return inv.lifecycleState === 'paid' ? inv.totals.totalMinor : 0;
 }
+/**
+ * r38: the bills a member may see — its partner's, at the branches in its scope (or the one named, checked in scope).
+ * The one filter of the bill lists and the lab's Today register.
+ */
+export function invoicesScope(actor: PartnerActor, branchId?: string): Record<string, unknown> {
+  const q: Record<string, unknown> = { partnerId: actor.partnerId };
+  if (branchId) { assertBranchInScope(actor, branchId); q.branchId = branchId; }
+  else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
+  return q;
+}
+/** r38: a payment's parts by method — its splits (Q14), or its one method for its amount (before Q14: the whole bill). */
+export const paymentSplitsOf = (e: Pick<IInvoiceEvent, 'splits' | 'mode' | 'amountMinor' | 'reference'>, totalMinor: number) =>
+  (e.splits?.length ? e.splits : [{ mode: e.mode, amountMinor: typeof e.amountMinor === 'number' ? e.amountMinor : totalMinor, reference: e.reference }]);
 /** Q14: a bill as read: its paid and due amounts (a cancelled bill has nothing due). */
 export function withDue<T extends IInvoice>(inv: T, events?: IInvoiceEvent[]): T {
   const paid = paidOf(inv, events);
@@ -763,11 +776,9 @@ export class InvoiceService {
    */
   async listInvoicesPage(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; cursor?: string;
     from?: string; to?: string; q?: string; appointmentId?: string }): Promise<{ items: IInvoice[]; nextCursor: string | null; total: number }> {
-    const query: any = { partnerId: actor.partnerId };
+    const query: any = invoicesScope(actor, filter.branchId);
     if (filter.state) query.lifecycleState = filter.state;
     if (filter.appointmentId) query.appointmentId = lowerId(filter.appointmentId);
-    if (filter.branchId) { assertBranchInScope(actor, filter.branchId); query.branchId = filter.branchId; }
-    else if (!hasGlobalScope(actor)) query.branchId = { $in: actor.branchIds };
     if (filter.from || filter.to) {
       const real = (d?: string) => { if (!d) return true; const x = new Date(`${d}T00:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(x.getTime()) && x.toISOString().slice(0, 10) === d; };
       if (!real(filter.from) || !real(filter.to)) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Dates must be real calendar dates (YYYY-MM-DD)' });
@@ -796,15 +807,9 @@ export class InvoiceService {
 
   async listInvoices(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; before?: Date;
     appointmentId?: string }): Promise<IInvoice[]> {
-    const query: any = { partnerId: actor.partnerId };
+    const query: any = invoicesScope(actor, filter.branchId);
     if (filter.state) query.lifecycleState = filter.state;
     if (filter.appointmentId) query.appointmentId = lowerId(filter.appointmentId);
-    if (filter.branchId) {
-      assertBranchInScope(actor, filter.branchId);
-      query.branchId = filter.branchId;
-    } else if (!hasGlobalScope(actor)) {
-      query.branchId = { $in: actor.branchIds };
-    }
     if (filter.before) query.issuedAt = { $lt: filter.before };
     const rows = await this.invoiceRepository.findAll(query, { sort: { issuedAt: -1, _id: -1 }, limit: Math.min(filter.limit ?? 50, 200) });
     rows.forEach((r) => this.verifyChecksum(r));

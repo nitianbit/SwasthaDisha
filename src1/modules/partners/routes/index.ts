@@ -76,6 +76,11 @@ import { notMineSchema } from '@/modules/assisted/validation';
 import { labNotMine } from '@/modules/assisted/controller/phase2a';
 import { registerLabDeskRoutes } from '@/modules/assisted/routes/labDesk';
 import { registerLabBookerRoutes } from '@/modules/assisted/routes/labBooker';
+import { assertLab, LAB_TODAY_READERS, labToday, labTodaySearch } from '@/modules/partners/services/today';
+import { pageQueryOf, todayQuerySchema, todaySearchSchema } from '@/modules/today/validation';
+import { mountTodoRoutes } from '@/modules/todos';
+import MemberModel from '@/modules/partners/model/member';
+import { actorOf as partnerActorOf } from '@/modules/partners/controller';
 import { labDeskRecommendation } from '@/modules/testRecommendations/controller';
 import { recommendationLookupSchema } from '@/modules/testRecommendations/validation';
 
@@ -237,6 +242,21 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   registerLabDeskRoutes(r, guard);
   // 2e (§24.8.2): a lab books doctor consultations for walk-in patients.
   registerLabBookerRoutes(r, guard);
+
+  // r38 (§26.22): the lab front desk's Today register (each source by its own permission, branch-scoped) and its search.
+  const noStore: RequestHandler = (_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store'); next(); };
+  r.get('/today', ...guard.any(...LAB_TODAY_READERS), noStore, validate(todayQuerySchema, 'query'),
+    catchAsync(async (req, res) => { res.status(200).json({ success: true, data: await labToday(partnerActorOf(req), pageQueryOf(req.query as Record<string, unknown>)) }); }));
+  r.post('/today/search', ...guard.any(...LAB_TODAY_READERS), noStore, validate(todaySearchSchema, 'body'),
+    catchAsync(async (req, res) => { res.status(200).json({ success: true, data: await labTodaySearch(partnerActorOf(req), req.body) }); }));
+  // r38: the lab's to-dos (r37's module, owner kind `lab`): any member of the lab, shared within it; `createdBy` = the member.
+  const labOnly: RequestHandler = catchAsync(async (req, _res, next) => { await assertLab(partnerActorOf(req)); next(); });
+  mountTodoRoutes(r, (req) => {
+    const a = partnerActorOf(req);
+    return { owner: { kind: 'lab', id: a.partnerId }, actor: async () => (a.actorKind === 'admin' || a.memberId.startsWith('admin:')
+      ? { kind: 'admin', id: a.memberId.replace(/^admin:/, ''), name: 'Jansetu' }
+      : { kind: 'member', id: a.memberId, name: (await MemberModel.findById(a.memberId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null }) };
+  }, [...guard(), labOnly]);
 
   // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');

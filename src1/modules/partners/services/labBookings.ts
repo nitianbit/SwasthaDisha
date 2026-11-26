@@ -237,6 +237,17 @@ export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
   }, b as never), b as never);
 }
 
+/**
+ * r38: the lab bookings a member may see — its lab's (r14, L5: never a partner's card booking still unpaid), at the
+ * branches in its scope (or the one named, checked in scope). The one filter of the lab's lists and its Today register.
+ */
+export function labBookingsScope(actor: PartnerActor, branchId?: string): Record<string, unknown> {
+  const q: Record<string, unknown> = { partnerId: actor.partnerId, $nor: [LAB_UNPAID_CARD_QUERY] };
+  if (branchId) { assertBranchInScope(actor, branchId); q.branchId = branchId; }
+  else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
+  return q;
+}
+
 /** r12 (§24.6.3): the lab views of desk rows carry their bill (`null` while none); other rows are unchanged. */
 export async function withDeskBills(partnerId: string, rows: IPartnerLabBooking[], views: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
   const desk = rows.filter((r) => isDeskRow(r)).map((r) => String(r._id));
@@ -1287,11 +1298,8 @@ export class LabBookingService {
   /** Q11: paged by an exact cursor on (slot.startsAt, _id), soonest first, with the total. */
   async listForPartnerPage(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number; cursor?: string;
     /** r12 (§24.6.6): online (`self`, also rows without a source), pharmacy-booked or desk rows. */ source?: 'self' | 'pharmacy_assisted' | 'lab_desk' }) {
-    // r14 (L5): a partner's card booking never paid is not the lab's yet.
-    const q: Record<string, unknown> = { partnerId: actor.partnerId, $nor: [LAB_UNPAID_CARD_QUERY] };
+    const q = labBookingsScope(actor, f.branchId);
     if (f.source) q.source = f.source === 'self' ? { $in: [null, 'self'] } : { $eq: f.source };
-    if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
-    else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
     if (f.status) q.status = f.status;
     if (f.from || f.to) q['slot.date'] = { ...(f.from ? { $gte: f.from } : {}), ...(f.to ? { $lte: f.to } : {}) };
     const total = await PartnerLabBookingModel.countDocuments(q);
@@ -1326,10 +1334,7 @@ export class LabBookingService {
   }
 
   async listForPartner(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number }) {
-    // r14 (L5): a partner's card booking never paid is not the lab's yet.
-    const q: Record<string, unknown> = { partnerId: actor.partnerId, $nor: [LAB_UNPAID_CARD_QUERY] };
-    if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
-    else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
+    const q = labBookingsScope(actor, f.branchId);
     if (f.status) q.status = f.status;
     if (f.from || f.to) q['slot.date'] = { ...(f.from ? { $gte: f.from } : {}), ...(f.to ? { $lte: f.to } : {}) };
     const rows = await PartnerLabBookingModel.find(q).sort({ 'slot.startsAt': 1 }).limit(Math.min(f.limit ?? 100, 500)).lean();
