@@ -148,6 +148,7 @@ const LINK: Record<LabTodayKind, string> = { lab_booking: 'lab_booking', bill: '
 
 /** The page's rows as items: lab bookings through the lab's own view (its patient name), consultations through the booker view. */
 async function itemsOf(a: PartnerActor, page: Raw[], day: Day, date: string) {
+  const bookingsReader = sourcesOf(a).bookings;
   const ids = (k: LabTodayKind) => page.filter((r) => r.kind === k).map((r) => new Types.ObjectId(r.id));
   const [labRows, bookingRows] = await Promise.all([
     ids('lab_booking').length ? PartnerLabBookingModel.find({ _id: { $in: ids('lab_booking') } }).lean() as unknown as Promise<IPartnerLabBooking[]> : [],
@@ -169,7 +170,9 @@ async function itemsOf(a: PartnerActor, page: Raw[], day: Day, date: string) {
     // r38b: a desk booking is paid when its bill is (its money is counted on the bill).
     const paid = r.kind === 'lab_booking' && isDeskRow(r.row) ? v?.bill?.state === 'paid' : b.paid;
     return { kind: b.kind, id: b.id, at: b.at, shortRef, patientName, ...whatOf(r), amountMinor: b.amountMinor, paid, method: b.method,
-      status: b.status, madeOn: b.madeOn, paidToday, link: { kind: LINK[r.kind as LabTodayKind], id: r.id } };
+      status: b.status, madeOn: b.madeOn, paidToday, link: { kind: LINK[r.kind as LabTodayKind], id: r.id },
+      // r38c: a bill names the desk booking it is for (to fold the visit into one row), only to a member who reads lab bookings.
+      ...(r.kind === 'bill' ? { labBookingId: bookingsReader && r.row.labBookingId ? String(r.row.labBookingId) : null } : {}) };
   });
 }
 

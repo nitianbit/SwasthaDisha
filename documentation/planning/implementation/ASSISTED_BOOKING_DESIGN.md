@@ -6961,6 +6961,9 @@ permission that reads it (owners and admins hold all):
   - `link.kind`: `lab_booking | invoice | booking | wallet_entry`.
   - r38b: a desk booking reads its bill through the lab list's `withDeskBills`: `paid` is true when its bill is paid (its
     money stays counted on the bill).
+  - r38c: items of `kind: 'bill'` add `labBookingId: string | null`, the desk booking the bill is for (so the web can fold
+    a desk visit's booking and bill into one row), in the register and its search. It is sent only to a member who reads
+    lab bookings; to others it is always `null`. Other kinds have no such field.
   - `whatParts` adds `lab.tests { first, more, source: self | pharmacy_assisted | doctor_assisted | lab_desk, visit: lab |
     home }` and `bill.items { first, more }`.
   - `paidToday` on a bill made earlier is true when a payment fell on this day.

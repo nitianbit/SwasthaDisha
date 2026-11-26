@@ -236,6 +236,8 @@ async function main() {
       assert.deepEqual([by(billIds[0]).patientName, by(billIds[0]).method, by(billIds[0]).whatParts, by(billIds[0]).link], ['Ravi Das', 'other',
         { code: 'bill.items', values: { first: 'CBC', more: 0 } }, { kind: 'invoice', id: billIds[0] }]);
       assert.deepEqual([by(billIds[1]).method, by(billIds[1]).paid, by(billIds[2]).method, by(billIds[2]).paidToday, by(billIds[2]).madeOn], ['card', false, 'bank', true, '2026-11-19']);
+      // r38c: a bill names its desk booking (null when it has none); only bills carry the field.
+      assert.deepEqual([by(billIds[0]).labBookingId, by(billIds[1]).labBookingId, 'labBookingId' in by(labIds[0])], [labIds[0], null, false]);
       assert.deepEqual([by(consultIds[0]).method, by(consultIds[0]).whatParts.code], ['wallet', 'consult.scheduled']);
       // r38b: money that went back this day, by its method (the drawer: collected cash − refunded cash).
       assert.deepEqual(d.totals, { collectedMinor: 80_000 + 60_000 + 30_000 + 30_000 + 20_000 + 10_000 + 20_000 + 50_000 + 15_000,
@@ -264,6 +266,10 @@ async function main() {
       const b = (await expect('BILL', 'GET', `/today?date=${DAY}`, 200)).json.data;
       assert.deepEqual([b.items.map((i: any) => i.id), b.pending.unpaidBills.count, Object.keys(b.pending)], [[billIds[0], billIds[1], billIds[2], billIds[4], billIds[5]], 2,
         ['unpaidBills']]);
+      // r38c: a member who cannot read lab bookings is never told which booking a bill is for.
+      assert.ok(b.items.every((i: any) => i.labBookingId === null));
+      const bs = (await expect('BILL', 'POST', '/today/search', 200, { date: DAY, q: 'ravi' })).json.data.items;
+      assert.deepEqual(bs.map((i: any) => [i.id, i.labBookingId]), [[billIds[0], null]]);
       await expect('CAT', 'GET', `/today?date=${DAY}`, 403);
       const o = (await expect('OTHER', 'GET', `/today?date=${DAY}`, 200)).json.data;
       assert.deepEqual(o.items.map((i: any) => i.id), [labIds[4]]);
@@ -277,6 +283,8 @@ async function main() {
       assert.deepEqual(await q('OWN', '98111'), [labIds[1]]);
       assert.deepEqual(await q('OWN', 'js-ph01'), [labIds[2]]);
       assert.deepEqual(await q('OWN', 'ML/B2-1'), [billIds[1]]);
+      // r38c: the search's bill rows carry the desk booking too.
+      assert.equal((await expect('OWN', 'POST', '/today/search', 200, { date: DAY, q: 'ravi' })).json.data.items.find((i: any) => i.id === billIds[0]).labBookingId, labIds[0]);
       assert.deepEqual(await q('OWN', '98444'), consultIds);
       assert.deepEqual(await q('STAFF', 'ravi'), [labIds[0]]);
       assert.deepEqual(await q('STAFF', 'meera'), []);
