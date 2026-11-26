@@ -6806,22 +6806,33 @@ Every existing answer is unchanged: two new routes are added and nothing else ch
 | 3 | "Find patient": `POST /api/v1/pharmacy-customers/search` (r36) as it is | — |
 
 **Exact shapes:**
-- `GET …/today` → `{ success, data: { date, items, totals, pending?, truncated?, nextCursor } }`
+- `GET …/today?date&cursor&limit&order` → `{ success, data: { date, items, totals, pending?, truncated?, nextCursor } }`. r37c:
+  `order=desc` lists newest first (the cursor continues in that order; the default stays `asc`); totals and pending are the
+  same either way.
+- r37c: `POST …/today/search { date?, q (2–100), cursor?, limit?, order? }` → `{ date, items, nextCursor }` (the same item
+  shape; no totals or pending; `no-store`; a POST, so no phone or name goes into a URL). A row matches on the patient's name
+  as THIS pharmacy sees it (the items' names rule: a pharmacy shown a masked or typed name never matches the account's own
+  name), its short ref or order number, its line text (medicine, test and doctor names), or, with 4 or more digits, the
+  phone of the account holder it was made for or a consultation's contact number.
   - `items[]`: `{ kind: 'order' | 'consultation' | 'lab_booking' | 'wallet_topup', id, at, shortRef | null, patientName | null,
-    what, amountMinor, paid, method: 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other' | null, status, madeOn, paidToday,
-    link: { kind: 'pharmacy_order' | 'booking' | 'lab_booking' | 'wallet_transaction', id } }`. r37b: `madeOn` (the India
-    date the row was made) and `paidToday` (its payment fell on this day). The rows made that day are listed, plus any
-    earlier row paid that day (at its payment time, `paidToday: true`, its own `madeOn`).
+    what, whatParts, amountMinor, paid, method: 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other' | null, status, madeOn,
+    paidToday, link: { kind: 'pharmacy_order' | 'booking' | 'lab_booking' | 'wallet_transaction', id } }`. r37b: `madeOn` (the
+    India date the row was made). The rows made that day are listed, plus any earlier row paid that day (at its payment time,
+    with its own `madeOn`). r37c: `paidToday` is true only on such an earlier row (`madeOn` ≠ the register's date).
+  - r37c: `whatParts: { code, values? }`, the line for the web to word in each language (`what` is kept): `order.items
+    { first, more }`, `order.counter`, `order.online`, `consult.scheduled { doctor, time, mode }`, `consult.instant { doctor,
+    mode }`, `lab.tests { first, more }`, `wallet.topup`. Medicine, test and doctor names stay data.
   - `what` is a short line of the record's own names: an order's first medicine (`Dolo 650 +1 more`); a consultation's
     `doctor · time (or now) · mode`; a lab booking's first test; `Wallet top-up`.
   - `totals: { collectedMinor, byMethod: { cash, upi, card, wallet, online, other }, unpaidMinor, count }`, over the whole
     day, on every page.
   - `pending` (first page only): `{ prescriptionsToReview: { count, ids } | null, unpaidCounterSales: { count, ids } | null,
-    bookingsAwaiting: { count, consultationIds, labBookingIds } | null, labReportsReady: { count, ids } | null, lowStock:
-    { count, ids } | null, cardPaymentsWaiting: { count, amountMinor, items: [{ kind, id }] } }` (at most 20 ids each). r37b:
-    a queue that fails answers `null` (the register still answers); `cardPaymentsWaiting` lists the day's rows whose money
-    is still at the gateway (the pharmacy's own pending card bookings, online checkouts); counter sales are only those this
-    pharmacy sold.
+    bookingsAwaiting: { count, consultationCount, labCount, consultationIds, labBookingIds } | null, labReportsReady: { count,
+    ids } | null, lowStock: { count, ids } | null }` (at most 20 ids each). r37b: a queue that fails answers `null` (the
+    register still answers); counter sales are only those this pharmacy sold. r37c: `bookingsAwaiting` means bookings waiting
+    for their PAYMENT (any day): the pharmacy's card consultations still pending and lab tests `pending_payment`, with the two
+    counts. r37b's `cardPaymentsWaiting` is removed: it listed the same bookings again (and online checkouts, which the
+    pharmacy cannot act on).
   - `nextCursor`: `<at ms>_<id>` (send it back as `cursor`); `limit` 1–200, default 50. `truncated: [kind…]` appears only
     when a source had more than 2,000 rows that day.
   - 400 `INVALID_DATE` or `INVALID_CURSOR`.
@@ -6857,10 +6868,17 @@ the page's rows read again in full for their views; the waiting work is read as 
 booking owner filter is the one `pharmacyBookingsFilter` of the booking list; the to-do fixes above; the pharmacy's name
 is read only when a to-do is created.
 
+**r37c** (branch `m0/r37c-today-search` from stage `6de072f2`, WQ54 review): `order=desc`; the day searched on the server;
+`whatParts`; `paidToday` only on earlier rows; `bookingsAwaiting` = waiting for payment, without the duplicate list. The
+search reads the day as the register does (at most 2,000 rows per source) and names its rows with the same pharmacy-facing
+readers (`pharmacyFacingHolderNames`, `bookerNames`) before matching.
+
 **Deploy:** run `sync-indexes` (builds `todos` `owner.kind_1_owner.id_1_requestKey_1`, unique, and the list index). Until
 then, a to-do create answers 503 `INDEXES_OUTDATED`; Today needs no new index.
 
-**Checks:** `test/assisted/r37-pharmacy-today.integration.ts`, 4 checks (r37b adds: card / counter_cash / cash_on_delivery and
+**Checks:** `test/assisted/r37-pharmacy-today.integration.ts`, 5 checks (r37c adds: `whatParts` per kind; `paidToday` only on
+the earlier row; `bookingsAwaiting` counts; newest-first paging equal to the reverse of the oldest-first pages; the search by
+name, short ref, line text and phone, never by the account's own name, another pharmacy empty, its paging and shape; r37b adds: card / counter_cash / cash_on_delivery and
 the funding helper; an earlier order paid that day listed with `paidToday` and `madeOn` and collected; the unpaid rule with
 the gateway rows in `cardPaymentsWaiting`; a sale it bought never its unpaid counter sale; a failing queue answers `null`;
 a repeated tick keeps `doneAt`; the open-first order and its cursor; a deleted key stays used; `TODO_LIMIT`):

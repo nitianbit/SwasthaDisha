@@ -18,7 +18,7 @@ import * as wv from '@/modules/walletWithdrawals/validation';
 import * as finance4 from '@/modules/assisted/controller/phase4f';
 import type { AuthRequest } from '@/modules/middleware/auth';
 import Joi from 'joi';
-import { pharmacyToday } from '@/modules/assisted/today';
+import { pharmacyToday, pharmacyTodaySearch } from '@/modules/assisted/today';
 import { mountTodoRoutes } from '@/modules/todos';
 import PharmacyModel from '@/modules/pharmacies/model';
 
@@ -82,12 +82,20 @@ pharmacyAssistedRouter.put('/finance/payout-details', validate(payoutDetailsSche
   res.status(200).json({ success: true, data: await setPharmacyPayoutDetails(c.actorOf(req).pharmacyId, req.body) });
 }));
 // r37 (§26.20): the Today register (one India day, oldest first) and the pharmacy's shared to-dos.
-const todayQuerySchema = Joi.object({ date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/), cursor: Joi.string().pattern(/^\d{1,15}_[0-9a-fA-F]{24}$/),
-  limit: Joi.number().integer().min(1).max(200) });
+const todayFields = { date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/), cursor: Joi.string().pattern(/^\d{1,15}_[0-9a-fA-F]{24}$/),
+  limit: Joi.number().integer().min(1).max(200), order: Joi.string().valid('asc', 'desc') };
+const todayQuerySchema = Joi.object(todayFields);
+// r37c: the day searched on the server (a POST: no phone or name in a URL).
+const todaySearchSchema = Joi.object({ ...todayFields, q: Joi.string().trim().min(2).max(100).required() });
 pharmacyAssistedRouter.get('/today', validate(todayQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res) => {
   res.setHeader('Cache-Control', 'private, no-store');
   const q = req.query as Record<string, string | undefined>;
-  res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), { date: q.date, cursor: q.cursor, limit: q.limit ? Number(q.limit) : undefined }) });
+  res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), { date: q.date, cursor: q.cursor, limit: q.limit ? Number(q.limit) : undefined,
+    order: q.order as 'asc' | 'desc' | undefined }) });
+}));
+pharmacyAssistedRouter.post('/today/search', validate(todaySearchSchema, 'body'), catchAsync(async (req: AuthRequest, res) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.status(200).json({ success: true, data: await pharmacyTodaySearch(c.actorOf(req), req.body) });
 }));
 mountTodoRoutes(pharmacyAssistedRouter, (req: AuthRequest) => {
   const a = c.actorOf(req);

@@ -8,7 +8,8 @@ import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
 import { InventoryItemRepository } from '@/modules/pharmacyInventory/repository';
 import { fundingMethodOf, paymentMethodOf, PAYMENT_METHODS, type PaymentMethod } from '@/modules/pharmacyOrders/paymentMethod';
-import { withPharmacyFacingCustomerNames } from '@/modules/assisted/names';
+import { bookerNames, pharmacyFacingHolderNames, withPharmacyFacingCustomerNames } from '@/modules/assisted/names';
+import UserModel from '@/modules/user/model';
 import { bookerViews } from '@/modules/assisted/bookerView';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { bookerLabViews } from '@/modules/assisted/labBookings';
@@ -61,11 +62,11 @@ interface Raw {
 
 // Projections of the whole-day reads (the page's rows are read again in full for their views).
 const ORDER_FIELDS = { orderNumber: 1, orderType: 1, status: 1, 'items.medicineName': 1, grandTotal: 1, grandTotalPaise: 1, paymentStatus: 1,
-  paymentSource: 1, paymentMode: 1, paidAt: 1, createdAt: 1 };
+  paymentSource: 1, paymentMode: 1, paidAt: 1, createdAt: 1, customerId: 1 };
 const BOOKING_FIELDS = { status: 1, paymentStatus: 1, price: 1, 'assisted.funding': 1, 'assisted.shortRef': 1, 'lifecycle.paid.at': 1, doctorName: 1,
-  bookingKind: 1, bookingTime: 1, consultationMode: 1, createdAt: 1 };
+  bookingKind: 1, bookingTime: 1, consultationMode: 1, createdAt: 1, userId: 1, dependentId: 1, contactNo: 1 };
 const LAB_FIELDS = { status: 1, paymentStatus: 1, 'pricing.payableMinor': 1, 'assisted.funding': 1, 'assisted.shortRef': 1, 'lifecycle.paidAt': 1,
-  'items.name': 1, createdAt: 1 };
+  'items.name': 1, createdAt: 1, userId: 1, 'patient.dependentId': 1 };
 const TOPUP_FIELDS = { amount: 1, amountPaise: 1, createdAt: 1 };
 
 type Finder = { find: (f: Row) => any };
@@ -128,7 +129,7 @@ async function rawOf(pharmacyId: string, day: Day): Promise<{ raws: Raw[]; trunc
  * The day's money. Collected = paid rows whose payment fell on that day (by method), whatever day they were made; a paid
  * row later cancelled stays collected until it is refunded. Unpaid = live rows a patient may still owe the pharmacy
  * (`pending`, `failed`, `partially_paid`); the pharmacy's own card payments and online checkouts still at the gateway are
- * not owed at the desk (they are `pending.cardPaymentsWaiting`). Top-ups count in neither.
+ * not owed at the desk (its card bookings are `pending.bookingsAwaiting`). Top-ups count in neither.
  */
 function totalsOf(raws: Raw[], day: Day) {
   const byMethod = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, 0])) as Record<PaymentMethod, number>;
@@ -143,19 +144,37 @@ function totalsOf(raws: Raw[], day: Day) {
 }
 
 const firstOf = (names: string[]) => (names.length ? `${names[0]}${names.length > 1 ? ` +${names.length - 1} more` : ''}` : '');
-function whatOf(r: Raw): string {
+/**
+ * r37c: a row's short line as a code with values (`whatParts`), so the web words it in each language; medicine, test and
+ * doctor names stay data. `what` (the English line) is kept for compatibility.
+ */
+export type WhatParts = { code: string; values?: Record<string, string | number | null> };
+function whatOf(r: Raw): { what: string; whatParts: WhatParts } {
   const v = r.row;
+  const list = (names: string[]) => ({ first: names[0] ?? null, more: Math.max(0, names.length - 1) });
   switch (r.kind) {
-    case 'order': return firstOf((v.items ?? []).map((i: Row) => String(i.medicineName ?? 'Medicine'))) || (v.orderType === 'online' ? 'Online order' : 'Counter sale');
-    case 'consultation': return [v.doctorName, v.bookingKind === 'instant' ? 'now' : v.bookingTime, v.consultationMode].filter(Boolean).join(' · ') || 'Consultation';
-    case 'lab_booking': return firstOf((v.items ?? []).map((i: Row) => String(i.name ?? 'Test'))) || 'Lab tests';
-    default: return 'Wallet top-up';
+    case 'order': {
+      const names = (v.items ?? []).map((i: Row) => String(i.medicineName ?? 'Medicine'));
+      if (names.length) return { what: firstOf(names), whatParts: { code: 'order.items', values: list(names) } };
+      return v.orderType === 'online' ? { what: 'Online order', whatParts: { code: 'order.online' } } : { what: 'Counter sale', whatParts: { code: 'order.counter' } };
+    }
+    case 'consultation': {
+      const instant = v.bookingKind === 'instant';
+      return { what: [v.doctorName, instant ? 'now' : v.bookingTime, v.consultationMode].filter(Boolean).join(' · ') || 'Consultation',
+        whatParts: instant ? { code: 'consult.instant', values: { doctor: v.doctorName ?? null, mode: v.consultationMode ?? null } }
+          : { code: 'consult.scheduled', values: { doctor: v.doctorName ?? null, time: v.bookingTime ?? null, mode: v.consultationMode ?? null } } };
+    }
+    case 'lab_booking': {
+      const names = (v.items ?? []).map((i: Row) => String(i.name ?? 'Test'));
+      return { what: firstOf(names) || 'Lab tests', whatParts: { code: 'lab.tests', values: list(names) } };
+    }
+    default: return { what: 'Wallet top-up', whatParts: { code: 'wallet.topup' } };
   }
 }
 const LINK: Record<TodayKind, string> = { order: 'pharmacy_order', consultation: 'booking', lab_booking: 'lab_booking', wallet_topup: 'wallet_transaction' };
 
 /** The page's rows as items: each read in full and shown through its source's own view (its patient name). */
-async function itemsOf(pharmacyId: string, page: Raw[], day: Day) {
+async function itemsOf(pharmacyId: string, page: Raw[], day: Day, date: string) {
   const ids = (k: TodayKind) => page.filter((r) => r.kind === k).map((r) => new Types.ObjectId(r.id));
   const full = (Model: Finder, k: TodayKind, populate = false) => {
     const list = ids(k);
@@ -176,16 +195,19 @@ async function itemsOf(pharmacyId: string, page: Raw[], day: Day) {
     const v = byId.get(r.id);
     const shortRef = r.kind === 'order' ? r.row.orderNumber ?? null : r.kind === 'wallet_topup' ? null : r.row.assisted?.shortRef ?? null;
     const patientName = !v || r.kind === 'wallet_topup' ? null : r.kind === 'order' ? v.customerId?.name ?? null : v.patientName ?? null;
-    return { kind: r.kind, id: r.id, at: r.at, shortRef, patientName, what: whatOf(r), amountMinor: r.amountMinor, paid: r.paid, method: r.method,
-      status: r.status, madeOn: istDate(new Date(r.createdAt)), paidToday: r.paid && inDay(r.paidAt, day), link: { kind: LINK[r.kind], id: r.id } };
+    const madeOn = istDate(new Date(r.createdAt));
+    // r37c: `paidToday` marks only an earlier row paid on this day (one made this day needs no mark).
+    return { kind: r.kind, id: r.id, at: r.at, shortRef, patientName, ...whatOf(r), amountMinor: r.amountMinor, paid: r.paid, method: r.method,
+      status: r.status, madeOn, paidToday: madeOn !== date && r.paid && inDay(r.paidAt, day), link: { kind: LINK[r.kind], id: r.id } };
   });
 }
 
 /**
  * What is waiting (any day): counts and the first ids, read as counts and ids. One queue failing answers `null` for it,
- * never a failed home screen. `cardPaymentsWaiting`: the day's rows whose money is still at the gateway.
+ * never a failed home screen. r37c: `bookingsAwaiting` = bookings waiting for their PAYMENT (the pharmacy's card
+ * consultations still pending, lab tests `pending_payment`); it replaces r37b's `cardPaymentsWaiting` (the same rows).
  */
-async function pendingOf(actor: PharmacyActor, raws: Raw[]) {
+async function pendingOf(actor: PharmacyActor) {
   const pharmacyId = actor.pharmacyId;
   const countIds = async (Model: Finder & { countDocuments: (f: Row) => PromiseLike<number> }, filter: Row) => {
     const [count, rows] = await Promise.all([Model.countDocuments(filter),
@@ -198,7 +220,7 @@ async function pendingOf(actor: PharmacyActor, raws: Raw[]) {
       .then((q) => ({ count: q.total, ids: (q.data as Row[]).map((r) => String(r._id)) })),
     // r37b: counter sales this pharmacy sold (never ones it bought), unpaid and not ended.
     countIds(PharmacyOrderModel, { pharmacyId: new Types.ObjectId(pharmacyId), orderType: 'in_store', paymentStatus: 'pending', status: { $in: UNPAID_SALE_STATUSES } }),
-    countIds(BookingModel, { ...pharmacyBookingsFilter(pharmacyId), status: 'pending' }),
+    countIds(BookingModel, { ...pharmacyBookingsFilter(pharmacyId), status: 'pending', 'assisted.funding.method': 'razorpay', 'assisted.funding.state': 'pending' }),
     countIds(PartnerLabBookingModel, { ...labOwner, status: 'pending_payment' }),
     countIds(PartnerLabBookingModel, { ...labOwner, status: 'report_ready' }),
     new InventoryItemRepository().findWithPagination({ pharmacyId, lowStock: true, isActive: true }, 1, PENDING_IDS)
@@ -208,34 +230,82 @@ async function pendingOf(actor: PharmacyActor, raws: Raw[]) {
   const ok = (i: number): Count | null => (settled[i]!.status === 'fulfilled' ? (settled[i] as PromiseFulfilledResult<Count>).value : null);
   const consults = ok(2);
   const labPay = ok(3);
-  const waiting = raws.filter((r) => r.atGateway && OWED.includes(r.paymentStatus) && !ENDED.includes(r.status));
   return {
     prescriptionsToReview: ok(0), unpaidCounterSales: ok(1),
-    bookingsAwaiting: consults && labPay ? { count: consults.count + labPay.count, consultationIds: consults.ids, labBookingIds: labPay.ids } : null,
+    bookingsAwaiting: consults && labPay ? { count: consults.count + labPay.count, consultationCount: consults.count, labCount: labPay.count,
+      consultationIds: consults.ids, labBookingIds: labPay.ids } : null,
     labReportsReady: ok(4), lowStock: ok(5),
-    cardPaymentsWaiting: { count: waiting.length, amountMinor: waiting.reduce((a, r) => a + r.amountMinor, 0),
-      items: waiting.slice(0, PENDING_IDS).map((r) => ({ kind: r.kind, id: r.id })) },
   };
 }
 
-export async function pharmacyToday(actor: PharmacyActor, q: { date?: string; cursor?: string; limit?: number }, now: Date = new Date()) {
+type PageQuery = { date?: string; cursor?: string; limit?: number; order?: 'asc' | 'desc' };
+/** The date, the day's rows and one page of them in the asked order (r37c: `desc` = newest first; the cursor continues it). */
+async function pageOf(actor: PharmacyActor, q: PageQuery, now: Date, pick?: (raws: Raw[]) => Promise<Raw[]>) {
   const date = q.date ?? istDate(now);
   if (!isRealDate(date)) throw err(400, 'INVALID_DATE', 'date must be a real date (YYYY-MM-DD)');
   const m = q.cursor ? CURSOR.exec(q.cursor) : null;
   if (q.cursor && !m) throw err(400, 'INVALID_CURSOR', 'Invalid cursor');
   const limit = Math.min(Math.max(Number(q.limit) || LIMIT_DEFAULT, 1), LIMIT_MAX);
+  const desc = q.order === 'desc';
   const day = dayRange(date);
   const { raws, truncated } = await rawOf(actor.pharmacyId, day);
+  const chosen = pick ? await pick(raws) : raws;
+  const ordered = desc ? [...chosen].reverse() : chosen;
   const from = m ? [Number(m[1]), m[2]!.toLowerCase()] as const : null;
-  const rest = from ? raws.filter((r) => after(keyOf(r.at, r.id), from)) : raws;
+  const rest = from ? ordered.filter((r) => (desc ? after(from, keyOf(r.at, r.id)) : after(keyOf(r.at, r.id), from))) : ordered;
   const page = rest.slice(0, limit);
   const last = page[page.length - 1];
-  const [items, pending] = await Promise.all([itemsOf(actor.pharmacyId, page, day), m ? Promise.resolve(null) : pendingOf(actor, raws)]);
+  return { date, day, raws, truncated, page, first: !m,
+    nextCursor: rest.length > limit && last ? `${new Date(last.at).getTime()}_${last.id}` : null };
+}
+
+export async function pharmacyToday(actor: PharmacyActor, q: PageQuery, now: Date = new Date()) {
+  const p = await pageOf(actor, q, now);
+  const [items, pending] = await Promise.all([itemsOf(actor.pharmacyId, p.page, p.day, p.date), p.first ? pendingOf(actor) : Promise.resolve(null)]);
   return {
-    date, items, totals: totalsOf(raws, day),
+    date: p.date, items, totals: totalsOf(p.raws, p.day),
     // The waiting work is the same on every page: it comes with the first.
     ...(pending ? { pending } : {}),
-    ...(truncated.length ? { truncated } : {}),
-    nextCursor: rest.length > limit && last ? `${new Date(last.at).getTime()}_${last.id}` : null,
+    ...(p.truncated.length ? { truncated: p.truncated } : {}),
+    nextCursor: p.nextCursor,
   };
+}
+
+const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+/**
+ * r37c: POST /api/v1/pharmacy-assisted/today/search { date, q, cursor?, limit?, order? } — the day's rows matching `q` (a
+ * POST: no phone or name in a URL). A row matches on the patient's name as THIS pharmacy sees it (the same names rule as
+ * the items; never the account's own name when the pharmacy is shown a masked one), its short ref or order number, the
+ * text of its line (medicine, test, doctor names), or — with 4 or more digits — the phone of the account holder it was
+ * made for (or the consultation's contact number). The same item shape; no totals or pending.
+ */
+export async function pharmacyTodaySearch(actor: PharmacyActor, q: PageQuery & { q: string }, now: Date = new Date()) {
+  const needle = String(q.q ?? '').trim().toLowerCase();
+  if (needle.length < 2 || needle.length > 100) throw err(400, 'VALIDATION_ERROR', 'q must be 2 to 100 characters');
+  const phone = digits(needle);
+  const pharmacyId = actor.pharmacyId;
+  const p = await pageOf(actor, q, now, async (raws) => {
+    const rowsOf = (k: TodayKind) => raws.filter((r) => r.kind === k).map((r) => r.row);
+    const orderHolders = rowsOf('order').map((o) => o.customerId).filter(Boolean);
+    const userIds = [...orderHolders, ...rowsOf('consultation').map((b) => b.userId), ...rowsOf('lab_booking').map((l) => l.userId)]
+      .map(String).filter((x) => /^[0-9a-fA-F]{24}$/.test(x));
+    const [orderNames, consultNames, labNames, users] = await Promise.all([
+      pharmacyFacingHolderNames(orderHolders, pharmacyId),
+      bookerNames(rowsOf('consultation'), { kind: 'pharmacy', id: pharmacyId }),
+      bookerNames(rowsOf('lab_booking').map((l) => ({ _id: l._id, userId: l.userId, dependentId: l.patient?.dependentId })), { kind: 'pharmacy', id: pharmacyId }),
+      phone.length >= 4 && userIds.length ? UserModel.find({ _id: { $in: [...new Set(userIds)] } }).select({ phone: 1 }).lean() as unknown as Promise<Row[]> : Promise.resolve([] as Row[]),
+    ]);
+    const phoneOf = new Map(users.map((u) => [String(u._id).toLowerCase(), digits(u.phone)]));
+    return raws.filter((r) => {
+      const v = r.row;
+      const name = r.kind === 'order' ? orderNames.get(String(v.customerId ?? '').toLowerCase()) : r.kind === 'consultation'
+        ? consultNames.patients.get(r.id) : r.kind === 'lab_booking' ? labNames.patients.get(r.id) : null;
+      const text = [name, v.orderNumber, v.assisted?.shortRef, whatOf(r).what].filter(Boolean).join(' ').toLowerCase();
+      if (text.includes(needle)) return true;
+      if (phone.length < 4) return false;
+      const holder = r.kind === 'order' ? v.customerId : v.userId;
+      return [phoneOf.get(String(holder ?? '').toLowerCase()), r.kind === 'consultation' ? digits(v.contactNo) : ''].some((x) => !!x && x.includes(phone));
+    });
+  });
+  return { date: p.date, items: await itemsOf(pharmacyId, p.page, p.day, p.date), nextCursor: p.nextCursor };
 }

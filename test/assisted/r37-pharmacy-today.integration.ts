@@ -142,11 +142,15 @@ async function main() {
         ['order', '07:30'], ['order', '08:30'], ['order', '09:30'], ['consultation', '10:30'], ['order', '11:30']]);
       const byKind = (k: string) => d.items.filter((i: any) => i.kind === k);
       assert.deepEqual(Object.keys(d.items[0]).sort(), ['amountMinor', 'at', 'id', 'kind', 'link', 'madeOn', 'method', 'paid', 'paidToday', 'patientName', 'shortRef',
-        'status', 'what']);
+        'status', 'what', 'whatParts']);
+      // r37c: the line as a code with values (names stay data).
+      assert.deepEqual([byKind('order')[0].whatParts, byKind('consultation')[0].whatParts, byKind('lab_booking')[0].whatParts, byKind('wallet_topup')[0].whatParts], [
+        { code: 'order.items', values: { first: 'Dolo 650', more: 1 } }, { code: 'consult.scheduled', values: { doctor: 'Dr Kavya', time: '11:30', mode: 'video' } },
+        { code: 'lab.tests', values: { first: 'CBC', more: 1 } }, { code: 'wallet.topup' }]);
       // r37b: the earlier row paid this day.
       const earlier = d.items.find((i: any) => i.id === orderIds[8]);
       assert.deepEqual([earlier.paidToday, earlier.madeOn, earlier.method, earlier.amountMinor], [true, '2026-11-18', 'card', 2500]);
-      assert.deepEqual([byKind('order')[0].paidToday, byKind('order')[0].madeOn], [true, DAY]);
+      assert.deepEqual([byKind('order')[0].paidToday, byKind('order')[0].madeOn], [false, DAY], 'r37c: only an earlier row is marked');
       assert.equal(d.items.find((i: any) => i.id === orderIds[2]).paidToday, false);
       const cash = byKind('order')[0];
       assert.deepEqual([cash.id, cash.patientName, cash.what, cash.amountMinor, cash.paid, cash.method, cash.link], [orderIds[0], 'Asha', 'Dolo 650 +1 more', 32_000, true, 'cash',
@@ -164,8 +168,8 @@ async function main() {
       // pharmacy's pending card booking nor the online checkout at the gateway.
       assert.deepEqual(d.totals, { collectedMinor: 32_000 + 15_000 + 2500 + 50_000 + 1000 + 50_000 + 120_000,
         byMethod: { cash: 32_000, upi: 15_000, card: 122_500, wallet: 50_000, online: 50_000, other: 1000 }, unpaidMinor: 9000, count: 12 });
-      assert.deepEqual([d.pending.cardPaymentsWaiting.count, d.pending.cardPaymentsWaiting.amountMinor, d.pending.cardPaymentsWaiting.items.map((x: any) => x.kind)],
-        [2, 34_000, ['consultation', 'order']]);
+      // r37c: bookings waiting for their payment (the pending card consultation), by kind; no second list of the same rows.
+      assert.deepEqual([d.pending.bookingsAwaiting.consultationCount, d.pending.bookingsAwaiting.labCount, d.pending.cardPaymentsWaiting], [1, 0, undefined]);
       assert.equal(d.nextCursor, null);
       // Waiting work (any day).
       assert.deepEqual([d.pending.prescriptionsToReview.count, d.pending.prescriptionsToReview.ids], [1, [orderIds[6]]]);
@@ -194,11 +198,39 @@ async function main() {
       assert.deepEqual([p2.items.length, p3.items.length, p3.nextCursor, p2.pending], [4, 4, null, undefined]);
       assert.deepEqual(new Set([...p1.items, ...p2.items, ...p3.items].map((i: any) => i.id)).size, 12);
       assert.deepEqual(p2.totals, p1.totals);
+      // r37c: newest first, paged the other way; totals and pending unchanged.
+      const d1 = (await expect('P', 'GET', `/today?date=${DAY}&limit=5&order=desc`, 200)).json.data;
+      const d2 = (await expect('P', 'GET', `/today?date=${DAY}&limit=5&order=desc&cursor=${d1.nextCursor}`, 200)).json.data;
+      const d3 = (await expect('P', 'GET', `/today?date=${DAY}&limit=5&order=desc&cursor=${d2.nextCursor}`, 200)).json.data;
+      const asc = [...p1.items, ...p2.items, ...p3.items].map((i: any) => i.id);
+      assert.deepEqual([...d1.items, ...d2.items, ...d3.items].map((i: any) => i.id), [...asc].reverse());
+      assert.deepEqual([d3.nextCursor, d1.totals, !!d1.pending], [null, p1.totals, true]);
+      await expect('P', 'GET', `/today?date=${DAY}&order=sideways`, 400);
       await expect('P', 'GET', '/today?date=2026-02-30', 400, undefined, 'INVALID_DATE');
       await expect('P', 'GET', '/today?cursor=nope', 400);
       const empty = (await expect('P', 'GET', '/today?date=2026-01-01', 200)).json.data;
       assert.deepEqual([empty.items, empty.totals.count, empty.totals.collectedMinor], [[], 0, 0]);
       assert.ok((await expect('P', 'GET', '/today', 200)).json.data.date, 'today by default');
+    });
+
+    await check('r37c POST /today/search: the pharmacy-facing name, short ref, line text and phone; never the account\'s own name; same item shape; no-store', async () => {
+      const search = async (who: Who, q: string, extra: Record<string, unknown> = {}) => (await expect(who, 'POST', '/today/search', 200, { date: DAY, q, ...extra })).json.data;
+      const lRows = [orderIds[0], String(booking.insertedId), String(lab.insertedId)];
+      const asha = await search('P', 'asha');
+      assert.ok(lRows.every((id) => asha.items.some((i: any) => i.id === id)) && asha.items.every((i: any) => i.patientName === 'Asha'), JSON.stringify(asha.items.map((i: any) => i.patientName)));
+      assert.equal(asha.items.length, 4, 'both consultations, the lab booking and the sale');
+      assert.deepEqual((await search('P', 'js-4k7q')).items.map((i: any) => i.id), [String(booking.insertedId)]);
+      assert.equal((await search('P', 'dolo')).items.length, 8);
+      assert.equal((await search('P', '96000370')).items.length, 4, 'the holder\'s phone');
+      assert.deepEqual((await search('P', 'Kumari')).items, [], 'never the account\'s own name when the pharmacy is shown another');
+      assert.deepEqual((await search('Q', 'asha')).items, []);
+      const page = await search('P', 'dolo', { limit: 3, order: 'desc' });
+      assert.deepEqual([page.items.length, !!page.nextCursor, page.totals, page.pending], [3, true, undefined, undefined]);
+      assert.deepEqual(Object.keys(page.items[0]).sort(), ['amountMinor', 'at', 'id', 'kind', 'link', 'madeOn', 'method', 'paid', 'paidToday', 'patientName', 'shortRef',
+        'status', 'what', 'whatParts']);
+      const raw = await call('P', 'POST', '/today/search', { date: DAY, q: 'dolo' });
+      assert.equal(raw.headers.get('cache-control'), 'private, no-store');
+      await expect('P', 'POST', '/today/search', 400, { date: DAY, q: 'a' });
     });
 
     await check('to-dos: once per key (replay 200, another text 409), shared within the pharmacy with createdBy; edits fenced on the version; delete; another pharmacy 404', async () => {
