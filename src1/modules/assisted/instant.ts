@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { isLabTestStatement } from '@/modules/assisted/consentStatements';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
@@ -101,6 +102,10 @@ export async function assertInstantIndexes(withCoupon: boolean): Promise<void> {
 
 function validate(input: AssistedInstantInput): void {
   if (!input.consent || input.consent.agreed !== true) throw err(400, 'CONSENT_REQUIRED', 'Tick "patient agreed" before booking for the patient');
+  // r37d: the lab-test statement is for lab bookings; a consultation is agreed with the consultation statement.
+  if (isLabTestStatement(input.consent.statementVersion)) {
+    throw err(400, 'CONSENT_STATEMENT_MISMATCH', 'This is the lab-test statement; a consultation needs the consultation statement');
+  }
   // Q2 / DR18: wallet only in phase 3 (a card would need partial card refunds of the quote difference).
   if (input.paymentMethod !== 'wallet') throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Consult now for patients is paid from the Jansetu wallet');
   if (!ASSISTED_KEY.test(String(input.requestKey ?? ''))) throw err(400, 'REQUEST_KEY_REQUIRED', 'requestKey is required');

@@ -10,6 +10,7 @@
  *   JWT_SECRET_KEY=local-integration-only SESSION_ORIGINS_CUSTOMER=https://app.jansetu.test SESSION_ORIGINS_WORKSPACE=https://staff.jansetu.test \
  *     MONGODB_URL='mongodb://127.0.0.1:27917/r26_phase3b_check?directConnection=true' npx tsx test/assisted/r26-phase3b.integration.ts
  */
+import { LAB_TEST_STATEMENT_VERSION } from '@/modules/assisted/consentStatements';
 import { removeFixtureDir } from '../partners/q3-fixture-dir';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
@@ -342,6 +343,10 @@ async function main() {
       const labs = await expect('D', 'GET', `${ME}/labs?visitMode=lab`, 200);
       assert.equal(labs.json.data.find((l: any) => l.partnerId === L).nearby, 'pincode', 'nearby the doctor\'s own pincode');
       await expect('D', 'POST', `${ME}/lab-bookings`, 400, order(await slot(), { paymentMethod: 'razorpay' }), 'PAYMENT_METHOD_UNAVAILABLE');
+      // r37d: the lab-test statement is accepted for a doctor's lab booking and recorded.
+      const t = await expect('D', 'POST', `${ME}/lab-bookings`, 201, order(await slot(), { phone: '9600000398', patient: { relation: 'self', name: 'Walk In' },
+        consent: { agreed: true, statementVersion: LAB_TEST_STATEMENT_VERSION, statementLanguage: 'en' } }));
+      assert.equal((await stored(t.json.data.booking._id)).assisted.consent.statementVersion, 'web-lab-test-v1');
     });
 
     await check('the doctor must be verified: every route 403 SPECIALIST_NOT_VERIFIED; the in-transaction re-read refuses one that turned unverified', async () => {

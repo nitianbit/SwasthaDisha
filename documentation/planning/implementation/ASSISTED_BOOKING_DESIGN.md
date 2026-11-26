@@ -6889,6 +6889,47 @@ a repeated tick keeps `doneAt`; the open-first order and its cursor; a deleted k
 - to-dos (key replay and reuse, the 200-character limit, the shared list with `createdBy`, the version fence, `done`
   filter, another pharmacy's 404, delete).
 
+### 26.21 r37d: a lab-test consent statement for pharmacy and doctor lab bookings (2026-11-26)
+
+Branch `m0/r37d-lab-statement` from stage `7f4ff46b`. Local commits only.
+
+**Why.** A pharmacy booking lab tests attested the consultation statement (`web-pharmacy-v2`: "this pharmacy books this
+consultation … the doctor … the prescription"). That is not what the patient agreed to for a lab test.
+
+**Built** (`assisted/consentStatements.ts`):
+- Version `web-lab-test-v1`, language `en`. The text (English, kept as the record of the words; the web shows it next to
+  the tick under this version):
+
+  > The patient (or a family member with them) agreed that we book these lab tests for them on Jansetu; that Jansetu keeps
+  > their details, and makes a Jansetu account for this mobile number if it has none; that the lab sees their name, mobile
+  > number and the tests booked, to do these tests; that the report reaches the patient in their Jansetu app; and that we
+  > can see the report for 90 days after the lab first releases it.
+
+  "We" is the booker who ticks (a pharmacy or a doctor), so one statement serves both. The 90 days is the rule the code
+  already enforces (`BOOKER_REPORT_DAYS`, `bookerReportWindowOpen`: the booker reads the released report for 90 days from
+  its first release); the text reads the number from that constant.
+- Lab bookings by pharmacies and doctors accept it, and record it like any statement (`assisted.consent: { method:
+  'partner_attested', statementVersion: 'web-lab-test-v1', statementLanguage, at, actorId }`).
+- Lab bookings keep accepting the consultation statements sent so far (`web-pharmacy-v2`, the lab's and the doctor's
+  versions), so released clients and requests in flight are not refused. The server never rejected a version and still
+  does not; the recorded version says which words were agreed.
+- Consultations (scheduled and instant) refuse the lab-test statement: 400 `CONSENT_STATEMENT_MISMATCH`.
+
+**Where the statements live.** The earlier statements (round 6f, Q2) are constants in the web packages (`assisted.ts`,
+`assistedLab.ts`); the server stores only the version and language. This one's words are also in the server, so the server
+holds the record of what `web-lab-test-v1` means. The web must show these exact words under this version (a change of
+words is a new version).
+
+**Owner approval: required before production.** These are consent words (GATE-DPDP). They are on stage for testing only;
+the owner must approve the text before any production use. Until then the web can keep sending `web-pharmacy-v2` for lab
+bookings, as today.
+
+**Checks:**
+- `r11-phase2a` adds: a pharmacy lab booking with `web-lab-test-v1` is accepted and recorded; the earlier `v1` stays
+  accepted; the text is about lab tests, names no consultation or doctor, and ends with the 90-day rule.
+- `r26-phase3b` adds: a doctor's lab booking with `web-lab-test-v1` is recorded.
+- `phase1a` adds: a consultation with the lab-test statement is 400 `CONSENT_STATEMENT_MISMATCH`.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

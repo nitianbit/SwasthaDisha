@@ -296,6 +296,9 @@ async function main() {
       const noConsent = consult(slot); delete (noConsent as any).consent;
       await expect('P', 'POST', '/pharmacy-assisted/consultations', 400, noConsent, 'CONSENT_REQUIRED');
       await expect('P', 'POST', '/pharmacy-assisted/consultations', 400, consult(slot, { consent: { agreed: false, statementVersion: 'v1', statementLanguage: 'en' } }), 'CONSENT_REQUIRED');
+      // r37d: the lab-test statement is not a consultation's.
+      await expect('P', 'POST', '/pharmacy-assisted/consultations', 400, consult(slot, { consent: { agreed: true, statementVersion: 'web-lab-test-v1', statementLanguage: 'en' } }),
+        'CONSENT_STATEMENT_MISMATCH');
       await expect('P', 'POST', '/pharmacy-assisted/consultations', 400, consult(slot, { paymentMethod: 'razorpay' }), 'PAYMENT_METHOD_UNAVAILABLE');
       const fence = await expect('P', 'POST', '/pharmacy-assisted/consultations', 409, consult(slot, { acceptedPriceMinor: 40000 }), 'PRICE_CHANGED');
       assert.equal(fence.json.details.priceMinor, 50000);

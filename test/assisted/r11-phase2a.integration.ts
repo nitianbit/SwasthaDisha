@@ -12,6 +12,7 @@
  *   JWT_SECRET_KEY=local-integration-only SESSION_ORIGINS_CUSTOMER=https://app.jansetu.test SESSION_ORIGINS_WORKSPACE=https://staff.jansetu.test \
  *     MONGODB_URL='mongodb://127.0.0.1:27917/r11_phase2a_check?directConnection=true' npx tsx test/assisted/r11-phase2a.integration.ts
  */
+import { LAB_TEST_STATEMENT, LAB_TEST_STATEMENT_VERSION } from '@/modules/assisted/consentStatements';
 import { removeFixtureDir } from '../partners/q3-fixture-dir';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
@@ -323,6 +324,14 @@ async function main() {
       assert.deepEqual(d.booking.payment, { method: 'wallet', state: 'captured', payBy: null });
       assert.ok(labNotices.some((n) => n.key === `assisted:lab:${id}:booked:customer` && n.userId === X && n.message.includes('Sharma Medicals')));
       assert.ok(await AssistedAuditEventModel.exists({ action: 'booking.created', bookingId: id, 'detail.kind': 'lab_booking' }));
+    });
+
+    await check('r37d: the lab-test statement is accepted for a pharmacy\'s lab booking and recorded; the consultation statement still is', async () => {
+      assert.equal((await stored(first.booking._id)).assisted.consent.statementVersion, 'v1', 'an earlier (consultation) statement stays accepted');
+      const d = await book('P', order(await slot(), { consent: { agreed: true, statementVersion: LAB_TEST_STATEMENT_VERSION, statementLanguage: 'en' } }));
+      const c = (await stored(d.booking._id)).assisted.consent;
+      assert.deepEqual([c.method, c.statementVersion, c.statementLanguage], ['partner_attested', 'web-lab-test-v1', 'en']);
+      assert.ok(/lab tests/.test(LAB_TEST_STATEMENT) && /90 days after the lab first releases it\.$/.test(LAB_TEST_STATEMENT) && !/consultation|doctor/.test(LAB_TEST_STATEMENT));
     });
 
     await check('request keys: the same key and body replays 200 (nothing moves); the same key with other tests is 409; by-key; an abandoned key never books', async () => {

@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import { isLabTestStatement } from '@/modules/assisted/consentStatements';
 import { BASE32_ALPHABET } from '@/modules/common/utils/base32';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
@@ -154,6 +155,10 @@ export async function assertAssistedIndexes(withCoupon: boolean, payerKind: Book
 
 function validate(input: AssistedConsultInput, booker: BookerActor): void {
   if (!input.consent || input.consent.agreed !== true) throw err(400, 'CONSENT_REQUIRED', 'Tick "patient agreed" before booking for the patient');
+  // r37d: the lab-test statement is for lab bookings; a consultation is agreed with the consultation statement.
+  if (isLabTestStatement(input.consent.statementVersion)) {
+    throw err(400, 'CONSENT_STATEMENT_MISMATCH', 'This is the lab-test statement; a consultation needs the consultation statement');
+  }
   if (booker.kind === 'lab' && !/^[0-9a-fA-F]{24}$/.test(String(input.branchId ?? ''))) throw err(400, 'VALIDATION_ERROR', 'branchId is required');
   if (input.paymentMethod !== 'wallet' && input.paymentMethod !== 'razorpay') {
     throw err(400, 'PAYMENT_METHOD_UNAVAILABLE', 'Assisted bookings are paid from the Jansetu wallet for now');
