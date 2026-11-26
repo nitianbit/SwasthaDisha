@@ -56,23 +56,19 @@ export async function assertLab(a: PartnerActor): Promise<void> {
 const LAB_FIELDS = { status: 1, paymentStatus: 1, 'pricing.payableMinor': 1, 'assisted.shortRef': 1, 'lifecycle.paidAt': 1, 'items.name': 1, createdAt: 1,
   userId: 1, 'patient.name': 1, source: 1, visitMode: 1, 'settlement.settlementSystem': 1, 'address.phone': 1, branchId: 1,
   'assisted.identity.disputed.state': 1, 'desk.identity.disputed.state': 1 };
-const BILL_FIELDS = { serial: 1, issuedAt: 1, 'customer.name': 1, 'customer.phone': 1, 'items.description': 1, 'totals.totalMinor': 1, lifecycleState: 1,
-  paidMinor: 1, labBookingId: 1, branchId: 1 };
 const TOPUP_FIELDS = { amountMinor: 1, at: 1, createdAt: 1 };
 
 /**
- * A partner's bills of one day as register rows (r38; r39: shared with the doctor's register for the clinic he owns):
- * bills made that day, and earlier bills with a payment or a refund that day (their events), each with the money
- * received that day by method, what is still due and what went back.
+ * r40: a partner's bills of the day as register rows — the lab's (r38/r38b) rules, shared with the clinic: listed when made
+ * that day, or made earlier with a payment or a refund that day; each payment of that day by its parts' methods; the
+ * money given back that day by the refund's method; what is still due.
  */
-export async function billRawsOf(billOwner: Row, day: Day, cap: ReturnType<typeof capper>): Promise<Raw[]> {
-  const before = { $lt: day.$gte };
-  const [bills, billsTouched] = await Promise.all([
-    dayRows(InvoiceModel, { ...billOwner, issuedAt: day }, BILL_FIELDS),
-    // Earlier bills changed on or after the day began: the ones that may have a payment that day (checked on their events).
-    dayRows(InvoiceModel, { ...billOwner, issuedAt: before, updatedAt: { $gte: day.$gte } }, BILL_FIELDS),
-  ]);
-  const allBills = [...cap('bill', bills), ...cap('bill', billsTouched)];
+export const BILL_FIELDS = { serial: 1, issuedAt: 1, 'customer.name': 1, 'customer.phone': 1, 'items.description': 1, 'totals.totalMinor': 1, lifecycleState: 1,
+  paidMinor: 1, labBookingId: 1, appointmentId: 1, branchId: 1 };
+/** r40: the day's bills in `owner`'s scope: made that day, and earlier ones changed since the day began (may hold a payment or refund that day). */
+export const billDayReads = (owner: Row, day: Day) => [dayRows(InvoiceModel, { ...owner, issuedAt: day }, BILL_FIELDS),
+  dayRows(InvoiceModel, { ...owner, issuedAt: { $lt: day.$gte }, updatedAt: { $gte: day.$gte } }, BILL_FIELDS)] as const;
+export async function billRawsOf(allBills: Row[], day: Day): Promise<Raw[]> {
   // r38b: the day's payments AND cancellations (a cancellation records how a paid bill's money went back: `refund`).
   const events = allBills.length ? await InvoiceEventModel.find({ invoiceId: { $in: allBills.map((b) => String(b._id)) },
     kind: { $in: ['payment', 'cancellation'] }, at: day }).select({ invoiceId: 1, kind: 1, splits: 1, mode: 1, amountMinor: 1, reference: 1, refund: 1, at: 1 })
@@ -84,29 +80,45 @@ export async function billRawsOf(billOwner: Row, day: Day, cap: ReturnType<typeo
     if (e.kind === 'cancellation' && !e.refund) continue;
     m.set(String(e.invoiceId), [...(m.get(String(e.invoiceId)) ?? []), e]);
   }
-  return [
-    ...allBills.flatMap((b): Raw[] => {
-      const today = paidToday.get(String(b._id)) ?? [];
-      const refundsToday = refundToday.get(String(b._id)) ?? [];
-      const made = inDay(b.issuedAt, day);
-      if (!made && !today.length && !refundsToday.length) return [];
-      // The money that went back that day, by the refund's own method (its amount; absent on old rows: what had been paid).
-      const refunded = refundsToday.map((e) => ({ method: billModeMethodOf(e.refund.mode),
-        amountMinor: Number(e.refund.amountMinor ?? b.paidMinor ?? b.totals?.totalMinor ?? 0) }));
-      const received = today.flatMap((e) => paymentSplitsOf(e as never, Number(b.totals?.totalMinor ?? 0))
-        .map((x) => ({ method: billModeMethodOf(x.mode), amountMinor: Number(x.amountMinor ?? 0) })));
-      const methods = [...new Set(received.map((x) => x.method))];
-      const lastPaid = today.length ? new Date(Math.max(...today.map((e) => new Date(e.at).getTime()))) : null;
-      // An earlier bill listed only for its refund that day stands at the refund's time.
-      const lastRefund = refundsToday.length ? new Date(Math.max(...refundsToday.map((e) => new Date(e.at).getTime()))) : null;
-      const due = Number((withDue(b as never) as Row).dueMinor ?? 0);
-      return [{ kind: 'bill', row: b, at: made ? b.issuedAt : lastPaid ?? lastRefund ?? b.issuedAt, createdAt: b.issuedAt, id: String(b._id), status: b.lifecycleState, paymentStatus: b.lifecycleState,
-        amountMinor: Number(b.totals?.totalMinor ?? 0), paid: b.lifecycleState === 'paid', paidAt: lastPaid,
-        method: methods.length === 1 ? methods[0]! : methods.length ? 'other' : null, collects: true, atGateway: false, received, dueMinor: due,
-        ...(refunded.length ? { refunded } : {}) }];
-    }),
-  ];
+  return allBills.flatMap((b): Raw[] => {
+    const today = paidToday.get(String(b._id)) ?? [];
+    const refundsToday = refundToday.get(String(b._id)) ?? [];
+    const made = inDay(b.issuedAt, day);
+    if (!made && !today.length && !refundsToday.length) return [];
+    // The money that went back that day, by the refund's own method (its amount; absent on old rows: what had been paid).
+    const refunded = refundsToday.map((e) => ({ method: billModeMethodOf(e.refund.mode),
+      amountMinor: Number(e.refund.amountMinor ?? b.paidMinor ?? b.totals?.totalMinor ?? 0) }));
+    const received = today.flatMap((e) => paymentSplitsOf(e as never, Number(b.totals?.totalMinor ?? 0))
+      .map((x) => ({ method: billModeMethodOf(x.mode), amountMinor: Number(x.amountMinor ?? 0) })));
+    const methods = [...new Set(received.map((x) => x.method))];
+    const lastPaid = today.length ? new Date(Math.max(...today.map((e) => new Date(e.at).getTime()))) : null;
+    // An earlier bill listed only for its refund that day stands at the refund's time.
+    const lastRefund = refundsToday.length ? new Date(Math.max(...refundsToday.map((e) => new Date(e.at).getTime()))) : null;
+    const due = Number((withDue(b as never) as Row).dueMinor ?? 0);
+    return [{ kind: 'bill', row: b, at: made ? b.issuedAt : lastPaid ?? lastRefund ?? b.issuedAt, createdAt: b.issuedAt, id: String(b._id), status: b.lifecycleState, paymentStatus: b.lifecycleState,
+      amountMinor: Number(b.totals?.totalMinor ?? 0), paid: b.lifecycleState === 'paid', paidAt: lastPaid,
+      method: methods.length === 1 ? methods[0]! : methods.length ? 'other' : null, collects: true, atGateway: false, received, dueMinor: due,
+      ...(refunded.length ? { refunded } : {}) }];
+  });
 }
+
+/** A bill's line: its first item (`bill.items { first, more }`). */
+export function billWhat(v: Row): { what: string; whatParts: WhatParts } {
+  const names = (v.items ?? []).map((i: Row) => String(i.description ?? 'Item'));
+  return { what: firstOf(names) || 'Bill', whatParts: { code: 'bill.items', values: listOf(names) } };
+}
+/** A bill row as a register item: its serial, the customer typed on it, paid on this day when a payment fell on it (made earlier). */
+export function billItemOf(r: Raw, day: Day, date: string) {
+  const b = itemBase(r, day, date);
+  return { kind: b.kind, id: b.id, at: b.at, shortRef: r.row.serial ?? null, patientName: r.row.customer?.name ?? null, ...billWhat(r.row),
+    amountMinor: b.amountMinor, paid: b.paid, method: b.method, status: b.status, madeOn: b.madeOn, paidToday: b.madeOn !== date && !!r.received?.length,
+    link: { kind: 'invoice', id: r.id } };
+}
+/** A bill matches on its customer's name, its serial or its lines, or its customer's phone. */
+export const billMatches = (t: { needle: string; phone: string }, r: Raw) =>
+  matches(t, [r.row.customer?.name, r.row.serial, billWhat(r.row).what], [r.row.customer?.phone]);
+/** Bills issued or part-paid (any day), in scope. */
+export const unpaidBillsQueue = (a: PartnerActor) => () => countIds(InvoiceModel, { ...invoicesScope(a), lifecycleState: { $in: ['issued', 'partly_paid'] } });
 
 async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncated: string[] }> {
   const src = sourcesOf(a);
@@ -115,17 +127,17 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
   const labOwner = src.bookings ? labBookingsScope(a) : null;
   const billOwner = src.bills ? invoicesScope(a) : null;
   const consultOwner = src.consultations ? labBookerBookingsFilter(a) : null;
-  const truncated = new Set<string>();
-  const cap = capper(truncated);
-  const [labs, labsPaid, billRaws, consults, consultsPaid, topups] = await Promise.all([
+  const [labs, labsPaid, bills, billsTouched, consults, consultsPaid, topups] = await Promise.all([
     labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, createdAt: day }, LAB_FIELDS) : none,
     labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS) : none,
-    billOwner ? billRawsOf(billOwner, day, cap) : Promise.resolve([] as Raw[]),
+    ...(billOwner ? billDayReads(billOwner, day) : [none, none]),
     consultOwner ? dayRows(BookingModel, { ...consultOwner, createdAt: day }, CONSULTATION_FIELDS) : none,
     consultOwner ? dayRows(BookingModel, { ...consultOwner, 'lifecycle.paid.at': day, createdAt: before }, CONSULTATION_FIELDS) : none,
     src.topups ? dayRows(PartnerWalletEntryModel, { ownerKind: 'lab', ownerId: a.partnerId.toLowerCase(), kind: 'credit', referenceType: 'wallet_recharge',
       at: day }, TOPUP_FIELDS) : none,
   ]);
+  const truncated = new Set<string>();
+  const cap = capper(truncated);
   const raws: Raw[] = [
     ...[...cap('lab_booking', labs), ...cap('lab_booking', labsPaid)].map((l): Raw => {
       const paid = l.paymentStatus === 'paid';
@@ -136,19 +148,13 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
         amountMinor: Number(l.pricing?.payableMinor ?? 0), paid: !desk && paid, paidAt: !desk && paid ? l.lifecycle?.paidAt ?? l.createdAt : null,
         method: !desk && paid ? 'online' : null, collects: !desk, atGateway: !desk && l.status === 'pending_payment' };
     }),
-    ...billRaws,
+    ...await billRawsOf([...cap('bill', bills), ...cap('bill', billsTouched)], day),
     ...[...cap('consultation', consults), ...cap('consultation', consultsPaid)].map(consultationRaw),
     // A top-up is the lab paying into its own wallet, not money collected from a patient: listed, not counted.
     ...cap('wallet_topup', topups).map((t): Raw => ({ kind: 'wallet_topup', row: t, at: t.at, createdAt: t.at, id: String(t._id), status: 'completed',
       paymentStatus: 'paid', amountMinor: Number(t.amountMinor ?? 0), paid: true, paidAt: t.at, method: 'online', collects: false, atGateway: false })),
   ];
   return { raws: orderRaws(raws, day), truncated: [...truncated] };
-}
-
-/** A bill's line: its items (`bill.items { first, more }`). */
-export function billWhat(v: Row): { what: string; whatParts: WhatParts } {
-  const names = (v.items ?? []).map((i: Row) => String(i.description ?? 'Item'));
-  return { what: firstOf(names) || 'Bill', whatParts: { code: 'bill.items', values: listOf(names) } };
 }
 
 function whatOf(r: Raw): { what: string; whatParts: WhatParts } {
@@ -177,20 +183,18 @@ async function itemsOf(a: PartnerActor, page: Raw[], day: Day, date: string) {
     bookerViews(bookingRows, { kind: 'lab', id: a.partnerId }, { copies: 'queue', clinical: false })]);
   const byId = new Map<string, Row>([...labViews as Row[], ...consults].map((v) => [String(v._id), v]));
   return page.map((r) => {
+    // A bill names the customer the lab typed on it; r38c: and the desk booking it is for (to fold the visit into one row),
+    // only to a member who reads lab bookings.
+    if (r.kind === 'bill') return { ...billItemOf(r, day, date), labBookingId: bookingsReader && r.row.labBookingId ? String(r.row.labBookingId) : null };
     const v = byId.get(r.id);
-    const shortRef = r.kind === 'bill' ? r.row.serial ?? null : r.kind === 'wallet_topup' ? null : r.row.assisted?.shortRef ?? null;
-    // A bill names the customer the lab typed on it; a row without its view shows no name (never the raw record).
-    const patientName = r.kind === 'bill' ? r.row.customer?.name ?? null : !v || r.kind === 'wallet_topup' ? null
-      : r.kind === 'lab_booking' ? v.patient?.name ?? null : v.patientName ?? null;
+    const shortRef = r.kind === 'wallet_topup' ? null : r.row.assisted?.shortRef ?? null;
+    // A row without its view shows no name (never the raw record).
+    const patientName = !v || r.kind === 'wallet_topup' ? null : r.kind === 'lab_booking' ? v.patient?.name ?? null : v.patientName ?? null;
     const b = itemBase(r, day, date);
-    // A bill paid in part on this day (made earlier) is an earlier row paid that day too.
-    const paidToday = r.kind === 'bill' ? b.madeOn !== date && !!r.received?.length : b.paidToday;
     // r38b: a desk booking is paid when its bill is (its money is counted on the bill).
     const paid = r.kind === 'lab_booking' && isDeskRow(r.row) ? v?.bill?.state === 'paid' : b.paid;
     return { kind: b.kind, id: b.id, at: b.at, shortRef, patientName, ...whatOf(r), amountMinor: b.amountMinor, paid, method: b.method,
-      status: b.status, madeOn: b.madeOn, paidToday, link: { kind: LINK[r.kind as LabTodayKind], id: r.id },
-      // r38c: a bill names the desk booking it is for (to fold the visit into one row), only to a member who reads lab bookings.
-      ...(r.kind === 'bill' ? { labBookingId: bookingsReader && r.row.labBookingId ? String(r.row.labBookingId) : null } : {}) };
+      status: b.status, madeOn: b.madeOn, paidToday: b.paidToday, link: { kind: LINK[r.kind as LabTodayKind], id: r.id } };
   });
 }
 
@@ -228,7 +232,7 @@ async function pendingOf(a: PartnerActor, date: string) {
       return { count: unbilled.length, ids: unbilled.slice(0, PENDING_IDS).map((r) => String(r._id)) };
     };
   }
-  if (src.bills) queues.unpaidBills = () => countIds(InvoiceModel, { ...invoicesScope(a), lifecycleState: { $in: ['issued', 'partly_paid'] } });
+  if (src.bills) queues.unpaidBills = unpaidBillsQueue(a);
   if (src.consultations) {
     const own = labBookerBookingsFilter(a);
     // The lab's card consultations still waiting for their payment.
@@ -275,7 +279,7 @@ export async function labTodaySearch(a: PartnerActor, q: PageQuery & { q: string
         // identity was not moved to another account (a "not mine" report moved it).
         case 'lab_booking': return matches(terms, [v.patient?.name, v.assisted?.shortRef, whatOf(r).what],
           [v.address?.phone, own(v) && !identityMoved(v) ? phoneOf.get(String(v.userId ?? '').toLowerCase()) : null]);
-        case 'bill': return matches(terms, [v.customer?.name, v.serial, whatOf(r).what], [v.customer?.phone]);
+        case 'bill': return billMatches(terms, r);
         case 'consultation': return matches(terms, [consultNames.patients.get(r.id), v.assisted?.shortRef, whatOf(r).what],
           [v.contactNo, identityMoved(v) ? null : phoneOf.get(String(v.userId ?? '').toLowerCase())]);
         default: return false;
