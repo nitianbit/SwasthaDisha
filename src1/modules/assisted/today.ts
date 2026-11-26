@@ -13,7 +13,7 @@ import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { bookerLabViews } from '@/modules/assisted/labBookings';
 import { pharmacyBookingsFilter } from '@/modules/assisted/services/pharmacyBookings';
 import type { PharmacyActor } from '@/modules/assisted/bookers';
-import {
+import { isoDay,
   capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, identityMoved, matches, searchTerms, itemBase, labTestsWhat, listOf, orderRaws, pageOf,
   paise, PENDING_IDS, settledQueues, TOPUP_WHAT, totalsOf, type Count, type Day, type PageQuery, type Raw, type Row, type WhatParts,
 } from '@/modules/today/register';
@@ -49,7 +49,7 @@ async function rawOf(pharmacyId: string, day: Day): Promise<{ raws: Raw[]; trunc
     dayRows(PharmacyOrderModel, { ...orderOwner, createdAt: day }, ORDER_FIELDS),
     dayRows(PharmacyOrderModel, { ...orderOwner, paidAt: day, createdAt: before }, ORDER_FIELDS),
     dayRows(BookingModel, { ...bookingOwner, createdAt: day }, CONSULTATION_FIELDS),
-    dayRows(BookingModel, { ...bookingOwner, 'lifecycle.paid.at': day, createdAt: before }, CONSULTATION_FIELDS),
+    dayRows(BookingModel, { ...bookingOwner, 'lifecycle.paid.at': isoDay(day), createdAt: before }, CONSULTATION_FIELDS),
     dayRows(PartnerLabBookingModel, { ...labOwner, createdAt: day }, LAB_FIELDS),
     dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS),
     // Its own card top-ups (completed credits of a wallet recharge).
