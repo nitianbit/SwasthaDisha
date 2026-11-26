@@ -7321,7 +7321,8 @@ Single suites on `58329674` (own mongod): `r40-clinic-reception` 6/6, `r38-lab-t
 bill, a paid-and-refunded earlier appointment at its payment time, and the cap flag (2,001 unbilled visits → `count: 2000,
 truncated: true`). r38 adds a later desk booking not yet to bill; its seed lab rows now carry `slot.startsAt`, as real rows
 do. Single suites: `r40-clinic-reception` 7/7, `r38-lab-today` 6/6, `r37-pharmacy-today` 6/6, `r39-doctor-dashboard` 8/8;
-`tsc` 17.
+`tsc` 17. Full regression (`prun.sh … 2` on `5032a9ca`): 92 suites, 91 passed, `tsc` 17; `phase0` failed its known load
+race (finding 6) and passed alone, 29/29.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
