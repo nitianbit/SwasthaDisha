@@ -273,6 +273,18 @@ async function main() {
         createdBy: { kind: 'pharmacy', id: R, name: 'Full Pharmacy' }, requestKey: `seed-${i}-xxxxxx`, requestHash: 'h', version: 0 })));
       await expect('R', 'POST', '/todos', 409, { text: 'one more', requestKey: 'todo-key-full-01' }, 'TODO_LIMIT');
     });
+    await check('r40b: a consultation booked earlier and paid on this day is listed (paidToday) and counted on this day (lifecycle.paid.at is an ISO string)', async () => {
+      const PAID = '2026-11-25';
+      const b = await BookingModel.collection.insertOne({ pharmacyId: P, userId: L, specialistId: oid(), doctorName: 'Dr Mehta', bookingKind: 'scheduled',
+        consultationMode: 'video', bookingDate: '20261126', bookingTime: '10:00', status: 'confirmed', paymentStatus: 'paid', price: 400,
+        lifecycle: { paid: { at: new Date(`${PAID}T10:30:00+05:30`).toISOString() } }, createdAt: new Date('2026-11-23T18:00:00+05:30'), updatedAt: new Date(`${PAID}T10:30:00+05:30`),
+        assisted: { shortRef: 'JS-R40B', bookedBy: { kind: 'pharmacy', id: P, name: 'Demo Pharmacy' }, funding: { method: 'wallet', state: 'debited' } } } as never);
+      const d = (await expect('P', 'GET', `/today?date=${PAID}`, 200)).json.data;
+      const item = d.items.find((i: any) => i.id === String(b.insertedId));
+      assert.ok(item, JSON.stringify(d.items).slice(0, 300));
+      assert.deepEqual([item.kind, item.paidToday, item.madeOn, item.method], ['consultation', true, '2026-11-23', 'wallet']);
+      assert.deepEqual([d.totals.collectedMinor, d.totals.byMethod.wallet], [40_000, 40_000]);
+    });
   } finally {
     server.close();
     await mongoose.disconnect();

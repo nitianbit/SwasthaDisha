@@ -17,7 +17,7 @@ import { bookerNames } from '@/modules/assisted/names';
 import { isDeskRow } from '@/modules/assisted/deskViews';
 import { labSourceOf } from '@/modules/assisted/labViews';
 import {
-  capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, inDay, itemBase, labTestsWhat, listOf,
+  capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, inDay, isoDay, itemBase, labTestsWhat, listOf,
   identityMoved, matches, orderRaws, pageOf, PENDING_IDS, searchTerms, settledQueues, TODAY_SOURCE_CAP, TOPUP_WHAT, totalsOf, type Day, type PageQuery, type Raw, type Row,
   type WhatParts,
 } from '@/modules/today/register';
@@ -132,7 +132,7 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
     labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS) : none,
     ...(billOwner ? billDayReads(billOwner, day) : [none, none]),
     consultOwner ? dayRows(BookingModel, { ...consultOwner, createdAt: day }, CONSULTATION_FIELDS) : none,
-    consultOwner ? dayRows(BookingModel, { ...consultOwner, 'lifecycle.paid.at': day, createdAt: before }, CONSULTATION_FIELDS) : none,
+    consultOwner ? dayRows(BookingModel, { ...consultOwner, 'lifecycle.paid.at': isoDay(day), createdAt: before }, CONSULTATION_FIELDS) : none,
     src.topups ? dayRows(PartnerWalletEntryModel, { ownerKind: 'lab', ownerId: a.partnerId.toLowerCase(), kind: 'credit', referenceType: 'wallet_recharge',
       at: day }, TOPUP_FIELDS) : none,
   ]);

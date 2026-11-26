@@ -7271,12 +7271,17 @@ shapes, owner kind `clinic`), as r38b's for labs.
 | C5 | "To confirm" = this date's pending appointments; "to check in" = this date's desk rows still confirmed and not arrived (online rows are not checked in at the desk) | The desk's two actions for the day |
 | C6 | Appointments are listed on the day they were made (and earlier ones on the day they were paid), as the register's rule. This date's visits are under `pending.appointmentsToday` | The owner's register rule (26 Nov): money and list by the day it happened |
 
-**Seen, not changed (for a follow-up):** `lifecycle.paid.at` on bookings is a String path holding ISO times. A Date range on
-it is cast by Mongoose to `Date.toString()` text, so the pharmacy register's earlier consultations paid that day
-(`assisted/today.ts:52`) and the lab register's (`partners/services/today.ts`, `consultsPaid`) never match. Those rows are
-not listed, and their money is not counted on the day they were paid. The clinic register uses the new shared
-`isoDay(day)` (`today/register.ts`). The fix for the other two is the same one word, but it changes their answers, so it
-was left for the coordinator.
+**r40b (fixed, branch `m0/r40b-iso-paid` from stage `21a4a92b`):** `lifecycle.paid.at` on bookings is a String path holding
+ISO times, and a Date range on it is cast by Mongoose to `Date.toString()` text. So the pharmacy register's "earlier
+consultations paid that day" (`assisted/today.ts`) and the lab register's (`partners/services/today.ts`, `consultsPaid`)
+never matched: such a consultation was not listed, and its money was not counted on the day it was received. Both reads
+now use the shared `isoDay(day)` (`today/register.ts`), as the clinic register does. The answers change toward the
+documented rule (r37b T1): the consultation is listed at its payment time with `paidToday: true` and counted on that day.
+Every other day range in the Today code is on a Date field (orders' `paidAt`, lab bookings' `lifecycle.paidAt`,
+`createdAt`, bills' `issuedAt` and `updatedAt`, bill events' and wallet entries' `at`). Checks (each failed before the
+fix): r37 and r38 each add a consultation made two days earlier and paid on the register's day, listed and counted
+(wallet). Single suites: `r37-pharmacy-today` 6/6, `r38-lab-today` 5/5, `r40-clinic-reception` 6/6; `tsc` 17. Full regression
+(`prun.sh … 2` on `1b85de6d`): 91 suites, 91 passed, `tsc` 17.
 
 **Deploy:** no new index or collection (the to-dos are r37's). No migration.
 
