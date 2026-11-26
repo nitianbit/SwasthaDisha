@@ -10,6 +10,8 @@ import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import type { AuthRequest } from '@/modules/middleware/auth';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { TodoModel, type ITodo, type TodoOwnerKind } from '@/modules/todos/model';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
+import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 
 /**
  * r37 (§26.20): to-dos for an owner (pharmacy now; lab, clinic and doctor later, mounted with their own `ownerOf`). Every
@@ -18,6 +20,10 @@ import { TodoModel, type ITodo, type TodoOwnerKind } from '@/modules/todos/model
  */
 export interface TodoOwner { kind: TodoOwnerKind; id: string }
 export interface TodoActor { kind: string; id: string; name: string | null }
+/** r37b: at most this many open to-dos per owner (409 TODO_LIMIT). */
+export const TODO_OPEN_LIMIT = 500;
+/** r37b: the request-key store's scope of an owner's to-do keys (a used key stays used after its to-do is deleted). */
+const keyScope = (o: TodoOwner) => `todo:${o.kind}:${lower(o.id)}`;
 
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
@@ -30,23 +36,33 @@ export function todoView(t: ITodo) {
     createdAt: t.createdAt, updatedAt: t.updatedAt };
 }
 
-const CURSOR = /^(\d{1,15})_([0-9a-fA-F]{24})$/;
-/** GET …/todos?done&cursor&limit — newest first; `done` filters (absent: all). */
+/** Cursor `<0 open | 1 done>_<createdAt ms>_<id>` (r37b: the list is open first, then newest). */
+const CURSOR = /^([01])_(\d{1,15})_([0-9a-fA-F]{24})$/;
+/** GET …/todos?done&cursor&limit — open first, then newest (the list index's order); `done` filters (absent: all). */
 export async function listTodos(o: TodoOwner, q: { done?: boolean; cursor?: string; limit?: number }) {
   const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 100);
   const m = q.cursor ? CURSOR.exec(q.cursor) : null;
   if (q.cursor && !m) throw err(400, 'INVALID_CURSOR', 'Invalid cursor');
   const filter: Record<string, unknown> = { ...ownerFilter(o), ...(q.done === undefined ? {} : { done: q.done }) };
-  const after = m ? { $or: [{ createdAt: { $lt: new Date(Number(m[1])) } }, { createdAt: new Date(Number(m[1])), _id: { $lt: new Types.ObjectId(m[2]) } }] } : {};
-  const rows = await TodoModel.find({ ...filter, ...after }).sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean() as ITodo[];
+  const after = m ? (() => {
+    const done = m[1] === '1'; const at = new Date(Number(m[2])); const id = new Types.ObjectId(m[3]);
+    return { $or: [...(done ? [] : [{ done: true }]), { done, createdAt: { $lt: at } }, { done, createdAt: at, _id: { $lt: id } }] };
+  })() : {};
+  const rows = await TodoModel.find({ ...filter, ...after }).sort({ done: 1, createdAt: -1, _id: -1 }).limit(limit + 1).lean() as ITodo[];
   const items = rows.slice(0, limit);
   const last = items[items.length - 1];
-  return { items: items.map(todoView), nextCursor: rows.length > limit && last ? `${new Date(last.createdAt!).getTime()}_${String(last._id)}` : null };
+  return { items: items.map(todoView),
+    nextCursor: rows.length > limit && last ? `${last.done ? 1 : 0}_${new Date(last.createdAt!).getTime()}_${String(last._id)}` : null };
 }
 
-/** POST …/todos { text, dueAt?, requestKey } — once per key: the same key and body answer it again, another body 409. */
-export async function createTodo(o: TodoOwner, actor: TodoActor, body: { text: string; dueAt?: string | null; requestKey: string }) {
+/**
+ * POST …/todos { text, dueAt?, requestKey } — once per key: the same key and body answer it again, another body 409.
+ * r37b: the key is recorded in the request-key store with the to-do (one transaction), so a key whose to-do was deleted
+ * is still used (409 IDEMPOTENCY_KEY_REUSED); at most TODO_OPEN_LIMIT open to-dos (409 TODO_LIMIT).
+ */
+export async function createTodo(o: TodoOwner, actor: TodoActor | (() => Promise<TodoActor>), body: { text: string; dueAt?: string | null; requestKey: string }) {
   await assertUniqueIndex(TodoModel, { 'owner.kind': 1, 'owner.id': 1, requestKey: 1 });
+  await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
   const text = String(body.text).trim();
   const dueAt = body.dueAt ? new Date(body.dueAt) : null;
   const requestHash = requestHashOf({ kind: 'todo', text, dueAt: dueAt ? dueAt.toISOString() : null });
@@ -58,10 +74,20 @@ export async function createTodo(o: TodoOwner, actor: TodoActor, body: { text: s
   };
   const prior = await replay();
   if (prior) return prior;
+  const by = typeof actor === 'function' ? await actor() : actor;
   try {
-    const [t] = await TodoModel.create([{ owner: { kind: o.kind, id: lower(o.id) }, text, dueAt, done: false, doneAt: null,
-      createdBy: { kind: actor.kind, id: lower(actor.id), name: actor.name }, requestKey: body.requestKey, requestHash, version: 0 }]);
-    return { todo: todoView(t!.toObject() as ITodo), replayed: false };
+    return await runLedgerTransaction(async (s) => {
+      if (await RequestKeyModel.exists({ scope: keyScope(o), key: body.requestKey }).session(s)) {
+        throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a to-do');
+      }
+      if (await TodoModel.countDocuments({ ...ownerFilter(o), done: false }).session(s) >= TODO_OPEN_LIMIT) {
+        throw err(409, 'TODO_LIMIT', `At most ${TODO_OPEN_LIMIT} open to-dos; tick or delete some first`);
+      }
+      await RequestKeyModel.create([{ scope: keyScope(o), key: body.requestKey, state: 'used', at: new Date() }], { session: s });
+      const [t] = await TodoModel.create([{ owner: { kind: o.kind, id: lower(o.id) }, text, dueAt, done: false, doneAt: null,
+        createdBy: { kind: by.kind, id: lower(by.id), name: by.name }, requestKey: body.requestKey, requestHash, version: 0 }], { session: s });
+      return { todo: todoView(t!.toObject() as ITodo), replayed: false };
+    });
   } catch (e) {
     if (isDuplicateKeyError(e)) {
       const raced = await replay();
@@ -77,7 +103,12 @@ export async function updateTodo(o: TodoOwner, id: string, body: { done?: boolea
   const set: Record<string, unknown> = {};
   if (body.text !== undefined) set.text = String(body.text).trim();
   if (body.dueAt !== undefined) set.dueAt = body.dueAt ? new Date(body.dueAt) : null;
-  if (body.done !== undefined) { set.done = body.done; set.doneAt = body.done ? new Date() : null; }
+  if (body.done !== undefined) {
+    // r37b: ticking an already-done to-do keeps its first `doneAt` (read at the version the update is fenced on).
+    const cur = await TodoModel.findOne({ _id: id, ...ownerFilter(o), version: body.expectedVersion }).select({ done: 1, doneAt: 1 }).lean() as ITodo | null;
+    set.done = body.done;
+    set.doneAt = body.done ? (cur?.done && cur.doneAt ? cur.doneAt : new Date()) : null;
+  }
   const t = await TodoModel.findOneAndUpdate({ _id: id, ...ownerFilter(o), version: body.expectedVersion }, { $set: set, $inc: { version: 1 } },
     { new: true }).lean() as ITodo | null;
   if (t) return todoView(t);
@@ -109,27 +140,27 @@ const send = (res: Response, data: unknown, status = 200, extra: Record<string, 
 
 /**
  * Mounts `GET/POST /todos`, `PATCH/DELETE /todos/:id` on an owner's router (behind its own guards). `ownerOf` names the
- * owner and the acting person (with the name shown on each to-do).
+ * owner and, as a function (r37b: read only by a create), the acting person with the name shown on each to-do.
  */
-export function mountTodoRoutes(r: Router, ownerOf: (req: AuthRequest) => Promise<{ owner: TodoOwner; actor: TodoActor }>): void {
+export function mountTodoRoutes(r: Router, ownerOf: (req: AuthRequest) => { owner: TodoOwner; actor: () => Promise<TodoActor> }): void {
   r.get('/todos', validate(listQuery, 'query'), catchAsync(async (req: AuthRequest, res) => {
-    const { owner } = await ownerOf(req);
+    const { owner } = ownerOf(req);
     const q = req.query as Record<string, unknown>;
     const out = await listTodos(owner, { done: q.done === undefined ? undefined : String(q.done) === 'true', cursor: q.cursor as string | undefined,
       limit: q.limit === undefined ? undefined : Number(q.limit) });
     send(res, out.items, 200, { pagination: { nextCursor: out.nextCursor } });
   }));
   r.post('/todos', validate(createBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
-    const { owner, actor } = await ownerOf(req);
+    const { owner, actor } = ownerOf(req);
     const out = await createTodo(owner, actor, req.body);
     send(res, out, out.replayed ? 200 : 201);
   }));
   r.patch('/todos/:id', validate(idParam, 'params'), validate(patchBody, 'body'), catchAsync(async (req: AuthRequest, res) => {
-    const { owner } = await ownerOf(req);
+    const { owner } = ownerOf(req);
     send(res, await updateTodo(owner, req.params.id, req.body));
   }));
   r.delete('/todos/:id', validate(idParam, 'params'), catchAsync(async (req: AuthRequest, res) => {
-    const { owner } = await ownerOf(req);
+    const { owner } = ownerOf(req);
     send(res, await deleteTodo(owner, req.params.id));
   }));
 }

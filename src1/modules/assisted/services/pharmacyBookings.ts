@@ -48,8 +48,10 @@ const cursorOf = (row: Row) => {
  * each in the booker view.
  */
 export async function listPharmacyBookings(pharmacyId: string, q: PharmacyBookingQuery): Promise<{ items: Row[]; total: number; nextCursor: string | null }> {
-  return listBookings({ pharmacyId: { $eq: pharmacyId } }, { kind: 'pharmacy', id: pharmacyId }, q);
+  return listBookings(pharmacyBookingsFilter(pharmacyId), { kind: 'pharmacy', id: pharmacyId }, q);
 }
+/** r37b: the bookings a pharmacy made (legacy and assisted) — the one owner filter of its booking list and its Today register. */
+export const pharmacyBookingsFilter = (pharmacyId: string) => ({ pharmacyId: { $eq: pharmacyId } });
 
 /** 2e (§24.8.2): a lab's consultations booked by its members, at branches in this member's scope; the same booker view. */
 export async function listBookerBookings(booker: BookerActor, q: PharmacyBookingQuery) {

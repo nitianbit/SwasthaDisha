@@ -89,10 +89,11 @@ pharmacyAssistedRouter.get('/today', validate(todayQuerySchema, 'query'), catchA
   const q = req.query as Record<string, string | undefined>;
   res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), { date: q.date, cursor: q.cursor, limit: q.limit ? Number(q.limit) : undefined }) });
 }));
-mountTodoRoutes(pharmacyAssistedRouter, async (req: AuthRequest) => {
+mountTodoRoutes(pharmacyAssistedRouter, (req: AuthRequest) => {
   const a = c.actorOf(req);
-  const name = (await PharmacyModel.findById(a.pharmacyId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null;
-  return { owner: { kind: 'pharmacy', id: a.pharmacyId }, actor: { kind: 'pharmacy', id: a.actorId, name } };
+  // r37b: the pharmacy's name is read only when a to-do is created (it is shown as `createdBy.name`).
+  return { owner: { kind: 'pharmacy', id: a.pharmacyId }, actor: async () => ({ kind: 'pharmacy', id: a.actorId,
+    name: (await PharmacyModel.findById(a.pharmacyId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null }) };
 });
 // r35 (round 4f, §26.10): the pharmacy's Finance screen — wallet, referral, withdrawals and destination; one statement for either kind.
 pharmacyAssistedRouter.get('/finance', catchAsync(finance4.pharmacyFinance));

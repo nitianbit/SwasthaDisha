@@ -45,7 +45,8 @@ const todoSchema = new Schema<ITodo>(
   { timestamps: true }
 );
 
-// Once per (owner, request key); the owner's list, open first then newest.
+// Once per (owner, request key). The owner's list is sorted open first, then newest (r37b: the list's own sort, so the
+// unfiltered list and the `done` filter both read this index in order).
 todoSchema.index({ 'owner.kind': 1, 'owner.id': 1, requestKey: 1 }, { unique: true });
 todoSchema.index({ 'owner.kind': 1, 'owner.id': 1, done: 1, createdAt: -1, _id: -1 });
 

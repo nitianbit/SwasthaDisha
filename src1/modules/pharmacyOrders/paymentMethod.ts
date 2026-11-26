@@ -1,15 +1,27 @@
 /**
- * r37 (§26.20): how a payment was made, in the Today register's words. The ONE reader of a pharmacy order's
- * `paymentSource` (free text typed when it was marked paid) and `paymentMode`: `cash` and `upi` are recognised, an
- * online-paid order is `online`, anything else is `other`.
+ * r37 (§26.20): how a payment was made, in the Today register's words — the ONE place that turns a stored payment into a
+ * method. r37b: an order's `paymentSource` (what the pay step sent, or free text typed when it was marked paid) `cash`,
+ * `upi` or `card` as it is; `counter_cash` and `cash_on_delivery` are cash; an online-paid order is `online`; anything
+ * else (an in-store order with no source included) is `other`. A booking's funding (`fundingMethodOf`) is card or wallet.
  */
 export type PaymentMethod = 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other';
 export const PAYMENT_METHODS: readonly PaymentMethod[] = ['cash', 'upi', 'card', 'wallet', 'online', 'other'];
 
+const SOURCES: Record<string, PaymentMethod> = { cash: 'cash', counter_cash: 'cash', cash_on_delivery: 'cash', upi: 'upi', card: 'card', online_payment: 'online' };
+
 export function paymentMethodOf(paymentSource?: unknown, paymentMode?: unknown): PaymentMethod {
   const s = typeof paymentSource === 'string' ? paymentSource.trim().toLowerCase() : '';
-  if (s === 'cash') return 'cash';
-  if (s === 'upi') return 'upi';
-  if (s === 'online_payment' || (!s && paymentMode === 'online_payment')) return 'online';
-  return 'other';
+  if (s) return SOURCES[s] ?? 'other';
+  return paymentMode === 'online_payment' ? 'online' : 'other';
+}
+
+/**
+ * A consultation's or lab booking's method from its stored funding: a card booking (`razorpay`) card, a wallet one
+ * wallet; a partner's instant consultation (its funding a pointer to the request) is paid from the partner's wallet (r17);
+ * a legacy booking without funding is `other`.
+ */
+export function fundingMethodOf(funding: unknown): PaymentMethod {
+  const f = funding as { method?: unknown; instantRequestId?: unknown } | null | undefined;
+  if (f && typeof f.instantRequestId === 'string') return 'wallet';
+  return f?.method === 'razorpay' ? 'card' : f?.method === 'wallet' ? 'wallet' : 'other';
 }

@@ -6801,28 +6801,38 @@ Every existing answer is unchanged: two new routes are added and nothing else ch
 | 1 | `GET /api/v1/pharmacy-assisted/today?date&cursor&limit` (operational pharmacy, `Cache-Control: private, no-store`): one India day's register, oldest first, merged from the pharmacy orders it sold (counter and online), the consultations it booked (scheduled and instant), the lab tests it booked and its card top-ups; the day's money; and the waiting work | `assisted/today.ts` `pharmacyToday` |
 | 1b | Each row through its own screen's reader. Orders use the order list's pharmacy-facing names (`withPharmacyFacingCustomerNames`). Consultations use `bookerViews` (`patientName`, short ref; no clinical fields). Lab tests use `bookerLabViews`. The rows are chosen by the same owner filters as the booking lists (`{ pharmacyId }`, `assistedBookerFilter('pharmacy', …)`) | |
 | 1c | The waiting work is read by the screens' own readers: `getPrescriptionReviewQueue`; the order list repository (in-store, payment pending, not ended); `listPharmacyBookings({ status: 'pending' })`; `listLabBookingsForPharmacy({ status: 'pending_payment' \| 'report_ready' })`; and the inventory low-stock query | |
-| 1d | One payment-method helper, `paymentMethodOf(paymentSource, paymentMode)`: `cash` and `upi` are recognised (any case, trimmed); an online-paid order is `online`; anything else is `other` | `pharmacyOrders/paymentMethod.ts` |
+| 1d | One payment-method file: `paymentMethodOf(paymentSource, paymentMode)` — r37b: `cash`, `upi` and `card` as sent by the web pay steps (any case, trimmed), `counter_cash` and `cash_on_delivery` are cash, an online-paid order is `online`, anything else (an in-store order with no source included) is `other`; and `fundingMethodOf(funding)` for consultations and lab bookings (card, wallet, an instant consultation wallet, else `other`) | `pharmacyOrders/paymentMethod.ts` |
 | 2 | To-dos: one model for every owner kind (`pharmacy`, `lab`, `clinic`, `doctor`), with only the pharmacy's routes mounted. Shared within the owner (`createdBy` says who added each); a doctor's list will be private because the doctor is the owner. Once per (owner, request key); edits are fenced on `version`; the text is never logged | `todos/model`, `todos/index.ts` (`mountTodoRoutes(router, ownerOf)`) |
 | 3 | "Find patient": `POST /api/v1/pharmacy-customers/search` (r36) as it is | — |
 
 **Exact shapes:**
 - `GET …/today` → `{ success, data: { date, items, totals, pending?, truncated?, nextCursor } }`
   - `items[]`: `{ kind: 'order' | 'consultation' | 'lab_booking' | 'wallet_topup', id, at, shortRef | null, patientName | null,
-    what, amountMinor, paid, method: 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other' | null, status, link: { kind:
-    'pharmacy_order' | 'booking' | 'lab_booking' | 'wallet_transaction', id } }`.
+    what, amountMinor, paid, method: 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other' | null, status, madeOn, paidToday,
+    link: { kind: 'pharmacy_order' | 'booking' | 'lab_booking' | 'wallet_transaction', id } }`. r37b: `madeOn` (the India
+    date the row was made) and `paidToday` (its payment fell on this day). The rows made that day are listed, plus any
+    earlier row paid that day (at its payment time, `paidToday: true`, its own `madeOn`).
   - `what` is a short line of the record's own names: an order's first medicine (`Dolo 650 +1 more`); a consultation's
     `doctor · time (or now) · mode`; a lab booking's first test; `Wallet top-up`.
   - `totals: { collectedMinor, byMethod: { cash, upi, card, wallet, online, other }, unpaidMinor, count }`, over the whole
     day, on every page.
-  - `pending` (first page only): `{ prescriptionsToReview: { count, ids }, unpaidCounterSales: { count, ids }, bookingsAwaiting:
-    { count, consultationIds, labBookingIds }, labReportsReady: { count, ids }, lowStock: { count, ids } }` (at most 20 ids each).
+  - `pending` (first page only): `{ prescriptionsToReview: { count, ids } | null, unpaidCounterSales: { count, ids } | null,
+    bookingsAwaiting: { count, consultationIds, labBookingIds } | null, labReportsReady: { count, ids } | null, lowStock:
+    { count, ids } | null, cardPaymentsWaiting: { count, amountMinor, items: [{ kind, id }] } }` (at most 20 ids each). r37b:
+    a queue that fails answers `null` (the register still answers); `cardPaymentsWaiting` lists the day's rows whose money
+    is still at the gateway (the pharmacy's own pending card bookings, online checkouts); counter sales are only those this
+    pharmacy sold.
   - `nextCursor`: `<at ms>_<id>` (send it back as `cursor`); `limit` 1–200, default 50. `truncated: [kind…]` appears only
     when a source had more than 2,000 rows that day.
   - 400 `INVALID_DATE` or `INVALID_CURSOR`.
-- `GET …/todos?done&cursor&limit≤100` → `data: [todo]`, `pagination: { nextCursor }`, newest first.
+- `GET …/todos?done&cursor&limit≤100` → `data: [todo]`, `pagination: { nextCursor }`. r37b: open first, then newest (the
+  list index's own order); the cursor is `<0|1>_<createdAt ms>_<id>`.
 - `POST …/todos { text (1–200), dueAt? (ISO or null), requestKey }` → 201 `{ todo, replayed: false }`; the same key and body
-  → 200 `{ todo, replayed: true }`; another body → 409 `IDEMPOTENCY_KEY_REUSED`.
-- `PATCH …/todos/:id { done? | text? | dueAt?, expectedVersion }` → the todo (`done: true` sets `doneAt`; `false` clears it);
+  → 200 `{ todo, replayed: true }`; another body → 409 `IDEMPOTENCY_KEY_REUSED`. r37b: the key is recorded in the request-key
+  store (scope `todo:<kind>:<id>`) in the create's transaction, so a key whose to-do was deleted is still 409; at most 500
+  open to-dos per owner (409 `TODO_LIMIT`).
+- `PATCH …/todos/:id { done? | text? | dueAt?, expectedVersion }` → the todo (`done: true` sets `doneAt`, r37b: once — a
+  repeated tick keeps the first; `false` clears it);
   409 `TODO_CHANGED` when the version moved; 404 `TODO_NOT_FOUND`.
 - `DELETE …/todos/:id` → `{ deleted: true }`; 404 `TODO_NOT_FOUND`.
 - `todo`: `{ _id, text, dueAt | null, done, doneAt | null, createdBy: { kind, id, name | null }, version, createdAt, updatedAt }`.
@@ -6832,7 +6842,8 @@ Every existing answer is unchanged: two new routes are added and nothing else ch
 
 | # | Choice | Why |
 |---|---|---|
-| T1 | A row belongs to the day it was made at the desk (`createdAt`, India day), not its appointment day; an appointment booked today for tomorrow is on today's register | A register records what was done and taken that day; the money totals match the drawer. Appointments to come are in `pending` and the booking lists |
+| T1 | A row is listed on the day it was made at the desk (`createdAt`, India day), not its appointment day. **r37b (owner's coordinator decision, replacing T1 for money):** `totals.collected*` is the money RECEIVED that day, by the payment's India day (`paidAt` on orders, `lifecycle.paid.at` on consultations, `lifecycle.paidAt` on lab bookings; a row paid at creation without a stamp counts on its creation day), whatever day the row was made, so it matches the cash drawer. A paid row later cancelled stays collected until it is refunded (`paymentStatus` then leaves `paid`) | The drawer counts what came in that day |
+| T1b | Unpaid counts only what a patient owes at the desk: `paymentStatus` pending, failed or partially paid, the row not ended, and not waiting at the gateway | The pharmacy's own card payment and an online checkout are not collected at the counter |
 | T2 | Top-ups are listed (`method: 'online'`) but not counted as collected | They are the pharmacy paying its own wallet, not money from a customer |
 | T3 | `unpaidMinor` leaves out ended rows (cancelled, abandoned, rejected, no-show) | Nothing more is owed on them |
 | T4 | A consultation's method: card for a card booking, wallet for a wallet one, and wallet for an instant one (a partner's instant consultation is paid from its wallet, r17); `other` for a legacy booking without funding. A lab booking's method: card or wallet from its funding | The stored funding says it |
@@ -6840,10 +6851,19 @@ Every existing answer is unchanged: two new routes are added and nothing else ch
 | T6 | The day's rows are read whole (at most 2,000 per source) for the totals; only the page's rows go through the views | Totals over the whole day on every page, at one read per source |
 | T7 | A to-do's `createdBy.name` for a pharmacy is the pharmacy's name (one login per pharmacy); deletes are not version-fenced | The pharmacy is one account today; a delete has nothing to overwrite |
 
+**r37b** (branch `m0/r37b-today-fixes` from stage `950417ab`): the methods and the money above; counter sales this pharmacy
+sold only; a row without its view shows `patientName: null` (never the raw record); the whole-day reads are projected and
+the page's rows read again in full for their views; the waiting work is read as counts and ids (`Promise.allSettled`); the
+booking owner filter is the one `pharmacyBookingsFilter` of the booking list; the to-do fixes above; the pharmacy's name
+is read only when a to-do is created.
+
 **Deploy:** run `sync-indexes` (builds `todos` `owner.kind_1_owner.id_1_requestKey_1`, unique, and the list index). Until
 then, a to-do create answers 503 `INDEXES_OUTDATED`; Today needs no new index.
 
-**Checks:** `test/assisted/r37-pharmacy-today.integration.ts`, 4 checks:
+**Checks:** `test/assisted/r37-pharmacy-today.integration.ts`, 4 checks (r37b adds: card / counter_cash / cash_on_delivery and
+the funding helper; an earlier order paid that day listed with `paidToday` and `madeOn` and collected; the unpaid rule with
+the gateway rows in `cardPaymentsWaiting`; a sale it bought never its unpaid counter sale; a failing queue answers `null`;
+a repeated tick keeps `doneAt`; the open-first order and its cursor; a deleted key stays used; `TODO_LIMIT`):
 - the payment-method helper;
 - one day's register (order, time, shapes, names, amounts, methods, links) with another pharmacy's and the day before's rows
   absent; the totals (top-up and cancelled rows out); every pending count;

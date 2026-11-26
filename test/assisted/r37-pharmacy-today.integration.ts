@@ -29,7 +29,8 @@ import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import { PharmacyWalletTransactionModel } from '@/modules/pharmacyWallet/model';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import { TodoModel } from '@/modules/todos/model';
-import { paymentMethodOf } from '@/modules/pharmacyOrders/paymentMethod';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
+import { fundingMethodOf, paymentMethodOf } from '@/modules/pharmacyOrders/paymentMethod';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r37_pharmacy_today_check?directConnection=true';
@@ -46,8 +47,7 @@ async function check(name: string, fn: () => Promise<void>) {
 async function main() {
   await mongoose.connect(FIXTURE_URL);
   await mongoose.connection.dropDatabase();
-  await TodoModel.createCollection().catch(() => undefined);
-  await TodoModel.syncIndexes();
+  for (const m of [TodoModel, RequestKeyModel]) { await m.createCollection().catch(() => undefined); await m.syncIndexes(); }
   process.env.ASSISTED_BOOKING_ENABLED_PHARMACY = 'true';
   Container.set(PharmacyOrderService, new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
     new PharmacyOrderRepository(), {}, {}, {}, {}, {}, {}, {}, {}));
@@ -68,7 +68,10 @@ async function main() {
     ] as never);
     await UserModel.collection.insertOne({ _id: new Types.ObjectId(L), userType: 'user', phone: '9600037001', name: 'Asha Kumari Devi', createdSource: 'self_signup' } as never);
     await PharmacyCustomerModel.collection.insertOne({ pharmacyId: new Types.ObjectId(P), userId: new Types.ObjectId(L), consent: 'patient_agreed', typedName: 'Asha' } as never);
-    const tokens = { P: sign({ _id: P, pharmacyId: P, userType: 'pharmacy' }), Q: sign({ _id: Q, pharmacyId: Q, userType: 'pharmacy' }) };
+    const R = oid();
+    await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(R), name: 'Full Pharmacy', phone: '9700037003', isActive: true, isVerified: true } as never);
+    const tokens = { P: sign({ _id: P, pharmacyId: P, userType: 'pharmacy' }), Q: sign({ _id: Q, pharmacyId: Q, userType: 'pharmacy' }),
+      R: sign({ _id: R, pharmacyId: R, userType: 'pharmacy' }) };
     type Who = keyof typeof tokens;
     const call = async (who: Who, method: string, path: string, body?: unknown) => {
       const r = await fetch(base + path, { method, headers: { authorization: 'Bearer ' + tokens[who], 'content-type': 'application/json' },
@@ -96,6 +99,13 @@ async function main() {
       order({ paymentStatus: 'paid', paymentSource: 'Paytm', grandTotalPaise: 1000, createdAt: at('15:00'), updatedAt: at('15:00') }), // other
       order({ prescriptionStatus: 'pending', grandTotalPaise: 2000, createdAt: new Date(`2026-11-19T22:00:00+05:30`), updatedAt: new Date() }), // the day before
       order({ pharmacyId: new Types.ObjectId(Q), paymentStatus: 'paid', paymentSource: 'cash', createdAt: at('10:00'), updatedAt: at('10:00') }), // another pharmacy
+      // r37b: made two days before, paid this day by card: listed at its payment time and collected this day.
+      order({ paymentStatus: 'paid', paymentSource: 'card', status: 'completed', grandTotalPaise: 2500, paidAt: at('11:30'),
+        createdAt: new Date('2026-11-18T18:00:00+05:30'), updatedAt: at('11:30') }),
+      // r37b: a sale P bought from Q (P is the buyer): never P's unpaid counter sale.
+      order({ pharmacyId: new Types.ObjectId(Q), buyerPharmacyId: new Types.ObjectId(P), createdAt: at('12:30'), updatedAt: at('12:30') }),
+      // r37b: an online checkout still at the gateway: not unpaid at the desk.
+      order({ orderType: 'online', paymentMode: 'online_payment', grandTotalPaise: 4000, createdAt: at('17:00'), updatedAt: at('17:00') }),
     ] as never);
     const orderIds = Object.values(ids.insertedIds).map(String);
     const booking = await BookingModel.collection.insertOne({ pharmacyId: P, userId: L, specialistId: oid(), doctorName: 'Dr Kavya', bookingKind: 'scheduled',
@@ -114,9 +124,12 @@ async function main() {
     await InventoryItemModel.collection.insertOne({ pharmacyId: new Types.ObjectId(P), medicineId: new Types.ObjectId(), availableQty: 0, reservedQty: 0, freeQty: 0,
       reorderThreshold: 5, isActive: true, batches: [], updatedAt: new Date() } as never);
 
-    await check('the one payment method helper: cash and UPI known, an online order online, anything else other', async () => {
-      assert.deepEqual(['cash', ' UPI ', 'Paytm', 'in_store_payment', undefined].map((s) => paymentMethodOf(s, 'in_store_payment')), ['cash', 'upi', 'other', 'other', 'other']);
+    await check('the one payment method helper: cash, UPI and card known (counter_cash, cash_on_delivery are cash), online, else other; booking funding', async () => {
+      assert.deepEqual(['cash', ' UPI ', 'card', 'counter_cash', 'cash_on_delivery', 'Paytm', 'in_store_payment', undefined].map((s) => paymentMethodOf(s, 'in_store_payment')),
+        ['cash', 'upi', 'card', 'cash', 'cash', 'other', 'other', 'other']);
       assert.equal(paymentMethodOf(undefined, 'online_payment'), 'online');
+      assert.deepEqual([fundingMethodOf({ method: 'razorpay' }), fundingMethodOf({ method: 'wallet' }), fundingMethodOf({ instantRequestId: 'x' }), fundingMethodOf(undefined)],
+        ['card', 'wallet', 'wallet', 'other']);
     });
 
     await check('GET /today?date: the day oldest first across orders, consultations, lab tests and top-ups; names by the pharmacy-facing rule; another pharmacy\'s and another day\'s rows never', async () => {
@@ -125,10 +138,16 @@ async function main() {
       const d = r.json.data;
       assert.equal(d.date, DAY);
       assert.deepEqual(d.items.map((i: any) => [i.kind, new Date(i.at).toISOString().slice(11, 16)]), [
-        ['wallet_topup', '03:30'], ['consultation', '04:35'], ['lab_booking', '04:50'], ['order', '05:10'], ['order', '05:30'], ['order', '06:30'],
-        ['order', '07:30'], ['order', '08:30'], ['order', '09:30'], ['consultation', '10:30']]);
+        ['wallet_topup', '03:30'], ['consultation', '04:35'], ['lab_booking', '04:50'], ['order', '05:10'], ['order', '05:30'], ['order', '06:00'], ['order', '06:30'],
+        ['order', '07:30'], ['order', '08:30'], ['order', '09:30'], ['consultation', '10:30'], ['order', '11:30']]);
       const byKind = (k: string) => d.items.filter((i: any) => i.kind === k);
-      assert.deepEqual(Object.keys(d.items[0]).sort(), ['amountMinor', 'at', 'id', 'kind', 'link', 'method', 'paid', 'patientName', 'shortRef', 'status', 'what']);
+      assert.deepEqual(Object.keys(d.items[0]).sort(), ['amountMinor', 'at', 'id', 'kind', 'link', 'madeOn', 'method', 'paid', 'paidToday', 'patientName', 'shortRef',
+        'status', 'what']);
+      // r37b: the earlier row paid this day.
+      const earlier = d.items.find((i: any) => i.id === orderIds[8]);
+      assert.deepEqual([earlier.paidToday, earlier.madeOn, earlier.method, earlier.amountMinor], [true, '2026-11-18', 'card', 2500]);
+      assert.deepEqual([byKind('order')[0].paidToday, byKind('order')[0].madeOn], [true, DAY]);
+      assert.equal(d.items.find((i: any) => i.id === orderIds[2]).paidToday, false);
       const cash = byKind('order')[0];
       assert.deepEqual([cash.id, cash.patientName, cash.what, cash.amountMinor, cash.paid, cash.method, cash.link], [orderIds[0], 'Asha', 'Dolo 650 +1 more', 32_000, true, 'cash',
         { kind: 'pharmacy_order', id: orderIds[0] }]);
@@ -141,8 +160,12 @@ async function main() {
       assert.ok(!d.items.some((i: any) => i.id === orderIds[6] || i.id === orderIds[7]), 'the day before and another pharmacy are not listed');
       // The day's money: paid rows by method; unpaid live rows (the 12:00 sale ₹90, the pending booking ₹300); the top-up
       // and the cancelled sale do not count.
-      assert.deepEqual(d.totals, { collectedMinor: 32_000 + 15_000 + 50_000 + 1000 + 50_000 + 120_000,
-        byMethod: { cash: 32_000, upi: 15_000, card: 120_000, wallet: 50_000, online: 50_000, other: 1000 }, unpaidMinor: 9000 + 30_000, count: 10 });
+      // r37b: received this day (by the payment's day); unpaid only what a patient owes at the desk (the 12:00 sale), not the
+      // pharmacy's pending card booking nor the online checkout at the gateway.
+      assert.deepEqual(d.totals, { collectedMinor: 32_000 + 15_000 + 2500 + 50_000 + 1000 + 50_000 + 120_000,
+        byMethod: { cash: 32_000, upi: 15_000, card: 122_500, wallet: 50_000, online: 50_000, other: 1000 }, unpaidMinor: 9000, count: 12 });
+      assert.deepEqual([d.pending.cardPaymentsWaiting.count, d.pending.cardPaymentsWaiting.amountMinor, d.pending.cardPaymentsWaiting.items.map((x: any) => x.kind)],
+        [2, 34_000, ['consultation', 'order']]);
       assert.equal(d.nextCursor, null);
       // Waiting work (any day).
       assert.deepEqual([d.pending.prescriptionsToReview.count, d.pending.prescriptionsToReview.ids], [1, [orderIds[6]]]);
@@ -152,7 +175,14 @@ async function main() {
       assert.equal(d.pending.lowStock.count, 1);
       // Another pharmacy sees only its own.
       const q = (await expect('Q', 'GET', `/today?date=${DAY}`, 200)).json.data;
-      assert.deepEqual([q.items.length, q.items[0].id, q.totals.collectedMinor], [1, orderIds[7], 32_000]);
+      assert.deepEqual([q.items.map((i: any) => i.id), q.totals.collectedMinor, q.totals.unpaidMinor], [[orderIds[7], orderIds[9]], 32_000, 32_000]);
+      // r37b: one failing queue answers null for it; the register still answers.
+      const real = Container.get(PharmacyOrderService);
+      Container.set(PharmacyOrderService, { getPrescriptionReviewQueue: async () => { throw new Error('queue down'); } } as never);
+      try {
+        const down = (await expect('P', 'GET', `/today?date=${DAY}`, 200)).json.data;
+        assert.deepEqual([down.pending.prescriptionsToReview, down.pending.lowStock.count, down.items.length], [null, 1, 12]);
+      } finally { Container.set(PharmacyOrderService, real); }
     });
 
     await check('GET /today pages by cursor (totals and pending on the first page; the waiting work only there); bad date or cursor 400; an empty day', async () => {
@@ -161,8 +191,8 @@ async function main() {
       assert.ok(p1.nextCursor && p1.pending);
       const p2 = (await expect('P', 'GET', `/today?date=${DAY}&limit=4&cursor=${p1.nextCursor}`, 200)).json.data;
       const p3 = (await expect('P', 'GET', `/today?date=${DAY}&limit=4&cursor=${p2.nextCursor}`, 200)).json.data;
-      assert.deepEqual([p2.items.length, p3.items.length, p3.nextCursor, p2.pending], [4, 2, null, undefined]);
-      assert.deepEqual(new Set([...p1.items, ...p2.items, ...p3.items].map((i: any) => i.id)).size, 10);
+      assert.deepEqual([p2.items.length, p3.items.length, p3.nextCursor, p2.pending], [4, 4, null, undefined]);
+      assert.deepEqual(new Set([...p1.items, ...p2.items, ...p3.items].map((i: any) => i.id)).size, 12);
       assert.deepEqual(p2.totals, p1.totals);
       await expect('P', 'GET', '/today?date=2026-02-30', 400, undefined, 'INVALID_DATE');
       await expect('P', 'GET', '/today?cursor=nope', 400);
@@ -186,16 +216,30 @@ async function main() {
       assert.equal(list.data[0].dueAt, '2026-11-21T10:00:00.000Z');
       const done = (await expect('P', 'PATCH', `/todos/${t._id}`, 200, { done: true, expectedVersion: 0 })).json.data;
       assert.deepEqual([done.done, done.version, typeof done.doneAt], [true, 1, 'string']);
+      // r37b: ticking it again keeps the first doneAt; the list is open first, then newest (cursor pages through both).
+      const again2 = (await expect('P', 'PATCH', `/todos/${t._id}`, 200, { done: true, expectedVersion: 1 })).json.data;
+      assert.deepEqual([again2.doneAt, again2.version], [done.doneAt, 2]);
+      await expect('P', 'POST', '/todos', 201, { text: 'Newest open', requestKey: 'todo-key-0004' });
+      assert.deepEqual((await expect('P', 'GET', '/todos', 200)).json.data.map((x: any) => x.text), ['Newest open', 'Order ORS', 'Call supplier for Dolo 650']);
+      const pg1 = (await expect('P', 'GET', '/todos?limit=2', 200)).json;
+      const pg2 = (await expect('P', 'GET', `/todos?limit=2&cursor=${pg1.pagination.nextCursor}`, 200)).json;
+      assert.deepEqual([pg1.data.length, pg2.data.map((x: any) => x.text), pg2.pagination.nextCursor], [2, ['Call supplier for Dolo 650'], null]);
       await expect('P', 'PATCH', `/todos/${t._id}`, 409, { text: 'stale', expectedVersion: 0 }, 'TODO_CHANGED');
       await expect('P', 'PATCH', `/todos/${t._id}`, 400, { expectedVersion: 1 });
-      assert.deepEqual((await expect('P', 'GET', '/todos?done=false', 200)).json.data.map((x: any) => x.text), ['Order ORS']);
+      assert.deepEqual((await expect('P', 'GET', '/todos?done=false', 200)).json.data.map((x: any) => x.text), ['Newest open', 'Order ORS']);
       // Another pharmacy: its own empty list; this pharmacy's to-do is the one 404.
       assert.deepEqual((await expect('Q', 'GET', '/todos', 200)).json.data, []);
       await expect('Q', 'PATCH', `/todos/${t._id}`, 404, { done: false, expectedVersion: 1 }, 'TODO_NOT_FOUND');
       await expect('Q', 'DELETE', `/todos/${t._id}`, 404, undefined, 'TODO_NOT_FOUND');
       assert.deepEqual((await expect('P', 'DELETE', `/todos/${t._id}`, 200)).json.data, { deleted: true });
       await expect('P', 'DELETE', `/todos/${t._id}`, 404, undefined, 'TODO_NOT_FOUND');
-      assert.equal(await TodoModel.countDocuments({ 'owner.id': P.toLowerCase() }), 1);
+      assert.equal(await TodoModel.countDocuments({ 'owner.id': P.toLowerCase() }), 2);
+      // r37b: a deleted to-do's key stays used.
+      await expect('P', 'POST', '/todos', 409, { text: 'Call supplier for Dolo 650', requestKey: 'todo-key-0001' }, 'IDEMPOTENCY_KEY_REUSED');
+      // r37b: at most 500 open to-dos per owner.
+      await TodoModel.insertMany(Array.from({ length: 500 }, (_, i) => ({ owner: { kind: 'pharmacy', id: R }, text: `t${i}`, done: false,
+        createdBy: { kind: 'pharmacy', id: R, name: 'Full Pharmacy' }, requestKey: `seed-${i}-xxxxxx`, requestHash: 'h', version: 0 })));
+      await expect('R', 'POST', '/todos', 409, { text: 'one more', requestKey: 'todo-key-full-01' }, 'TODO_LIMIT');
     });
   } finally {
     server.close();
