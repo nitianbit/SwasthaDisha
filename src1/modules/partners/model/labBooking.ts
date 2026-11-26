@@ -303,6 +303,11 @@ labBookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1,
 // r12 (§24.6.1): one desk row per desk request key; r12b: the workspace list by source, in its own order (slot start, id).
 labBookingSchema.index({ 'desk.requestKey': 1 }, { unique: true, partialFilterExpression: { 'desk.requestKey': { $type: 'string' } } });
 labBookingSchema.index({ partnerId: 1, source: 1, 'slot.startsAt': 1, _id: 1 });
+// r38b (§26.22): the lab's Today register reads a day by when a row was made and when it was paid; r37's pharmacy register
+// reads the lab tests a booker paid that day.
+labBookingSchema.index({ partnerId: 1, createdAt: 1 });
+labBookingSchema.index({ partnerId: 1, 'lifecycle.paidAt': 1 }, { partialFilterExpression: { 'lifecycle.paidAt': { $exists: true } } });
+labBookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, 'lifecycle.paidAt': 1 }, { partialFilterExpression: { 'lifecycle.paidAt': { $exists: true } } });
 
 /** The model name is load-bearing: D1 file grants resolve `mongoose.models['PartnerLabBooking']`. */
 export const PartnerLabBookingModel: Model<IPartnerLabBooking> = model<IPartnerLabBooking>(

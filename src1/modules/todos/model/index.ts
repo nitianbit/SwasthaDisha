@@ -16,6 +16,8 @@ export interface ITodo {
   done: boolean;
   doneAt?: Date | null;
   createdBy: { kind: string; id: string; name: string | null };
+  /** r38b: the branches of a branch-limited creator (seen there and by the owner-wide); empty = the whole owner's. */
+  branchIds?: string[];
   requestKey: string;
   requestHash: string;
   version: number;
@@ -38,6 +40,7 @@ const todoSchema = new Schema<ITodo>(
       id: { type: String, required: true },
       name: { type: String, default: null },
     },
+    branchIds: { type: [String], default: [] },
     requestKey: { type: String, required: true },
     requestHash: { type: String, required: true },
     version: { type: Number, required: true, default: 0 },

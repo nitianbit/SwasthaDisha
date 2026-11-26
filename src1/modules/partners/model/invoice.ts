@@ -84,6 +84,8 @@ const invoiceSchema = new Schema<IInvoice>(
 invoiceSchema.index({ partnerId: 1, financialYear: 1, number: 1 }, { unique: true });
 invoiceSchema.index({ partnerId: 1, idempotencyKey: 1 }, { unique: true });
 invoiceSchema.index({ partnerId: 1, lifecycleState: 1, issuedAt: -1 });
+// r38b (§26.22): the lab's Today register finds earlier bills changed on a day (a payment or a cancellation that day).
+invoiceSchema.index({ partnerId: 1, updatedAt: 1 });
 invoiceSchema.index({ partnerId: 1, branchId: 1, issuedAt: -1 });
 invoiceSchema.index({ 'customer.userId': 1, issuedAt: -1 });
 invoiceSchema.index({ 'customer.phone': 1, lifecycleState: 1 });

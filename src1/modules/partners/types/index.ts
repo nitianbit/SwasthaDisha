@@ -59,6 +59,11 @@ export type PartnerPermission =
   /** 2e (§24.8.2, L13): book doctor consultations for walk-in patients, paid by the lab (never granted by migration). */
   | 'assisted.book';
 
+/** r38b: the one list of who reads lab bookings (any one of them; owners hold all). */
+export const LAB_READERS: PartnerPermission[] = ['bookings.view', 'bookings.manage', 'reports.upload', 'reports.release'];
+/** r38b: the one list of who reads bills (any one of them). */
+export const INVOICE_READERS: PartnerPermission[] = ['invoices.create', 'invoices.cancel', 'payments.record', 'finance.view'];
+
 export const ALL_PERMISSIONS: readonly PartnerPermission[] = [
   'staff.manage',
   'branches.manage',

@@ -42,6 +42,8 @@ export interface Raw {
   received?: { method: PaymentMethod; amountMinor: number }[];
   /** r38: what is still due on the row (a part-paid bill); absent = `amountMinor` while unpaid. */
   dueMinor?: number;
+  /** r38b: money given back that day (a cancelled bill's refund), each by the refund's method. */
+  refunded?: { method: PaymentMethod; amountMinor: number }[];
 }
 
 /** Cursor `<at ms>_<id>`: the next page starts after it (the merged list is ordered by time, then id). */
@@ -83,21 +85,25 @@ export async function pageOf(q: PageQuery, now: Date, rawOf: (day: Day) => Promi
  * Unpaid = what live rows still owe at the desk (`OWED`, not ended, not at the gateway). Rows that are not collections
  * (`collects: false`) count in neither.
  */
-export function totalsOf(raws: Raw[], day: Day, methods: readonly PaymentMethod[]) {
+export function totalsOf(raws: Raw[], day: Day, methods: readonly PaymentMethod[], opts: { refunds?: boolean } = {}) {
   const byMethod = Object.fromEntries(methods.map((m) => [m, 0])) as Record<string, number>;
-  const add = (m: PaymentMethod | null, amount: number) => { const k = m && m in byMethod ? m : 'other'; byMethod[k] = (byMethod[k] ?? 0) + amount; };
+  const refundsByMethod = Object.fromEntries(methods.map((m) => [m, 0])) as Record<string, number>;
+  const add = (to: Record<string, number>, m: PaymentMethod | null, amount: number) => { const k = m && m in to ? m : 'other'; to[k] = (to[k] ?? 0) + amount; };
   let collectedMinor = 0;
   let unpaidMinor = 0;
+  let refundedMinor = 0;
   for (const r of raws) {
     if (!r.collects) continue;
-    if (r.received) for (const x of r.received) { collectedMinor += x.amountMinor; add(x.method, x.amountMinor); }
-    else if (r.paid && inDay(r.paidAt, day)) { collectedMinor += r.amountMinor; add(r.method, r.amountMinor); }
+    for (const x of r.refunded ?? []) { refundedMinor += x.amountMinor; add(refundsByMethod, x.method, x.amountMinor); }
+    if (r.received) for (const x of r.received) { collectedMinor += x.amountMinor; add(byMethod, x.method, x.amountMinor); }
+    else if (r.paid && inDay(r.paidAt, day)) { collectedMinor += r.amountMinor; add(byMethod, r.method, r.amountMinor); }
     if (!ENDED.includes(r.status) && !r.atGateway) {
       if (r.dueMinor !== undefined) unpaidMinor += r.dueMinor;
       else if (!r.received && OWED.includes(r.paymentStatus)) unpaidMinor += r.amountMinor;
     }
   }
-  return { collectedMinor, byMethod, unpaidMinor, count: raws.length };
+  // r38b: with `refunds` (the lab's register), what went back that day by its method: the drawer is collected − refunded per method.
+  return { collectedMinor, byMethod, unpaidMinor, count: raws.length, ...(opts.refunds ? { refundedMinor, refundsByMethod } : {}) };
 }
 
 /** The common fields of a register item (each register adds its kind's short ref, name and line). */
@@ -139,7 +145,7 @@ export const capper = (truncated: Set<string>) => (kind: string, rows: Row[]) =>
 };
 
 export const CONSULTATION_FIELDS = { status: 1, paymentStatus: 1, price: 1, 'assisted.funding': 1, 'assisted.shortRef': 1, 'lifecycle.paid.at': 1, doctorName: 1,
-  bookingKind: 1, bookingTime: 1, consultationMode: 1, createdAt: 1, userId: 1, dependentId: 1, contactNo: 1 };
+  bookingKind: 1, bookingTime: 1, consultationMode: 1, createdAt: 1, userId: 1, dependentId: 1, contactNo: 1, 'assisted.identity.disputed.state': 1 };
 /** A consultation a booker made: its price, paid by its funding (wallet or card), waiting at the gateway while its card payment is. */
 export function consultationRaw(b: Row): Raw {
   const paid = b.paymentStatus === 'paid';
@@ -170,6 +176,8 @@ export function searchTerms(q: unknown): { needle: string; phone: string } {
   const phone = digits(needle);
   return { needle, phone: phone.length >= 4 ? phone : '' };
 }
+/** r38b: a row whose patient identity was moved to another account ("not mine"): its account holder's phone is not matched. */
+export const identityMoved = (v: Row) => v?.assisted?.identity?.disputed?.state === 'moved' || v?.desk?.identity?.disputed?.state === 'moved';
 /** Whether a row matches: its own words contain the needle, or one of its phones contains the phone digits. */
 export const matches = (t: { needle: string; phone: string }, words: (string | null | undefined)[], phones: (string | null | undefined)[]) =>
   words.filter(Boolean).join(' ').toLowerCase().includes(t.needle) || (!!t.phone && phones.some((p) => !!p && digits(p).includes(t.phone)));

@@ -6959,17 +6959,26 @@ permission that reads it (owners and admins hold all):
     consultation's patient (the booker names rule).
   - `shortRef`: a booking's `assisted.shortRef` (null for app or desk rows), or a bill's serial.
   - `link.kind`: `lab_booking | invoice | booking | wallet_entry`.
+  - r38b: a desk booking reads its bill through the lab list's `withDeskBills`: `paid` is true when its bill is paid (its
+    money stays counted on the bill).
   - `whatParts` adds `lab.tests { first, more, source: self | pharmacy_assisted | doctor_assisted | lab_desk, visit: lab |
     home }` and `bill.items { first, more }`.
   - `paidToday` on a bill made earlier is true when a payment fell on this day.
-- `totals: { collectedMinor, byMethod: { cash, upi, card, bank, wallet, online, other }, unpaidMinor, count }`. `bank` is
-  new (the pharmacy's `byMethod` does not have it).
+- `totals: { collectedMinor, byMethod: { cash, upi, card, bank, wallet, online, other }, unpaidMinor, count, refundedMinor,
+  refundsByMethod: { cash, upi, card, bank, wallet, online, other } }`. `bank` is new (the pharmacy's `byMethod` does not
+  have it). r38b: `refundedMinor` / `refundsByMethod` are the money given back that day, by the refund's method (a cancelled
+  bill's `refund.mode`, on the cancellation's day). The drawer is `byMethod.cash − refundsByMethod.cash`. A bill cancelled
+  with a refund that day is listed (an earlier one at the refund's time). The pharmacy's totals are unchanged: its refunds
+  go back to the customer's wallet or to the card or UPI they came from (prescription refunds, customer returns), never
+  out of the drawer by a method.
 - `pending` (first page; a queue the member cannot read is absent; one that fails is `null`):
   - `samplesToCollect: { count, visitCount, homeCount, visitIds, homeIds }`: bookings confirmed for this date (lab visits
     and home collections);
   - `reportsDue: { count, toUploadCount, toReleaseCount, toUploadIds, toReleaseIds }`: a sample in and no draft yet, or a
     draft waiting for release (any day);
   - `unpaidBills: { count, ids }`: bills issued or part-paid (any day);
+  - r38b `deskUnbilled: { count, ids }`: desk bookings (not cancelled or no-show) with no bill, or whose bill was
+    cancelled (any day; bookings readers);
   - `bookingsAwaitingPayment: { count, ids }`: its card consultations waiting for payment;
   - `consultationsWaiting: { count, ids }`: consultations it booked for this date, still confirmed.
 - `Cache-Control: private, no-store`; 400 `INVALID_DATE`, `INVALID_CURSOR`; `order=desc` as the pharmacy's.
@@ -6978,23 +6987,28 @@ permission that reads it (owners and admins hold all):
 nextCursor }`, no-store. A row matches on the name the lab sees, the short ref or bill serial, the line text, or (4+
 digits) a phone the lab holds: a bill's customer phone, a home collection's phone, the account holder of a desk booking
 or of a consultation it made, or a consultation's contact number. Branch scope and permissions apply as in the register.
+r38b: a phone the row stored (a home collection's, a consultation's contact number) comes first, and the account holder's
+phone is never matched once the row's identity was moved to another account ("not mine": `desk.identity` or
+`assisted.identity` `disputed.state: 'moved'`). The pharmacy's search follows the same rule.
 
 **3. To-dos for the lab:** `GET/POST /api/v1/partner-workspace/todos`, `PATCH/DELETE …/todos/:id` (r37's module, owner kind
 `lab`, the same shapes). Any active member of the lab may use them (`mountTodoRoutes` now takes route guards).
 `createdBy: { kind: 'member', id, name: <member's name> }`; an admin acting for the lab is `{ kind: 'admin', name:
-'Jansetu' }`.
+'Jansetu' }`. r38b: a to-do has `branchIds` (shown in the to-do): a branch-limited member's to-dos carry its branches.
+They are seen by members of those branches and by partner-wide members; a branch-limited member sees only its branches'
+to-dos and the lab-wide ones (made by partner-wide members, `branchIds: []`). Another branch's to-do is the one 404.
 
 **ASSUMED (r38, reversible):**
 
 | # | Choice | Why |
 |---|---|---|
-| L1 | Branch-limited members see ALL of the lab's to-dos | They are the team's shared notes (the plan: shared within the lab); a to-do is not a patient or money record. Scoping them by branch needs a branch on each to-do, which a later round can add |
+| L1 | **r38b (coordinator's decision, replacing r38's "all"):** a branch-limited member's to-dos belong to its branches; it sees those and the lab-wide ones; partner-wide members see all | A branch's notes stay with that branch |
 | L2 | A desk booking's money is its bill's: the booking row is listed, its bill carries the payments | One payment, counted once |
 | L3 | Lab bookings paid through Jansetu (app card, a pharmacy's or doctor's wallet or card) count as collected `online` on their payment day | It is the lab's money, received through Jansetu's settlement; the drawer total is `byMethod.cash/upi/card/bank` |
 | L4 | Top-ups only for partner-wide members with `wallet.view` | The wallet is the whole lab's |
 | L5 | "Bookings waiting for payment" = the lab's own card consultations still pending. App bookings waiting for the patient's online payment are not listed (the desk cannot act), and desk bookings are paid through their bills (`unpaidBills`) | Each waiting item once, where the desk can act |
 | L6 | "Reports to upload or release" = a sample in (`sample_collected`, `visited`, `processing`) with no draft, or any draft waiting | The two report steps the desk takes |
-| L7 | A bill's refund on cancellation is not taken off the day's collected money | As r37b: collected until refunded; bill refunds are a cancellation record, outside this round |
+| L7 | **r38b:** a cancelled bill's refund is the money given back on the cancellation's day, by its method (`refundedMinor`, `refundsByMethod`); `collectedMinor` stays what came in (its payment's day) | The drawer is cash in minus cash refunded, each counted on the day it happened |
 
 **Checks:** `test/partners/r38-lab-today.integration.ts`, 4 checks:
 - the owner's day (every source in order, shapes, `whatParts`, the desk money on its bill, collected by method including
@@ -7004,7 +7018,19 @@ or of a consultation it made, or a consultation's contact number. Branch scope a
 - the search (names, serials, refs, three kinds of phone, scope, no-store, a short `q` 400);
 - the lab's to-dos (shared, `createdBy` names, another lab 404, any member).
 
-**Deploy:** nothing new (the `todos` indexes are r37's).
+**Deploy: run `sync-indexes`** (r38b). It builds the Today read indexes: lab bookings `{ partnerId, createdAt }`,
+`{ partnerId, lifecycle.paidAt }` (partial) and `{ assisted.bookedBy.kind, assisted.bookedBy.id, lifecycle.paidAt }` (partial,
+the pharmacy's register); bills `{ partnerId, updatedAt }`; pharmacy orders `{ pharmacyId, paidAt }` (partial); bookings
+`{ pharmacyId, lifecycle.paid.at }` and `{ assisted.bookedBy.kind, assisted.bookedBy.id, lifecycle.paid.at }` (partial).
+They are read indexes: nothing fails without them, but a busy day scans.
+
+**r38b** (branch `m0/r38b-lab-today-fixes` from stage `85c10c6e`): the refunds, desk bills, `deskUnbilled`, the search's
+phone rule, branch-scoped to-dos and the indexes above. No copies: `LAB_READERS` and `INVOICE_READERS` are one export each
+(`partners/types`), used by the workspace routes and the register; the lab's consultations use `labBookerBookingsFilter`
+(`assisted/bookers.ts`), which the booker filter also uses. The suite adds: a bill paid in cash and refunded in cash the
+same day, and an earlier bill refunded by UPI that day (listed at the refund time); the refund totals; a paid walk-in shown
+as paid; `deskUnbilled`; no holder-phone match once an identity was moved; and branch-scoped to-dos (another branch's
+member sees only lab-wide ones and gets 404 on the other branch's).
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 

@@ -128,6 +128,10 @@ export const bookerNoticeUserId = (bookedBy: { kind: string; id: string; actorId
 /** The assisted bookings this booker may act on: the pharmacy's; a lab's, at a branch in the member's scope. */
 export function bookerBookingsFilter(b: BookerActor): Record<string, unknown> {
   if (b.kind === 'pharmacy') return assistedBookerFilter('pharmacy', b.pharmacyId);
-  return { ...assistedBookerFilter('lab', b.partnerId),
-    ...(hasGlobalScope(b.actor) ? {} : { 'assisted.bookedBy.branchId': { $in: b.actor.branchIds.map(lower) } }) };
+  return labBookerBookingsFilter(b.actor);
+}
+/** r38b: the consultations a lab booked (2e) that this member may see — at a branch in its scope (partner-wide: all). */
+export function labBookerBookingsFilter(actor: PartnerActor): Record<string, unknown> {
+  return { ...assistedBookerFilter('lab', actor.partnerId),
+    ...(hasGlobalScope(actor) ? {} : { 'assisted.bookedBy.branchId': { $in: actor.branchIds.map(lower) } }) };
 }

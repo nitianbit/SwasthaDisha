@@ -18,7 +18,11 @@ import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFundin
  * member of the owner sees and edits the owner's list (`createdBy` says who added each); a doctor's list is private
  * because the doctor is the owner. The text is the user's own words: it is never logged or audited.
  */
-export interface TodoOwner { kind: TodoOwnerKind; id: string }
+/**
+ * The owner whose list it is. r38b: `branchIds` = a branch-limited member's branches: it sees the owner-wide to-dos and
+ * its branches' ones, and what it adds belongs to its branches. Absent = an owner-wide member (sees all, adds owner-wide).
+ */
+export interface TodoOwner { kind: TodoOwnerKind; id: string; branchIds?: string[] }
 export interface TodoActor { kind: string; id: string; name: string | null }
 /** r37b: at most this many open to-dos per owner (409 TODO_LIMIT). */
 export const TODO_OPEN_LIMIT = 500;
@@ -28,11 +32,15 @@ const keyScope = (o: TodoOwner) => `todo:${o.kind}:${lower(o.id)}`;
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const lower = (v: unknown) => String(v ?? '').toLowerCase();
 const notFound = () => err(404, 'TODO_NOT_FOUND', 'To-do not found');
-const ownerFilter = (o: TodoOwner) => ({ 'owner.kind': o.kind, 'owner.id': lower(o.id) });
+const ownerOnly = (o: TodoOwner) => ({ 'owner.kind': o.kind, 'owner.id': lower(o.id) });
+/** The to-dos this member may see and change: the owner's, and for a branch-limited member only owner-wide or its branches'. */
+const ownerFilter = (o: TodoOwner): Record<string, unknown> => (o.branchIds?.length
+  ? { ...ownerOnly(o), $or: [{ branchIds: { $size: 0 } }, { branchIds: { $exists: false } }, { branchIds: { $in: o.branchIds.map(String) } }] }
+  : ownerOnly(o));
 
 export function todoView(t: ITodo) {
   return { _id: String(t._id), text: t.text, dueAt: t.dueAt ?? null, done: t.done === true, doneAt: t.doneAt ?? null,
-    createdBy: { kind: t.createdBy.kind, id: t.createdBy.id, name: t.createdBy.name ?? null }, version: t.version,
+    createdBy: { kind: t.createdBy.kind, id: t.createdBy.id, name: t.createdBy.name ?? null }, branchIds: t.branchIds ?? [], version: t.version,
     createdAt: t.createdAt, updatedAt: t.updatedAt };
 }
 
@@ -48,7 +56,7 @@ export async function listTodos(o: TodoOwner, q: { done?: boolean; cursor?: stri
     const done = m[1] === '1'; const at = new Date(Number(m[2])); const id = new Types.ObjectId(m[3]);
     return { $or: [...(done ? [] : [{ done: true }]), { done, createdAt: { $lt: at } }, { done, createdAt: at, _id: { $lt: id } }] };
   })() : {};
-  const rows = await TodoModel.find({ ...filter, ...after }).sort({ done: 1, createdAt: -1, _id: -1 }).limit(limit + 1).lean() as ITodo[];
+  const rows = await TodoModel.find(m ? { $and: [filter, after] } : filter).sort({ done: 1, createdAt: -1, _id: -1 }).limit(limit + 1).lean() as ITodo[];
   const items = rows.slice(0, limit);
   const last = items[items.length - 1];
   return { items: items.map(todoView),
@@ -80,12 +88,13 @@ export async function createTodo(o: TodoOwner, actor: TodoActor | (() => Promise
       if (await RequestKeyModel.exists({ scope: keyScope(o), key: body.requestKey }).session(s)) {
         throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a to-do');
       }
-      if (await TodoModel.countDocuments({ ...ownerFilter(o), done: false }).session(s) >= TODO_OPEN_LIMIT) {
+      if (await TodoModel.countDocuments({ ...ownerOnly(o), done: false }).session(s) >= TODO_OPEN_LIMIT) {
         throw err(409, 'TODO_LIMIT', `At most ${TODO_OPEN_LIMIT} open to-dos; tick or delete some first`);
       }
       await RequestKeyModel.create([{ scope: keyScope(o), key: body.requestKey, state: 'used', at: new Date() }], { session: s });
       const [t] = await TodoModel.create([{ owner: { kind: o.kind, id: lower(o.id) }, text, dueAt, done: false, doneAt: null,
-        createdBy: { kind: by.kind, id: lower(by.id), name: by.name }, requestKey: body.requestKey, requestHash, version: 0 }], { session: s });
+        createdBy: { kind: by.kind, id: lower(by.id), name: by.name }, branchIds: (o.branchIds ?? []).map(String), requestKey: body.requestKey, requestHash,
+        version: 0 }], { session: s });
       return { todo: todoView(t!.toObject() as ITodo), replayed: false };
     });
   } catch (e) {

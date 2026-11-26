@@ -311,6 +311,8 @@ pharmacyOrderSchema.index({ customerId: 1, status: 1 });
 // P8: one order per (customer, checkout request key).
 pharmacyOrderSchema.index({ customerId: 1, checkoutRequestKey: 1 }, { unique: true, partialFilterExpression: { checkoutRequestKey: { $type: 'string' } } });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
+// r38b (§26.20): the pharmacy's Today register reads the orders paid on a day (made earlier).
+pharmacyOrderSchema.index({ pharmacyId: 1, paidAt: 1 }, { partialFilterExpression: { paidAt: { $exists: true } } });
 // Assisted booking phase 0: one order per (pharmacy, prescription-order request key).
 pharmacyOrderSchema.index({ pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 }, { unique: true,
   partialFilterExpression: { 'prescriptionFromBooking.requestKey': { $type: 'string' } } });

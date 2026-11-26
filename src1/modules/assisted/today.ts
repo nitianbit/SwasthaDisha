@@ -14,7 +14,7 @@ import { bookerLabViews } from '@/modules/assisted/labBookings';
 import { pharmacyBookingsFilter } from '@/modules/assisted/services/pharmacyBookings';
 import type { PharmacyActor } from '@/modules/assisted/bookers';
 import {
-  capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, matches, searchTerms, itemBase, labTestsWhat, listOf, orderRaws, pageOf,
+  capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, identityMoved, matches, searchTerms, itemBase, labTestsWhat, listOf, orderRaws, pageOf,
   paise, PENDING_IDS, settledQueues, TOPUP_WHAT, totalsOf, type Count, type Day, type PageQuery, type Raw, type Row, type WhatParts,
 } from '@/modules/today/register';
 
@@ -34,7 +34,7 @@ const UNPAID_SALE_STATUSES = ['placed', 'accepted', 'packed', 'ready_for_pickup'
 const ORDER_FIELDS = { orderNumber: 1, orderType: 1, status: 1, 'items.medicineName': 1, grandTotal: 1, grandTotalPaise: 1, paymentStatus: 1,
   paymentSource: 1, paymentMode: 1, paidAt: 1, createdAt: 1, customerId: 1 };
 const LAB_FIELDS = { status: 1, paymentStatus: 1, 'pricing.payableMinor': 1, 'assisted.funding': 1, 'assisted.shortRef': 1, 'lifecycle.paidAt': 1,
-  'items.name': 1, createdAt: 1, userId: 1, 'patient.dependentId': 1 };
+  'items.name': 1, createdAt: 1, userId: 1, 'patient.dependentId': 1, 'assisted.identity.disputed.state': 1 };
 const TOPUP_FIELDS = { amount: 1, amountPaise: 1, createdAt: 1 };
 type Finder = { find: (f: Row) => any };
 
@@ -189,8 +189,9 @@ export async function pharmacyTodaySearch(actor: PharmacyActor, q: PageQuery & {
       const name = r.kind === 'order' ? orderNames.get(String(v.customerId ?? '').toLowerCase()) : r.kind === 'consultation'
         ? consultNames.patients.get(r.id) : r.kind === 'lab_booking' ? labNames.patients.get(r.id) : null;
       const holder = r.kind === 'order' ? v.customerId : v.userId;
+      // r38b: the account holder's phone only while the row's identity was not moved to another account ("not mine").
       return matches(terms, [name, v.orderNumber, v.assisted?.shortRef, whatOf(r).what],
-        [phoneOf.get(String(holder ?? '').toLowerCase()), r.kind === 'consultation' ? v.contactNo : null]);
+        [identityMoved(v) ? null : phoneOf.get(String(holder ?? '').toLowerCase()), r.kind === 'consultation' ? v.contactNo : null]);
     });
   });
   return { date: p.date, items: await itemsOf(pharmacyId, p.page, p.day, p.date), nextCursor: p.nextCursor };

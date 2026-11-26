@@ -4,7 +4,7 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { AppError } from '@/modules/common/types';
 import { requireAdmin, requireAnyPartnerPermission, requireOperationalPartner, requirePartnerPermission } from '@/modules/middleware/auth';
-import type { PartnerPermission } from '@/modules/partners/types';
+import { INVOICE_READERS, LAB_READERS, type PartnerPermission } from '@/modules/partners/types';
 import {
   createPartnerSchema,
   updatePartnerSchema,
@@ -81,6 +81,7 @@ import { pageQueryOf, todayQuerySchema, todaySearchSchema } from '@/modules/toda
 import { mountTodoRoutes } from '@/modules/todos';
 import MemberModel from '@/modules/partners/model/member';
 import { actorOf as partnerActorOf } from '@/modules/partners/controller';
+import { hasGlobalScope } from '@/modules/partners/services';
 import { labDeskRecommendation } from '@/modules/testRecommendations/controller';
 import { recommendationLookupSchema } from '@/modules/testRecommendations/validation';
 
@@ -144,7 +145,6 @@ const requireOwnerActor = (message: string): RequestHandler => (req, _res, next)
   next(new AppError({ status: 403, code: 'OWNER_REQUIRED', message }));
 };
 
-const INVOICE_READERS: PartnerPermission[] = ['invoices.create', 'invoices.cancel', 'payments.record', 'finance.view'];
 
 /**
  * The partner workspace (profile, staff, branches; later packets add catalogue, invoices, bookings, finance). Registered
@@ -219,7 +219,6 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/slots/:slotId/close', ...guard('slots.manage'), validate(labV.slotIdParamSchema, 'params'), catchAsync(lab.closeSlot));
   r.post('/slots/:slotId/reopen', ...guard('slots.manage'), validate(labV.slotIdParamSchema, 'params'), catchAsync(lab.reopenSlot));
 
-  const LAB_READERS: PartnerPermission[] = ['bookings.view', 'bookings.manage', 'reports.upload', 'reports.release'];
   const id = validate(labV.labBookingIdParamSchema, 'params');
   // Phase 3d (§25.7.4): the lab desk loads a doctor's recommended tests by the printed code and the patient's mobile number.
   r.post('/lab-desk/recommendations/lookup', ...guard('bookings.manage'), validate(recommendationLookupSchema, 'body'), catchAsync(labDeskRecommendation));
@@ -253,7 +252,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   const labOnly: RequestHandler = catchAsync(async (req, _res, next) => { await assertLab(partnerActorOf(req)); next(); });
   mountTodoRoutes(r, (req) => {
     const a = partnerActorOf(req);
-    return { owner: { kind: 'lab', id: a.partnerId }, actor: async () => (a.actorKind === 'admin' || a.memberId.startsWith('admin:')
+    // r38b: a branch-limited member's to-dos belong to its branches (it sees those and the lab-wide ones).
+    return { owner: { kind: 'lab', id: a.partnerId, ...(hasGlobalScope(a) ? {} : { branchIds: a.branchIds }) }, actor: async () => (a.actorKind === 'admin' || a.memberId.startsWith('admin:')
       ? { kind: 'admin', id: a.memberId.replace(/^admin:/, ''), name: 'Jansetu' }
       : { kind: 'member', id: a.memberId, name: (await MemberModel.findById(a.memberId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null }) };
   }, [...guard(), labOnly]);

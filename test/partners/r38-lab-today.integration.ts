@@ -46,6 +46,7 @@ import { InvoiceEventModel, InvoiceModel } from '@/modules/partners/model/invoic
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import { PartnerWalletEntryModel } from '@/modules/partnerWallets/model';
 import BookingModel from '@/modules/bookings/model';
+import UserModel from '@/modules/user/model';
 import { TodoModel } from '@/modules/todos/model';
 import MemberModel from '@/modules/partners/model/member';
 import { PartnerRepository } from '@/modules/partners/repository';
@@ -126,13 +127,15 @@ async function main() {
     const staff = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Desk B1', role: 'staff', permissions: ['bookings.view'], branchIds: [B1] } as never);
     const biller = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Biller', role: 'staff', permissions: ['invoices.create'], branchIds: [] } as never);
     const cat = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Catalogue', role: 'staff', permissions: ['catalogue.manage'], branchIds: [] } as never);
+    const staff2 = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Desk B2', role: 'staff', permissions: ['bookings.view'], branchIds: [B2] } as never);
     const { partner: other, owner: otherOwner } = await partnerSvc.createPartner({ kind: 'lab', name: 'Other Labs', contactPhone: nextPhone(), invoiceSeriesPrefix: 'OL',
       firstOwner: { phone: nextPhone(), name: 'Other Owner' }, taxRegime: 'unregistered' } as never);
     const O = String(other._id);
     await partnerSvc.verifyPartner(O, 'admin');
     const sign = (claims: object) => jwt.sign(claims, CONFIG.JWT_SECRET_KEY, { expiresIn: '1h' });
     const member = (m: { _id: unknown }, p = L) => sign({ _id: String(m._id), memberId: String(m._id), partnerId: p, userType: 'partner' });
-    const tokens: Record<string, string> = { OWN: member(owner), STAFF: member(staff), BILL: member(biller), CAT: member(cat), OTHER: member(otherOwner, O) };
+    const tokens: Record<string, string> = { OWN: member(owner), STAFF: member(staff), STAFF2: member(staff2), BILL: member(biller), CAT: member(cat),
+      OTHER: member(otherOwner, O) };
     const call = async (who: string, method: string, url: string, body?: unknown) => {
       const r = await fetch(base + url, { method, headers: { authorization: `Bearer ${tokens[who]}`, 'content-type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body) });
@@ -149,7 +152,9 @@ async function main() {
 
     const DAY = '2026-11-20';
     const at = (hm: string, d = DAY) => new Date(`${d}T${hm}:00+05:30`);
-    const U1 = oid();
+    const U1 = oid(); const U2 = oid();
+    await UserModel.collection.insertMany([{ _id: new Types.ObjectId(U1), userType: 'user', phone: '9855550001', name: 'Ravi Das' },
+      { _id: new Types.ObjectId(U2), userType: 'user', phone: '9866660002', name: 'Moved Away' }] as never);
     const labRow = (x: Record<string, unknown>) => ({ partnerId: L, branchId: B1, userId: U1, visitMode: 'lab', status: 'confirmed', statusVersion: 0,
       paymentStatus: 'paid', pricing: { subtotalMinor: 0, discountMinor: 0, payableMinor: 0, commissionMinor: 0, currency: 'INR' }, items: [{ name: 'CBC', kind: 'test' },
         { name: 'Lipid profile', kind: 'test' }], slot: { date: DAY }, patient: { kind: 'self', name: 'Patient' }, settlement: { settlementSystem: 'ledger' },
@@ -165,6 +170,10 @@ async function main() {
       labRow({ pricing: { payableMinor: 30_000 }, slot: { date: '2026-11-22' }, lifecycle: { paidAt: at('12:00') }, createdAt: at('18:00', '2026-11-18'),
         updatedAt: at('12:00') }), // 3 made earlier, paid this day
       labRow({ partnerId: O, createdAt: at('10:00'), updatedAt: at('10:00') }), // 4 another lab
+      labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, paymentStatus: 'pending', slot: { date: '2026-11-19' }, createdAt: at('09:00', '2026-11-19'),
+        updatedAt: at('09:00', '2026-11-19') }), // 5 desk, earlier, never billed
+      labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, status: 'completed', paymentStatus: 'pending', userId: U2,
+        desk: { identity: { disputed: { state: 'moved', at: at('17:30') } } }, createdAt: at('17:00'), updatedAt: at('17:30') }), // 6 desk, identity moved
     ] as never);
     const labIds = Object.values(labs.insertedIds).map(String);
     let billNo = 0;
@@ -180,6 +189,10 @@ async function main() {
         createdAt: at('17:00', '2026-11-19'), updatedAt: at('14:00') }), // 2 made the day before, paid this day by bank
       bill({ customer: { name: 'Unpaid Old' }, totals: { totalMinor: 9_000 }, issuedAt: at('17:00', '2026-11-19'), createdAt: at('17:00', '2026-11-19'),
         updatedAt: at('17:00', '2026-11-19') }), // 3 unpaid, earlier: pending only
+      bill({ customer: { name: 'Cancel Me' }, totals: { totalMinor: 15_000 }, lifecycleState: 'cancelled', paidMinor: 15_000, issuedAt: at('16:00'), createdAt: at('16:00'),
+        updatedAt: at('16:30') }), // 4 paid in cash and refunded in cash this day
+      bill({ customer: { name: 'Old Cancel' }, totals: { totalMinor: 5_000 }, lifecycleState: 'cancelled', paidMinor: 5_000, issuedAt: at('11:00', '2026-11-19'),
+        createdAt: at('11:00', '2026-11-19'), updatedAt: at('16:45') }), // 5 paid by UPI the day before, refunded by UPI this day
     ] as never);
     const billIds = Object.values(bills.insertedIds).map(String);
     await InvoiceEventModel.collection.insertMany([
@@ -187,6 +200,10 @@ async function main() {
         by: 'x', byKind: 'member' },
       { invoiceId: billIds[1], kind: 'payment', amountMinor: 10_000, splits: [{ mode: 'card', amountMinor: 10_000 }], version: 1, at: at('13:01'), by: 'x', byKind: 'member' },
       { invoiceId: billIds[2], kind: 'payment', amountMinor: 20_000, mode: 'bank', version: 1, at: at('14:00'), by: 'x', byKind: 'member' },
+      { invoiceId: billIds[4], kind: 'payment', amountMinor: 15_000, mode: 'cash', version: 1, at: at('16:00'), by: 'x', byKind: 'member' },
+      { invoiceId: billIds[4], kind: 'cancellation', reason: 'wrong test', refund: { mode: 'cash', amountMinor: 15_000 }, version: 2, at: at('16:30'), by: 'x', byKind: 'member' },
+      { invoiceId: billIds[5], kind: 'payment', amountMinor: 5_000, mode: 'upi', version: 1, at: at('11:05', '2026-11-19'), by: 'x', byKind: 'member' },
+      { invoiceId: billIds[5], kind: 'cancellation', reason: 'duplicate', refund: { mode: 'upi', amountMinor: 5_000 }, version: 2, at: at('16:45'), by: 'x', byKind: 'member' },
     ] as never);
     const consult = (x: Record<string, unknown>) => ({ userId: U1, specialistId: oid(), doctorName: 'Dr Kavya', bookingKind: 'scheduled', consultationMode: 'video',
       bookingDate: '20261120', bookingTime: '16:00', contactNo: '9844445555', ...x });
@@ -207,11 +224,11 @@ async function main() {
       const d = r.json.data;
       assert.deepEqual(d.items.map((i: any) => [i.kind, i.id]), [['wallet_topup', String(topup.insertedId)], ['lab_booking', labIds[0]], ['bill', billIds[0]],
         ['lab_booking', labIds[1]], ['lab_booking', labIds[2]], ['lab_booking', labIds[3]], ['bill', billIds[1]], ['bill', billIds[2]], ['consultation', consultIds[0]],
-        ['consultation', consultIds[1]]]);
+        ['consultation', consultIds[1]], ['bill', billIds[4]], ['bill', billIds[5]], ['lab_booking', labIds[6]]]);
       const by = (id: string) => d.items.find((i: any) => i.id === id);
       assert.deepEqual(Object.keys(by(labIds[0])).sort(), ['amountMinor', 'at', 'id', 'kind', 'link', 'madeOn', 'method', 'paid', 'paidToday', 'patientName', 'shortRef',
         'status', 'what', 'whatParts']);
-      assert.deepEqual([by(labIds[0]).patientName, by(labIds[0]).paid, by(labIds[0]).whatParts], ['Ravi Das', false,
+      assert.deepEqual([by(labIds[0]).patientName, by(labIds[0]).paid, by(labIds[0]).whatParts], ['Ravi Das', true,
         { code: 'lab.tests', values: { first: 'CBC', more: 1, source: 'lab_desk', visit: 'lab' } }]);
       assert.deepEqual([by(labIds[1]).whatParts.values.visit, by(labIds[1]).method, by(labIds[2]).shortRef, by(labIds[2]).whatParts.values.source],
         ['home', 'online', 'JS-PH01', 'pharmacy_assisted']);
@@ -220,28 +237,33 @@ async function main() {
         { code: 'bill.items', values: { first: 'CBC', more: 0 } }, { kind: 'invoice', id: billIds[0] }]);
       assert.deepEqual([by(billIds[1]).method, by(billIds[1]).paid, by(billIds[2]).method, by(billIds[2]).paidToday, by(billIds[2]).madeOn], ['card', false, 'bank', true, '2026-11-19']);
       assert.deepEqual([by(consultIds[0]).method, by(consultIds[0]).whatParts.code], ['wallet', 'consult.scheduled']);
-      assert.deepEqual(d.totals, { collectedMinor: 80_000 + 60_000 + 30_000 + 30_000 + 20_000 + 10_000 + 20_000 + 50_000,
-        byMethod: { cash: 30_000, upi: 20_000, card: 10_000, bank: 20_000, wallet: 50_000, online: 170_000, other: 0 }, unpaidMinor: 30_000, count: 10 });
+      // r38b: money that went back this day, by its method (the drawer: collected cash − refunded cash).
+      assert.deepEqual(d.totals, { collectedMinor: 80_000 + 60_000 + 30_000 + 30_000 + 20_000 + 10_000 + 20_000 + 50_000 + 15_000,
+        byMethod: { cash: 45_000, upi: 20_000, card: 10_000, bank: 20_000, wallet: 50_000, online: 170_000, other: 0 }, unpaidMinor: 30_000, count: 13,
+        refundedMinor: 20_000, refundsByMethod: { cash: 15_000, upi: 5_000, card: 0, bank: 0, wallet: 0, online: 0, other: 0 } });
+      assert.deepEqual([by(billIds[5]).madeOn, new Date(by(billIds[5]).at).toISOString()], ['2026-11-19', at('16:45').toISOString()], 'listed for its refund this day');
       assert.deepEqual(d.pending, {
         samplesToCollect: { count: 2, visitCount: 1, homeCount: 1, visitIds: [labIds[0]], homeIds: [labIds[1]] },
         reportsDue: { count: 1, toUploadCount: 1, toReleaseCount: 0, toUploadIds: [labIds[2]], toReleaseIds: [] },
+        deskUnbilled: { count: 2, ids: [labIds[6], labIds[5]] },
         unpaidBills: { count: 2, ids: [billIds[1], billIds[3]] },
         bookingsAwaitingPayment: { count: 1, ids: [consultIds[1]] },
         consultationsWaiting: { count: 1, ids: [consultIds[0]] },
       });
       assert.ok(!d.items.some((i: any) => i.id === labIds[4]), 'another lab never');
       const desc = (await expect('OWN', 'GET', `/today?date=${DAY}&order=desc&limit=3`, 200)).json.data;
-      assert.deepEqual([desc.items.map((i: any) => i.id), !!desc.nextCursor], [[consultIds[1], consultIds[0], billIds[2]], true]);
+      assert.deepEqual([desc.items.map((i: any) => i.id), !!desc.nextCursor], [[labIds[6], billIds[5], billIds[4]], true]);
     });
 
     await check('scope and permissions: a branch-limited bookings reader sees its branch\'s bookings only; a biller the bills; no reader 403; another lab its own', async () => {
       const s = (await expect('STAFF', 'GET', `/today?date=${DAY}`, 200)).json.data;
-      assert.deepEqual(s.items.map((i: any) => i.id), [labIds[0], labIds[2], labIds[3]]);
+      assert.deepEqual(s.items.map((i: any) => i.id), [labIds[0], labIds[2], labIds[3], labIds[6]]);
       assert.deepEqual([s.totals.collectedMinor, s.totals.byMethod.online], [90_000, 90_000]);
-      assert.deepEqual(Object.keys(s.pending).sort(), ['reportsDue', 'samplesToCollect']);
+      assert.deepEqual(Object.keys(s.pending).sort(), ['deskUnbilled', 'reportsDue', 'samplesToCollect']);
       assert.deepEqual([s.pending.samplesToCollect.count, s.pending.reportsDue.toUploadCount], [1, 1]);
       const b = (await expect('BILL', 'GET', `/today?date=${DAY}`, 200)).json.data;
-      assert.deepEqual([b.items.map((i: any) => i.kind), b.pending.unpaidBills.count, Object.keys(b.pending)], [['bill', 'bill', 'bill'], 2, ['unpaidBills']]);
+      assert.deepEqual([b.items.map((i: any) => i.id), b.pending.unpaidBills.count, Object.keys(b.pending)], [[billIds[0], billIds[1], billIds[2], billIds[4], billIds[5]], 2,
+        ['unpaidBills']]);
       await expect('CAT', 'GET', `/today?date=${DAY}`, 403);
       const o = (await expect('OTHER', 'GET', `/today?date=${DAY}`, 200)).json.data;
       assert.deepEqual(o.items.map((i: any) => i.id), [labIds[4]]);
@@ -249,7 +271,8 @@ async function main() {
 
     await check('POST /today/search: the lab-facing name, bill serial, short ref and phones (4+ digits); scope applies; no-store; 400 on a short q', async () => {
       const q = async (who: string, text: string) => (await expect(who, 'POST', '/today/search', 200, { date: DAY, q: text })).json.data.items.map((i: any) => i.id);
-      assert.deepEqual(await q('OWN', 'ravi'), [labIds[0], billIds[0]]);
+      // The consultations' patient is the account holder, named as the lab is shown him (masked or typed).
+      assert.deepEqual(await q('OWN', 'ravi'), [labIds[0], billIds[0], ...consultIds]);
       assert.deepEqual(await q('OWN', '98222'), [billIds[0]]);
       assert.deepEqual(await q('OWN', '98111'), [labIds[1]]);
       assert.deepEqual(await q('OWN', 'js-ph01'), [labIds[2]]);
@@ -257,6 +280,9 @@ async function main() {
       assert.deepEqual(await q('OWN', '98444'), consultIds);
       assert.deepEqual(await q('STAFF', 'ravi'), [labIds[0]]);
       assert.deepEqual(await q('STAFF', 'meera'), []);
+      // r38b: a desk booking's account holder phone matches while the identity stands; never once it was moved.
+      assert.deepEqual(await q('OWN', '98555'), [labIds[0], ...consultIds], 'the desk booking and the consultations it made for that holder');
+      assert.deepEqual(await q('OWN', '98666'), []);
       const raw = await call('OWN', 'POST', '/today/search', { date: DAY, q: 'cbc' });
       assert.equal(raw.headers.get('cache-control'), 'private, no-store');
       await expect('OWN', 'POST', '/today/search', 400, { date: DAY, q: 'x' });
@@ -268,6 +294,12 @@ async function main() {
       const s = (await expect('STAFF', 'POST', '/todos', 201, { text: 'Call Meera about her sample', requestKey: 'lab-todo-0002' })).json.data.todo;
       assert.equal(s.createdBy.name, 'Desk B1');
       assert.deepEqual((await expect('STAFF', 'GET', '/todos', 200)).json.data.map((x: any) => x.text), ['Call Meera about her sample', 'Order reagent kits']);
+      // r38b: a branch-limited member's to-do belongs to its branch: another branch's member sees only the lab-wide ones.
+      assert.deepEqual([s.branchIds, t.branchIds], [[B1], []]);
+      assert.deepEqual((await expect('STAFF2', 'GET', '/todos', 200)).json.data.map((x: any) => x.text), ['Order reagent kits']);
+      await expect('STAFF2', 'PATCH', `/todos/${s._id}`, 404, { done: true, expectedVersion: 0 }, 'TODO_NOT_FOUND');
+      await expect('STAFF2', 'DELETE', `/todos/${s._id}`, 404, undefined, 'TODO_NOT_FOUND');
+      assert.equal((await expect('OWN', 'GET', '/todos', 200)).json.data.length, 2, 'the owner sees every branch');
       assert.deepEqual((await expect('OTHER', 'GET', '/todos', 200)).json.data, []);
       await expect('OTHER', 'PATCH', `/todos/${t._id}`, 404, { done: true, expectedVersion: 0 }, 'TODO_NOT_FOUND');
       assert.equal((await expect('CAT', 'PATCH', `/todos/${t._id}`, 200, { done: true, expectedVersion: 0 })).json.data.done, true, 'any member of the lab');

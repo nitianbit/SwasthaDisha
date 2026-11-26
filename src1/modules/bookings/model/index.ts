@@ -567,6 +567,10 @@ bookingSchema.index({ pharmacyId: 1, status: 1 });
 bookingSchema.index({ pharmacyId: 1, bookingDate: 1 });
 // Assisted booking phase 0: the booking pharmacy's list, newest first (cursor <createdAt ms>_<id>).
 bookingSchema.index({ pharmacyId: 1, createdAt: -1, _id: -1 });
+// r38b (§26.20, §26.22): the Today registers read the consultations a pharmacy, or a lab (2e), paid on a day (made earlier).
+bookingSchema.index({ pharmacyId: 1, 'lifecycle.paid.at': 1 }, { partialFilterExpression: { 'lifecycle.paid.at': { $exists: true } } });
+bookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, 'lifecycle.paid.at': 1 },
+  { partialFilterExpression: { 'lifecycle.paid.at': { $exists: true } } });
 // Assisted booking phase 1a (§5.1, §15): the booker's list, the short reference and the exactly-once request key.
 bookingSchema.index({ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1 });
 bookingSchema.index({ 'assisted.shortRef': 1 }, { unique: true, partialFilterExpression: { 'assisted.shortRef': { $type: 'string' } } });
