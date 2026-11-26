@@ -7046,7 +7046,8 @@ breakdown; `specialists/today.ts` the register. Reused, not copied:
 - its patient rule, now one exported function (`deskPatientOf`) that the desk create also calls;
 - the patient's own booking create (`createSpecialistBooking`, which gains a server-only `opts.source`);
 - the workspace's catalogue and bill routes, now one registrar (`registerBillingRoutes`) that the workspace also calls;
-- the bill rows of a day (`billRawsOf`, `billWhat`), shared with the lab register;
+- the bill rows of a day: r40's helpers (`billDayReads`, `billRawsOf`, `billItemOf`, `billMatches`, `unpaidBillsQueue`), shared
+  with the lab's and the clinic's registers (r39 was merged with stage `21a4a92b`);
 - the counted doctor lookup (`lookupPatientFor`, which gains `{ gated: false }` so it runs without the lab-booking switch);
 - the to-do module, with owner kind `doctor`.
 
@@ -7076,8 +7077,8 @@ except the to-dos.
   `{ clinicId, branchId? }`.
 - Answer: the desk's answer `{ booking, customer, patient, replayed }`; 201, or 200 on a replay.
 - His membership of that clinic is the desk actor. Its branches are the ones he consults at (`doctorScopeOf`).
-- The row is that clinic's desk appointment: it is in the clinic's reception list (`source: 'desk'`), it is paid at the
-  clinic, and `clinicDesk.createdBy` is his member id.
+- The row is that clinic's desk appointment: it is in the clinic's reception list (`source: 'desk'`), its busy blocks and
+  its Today (r40), it is paid at the clinic, and `clinicDesk.createdBy` is his member id.
 - Only his own slots:
   - another doctor's slot, or a `branchId` that is not the slot's: 409 `SLOT_NOT_AVAILABLE`;
   - a slot at another clinic: 404 `BRANCH_NOT_FOUND` (from the desk);

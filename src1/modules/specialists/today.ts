@@ -4,13 +4,12 @@ import { appointmentStartOf } from '@/modules/bookings/holds';
 import DependentModel from '@/modules/dependents/model';
 import UserModel from '@/modules/user/model';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
-import { InvoiceModel } from '@/modules/partners/model/invoice';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
 import type { PartnerActor } from '@/modules/partners/services';
 import { findOwnerAccount } from '@/modules/partners/services/finance';
 import { invoicesScope } from '@/modules/partners/services/invoice';
 import { addDays } from '@/modules/partners/services/slots';
-import { billRawsOf, billWhat } from '@/modules/partners/services/today';
+import { billDayReads, billItemOf, billMatches, billRawsOf, billWhat, unpaidBillsQueue } from '@/modules/partners/services/today';
 import { LAB_PAYMENT_METHODS } from '@/modules/pharmacyOrders/paymentMethod';
 import { assistedBookerFilter } from '@/modules/assisted/refunds';
 import { bookerLabViews } from '@/modules/assisted/labBookings';
@@ -50,9 +49,10 @@ async function rawOf(doctorId: string, clinic: PartnerActor | null, day: Day, da
   const labOwner = assistedBookerFilter('doctor', doctorId);
   const truncated = new Set<string>();
   const cap = capper(truncated);
-  const [appointments, billRaws, labs, labsPaid] = await Promise.all([
+  const none = Promise.resolve([] as Row[]);
+  const [appointments, bills, billsTouched, labs, labsPaid] = await Promise.all([
     dayRows(BookingModel, { ...ownAppointments(doctorId), bookingDate: yyyymmdd(date) }, APPOINTMENT_FIELDS),
-    clinic ? billRawsOf(invoicesScope(clinic), day, cap) : Promise.resolve([] as Raw[]),
+    ...(clinic ? billDayReads(invoicesScope(clinic), day) : [none, none]),
     dayRows(PartnerLabBookingModel, { ...labOwner, createdAt: day }, LAB_FIELDS),
     dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS),
   ]);
@@ -61,7 +61,7 @@ async function rawOf(doctorId: string, clinic: PartnerActor | null, day: Day, da
     ...cap('appointment', appointments).map((b): Raw => ({ kind: 'appointment', row: b, at: appointmentStartOf(b as never) ?? b.createdAt,
       createdAt: b.createdAt, id: String(b._id), status: b.status, paymentStatus: b.paymentStatus, amountMinor: paise(b.price), paid: b.paymentStatus === 'paid',
       paidAt: null, method: null, collects: false, atGateway: false })),
-    ...billRaws,
+    ...await billRawsOf([...cap('bill', bills), ...cap('bill', billsTouched)], day),
     // Paid from his wallet or by card (not money collected from the patient here): listed, not counted.
     ...[...cap('lab_booking', labs), ...cap('lab_booking', labsPaid)].map((l): Raw => {
       const paid = l.paymentStatus === 'paid';
@@ -114,13 +114,14 @@ async function itemsOf(doctorId: string, page: Raw[], day: Day, date: string) {
   ]);
   const labById = new Map(labs.map((v) => [String(v._id), v]));
   return page.map((r) => {
+    if (r.kind === 'bill') return billItemOf(r, day, date);
     const b = itemBase(r, day, date);
     const v = r.row;
-    const shortRef = r.kind === 'bill' ? v.serial ?? null : v.assisted?.shortRef ?? null;
-    const patientName = r.kind === 'appointment' ? names.get(r.id) ?? null : r.kind === 'bill' ? v.customer?.name ?? null : labById.get(r.id)?.patientName ?? null;
+    const shortRef = v.assisted?.shortRef ?? null;
+    const patientName = r.kind === 'appointment' ? names.get(r.id) ?? null : labById.get(r.id)?.patientName ?? null;
     const c = r.kind === 'appointment' ? clinicIdOf(v) : null;
     return { kind: b.kind, id: b.id, at: b.at, shortRef, patientName, ...whatOf(r), amountMinor: b.amountMinor, paid: b.paid, method: b.method, status: b.status,
-      madeOn: b.madeOn, paidToday: r.kind === 'bill' ? b.madeOn !== date && !!r.received?.length : b.paidToday, link: { kind: LINK[r.kind as DoctorTodayKind], id: r.id },
+      madeOn: b.madeOn, paidToday: b.paidToday, link: { kind: LINK[r.kind as DoctorTodayKind], id: r.id },
       ...(r.kind === 'appointment' ? { source: appointmentSourceOf(v), channel: channelOf(v), clinic: c ? clinics.get(c) ?? { id: c, name: null } : null } : {}) };
   });
 }
@@ -142,7 +143,7 @@ async function pendingOf(doctorId: string, clinic: PartnerActor | null, date: st
     reportsReady: () => countIds(PartnerLabBookingModel, { ...assistedBookerFilter('doctor', doctorId),
       'report.releases.releasedAt': { $gte: new Date(now.getTime() - 7 * 86_400_000) } }),
   };
-  if (clinic) queues.unpaidBills = () => countIds(InvoiceModel, { ...invoicesScope(clinic), lifecycleState: { $in: ['issued', 'partly_paid'] } });
+  if (clinic) queues.unpaidBills = unpaidBillsQueue(clinic);
   return settledQueues(queues);
 }
 
@@ -182,7 +183,7 @@ export async function doctorTodaySearch(doctorId: string, q: PageQuery & { q: st
     return raws.filter((r) => {
       const v = r.row;
       if (r.kind === 'appointment') return matches(terms, [names.get(r.id), v.assisted?.shortRef, whatOf(r).what], [v.contactNo, holder(v)]);
-      if (r.kind === 'bill') return matches(terms, [v.customer?.name, v.serial, whatOf(r).what], [v.customer?.phone]);
+      if (r.kind === 'bill') return billMatches(terms, r);
       return matches(terms, [labNames.get(r.id), v.assisted?.shortRef, whatOf(r).what], [holder(v)]);
     });
   });
