@@ -35,6 +35,7 @@ import { WalletRepository } from '@/modules/wallet/repository';
 import { Container } from 'typedi';
 import type { NotificationType } from '@/modules/notification/types';
 import { billsForAppointments } from '@/modules/partners/services/invoice';
+import { deskPhoneLookup } from '@/modules/assisted/patient';
 
 /**
  * Q6 — clinics with several doctors, the clinic front desk, and solo practices.
@@ -547,6 +548,17 @@ export async function deskPatientOf(input: { customer: { phone: string; name?: s
     }
   }
   return { customer, dependentId, newDependent };
+}
+
+/**
+ * r40d: POST /partner-workspace/clinic/patients/lookup { phone } — the reception's lookup before booking, the lab desk's
+ * own rule (`deskPhoneLookup`): counted against the clinic's hourly lookup limit (organisation key `clinic:<id>`), audited
+ * (`clinic.patient_lookup`, ids only) and answered `{ exists, holderNameMasked }` (a masked name only).
+ */
+export async function lookupClinicPatient(actor: PartnerActor, rawPhone: unknown) {
+  await clinicOf(actor);
+  return deskPhoneLookup(`clinic:${String(actor.partnerId).toLowerCase()}`, rawPhone,
+    (seen) => recordPartnerAudit(actor, 'clinic.patient_lookup', undefined, seen));
 }
 
 /** Q13: request-key scope of desk appointments, per clinic and desk member (claimed in the booking transaction). */

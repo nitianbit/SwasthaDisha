@@ -10,6 +10,7 @@ import type { PharmacyActor } from '@/modules/assisted/bookers';
 import { customerPhoneIndexReady } from '@/modules/partners/services/customerResolver';
 import { hitLookup } from '@/modules/assisted/limits';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
+import { maskName } from '@/modules/assisted/names';
 
 /**
  * r11 (§24.3): the patient steps every assisted create shares — the family member of the phone's account, the account
@@ -188,6 +189,18 @@ export async function writePatientIn(pp: PreparedPatient, opts: { preferredLangu
  * Every lookup, and every create that is not a same-content replay, names a phone: it counts against the organisation's
  * hourly lookup limit (the one limit the owner kept) and is audited by the caller with ids only. Returns the account.
  */
+/**
+ * r40d: a front desk's patient lookup by phone — the lab desk's (r12) and the clinic reception's: counted against the
+ * organisation's hourly lookup limit (`orgKey`), audited by the caller (ids only), and answered `{ exists, holderNameMasked }`
+ * (a masked name only, never the account name).
+ */
+export async function deskPhoneLookup(orgKey: string, rawPhone: unknown, audit: (seen: { exists: boolean; userId?: string }) => Promise<void>) {
+  const phone = canonicalMobile(rawPhone);
+  if (!phone) throw new AppError({ status: 400, code: 'INVALID_PHONE', message: 'Enter a valid 10-digit mobile number' });
+  const user = await countPhoneUse(orgKey, phone, audit);
+  return { exists: !!user, holderNameMasked: user ? maskName(user.name) : null };
+}
+
 export async function countPhoneUse(orgKey: string, phone: string, audit: (seen: { exists: boolean; userId?: string }) => Promise<void>)
   : Promise<{ _id: unknown; name?: string } | null> {
   await hitLookup(orgKey);

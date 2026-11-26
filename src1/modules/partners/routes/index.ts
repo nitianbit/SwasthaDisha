@@ -81,6 +81,7 @@ import { assertLab, LAB_TODAY_READERS, labToday, labTodaySearch } from '@/module
 import { clinicToday, clinicTodaySearch } from '@/modules/partners/services/clinicToday';
 import { pageQueryOf, todayQuerySchema, todaySearchSchema } from '@/modules/today/validation';
 import { mountTodoRoutes } from '@/modules/todos';
+import { lookupSchema as assistedLookupSchema } from '@/modules/assisted/validation';
 import MemberModel from '@/modules/partners/model/member';
 import { actorOf as partnerActorOf } from '@/modules/partners/controller';
 import { hasGlobalScope } from '@/modules/partners/services';
@@ -293,6 +294,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/clinic/slots', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.deskSlotsQuerySchema, 'query'), catchAsync(clinic.deskSlots));
   r.get('/clinic/appointments', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.appointmentsQuerySchema, 'query'), catchAsync(clinic.clinicAppointments));
   r.post('/clinic/appointments', ...guard('bookings.manage'), validate(clinicV.deskBookingSchema, 'body'), catchAsync(clinic.bookDesk));
+  // r40d (§26.24): the reception's phone lookup before booking (the lab desk's counted, audited lookup; a masked name only).
+  r.post('/clinic/patients/lookup', ...guard('bookings.manage'), validate(assistedLookupSchema, 'body'), catchAsync(clinic.lookupPatient));
   // Q13: a desk booking whose answer was lost — look it up by its key or give the key up (the desk member's own keys).
   r.get('/clinic/appointments/by-key/:key', ...guard('bookings.manage'), validate(clinicV.deskKeyParamSchema, 'params'), catchAsync(clinic.deskByKey));
   r.post('/clinic/appointments/by-key/:key/abandon', ...guard('bookings.manage'), validate(clinicV.deskKeyParamSchema, 'params'), catchAsync(clinic.abandonDeskKey));

@@ -24,6 +24,8 @@ export const deskSlots = async (req: Request, res: Response, _n: NextFunction) =
 export const clinicAppointments = async (req: Request, res: Response, _n: NextFunction) => {
   res.status(200).json({ success: true, ...await c.clinicDayView(actorOf(req), req.query as any) });
 };
+/** r40d: the reception's phone lookup, `{ exists, holderNameMasked }`. */
+export const lookupPatient = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.lookupClinicPatient(actorOf(req), req.body.phone));
 export const bookDesk = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createDeskAppointment(actorOf(req), req.body);
   ok(res, r, r.replayed ? 200 : 201);

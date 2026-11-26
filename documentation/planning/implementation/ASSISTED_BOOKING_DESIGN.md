@@ -7340,6 +7340,27 @@ do. Single suites: `r40-clinic-reception` 7/7, `r38-lab-today` 6/6, `r37-pharmac
 `tsc` 17. Full regression (`prun.sh … 2` on `5032a9ca`): 92 suites, 91 passed, `tsc` 17; `phase0` failed its known load
 race (finding 6) and passed alone, 29/29.
 
+**r40d** (branch `m0/r40d-clinic-lookup` on r40c with stage `379b1a50` merged): the reception's phone lookup before
+booking, matching the lab desk's.
+- **Route:** `POST /api/v1/partner-workspace/clinic/patients/lookup { phone }` → `{ success, data: { exists,
+  holderNameMasked } }`.
+  - `holderNameMasked` is the account holder's masked name, or `null` when no account has this mobile; never the
+    account name.
+  - The phone is any 10-digit Indian mobile spelling (`+91`, spaces). Anything else is 400 `VALIDATION_ERROR` (the
+    shared `lookupSchema`); a number that passes the schema but is still not a mobile is 400 `INVALID_PHONE`.
+- **Who:** `bookings.manage` at a clinic (the desk booking's guard). Another partner kind gets 409 `NOT_A_CLINIC`
+  (`clinicOf`).
+- **The lab desk's own rule, not a copy:** `deskPhoneLookup` (`assisted/patient.ts`) is now the lab desk's lookup and the
+  clinic's.
+  - It counts against the organisation's hourly lookup limit (`ASSISTED_LIMIT_LOOKUPS_PER_HOUR`, 120; the clinic's key
+    is `clinic:<id>`, separate from any lab's); over the limit, 429 `ASSISTED_LIMIT_REACHED` with `Retry-After`.
+  - Each lookup is audited as `clinic.patient_lookup`, ids only (`{ exists, userId? }`).
+- **No switch:** the clinic desk has none (the lab desk's lookup stays behind `LAB_DESK_ENABLED`).
+
+**Checks** (`r40-clinic-reception`, now 8): a known and an unknown number (masked name; `+91` spelling); a bad phone 400;
+a viewer, a biller and a lab refused; two audit rows with ids only; the hourly limit per clinic (another clinic
+unaffected). `r12-phase2c` 27/27 (the lab desk's lookup unchanged).
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

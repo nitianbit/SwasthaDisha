@@ -34,6 +34,8 @@ import { BranchRepository } from '@/modules/partners/repository/branch';
 import { PartnerService, adminActor } from '@/modules/partners/services';
 import * as clinic from '@/modules/partners/services/clinic';
 import { setAssistedNotifier } from '@/modules/assisted/support';
+import { maskName } from '@/modules/assisted/names';
+import PartnerAuditEventModel from '@/modules/partners/model/audit';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r40_clinic_reception_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -296,6 +298,28 @@ async function main() {
         createdAt: new Date(at('10:00', '2026-11-10').getTime() + i * 1000), updatedAt: at('10:00', '2026-11-10') })) as never);
       const o = (await expect('OTHER', 'GET', `/today?date=${DAY}`, 200)).json.data;
       assert.deepEqual([o.pending.deskUnbilled.count, o.pending.deskUnbilled.truncated, o.pending.deskUnbilled.ids.length], [2000, true, 20]);
+    });
+
+    await check('r40d: POST /clinic/patients/lookup — { exists, holderNameMasked } (masked only), counted against the clinic\'s hourly limit, audited with ids only; bookings.manage at a clinic', async () => {
+      const r = await expect('DESKA', 'POST', '/clinic/patients/lookup', 200, { phone: '9855550001' });
+      assert.deepEqual(r.json.data, { exists: true, holderNameMasked: maskName('Ravi Das') });
+      assert.notEqual(r.json.data.holderNameMasked, 'Ravi Das');
+      assert.deepEqual((await expect('DESKA', 'POST', '/clinic/patients/lookup', 200, { phone: '+91 98111 00000' })).json.data, { exists: false, holderNameMasked: null });
+      await expect('DESKA', 'POST', '/clinic/patients/lookup', 400, { phone: '12' });
+      await expect('DESKB', 'POST', '/clinic/patients/lookup', 403, { phone: '9855550001' });
+      await expect('BILL', 'POST', '/clinic/patients/lookup', 403, { phone: '9855550001' });
+      await expect('LAB', 'POST', '/clinic/patients/lookup', 409, { phone: '9855550001' }, 'NOT_A_CLINIC');
+      const audits = await PartnerAuditEventModel.find({ partnerId: C, action: 'clinic.patient_lookup' }).lean() as any[];
+      assert.equal(audits.length, 2);
+      assert.ok(!JSON.stringify(audits).includes('9855550001') && !JSON.stringify(audits).includes('Ravi'), 'ids only');
+      assert.deepEqual(audits.map((a) => a.detail.exists).sort(), [false, true]);
+      // The hourly limit per clinic (the lab desk's rule).
+      process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR = '3';
+      try {
+        await expect('OWN', 'POST', '/clinic/patients/lookup', 200, { phone: '9866660002' });
+        await expect('OWN', 'POST', '/clinic/patients/lookup', 429, { phone: '9866660002' }, 'ASSISTED_LIMIT_REACHED');
+        await expect('OTHER', 'POST', '/clinic/patients/lookup', 200, { phone: '9866660002' });
+      } finally { delete process.env.ASSISTED_LIMIT_LOOKUPS_PER_HOUR; }
     });
 
     await check('a lab keeps its own register (an empty lab day answers the lab\'s shape)', async () => {

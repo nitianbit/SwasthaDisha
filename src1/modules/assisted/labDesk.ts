@@ -22,7 +22,7 @@ import { maskName } from '@/modules/assisted/names';
 import { ASSISTED_KEY } from '@/modules/assisted/consultations';
 import { AssistedLinkModel } from '@/modules/assisted/model/links';
 import { labAdmissible, labRequestContent, validateLabRequest, type AssistedLabInput } from '@/modules/assisted/labBookings';
-import { cleanName, countPhoneUse, linkLabIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
+import { cleanName, countPhoneUse, deskPhoneLookup, linkLabIn, preparePatient, writePatientIn } from '@/modules/assisted/patient';
 import { smsBooked } from '@/modules/smsNotices/events';
 
 /**
@@ -138,10 +138,7 @@ async function replayOf(actor: PartnerActor, storedKey: string, hash: string, s?
 export async function lookupDeskPatient(actor: PartnerActor, rawPhone: unknown) {
   assertLabDeskOn();
   await labOf(actor, { eligible: true });
-  const phone = canonicalMobile(rawPhone);
-  if (!phone) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
-  const user = await countPhoneUse(orgKey(actor.partnerId), phone, (seen) => recordPartnerAudit(actor, 'lab_desk.patient_lookup', undefined, seen));
-  return { exists: !!user, holderNameMasked: user ? maskName(user.name) : null };
+  return deskPhoneLookup(orgKey(actor.partnerId), rawPhone, (seen) => recordPartnerAudit(actor, 'lab_desk.patient_lookup', undefined, seen));
 }
 
 // ───────────────────────────── Create (§24.6.3) ─────────────────────────────
