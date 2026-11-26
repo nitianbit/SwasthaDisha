@@ -1,5 +1,4 @@
 import { Types } from 'mongoose';
-import { AppError } from '@/modules/common/types';
 import BookingModel from '@/modules/bookings/model';
 import type { IBooking } from '@/modules/bookings/types';
 import type { PartnerActor } from '@/modules/partners/services';
@@ -9,8 +8,8 @@ import { billDayReads, billItemOf, billMatches, billRawsOf, unpaidBillsQueue } f
 import { INVOICE_READERS, type PartnerPermission } from '@/modules/partners/types';
 import { LAB_PAYMENT_METHODS } from '@/modules/pharmacyOrders/paymentMethod';
 import {
-  capper, countIds, dayRows, holderPhones, identityMoved, isoDay, itemBase, matches, orderRaws, pageOf, paise, PENDING_IDS, searchTerms, settledQueues,
-  TODAY_SOURCE_CAP, totalsOf, type Day, type PageQuery, type Raw, type Row, type WhatParts,
+  can, capper, countIds, dayRows, err, holderPhones, identityMoved, isoDay, itemBase, matches, orderRaws, pageOf, paise, registerAnswer, searchTerms,
+  settledQueues, unbilledQueue, type Day, type PageQuery, type Raw, type Row, type WhatParts,
 } from '@/modules/today/register';
 
 /**
@@ -27,8 +26,6 @@ export type ClinicTodayKind = 'appointment' | 'bill';
 
 /** Who reads the clinic's appointments (the appointment list's guard). */
 const APPOINTMENT_READERS: PartnerPermission[] = ['bookings.view', 'bookings.manage'];
-const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
-const can = (a: PartnerActor, perms: PartnerPermission[]) => a.role === 'owner' || perms.some((p) => a.permissions.includes(p));
 function sourcesOf(a: PartnerActor) {
   const src = { appointments: can(a, APPOINTMENT_READERS), bills: can(a, INVOICE_READERS) };
   if (!src.appointments && !src.bills) throw err(403, 'FORBIDDEN', 'You do not have permission for this');
@@ -49,7 +46,7 @@ function appointmentRaw(b: Row): Raw {
   const paid = !desk && b.paymentStatus === 'paid';
   return { kind: 'appointment', row: b, at: b.createdAt, createdAt: b.createdAt, id: String(b._id), status: b.status, paymentStatus: b.paymentStatus,
     amountMinor: paise(b.price), paid, paidAt: paid ? b.lifecycle?.paid?.at ?? b.createdAt : null, method: paid ? 'online' : null, collects: false,
-    atGateway: !desk && b.status === 'pending' };
+    atGateway: !desk && b.status === 'pending', paidStamp: b.lifecycle?.paid?.at ?? null };
 }
 
 async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncated: string[] }> {
@@ -113,28 +110,18 @@ async function pendingOf(a: PartnerActor, date: string) {
       ]);
       return { count: checkIn.count + confirm.count, toCheckInCount: checkIn.count, toConfirmCount: confirm.count, toCheckInIds: checkIn.ids, toConfirmIds: confirm.ids };
     };
-    // Desk appointments (walk-ins and booked visits, not ended) with no bill, or whose bill was cancelled (any day).
-    queues.deskUnbilled = async () => {
-      const rows = await BookingModel.find({ ...scope, clinicDesk: { $exists: true }, status: { $nin: ['cancelled', 'no_show'] } })
-        .sort({ createdAt: -1, _id: -1 }).limit(TODAY_SOURCE_CAP).select({ _id: 1 }).lean() as unknown as Row[];
-      const bills = rows.length ? await billsForAppointments(a.partnerId, rows.map((r) => String(r._id))) : new Map();
-      const unbilled = rows.filter((r) => { const bill = bills.get(String(r._id).toLowerCase()); return !bill || bill.state === 'cancelled'; });
-      return { count: unbilled.length, ids: unbilled.slice(0, PENDING_IDS).map((r) => String(r._id)) };
-    };
+    // Desk appointments (walk-ins and booked visits, not ended) up to this date, with no bill or whose bill was cancelled;
+    // r40c: a later visit is not yet to bill; `truncated` when the cap was hit.
+    queues.deskUnbilled = () => unbilledQueue(BookingModel, { ...scope, clinicDesk: { $exists: true }, status: { $nin: ['cancelled', 'no_show'] },
+      bookingDate: { $lte: today } }, (ids) => billsForAppointments(a.partnerId, ids));
   }
   if (src.bills) queues.unpaidBills = unpaidBillsQueue(a);
   return settledQueues(queues);
 }
 
 export async function clinicToday(a: PartnerActor, q: PageQuery, now: Date = new Date()) {
-  const p = await pageOf(q, now, (day) => rawOf(a, day));
-  const [items, pending] = await Promise.all([itemsOf(a, p.page, p.day, p.date), p.first ? pendingOf(a, p.date) : Promise.resolve(null)]);
-  return {
-    date: p.date, items, totals: totalsOf(p.raws, p.day, LAB_PAYMENT_METHODS, { refunds: true }),
-    ...(pending ? { pending } : {}),
-    ...(p.truncated.length ? { truncated: p.truncated } : {}),
-    nextCursor: p.nextCursor,
-  };
+  return registerAnswer(q, now, { rawOf: (day) => rawOf(a, day), itemsOf: (page, day, date) => itemsOf(a, page, day, date),
+    pendingOf: (date) => pendingOf(a, date), methods: LAB_PAYMENT_METHODS, refunds: true });
 }
 
 /**

@@ -146,6 +146,7 @@ async function main() {
       appt({ ...desk(B), bookingTime: '17:00', createdAt: at('17:10', '2026-11-19'), updatedAt: at('17:10', '2026-11-19') }), // 6 D1 at Baner, made earlier
       appt({ clinicDesk: { partnerId: OC, branchId: OCB, arrivedAt: null }, settlementSystem: 'clinic', bookingTime: '14:30', createdAt: at('10:00'), updatedAt: at('10:00') }), // 7 another clinic
       appt({ consultationMode: 'video', paymentStatus: 'paid', bookingTime: '14:00', createdAt: at('08:00'), updatedAt: at('08:00') }), // 8 D1 online, no clinic
+      appt({ ...desk(A), bookingDate: '20261125', bookingTime: '10:00', createdAt: at('09:00', '2026-11-19'), updatedAt: at('09:00', '2026-11-19') }), // 9 desk, a later visit, no bill yet
     ] as never);
     const ids = Object.values(rows.insertedIds).map(String);
     let billNo = 0;
@@ -181,6 +182,8 @@ async function main() {
       held(D2, ids[5], '16:00', '16:15'), // this clinic at Baner
       held(D1, ids[6], '17:00', '17:15'), // this clinic at Baner: busy only for a member who cannot see Baner
       held(D3, oid(), '10:00', '11:00'), // a doctor not at this clinic
+      held(D1, oid(), '08:37', '09:07', { kind: 'instant', startTime: new Date(`${DAY}T08:37:12+05:30`), endTime: new Date(`${DAY}T09:07:12+05:30`) }), // r40c: an odd instant start
+      held(D2, oid(), '00:00', '00:20', { startTime: at('23:50', '2026-11-19') }), // r40c: across midnight: clipped to the asked day
       held(D1, oid(), '10:00', '10:30', { startTime: at('10:00', '2026-11-21'), endTime: at('10:30', '2026-11-21') }), // another day
     ] as never);
 
@@ -191,19 +194,21 @@ async function main() {
       assert.deepEqual(r.json.data.map((a: any) => a.bookingId).sort(), [ids[0], ids[1], ids[2], ids[4], ids[5], ids[6]].sort());
       const row = r.json.data.find((a: any) => a.bookingId === ids[1]);
       assert.deepEqual([row.source, row.patient.name, row.patient.accountName, row.bill], ['desk', 'Mina Das', 'Ravi Das', null]);
-      assert.deepEqual(r.json.busy, [{ doctorId: D1, from: at('14:00').toISOString(), to: at('15:00').toISOString() }]);
+      const sorted = (xs: any[]) => [...xs].sort((a, b) => (a.doctorId + a.from).localeCompare(b.doctorId + b.from));
+      const blk = (d: string, f: string, t: string) => ({ doctorId: d, from: at(f).toISOString(), to: at(t).toISOString() });
+      // r40c (C3b): 08:37:12–09:07:12 shows as 08:30–09:15; 23:50 the day before–00:20 is clipped to 00:00–00:30.
+      assert.deepEqual(sorted(r.json.busy), sorted([blk(D1, '08:30', '09:15'), blk(D1, '14:00', '15:00'), blk(D2, '00:00', '00:30')]));
       for (const b of r.json.busy) assert.deepEqual(Object.keys(b).sort(), ['doctorId', 'from', 'to']);
       // Desk A cannot see Baner: D1's Baner appointment is busy for it; D2 (Baner only) is not its doctor.
       const a = await expect('DESKA', 'GET', `/clinic/appointments?from=${DAY}&to=${DAY}`, 200);
-      assert.deepEqual(a.json.busy, [{ doctorId: D1, from: at('14:00').toISOString(), to: at('15:00').toISOString() },
-        { doctorId: D1, from: at('17:00').toISOString(), to: at('17:15').toISOString() }]);
+      assert.deepEqual(a.json.busy, [blk(D1, '08:30', '09:15'), blk(D1, '14:00', '15:00'), blk(D1, '17:00', '17:15')]);
       assert.ok(!a.json.data.some((x: any) => x.bookingId === ids[6]));
       // The list's branch filter: Baner only → D1's Kothrud appointment is busy there.
       const b = await expect('OWN', 'GET', `/clinic/appointments?from=${DAY}&to=${DAY}&branchId=${B}`, 200);
       assert.ok(b.json.busy.some((x: any) => x.doctorId === D1 && x.from === at('11:00').toISOString()));
       // One doctor.
       const d2 = await expect('OWN', 'GET', `/clinic/appointments?from=${DAY}&to=${DAY}&doctorId=${D2}`, 200);
-      assert.deepEqual(d2.json.busy, []);
+      assert.deepEqual(d2.json.busy, [blk(D2, '00:00', '00:30')]);
       await expect('OWN', 'GET', `/clinic/appointments?from=${DAY}&to=2026-11-01`, 400, undefined, 'INVALID_DATE');
       const text = JSON.stringify(r.json.busy);
       assert.ok(!text.includes('Ravi') && !text.includes(ids[8]) && !text.includes(OC), 'no patient, booking or place');
@@ -234,7 +239,8 @@ async function main() {
       const t = d.pending.appointmentsToday;
       assert.deepEqual([t.count, t.toCheckInCount, t.toConfirmCount, t.toConfirmIds], [4, 3, 1, [ids[4]]]);
       assert.deepEqual([...d.pending.appointmentsToday.toCheckInIds].sort(), [ids[0], ids[5], ids[6]].sort());
-      assert.deepEqual([d.pending.deskUnbilled.count, [...d.pending.deskUnbilled.ids].sort()], [3, [ids[1], ids[5], ids[6]].sort()]);
+      // r40c: the later visit (the 25th) is not yet to bill.
+      assert.deepEqual([d.pending.deskUnbilled.count, [...d.pending.deskUnbilled.ids].sort(), d.pending.deskUnbilled.truncated], [3, [ids[1], ids[5], ids[6]].sort(), undefined]);
       assert.deepEqual(d.pending.unpaidBills, { count: 1, ids: [billIds[1]] });
       assert.ok(!JSON.stringify(d).includes(ids[7]) && !JSON.stringify(d).includes(billIds[4]), 'never another clinic\'s rows');
       // Paging and order as the lab's.
@@ -270,6 +276,26 @@ async function main() {
       assert.deepEqual(await s('OWN', '33334444'), [billIds[1]]);
       assert.deepEqual(await s('DESKB', 'Ravi'), []);
       await expect('OWN', 'POST', '/today/search', 400, { date: DAY, q: 'x' });
+    });
+
+    await check('r40c: an earlier appointment paid and refunded on the day sorts at its payment time; deskUnbilled says when its 2000 cap was hit', async () => {
+      const D24 = '2026-11-24';
+      const r = await BookingModel.collection.insertMany([
+        appt({ ...visit(A), bookingDate: '20261124', bookingTime: '09:00', createdAt: at('10:00', D24), updatedAt: at('10:00', D24) }),
+        appt({ ...visit(A), status: 'cancelled', paymentStatus: 'refunded', bookingDate: '20261126', bookingTime: '09:00',
+          lifecycle: { paid: { at: at('15:30', D24).toISOString() } }, createdAt: at('12:00', '2026-11-22'), updatedAt: at('16:00', D24) }),
+        appt({ ...visit(A), bookingDate: '20261124', bookingTime: '19:00', createdAt: at('18:00', D24), updatedAt: at('18:00', D24) }),
+      ] as never);
+      const rid = Object.values(r.insertedIds).map(String);
+      const d = (await expect('OWN', 'GET', `/today?date=${D24}`, 200)).json.data;
+      assert.deepEqual(d.items.map((i: any) => i.id), [rid[0], rid[1], rid[2]]);
+      assert.deepEqual([d.items[1].at, d.items[1].paid, d.items[1].madeOn], [at('15:30', D24).toISOString(), false, '2026-11-22']);
+      // Another clinic with more than 2000 unbilled desk visits: the count stops at the cap and says so.
+      await BookingModel.collection.insertMany(Array.from({ length: 2001 }, (_, i) => appt({ clinicDesk: { partnerId: OC, branchId: OCB, arrivedAt: null },
+        clinicVisit: { partnerId: OC, branchId: OCB }, settlementSystem: 'clinic', bookingDate: '20261110', bookingTime: '10:00',
+        createdAt: new Date(at('10:00', '2026-11-10').getTime() + i * 1000), updatedAt: at('10:00', '2026-11-10') })) as never);
+      const o = (await expect('OTHER', 'GET', `/today?date=${DAY}`, 200)).json.data;
+      assert.deepEqual([o.pending.deskUnbilled.count, o.pending.deskUnbilled.truncated, o.pending.deskUnbilled.ids.length], [2000, true, 20]);
     });
 
     await check('a lab keeps its own register (an empty lab day answers the lab\'s shape)', async () => {

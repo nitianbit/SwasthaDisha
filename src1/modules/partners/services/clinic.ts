@@ -29,8 +29,7 @@ import {
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import DependentModel from '@/modules/dependents/model';
-import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
-import { releaseInterval } from '@/modules/doctors/services/reservations';
+import { heldIntervalsOverlapping, releaseInterval } from '@/modules/doctors/services/reservations';
 import { branchClosedOn, clinicBranchAllowed, doctorScopeOf, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { Container } from 'typedi';
@@ -176,6 +175,10 @@ async function notifyDesk(b: IBooking, event: 'booked' | 'moved' | 'cancelled', 
 
 export async function listClinicDoctors(actor: PartnerActor) {
   await clinicOf(actor);
+  return clinicDoctorsSeen(actor);
+}
+/** The clinic's doctors this member sees (a branch-limited member: those of its branches); the caller checked the clinic. */
+async function clinicDoctorsSeen(actor: PartnerActor) {
   const members = await MemberModel.find({ partnerId: actor.partnerId, isActive: true, doctorId: { $type: 'string' } }).lean() as IMember[];
   const scopeOf = (m: IMember) => doctorScopeOf(m);
   const visible = hasGlobalScope(actor) ? members
@@ -479,8 +482,8 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
   const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) }))
     .filter((x) => { const until = bookableUntilOf(x.s); return !!x.w && !!until && until.getTime() > now.getTime(); });
   if (!windows.length) return [];
-  const held = await DoctorReservationModel.find({ doctorId: String(q.doctorId).toLowerCase(), isActive: true,
-    startTime: { $lt: new Date(Math.max(...windows.map((x) => x.w!.end.getTime()))) }, endTime: { $gt: new Date(Math.min(...windows.map((x) => x.w!.start.getTime()))) } }).lean();
+  const held = await heldIntervalsOverlapping([String(q.doctorId)], new Date(Math.min(...windows.map((x) => x.w!.start.getTime()))),
+    new Date(Math.max(...windows.map((x) => x.w!.end.getTime()))));
   return windows
     .filter(({ s, w }) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) => h.startTime < w!.end && h.endTime > w!.start))
     .sort((a, b) => a.w!.start.getTime() - b.w!.start.getTime())
@@ -741,12 +744,30 @@ export async function clinicAppointmentViews(partnerId: string, rows: IBooking[]
   });
 }
 
+type DayViewQuery = { from: string; to: string; doctorId?: string; branchId?: string; status?: string };
+
 /** Clinic appointments (desk and online) at the clinic's branches in scope, for up to 31 days. */
-export async function listClinicAppointments(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string; status?: string }) {
+export async function listClinicAppointments(actor: PartnerActor, q: DayViewQuery) {
   await clinicOf(actor);
   assertRange(q);
+  return appointmentsIn(actor, q, await clinicAppointmentsScope(actor, q.branchId));
+}
+
+/**
+ * r40c: the reception's day view in one read of the clinic: the appointment list (`data`, unchanged) and the doctors'
+ * busy blocks, side by side, on one scope.
+ */
+export async function clinicDayView(actor: PartnerActor, q: DayViewQuery) {
+  await clinicOf(actor);
+  assertRange(q);
+  const scope = await clinicAppointmentsScope(actor, q.branchId);
+  const [data, busy] = await Promise.all([appointmentsIn(actor, q, scope), busyIn(actor, q, scope)]);
+  return { data, busy };
+}
+
+async function appointmentsIn(actor: PartnerActor, q: DayViewQuery, scope: Record<string, unknown>) {
   const rows = await BookingModel.find({
-    ...await clinicAppointmentsScope(actor, q.branchId), bookingDate: { $gte: ymd(q.from), $lte: ymd(q.to) },
+    ...scope, bookingDate: { $gte: ymd(q.from), $lte: ymd(q.to) },
     ...(q.status ? { status: q.status } : {}), ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}),
   }).sort({ bookingDate: 1, bookingTime: 1 }).limit(1000).lean() as IBooking[];
   return clinicAppointmentViews(actor.partnerId, rows);
@@ -757,33 +778,36 @@ function assertRange(q: { from: string; to: string }): void {
   if (q.to > addDays(q.from, MAX_RANGE_DAYS - 1)) throw err(400, 'RANGE_TOO_LONG', `At most ${MAX_RANGE_DAYS} days at a time`);
 }
 
+/** r40c (C3b): a busy block's grid: its start floored and its end ceiled to 15 minutes. */
+const BUSY_GRID_MS = 15 * 60_000;
+
 /**
  * r40 (P3, owner: reception sees a doctor's other work only as "busy"): when each of the clinic's doctors (those the
  * member sees) is taken elsewhere between `from` and `to` (India dates) — the doctor's held intervals (every booking of
- * a doctor holds one: scheduled, in-clinic, instant; `DoctorReservationModel`) that are not appointments of this clinic
- * the member reads here (`clinicAppointmentsScope`, the list's own branch). Only `{ doctorId, from, to }`: never a patient,
- * a source or a place. One doctor's overlapping or touching blocks are merged, oldest first.
+ * a doctor holds one: scheduled, in-clinic, instant) that are not appointments of this clinic the member reads here (the
+ * list's own scope). Only `{ doctorId, from, to }`: never a patient, a source or a place. r40c (C3b): each block is
+ * widened to the 15-minute grid (start floored, end ceiled) and clipped to the asked days before one doctor's overlapping
+ * or touching blocks are merged, so neither an instant consultation's odd start, nor a length, nor a place shows through.
  */
-export async function clinicBusy(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string }) {
-  await clinicOf(actor);
-  assertRange(q);
-  const seen = (await listClinicDoctors(actor)).map((d) => d.doctorId.toLowerCase());
+async function busyIn(actor: PartnerActor, q: DayViewQuery, scope: Record<string, unknown>) {
+  const seen = (await clinicDoctorsSeen(actor)).map((d) => d.doctorId.toLowerCase());
   const doctors = q.doctorId ? seen.filter((d) => d === String(q.doctorId).toLowerCase()) : seen;
   if (!doctors.length) return [];
   const start = new Date(`${q.from}T00:00:00+05:30`);
   const end = new Date(new Date(`${q.to}T00:00:00+05:30`).getTime() + 86_400_000);
-  const held = await DoctorReservationModel.find({ doctorId: { $in: doctors }, isActive: true, startTime: { $lt: end }, endTime: { $gt: start } })
-    .select({ doctorId: 1, refId: 1, startTime: 1, endTime: 1 }).sort({ doctorId: 1, startTime: 1 }).lean();
+  const held = await heldIntervalsOverlapping(doctors, start, end);
   const refIds = [...new Set(held.map((h) => String(h.refId).toLowerCase()))].filter((x) => Types.ObjectId.isValid(x));
-  const here = new Set((refIds.length ? await BookingModel.find({ _id: { $in: refIds }, ...await clinicAppointmentsScope(actor, q.branchId) })
-    .select({ _id: 1 }).lean() : []).map((b) => String(b._id).toLowerCase()));
+  const here = new Set((refIds.length ? await BookingModel.find({ _id: { $in: refIds }, ...scope }).select({ _id: 1 }).lean() : [])
+    .map((b) => String(b._id).toLowerCase()));
   const blocks: { doctorId: string; from: Date; to: Date }[] = [];
   for (const h of held) {
     if (here.has(String(h.refId).toLowerCase())) continue;
+    const from = new Date(Math.max(Math.floor(h.startTime.getTime() / BUSY_GRID_MS) * BUSY_GRID_MS, start.getTime()));
+    const to = new Date(Math.min(Math.ceil(h.endTime.getTime() / BUSY_GRID_MS) * BUSY_GRID_MS, end.getTime()));
     const last = blocks[blocks.length - 1];
-    if (last && last.doctorId === h.doctorId && h.startTime.getTime() <= last.to.getTime()) {
-      if (h.endTime > last.to) last.to = h.endTime;
-    } else blocks.push({ doctorId: h.doctorId, from: h.startTime, to: h.endTime });
+    if (last && last.doctorId === h.doctorId && from.getTime() <= last.to.getTime()) {
+      if (to > last.to) last.to = to;
+    } else blocks.push({ doctorId: h.doctorId, from, to });
   }
   return blocks;
 }

@@ -7267,6 +7267,7 @@ shapes, owner kind `clinic`), as r38b's for labs.
 | C1 | An online appointment paid through Jansetu shows paid (`online`) but is not counted in the clinic's money | It settles to the doctor's account (`settlementSystem: 'ledger'`), not the clinic's; the clinic's money is what it billed |
 | C2 | Busy = the doctor's held intervals that are not this clinic's appointments the member reads here. So the clinic's other branch is "busy" for a member who cannot see it, or when the list is filtered to one branch | The member sees only "busy" for what it cannot open |
 | C3 | Busy blocks are merged per doctor when they overlap or touch | A row of short blocks says no more than one block |
+| C3b | **r40c (coordinator's decision):** before merging, each block is widened to a 15-minute grid (start floored, end ceiled) and clipped to the asked days. An instant reservation at 08:37:12–09:07:12 shows as 08:30–09:15 | 15 minutes hides an instant consultation's odd start, the length and the place |
 | C4 | `busy` sits beside `data` in the same answer (one call for the day view) | `data` stays unchanged for the released screens |
 | C5 | "To confirm" = this date's pending appointments; "to check in" = this date's desk rows still confirmed and not arrived (online rows are not checked in at the desk) | The desk's two actions for the day |
 | C6 | Appointments are listed on the day they were made (and earlier ones on the day they were paid), as the register's rule. This date's visits are under `pending.appointmentsToday` | The owner's register rule (26 Nov): money and list by the day it happened |
@@ -7283,7 +7284,9 @@ fix): r37 and r38 each add a consultation made two days earlier and paid on the 
 (wallet). Single suites: `r37-pharmacy-today` 6/6, `r38-lab-today` 5/5, `r40-clinic-reception` 6/6; `tsc` 17. Full regression
 (`prun.sh … 2` on `1b85de6d`): 91 suites, 91 passed, `tsc` 17.
 
-**Deploy:** no new index or collection (the to-dos are r37's). No migration.
+**Deploy: run `sync-indexes`** (r40c). It builds the clinic register's read indexes on bookings: `{ clinicDesk.partnerId,
+createdAt }`, `{ clinicVisit.partnerId, createdAt }` and `{ clinicVisit.partnerId, lifecycle.paid.at }` (partial). They
+are read indexes: nothing fails without them, but a busy day scans. No migration; the to-dos are r37's.
 
 **Checks:** `test/partners/r40-clinic-reception.integration.ts`, 6 checks:
 - busy blocks: merged, the clinic's own appointment not busy, the other branch busy for a branch-limited desk, the branch
@@ -7299,6 +7302,26 @@ fix): r37 and r38 each add a consultation made two days earlier and paid on the 
 Single suites on `58329674` (own mongod): `r40-clinic-reception` 6/6, `r38-lab-today` 4/4, `r37-pharmacy-today` 5/5,
 `q6-clinics` 21, `q14-owner-decisions` 27, `q13-doctor-finance` 20; `tsc` 17. Full regression (`prun.sh … 2` on
 `58329674`): 91 suites, 91 passed, `tsc` 17.
+
+**r40c** (branch `m0/r40c-clinic-fixes` from stage `fe9c21f2`, with r39; the r40 review's follow-ups):
+- **Busy blocks:** the 15-minute grid and clipping (C3b). The held-interval read has a lower bound (`startTime ≥ start −
+  1 day`) and is one function, `heldIntervalsOverlapping` (`doctors/services/reservations.ts`), shared with the desk's free
+  slots (`deskSlots`).
+- **The day view** reads the clinic once (`clinicDayView`) and runs the list and the busy blocks together on one scope.
+- **Indexes** (above).
+- **`deskUnbilled`** (clinic and lab) counts visits up to the register's day only (clinic: `bookingDate ≤ date`; lab:
+  `slot.startsAt` before the day's end) and adds `truncated: true` when its 2,000 cap was hit. Shared: `unbilledQueue`
+  (`today/register.ts`).
+- **A row paid and refunded the same day, made earlier,** sorts at its raw payment time: `Raw.paidStamp`, kept even when
+  the row is no longer paid. Set on consultations (pharmacy and lab registers), clinic appointments and lab bookings.
+- **One answer builder,** `registerAnswer`, for the lab and clinic registers; `err` and `can` are shared from
+  `today/register.ts`.
+
+**Checks:** r40 adds the grid (08:37:12 → 08:30–09:15), the clipping at the asked start, a later desk visit not yet to
+bill, a paid-and-refunded earlier appointment at its payment time, and the cap flag (2,001 unbilled visits → `count: 2000,
+truncated: true`). r38 adds a later desk booking not yet to bill; its seed lab rows now carry `slot.startsAt`, as real rows
+do. Single suites: `r40-clinic-reception` 7/7, `r38-lab-today` 6/6, `r37-pharmacy-today` 6/6, `r39-doctor-dashboard` 8/8;
+`tsc` 17.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 

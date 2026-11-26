@@ -583,6 +583,10 @@ bookingSchema.index({ specialistId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
 bookingSchema.index({ 'clinicDesk.partnerId': 1, bookingDate: 1 });
 bookingSchema.index({ 'clinicVisit.partnerId': 1, bookingDate: 1 });
+// r40c (§26.24): the clinic's Today register — appointments made on a day, and earlier ones paid on it.
+bookingSchema.index({ 'clinicDesk.partnerId': 1, createdAt: 1 });
+bookingSchema.index({ 'clinicVisit.partnerId': 1, createdAt: 1 });
+bookingSchema.index({ 'clinicVisit.partnerId': 1, 'lifecycle.paid.at': 1 }, { partialFilterExpression: { 'lifecycle.paid.at': { $exists: true } } });
 bookingSchema.index({ 'clinicDesk.requestKey': 1 }, { unique: true, partialFilterExpression: { 'clinicDesk.requestKey': { $type: 'string' } } });
 bookingSchema.index({ instantRequestId: 1 }, { unique: true, partialFilterExpression: { instantRequestId: { $type: 'string' } } });
 bookingSchema.index({ slotId: 1, status: 1 }); // Index for slot-based queries

@@ -157,7 +157,7 @@ async function main() {
       { _id: new Types.ObjectId(U2), userType: 'user', phone: '9866660002', name: 'Moved Away' }] as never);
     const labRow = (x: Record<string, unknown>) => ({ partnerId: L, branchId: B1, userId: U1, visitMode: 'lab', status: 'confirmed', statusVersion: 0,
       paymentStatus: 'paid', pricing: { subtotalMinor: 0, discountMinor: 0, payableMinor: 0, commissionMinor: 0, currency: 'INR' }, items: [{ name: 'CBC', kind: 'test' },
-        { name: 'Lipid profile', kind: 'test' }], slot: { date: DAY }, patient: { kind: 'self', name: 'Patient' }, settlement: { settlementSystem: 'ledger' },
+        { name: 'Lipid profile', kind: 'test' }], slot: { date: DAY, startsAt: at('09:00') }, patient: { kind: 'self', name: 'Patient' }, settlement: { settlementSystem: 'ledger' },
       report: { draftFiles: [], releasedFiles: [], releases: [] }, lifecycle: {}, ...x });
     const labs = await PartnerLabBookingModel.collection.insertMany([
       labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, paymentStatus: 'pending', pricing: { payableMinor: 50_000 },
@@ -167,10 +167,10 @@ async function main() {
       labRow({ source: 'pharmacy_assisted', status: 'sample_collected', pricing: { payableMinor: 60_000 }, patient: { kind: 'self', name: 'Asha' },
         assisted: { shortRef: 'JS-PH01', bookedBy: { kind: 'pharmacy', id: oid(), name: 'Demo Pharmacy' }, funding: { method: 'wallet', state: 'captured' } },
         lifecycle: { paidAt: at('11:00') }, createdAt: at('11:00'), updatedAt: at('11:00') }), // 2 pharmacy booking (report to upload)
-      labRow({ pricing: { payableMinor: 30_000 }, slot: { date: '2026-11-22' }, lifecycle: { paidAt: at('12:00') }, createdAt: at('18:00', '2026-11-18'),
+      labRow({ pricing: { payableMinor: 30_000 }, slot: { date: '2026-11-22', startsAt: at('09:00', '2026-11-22') }, lifecycle: { paidAt: at('12:00') }, createdAt: at('18:00', '2026-11-18'),
         updatedAt: at('12:00') }), // 3 made earlier, paid this day
       labRow({ partnerId: O, createdAt: at('10:00'), updatedAt: at('10:00') }), // 4 another lab
-      labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, paymentStatus: 'pending', slot: { date: '2026-11-19' }, createdAt: at('09:00', '2026-11-19'),
+      labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, paymentStatus: 'pending', slot: { date: '2026-11-19', startsAt: at('09:00', '2026-11-19') }, createdAt: at('09:00', '2026-11-19'),
         updatedAt: at('09:00', '2026-11-19') }), // 5 desk, earlier, never billed
       labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, status: 'completed', paymentStatus: 'pending', userId: U2,
         desk: { identity: { disputed: { state: 'moved', at: at('17:30') } } }, createdAt: at('17:00'), updatedAt: at('17:30') }), // 6 desk, identity moved
@@ -325,6 +325,14 @@ async function main() {
       assert.ok(item, JSON.stringify(d.items).slice(0, 300));
       assert.deepEqual([item.kind, item.paidToday, item.madeOn, item.method], ['consultation', true, '2026-11-23', 'wallet']);
       assert.deepEqual([d.totals.collectedMinor, d.totals.byMethod.wallet], [40_000, 40_000]);
+    });
+    await check('r40c: a desk booking for a later day is not yet to bill (deskUnbilled counts visits up to the register\'s day)', async () => {
+      const later = await PartnerLabBookingModel.collection.insertOne(labRow({ source: 'lab_desk', settlement: { settlementSystem: 'lab_desk' }, paymentStatus: 'pending',
+        slot: { date: '2026-11-25', startsAt: at('09:00', '2026-11-25') }, createdAt: at('09:30'), updatedAt: at('09:30') }) as never);
+      const d = (await expect('OWN', 'GET', `/today?date=${DAY}`, 200)).json.data;
+      assert.ok(!d.pending.deskUnbilled.ids.includes(String(later.insertedId)));
+      const after = (await expect('OWN', 'GET', '/today?date=2026-11-25', 200)).json.data;
+      assert.ok(after.pending.deskUnbilled.ids.includes(String(later.insertedId)));
     });
   } finally {
     server.close();

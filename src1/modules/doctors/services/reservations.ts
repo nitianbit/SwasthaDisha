@@ -89,3 +89,14 @@ export async function activeIntervalAt(doctorId: string, at: Date, kind?: Reserv
   }).lean();
   return (r as IDoctorReservation | null) ?? null;
 }
+
+/**
+ * r40c: the active held intervals of these doctors overlapping [start, end) — the clinic desk's free slots and the
+ * reception's busy blocks. The lower bound (`startTime ≥ start − 1 day`; no held interval is longer than a day) keeps the
+ * read on the doctor's interval index instead of every earlier interval.
+ */
+export function heldIntervalsOverlapping(doctorIds: string[], start: Date, end: Date) {
+  return DoctorReservationModel.find({ doctorId: { $in: doctorIds.map(doctorKey) }, isActive: true,
+    startTime: { $gte: new Date(start.getTime() - 86_400_000), $lt: end }, endTime: { $gt: start } })
+    .select({ doctorId: 1, refId: 1, startTime: 1, endTime: 1 }).sort({ doctorId: 1, startTime: 1 }).lean();
+}

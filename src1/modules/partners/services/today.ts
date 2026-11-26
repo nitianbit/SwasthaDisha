@@ -1,5 +1,4 @@
 import { Types } from 'mongoose';
-import { AppError } from '@/modules/common/types';
 import BookingModel from '@/modules/bookings/model';
 import PartnerOrgModel from '@/modules/partners/model';
 import { PartnerLabBookingModel, type IPartnerLabBooking } from '@/modules/partners/model/labBooking';
@@ -17,9 +16,9 @@ import { bookerNames } from '@/modules/assisted/names';
 import { isDeskRow } from '@/modules/assisted/deskViews';
 import { labSourceOf } from '@/modules/assisted/labViews';
 import {
-  capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRows, firstOf, holderPhones, inDay, isoDay, itemBase, labTestsWhat, listOf,
-  identityMoved, matches, orderRaws, pageOf, PENDING_IDS, searchTerms, settledQueues, TODAY_SOURCE_CAP, TOPUP_WHAT, totalsOf, type Day, type PageQuery, type Raw, type Row,
-  type WhatParts,
+  can, capper, consultationRaw, consultationWhat, CONSULTATION_FIELDS, countIds, dayRange, dayRows, err, firstOf, holderPhones, inDay, isoDay, itemBase, labTestsWhat,
+  listOf, identityMoved, matches, orderRaws, pageOf, registerAnswer, searchTerms, settledQueues, TOPUP_WHAT, unbilledQueue, type Day, type PageQuery, type Raw,
+  type Row, type WhatParts,
 } from '@/modules/today/register';
 
 /**
@@ -38,8 +37,6 @@ export type LabTodayKind = 'lab_booking' | 'bill' | 'consultation' | 'wallet_top
 /** The permissions that admit the lab's Today (any one); each source then needs its own. */
 export const LAB_TODAY_READERS: PartnerPermission[] = [...LAB_READERS, ...INVOICE_READERS, 'assisted.book', 'wallet.view'];
 
-const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
-const can = (a: PartnerActor, perms: PartnerPermission[]) => a.role === 'owner' || perms.some((p) => a.permissions.includes(p));
 /** Which sources this member reads. */
 function sourcesOf(a: PartnerActor) {
   return { bookings: can(a, LAB_READERS), bills: can(a, INVOICE_READERS), consultations: can(a, ['assisted.book']),
@@ -146,7 +143,7 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
       const desk = isDeskRow(l);
       return { kind: 'lab_booking', row: l, at: l.createdAt, createdAt: l.createdAt, id: String(l._id), status: l.status, paymentStatus: l.paymentStatus,
         amountMinor: Number(l.pricing?.payableMinor ?? 0), paid: !desk && paid, paidAt: !desk && paid ? l.lifecycle?.paidAt ?? l.createdAt : null,
-        method: !desk && paid ? 'online' : null, collects: !desk, atGateway: !desk && l.status === 'pending_payment' };
+        method: !desk && paid ? 'online' : null, collects: !desk, atGateway: !desk && l.status === 'pending_payment', paidStamp: l.lifecycle?.paidAt ?? null };
     }),
     ...await billRawsOf([...cap('bill', bills), ...cap('bill', billsTouched)], day),
     ...[...cap('consultation', consults), ...cap('consultation', consultsPaid)].map(consultationRaw),
@@ -224,13 +221,9 @@ async function pendingOf(a: PartnerActor, date: string) {
   }
   if (src.bookings) {
     // r38b: desk bookings with no bill yet (not ended), newest first.
-    queues.deskUnbilled = async () => {
-      const rows = await PartnerLabBookingModel.find({ ...lab, 'settlement.settlementSystem': 'lab_desk', status: { $nin: ['cancelled', 'no_show'] } })
-        .sort({ createdAt: -1, _id: -1 }).limit(TODAY_SOURCE_CAP).select({ _id: 1 }).lean() as unknown as Row[];
-      const bills = rows.length ? await billsForLabBookings(rows.map((r) => String(r._id)), a.partnerId) : new Map();
-      const unbilled = rows.filter((r) => { const bill = bills.get(String(r._id).toLowerCase()); return !bill || bill.state === 'cancelled'; });
-      return { count: unbilled.length, ids: unbilled.slice(0, PENDING_IDS).map((r) => String(r._id)) };
-    };
+    // r40c: visits up to this date only (a later booking is not yet to bill); `truncated` when the cap was hit.
+    queues.deskUnbilled = () => unbilledQueue(PartnerLabBookingModel, { ...lab, 'settlement.settlementSystem': 'lab_desk', status: { $nin: ['cancelled', 'no_show'] },
+      'slot.startsAt': { $lt: dayRange(date).$lt } }, (ids) => billsForLabBookings(ids, a.partnerId));
   }
   if (src.bills) queues.unpaidBills = unpaidBillsQueue(a);
   if (src.consultations) {
@@ -245,14 +238,8 @@ async function pendingOf(a: PartnerActor, date: string) {
 
 export async function labToday(a: PartnerActor, q: PageQuery, now: Date = new Date()) {
   await assertLab(a);
-  const p = await pageOf(q, now, (day) => rawOf(a, day));
-  const [items, pending] = await Promise.all([itemsOf(a, p.page, p.day, p.date), p.first ? pendingOf(a, p.date) : Promise.resolve(null)]);
-  return {
-    date: p.date, items, totals: totalsOf(p.raws, p.day, LAB_PAYMENT_METHODS, { refunds: true }),
-    ...(pending ? { pending } : {}),
-    ...(p.truncated.length ? { truncated: p.truncated } : {}),
-    nextCursor: p.nextCursor,
-  };
+  return registerAnswer(q, now, { rawOf: (day) => rawOf(a, day), itemsOf: (page, day, date) => itemsOf(a, page, day, date),
+    pendingOf: (date) => pendingOf(a, date), methods: LAB_PAYMENT_METHODS, refunds: true });
 }
 
 /**

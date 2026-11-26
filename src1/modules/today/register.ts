@@ -21,7 +21,9 @@ export const ENDED = ['cancelled', 'abandoned', 'rejected', 'no_show'];
 /** What a patient may still owe (r37b); `paid` and `refunded` owe nothing. */
 export const OWED = ['pending', 'failed', 'partially_paid'];
 
-const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
+export const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
+/** r40c: whether a partner member holds one of `perms` (owners and admins hold all): the registers' source rule. */
+export const can = (a: { role: string; permissions: readonly string[] }, perms: readonly string[]) => a.role === 'owner' || perms.some((p) => a.permissions.includes(p));
 export const paise = (rupees: unknown) => Math.round(Number(rupees ?? 0) * 100);
 export const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 
@@ -49,6 +51,8 @@ export interface Raw {
   dueMinor?: number;
   /** r38b: money given back that day (a cancelled bill's refund), each by the refund's method. */
   refunded?: { method: PaymentMethod; amountMinor: number }[];
+  /** r40c: the payment's own stamp even when the row is no longer paid (paid and refunded the same day): where an earlier row sorts. */
+  paidStamp?: Date | string | null;
 }
 
 /** Cursor `<at ms>_<id>`: the next page starts after it (the merged list is ordered by time, then id). */
@@ -58,7 +62,7 @@ const after = (a: readonly [number, string], b: readonly [number, string]) => a[
 
 /** The day's rows in time order; an earlier row paid that day stands at its payment time. */
 export function orderRaws(raws: Raw[], day: Day): Raw[] {
-  for (const r of raws) if (r.createdAt < day.$gte && r.paidAt) r.at = r.paidAt;
+  for (const r of raws) if (r.createdAt < day.$gte && (r.paidAt || r.paidStamp)) r.at = new Date(r.paidAt ?? r.paidStamp!);
   return raws.sort((a, b) => (after(keyOf(a.at, a.id), keyOf(b.at, b.id)) ? 1 : -1));
 }
 
@@ -157,7 +161,7 @@ export function consultationRaw(b: Row): Raw {
   const f = b.assisted?.funding;
   return { kind: 'consultation', row: b, at: b.createdAt, createdAt: b.createdAt, id: String(b._id), status: b.status, paymentStatus: b.paymentStatus,
     amountMinor: paise(b.price), paid, paidAt: paid ? b.lifecycle?.paid?.at ?? b.createdAt : null, method: paid ? fundingMethodOf(f) : null,
-    collects: true, atGateway: f?.method === 'razorpay' && f?.state === 'pending' };
+    collects: true, atGateway: f?.method === 'razorpay' && f?.state === 'pending', paidStamp: b.lifecycle?.paid?.at ?? null };
 }
 /** r37c: a row's short line as a code with values (`whatParts`) for the web to word in each language; `what` is the English line. */
 export type WhatParts = { code: string; values?: Record<string, string | number | null> };
@@ -193,4 +197,40 @@ export async function holderPhones(userIds: unknown[], wanted: boolean): Promise
   const { default: UserModel } = await import('@/modules/user/model');
   const users = await UserModel.find({ _id: { $in: ids } }).select({ phone: 1 }).lean() as unknown as Row[];
   return new Map(users.map((u) => [String(u._id).toLowerCase(), String(u.phone ?? '')]));
+}
+
+/**
+ * r40c: one register answer from its parts — the page of the day's rows (`rawOf`), the page's items, the waiting work on the
+ * first page, and the day's money: `{ date, items, totals, pending?, truncated?, nextCursor }`. Used by the lab's and the
+ * clinic's registers.
+ */
+export async function registerAnswer(q: PageQuery, now: Date, parts: {
+  rawOf: (day: Day) => Promise<{ raws: Raw[]; truncated: string[] }>;
+  itemsOf: (page: Raw[], day: Day, date: string) => Promise<unknown[]>;
+  pendingOf: (date: string) => Promise<unknown>;
+  methods: readonly PaymentMethod[];
+  refunds?: boolean;
+}) {
+  const p = await pageOf(q, now, parts.rawOf);
+  const [items, pending] = await Promise.all([parts.itemsOf(p.page, p.day, p.date), p.first ? parts.pendingOf(p.date) : Promise.resolve(null)]);
+  return {
+    date: p.date, items, totals: totalsOf(p.raws, p.day, parts.methods, { refunds: parts.refunds }),
+    ...(pending ? { pending } : {}),
+    ...(p.truncated.length ? { truncated: p.truncated } : {}),
+    nextCursor: p.nextCursor,
+  };
+}
+
+/**
+ * r40c: desk visits without a bill (the lab's and the clinic's `deskUnbilled`): the newest rows of `filter` (at most
+ * TODAY_SOURCE_CAP), those with no bill or whose bill was cancelled; `truncated: true` when the cap was hit.
+ */
+export async function unbilledQueue(Model: { find: (f: Row) => any }, filter: Row,
+  billsOf: (ids: string[]) => Promise<Map<string, { state: string }>>): Promise<Count & { truncated?: true }> {
+  const rows = await Model.find(filter).sort({ createdAt: -1, _id: -1 }).limit(TODAY_SOURCE_CAP + 1).select({ _id: 1 }).lean() as Row[];
+  const truncated = rows.length > TODAY_SOURCE_CAP;
+  const kept = rows.slice(0, TODAY_SOURCE_CAP);
+  const bills = kept.length ? await billsOf(kept.map((r) => String(r._id))) : new Map();
+  const unbilled = kept.filter((r) => { const bill = bills.get(String(r._id).toLowerCase()); return !bill || bill.state === 'cancelled'; });
+  return { count: unbilled.length, ids: unbilled.slice(0, PENDING_IDS).map((r) => String(r._id)), ...(truncated ? { truncated: true as const } : {}) };
 }

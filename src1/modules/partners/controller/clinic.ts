@@ -22,8 +22,7 @@ export const revokeInvite = async (req: Request, res: Response, _n: NextFunction
 export const deskSlots = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.deskSlots(actorOf(req), req.query as any));
 /** r40 (P3): `busy` (beside `data`, which is unchanged): when each clinic doctor is taken elsewhere, `{ doctorId, from, to }` only. */
 export const clinicAppointments = async (req: Request, res: Response, _n: NextFunction) => {
-  const data = await c.listClinicAppointments(actorOf(req), req.query as any);
-  res.status(200).json({ success: true, data, busy: await c.clinicBusy(actorOf(req), req.query as any) });
+  res.status(200).json({ success: true, ...await c.clinicDayView(actorOf(req), req.query as any) });
 };
 export const bookDesk = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createDeskAppointment(actorOf(req), req.body);
