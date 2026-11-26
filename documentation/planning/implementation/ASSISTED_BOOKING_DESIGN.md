@@ -7147,6 +7147,10 @@ was left for the coordinator.
 - a lab keeps its register;
 - clinic to-dos: owner kind `clinic`, shared, branch-scoped, another clinic 404, the lab's apart.
 
+Single suites on `58329674` (own mongod): `r40-clinic-reception` 6/6, `r38-lab-today` 4/4, `r37-pharmacy-today` 5/5,
+`q6-clinics` 21, `q14-owner-decisions` 27, `q13-doctor-finance` 20; `tsc` 17. Full regression (`prun.sh … 2` on
+`58329674`): 91 suites, 91 passed, `tsc` 17.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
