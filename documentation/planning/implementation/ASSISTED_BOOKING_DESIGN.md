@@ -7359,7 +7359,8 @@ booking, matching the lab desk's.
 
 **Checks** (`r40-clinic-reception`, now 8): a known and an unknown number (masked name; `+91` spelling); a bad phone 400;
 a viewer, a biller and a lab refused; two audit rows with ids only; the hourly limit per clinic (another clinic
-unaffected). `r12-phase2c` 27/27 (the lab desk's lookup unchanged).
+unaffected). `r12-phase2c` 27/27 (the lab desk's lookup unchanged). Full regression (`prun.sh … 2` on `cda0af91`): 92 suites, 92 passed,
+`tsc` 17.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
