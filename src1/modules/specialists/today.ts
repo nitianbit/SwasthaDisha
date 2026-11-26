@@ -19,7 +19,7 @@ import {
   capper, consultationWhat, countIds, dayRows, holderPhones, identityMoved, itemBase, labTestsWhat, matches, orderRaws, pageOf, paise,
   searchTerms, settledQueues, totalsOf, type Day, type PageQuery, type Raw, type Row, type WhatParts,
 } from '@/modules/today/register';
-import { appointmentSourceOf, channelOf, clinicIdOf, clinicNames, ownedClinicActorOrNull } from '@/modules/specialists/dashboard';
+import { appointmentSourceOf, channelOf, clinicIdOf, clinicNames, doctorTies, ownedClinicActorOrNull, rowTiesOf } from '@/modules/specialists/dashboard';
 
 /**
  * r39 (§26.23): GET /api/v1/specialists/me/today?date&cursor&limit&order — the doctor's Today register for one India day,
@@ -35,7 +35,7 @@ import { appointmentSourceOf, channelOf, clinicIdOf, clinicNames, ownedClinicAct
 export type DoctorTodayKind = 'appointment' | 'bill' | 'lab_booking';
 
 const APPOINTMENT_FIELDS = { status: 1, paymentStatus: 1, price: 1, doctorName: 1, bookingKind: 1, bookingDate: 1, bookingTime: 1, consultationMode: 1,
-  createdAt: 1, userId: 1, dependentId: 1, contactNo: 1, source: 1, 'clinicDesk.partnerId': 1, 'clinicVisit.partnerId': 1, 'assisted.shortRef': 1,
+  createdAt: 1, userId: 1, dependentId: 1, contactNo: 1, source: 1, 'clinicDesk.partnerId': 1, 'clinicDesk.createdBy': 1, 'clinicVisit.partnerId': 1, 'assisted.shortRef': 1,
   'assisted.identity.disputed.state': 1 };
 const LAB_FIELDS = { status: 1, paymentStatus: 1, 'pricing.payableMinor': 1, 'assisted.shortRef': 1, 'lifecycle.paidAt': 1, 'items.name': 1, createdAt: 1,
   userId: 1, 'patient.dependentId': 1, 'assisted.identity.disputed.state': 1 };
@@ -106,15 +106,17 @@ const LINK: Record<DoctorTodayKind, string> = { appointment: 'booking', bill: 'i
 async function itemsOf(doctorId: string, page: Raw[], day: Day, date: string) {
   const of = (k: DoctorTodayKind) => page.filter((r) => r.kind === k);
   const labIds = of('lab_booking').map((r) => new Types.ObjectId(r.id));
-  const [names, clinics, labs] = await Promise.all([
+  const [names, clinics, tiesOf, labs] = await Promise.all([
     patientNames(of('appointment').map((r) => r.row)),
     clinicNames(of('appointment').map((r) => r.row)),
+    doctorTies(doctorId).then((t) => rowTiesOf(of('appointment').map((r) => r.row), t)),
     labIds.length ? PartnerLabBookingModel.find({ _id: { $in: labIds } }).lean().then((rows) => bookerLabViews(rows as unknown as Row[], { kind: 'doctor', specialistId: doctorId }))
       : Promise.resolve([] as Row[]),
   ]);
   const labById = new Map(labs.map((v) => [String(v._id), v]));
   return page.map((r) => {
-    if (r.kind === 'bill') return billItemOf(r, day, date);
+    // r39c: a bill names the appointment it is for, as the clinic's register does.
+    if (r.kind === 'bill') return { ...billItemOf(r, day, date), appointmentId: r.row.appointmentId ? String(r.row.appointmentId) : null };
     const b = itemBase(r, day, date);
     const v = r.row;
     const shortRef = v.assisted?.shortRef ?? null;
@@ -122,7 +124,7 @@ async function itemsOf(doctorId: string, page: Raw[], day: Day, date: string) {
     const c = r.kind === 'appointment' ? clinicIdOf(v) : null;
     return { kind: b.kind, id: b.id, at: b.at, shortRef, patientName, ...whatOf(r), amountMinor: b.amountMinor, paid: b.paid, method: b.method, status: b.status,
       madeOn: b.madeOn, paidToday: b.paidToday, link: { kind: LINK[r.kind as DoctorTodayKind], id: r.id },
-      ...(r.kind === 'appointment' ? { source: appointmentSourceOf(v), channel: channelOf(v), clinic: c ? clinics.get(c) ?? { id: c, name: null } : null } : {}) };
+      ...(r.kind === 'appointment' ? { source: appointmentSourceOf(v), channel: channelOf(v), clinic: c ? clinics.get(c) ?? { id: c, name: null } : null, ...tiesOf(v) } : {}) };
   });
 }
 

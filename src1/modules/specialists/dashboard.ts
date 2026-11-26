@@ -13,12 +13,13 @@ import DependentModel from '@/modules/dependents/model';
 import UserModel from '@/modules/user/model';
 import PartnerOrgModel from '@/modules/partners/model';
 import MemberModel from '@/modules/partners/model/member';
+import BranchModel from '@/modules/partners/model/branch';
 import { LedgerEntryModel, type ISettlementAccount } from '@/modules/partners/model/settlement';
 import type { PartnerActor } from '@/modules/partners/services';
 import type { PartnerActorRequest } from '@/modules/partners/controller';
 import { range } from '@/modules/partners/services/finance';
 import { addDays, isRealDate, istDate } from '@/modules/partners/services/slots';
-import { createDeskAppointment, deskPatientOf, storedDeskKey, type DeskBookingInput, type DeskClock, type DeskPatientInput } from '@/modules/partners/services/clinic';
+import { createDeskAppointment, deskPatientOf, mySoloPractice, storedDeskKey, type DeskBookingInput, type DeskClock, type DeskPatientInput } from '@/modules/partners/services/clinic';
 import { doctorScopeOf } from '@/modules/doctors/services/schedule';
 import { lookupPatientFor } from '@/modules/assisted/labBookings';
 import { assistedPublicView, UNPAID_CARD_QUERY } from '@/modules/assisted/views';
@@ -75,15 +76,58 @@ export async function linkedClinicActor(doctorId: string, clinicId: string): Pro
  * CLINIC_CHOICE_REQUIRED (he bills each from the clinic workspace).
  */
 export async function ownedClinicActor(doctorId: string): Promise<PartnerActor> {
+  const owned = await ownedMembers(doctorId);
+  if (!owned.length) throw clinicNotFound();
+  if (owned.length > 1) throw severalOwned();
+  await admitClinic(String(owned[0]!.partnerId));
+  return actorOf(owned[0]!, (owned[0]!.branchIds ?? []).map(String));
+}
+const severalOwned = () => err(409, 'CLINIC_CHOICE_REQUIRED', 'You own more than one clinic; bill from that clinic\'s workspace');
+
+/** His active owner memberships at active clinics (verified or not). */
+async function ownedMembers(doctorId: string): Promise<MemberRow[]> {
   const members = await MemberModel.find({ doctorId: { $in: spellings(doctorId) }, role: 'owner', isActive: true })
     .select({ partnerId: 1, role: 1, permissions: 1, branchIds: 1 }).lean() as MemberRow[];
   const clinics = members.length ? await PartnerOrgModel.find({ _id: { $in: members.map((m) => String(m.partnerId)).filter((x) => OBJECT_ID.test(x)) },
     kind: 'clinic', isActive: { $ne: false } }).select({ _id: 1 }).lean() as Row[] : [];
-  const owned = members.filter((m) => clinics.some((c) => lower(c._id) === lower(m.partnerId)));
-  if (!owned.length) throw clinicNotFound();
-  if (owned.length > 1) throw err(409, 'CLINIC_CHOICE_REQUIRED', 'You own more than one clinic; bill from that clinic\'s workspace');
-  await admitClinic(String(owned[0]!.partnerId));
-  return actorOf(owned[0]!, (owned[0]!.branchIds ?? []).map(String));
+  return members.filter((m) => clinics.some((c) => lower(c._id) === lower(m.partnerId)));
+}
+
+/**
+ * r39c: GET /specialists/me/clinic — the clinic he OWNS (any active owner membership with his doctorId; its partner and
+ * branches, as before), so a clinic an admin made him owner of shows too; several: 409 CLINIC_CHOICE_REQUIRED (as billing).
+ * Owning none, the answer is as before (his own practice by `soloDoctorId`, else null).
+ */
+export async function myOwnedClinic(doctorId: string) {
+  const owned = await ownedMembers(doctorId);
+  if (owned.length > 1) throw severalOwned();
+  if (!owned.length) return mySoloPractice(doctorId);
+  const partner = await PartnerOrgModel.findById(String(owned[0]!.partnerId)).lean() as Row | null;
+  if (!partner) return mySoloPractice(doctorId);
+  return { partner, branches: await BranchModel.find({ partnerId: String(partner._id) }).lean() };
+}
+
+/** r39c: his memberships (any clinic) and the active clinics he owns, for marking his rows. */
+export interface DoctorTies { memberIds: Set<string>; ownedClinicIds: Set<string> }
+export async function doctorTies(doctorId: string): Promise<DoctorTies> {
+  const members = await MemberModel.find({ doctorId: { $in: spellings(doctorId) }, isActive: true }).select({ partnerId: 1 }).lean() as Row[];
+  const owned = await ownedMembers(doctorId);
+  return { memberIds: new Set(members.map((m) => lower(m._id))), ownedClinicIds: new Set(owned.map((m) => lower(m.partnerId))) };
+}
+/**
+ * r39c: per row — `bookedByMe` (a desk row his own membership created) and, on a desk row at a clinic he owns, `customer:
+ * { phone, name }`, the account holder as that clinic's desk list shows it (to bill the visit). Other rows carry no phone.
+ */
+export async function rowTiesOf(rows: Row[], ties: DoctorTies): Promise<(b: Row) => { bookedByMe: boolean; customer?: { phone: string | null; name: string | null } }> {
+  const atOwn = (b: Row) => !!b.clinicDesk && ties.ownedClinicIds.has(lower(b.clinicDesk.partnerId));
+  const ids = [...new Set(rows.filter(atOwn).map((b) => String(b.userId ?? '')).filter((x) => OBJECT_ID.test(x)))];
+  const users = ids.length ? await UserModel.find({ _id: { $in: ids } }).select({ phone: 1, name: 1 }).lean() as Row[] : [];
+  const byId = new Map(users.map((u) => [lower(u._id), u]));
+  return (b) => {
+    const u = atOwn(b) ? byId.get(lower(b.userId)) : undefined;
+    return { bookedByMe: !!b.clinicDesk?.createdBy && ties.memberIds.has(lower(b.clinicDesk.createdBy)),
+      ...(atOwn(b) ? { customer: { phone: u?.phone ?? null, name: u?.name ?? null } } : {}) };
+  };
 }
 
 /** The owned clinic's actor, or null when he owns none he can act for (the Today register then has no bills). */
@@ -165,11 +209,11 @@ export async function listDoctorAppointments(doctorId: string, q: AppointmentLis
   };
   const rows = await BookingModel.find(filter).sort({ bookingDate: 1, bookingTime: 1, _id: 1 }).limit(LIST_MAX + 1).lean() as Row[];
   const page = rows.slice(0, LIST_MAX);
-  const clinics = await clinicNames(page);
+  const [clinics, tiesOf] = await Promise.all([clinicNames(page), doctorTies(doctorId).then((t) => rowTiesOf(page, t))]);
   const views = assistedPublicView(page) as Row[];
   const items = page.map((b, i) => {
     const c = clinicIdOf(b);
-    return { ...views[i], source: appointmentSourceOf(b), clinic: c ? clinics.get(c) ?? { id: c, name: null } : null, channel: channelOf(b) };
+    return { ...views[i], source: appointmentSourceOf(b), clinic: c ? clinics.get(c) ?? { id: c, name: null } : null, channel: channelOf(b), ...tiesOf(b) };
   });
   return { items, truncated: rows.length > LIST_MAX };
 }

@@ -7195,6 +7195,18 @@ and bills and lab tests through the r38 indexes.
 - one clinic/online rule (in person = clinic);
 - the suite adds an interrupted follow-up finished by its resend, no family member left by a refused booking, and billing
   at an unverified (403), suspended (404) or second owned (409) clinic.
+**r39c** (branch `m0/r39c-own-clinic-rows` from stage `c4c308b5`), from the WQ56 review:
+- `GET /me/appointments/list` rows and `GET /me/today` appointment items add `bookedByMe: boolean` (a desk row whose
+  `clinicDesk.createdBy` is one of his memberships) and, only on a desk row at a clinic he owns, `customer: { phone, name }`
+  (the account holder, as that clinic's desk list shows it, so he can bill the visit). Rows at other clinics are unchanged
+  and carry no phone. (The ineligible-doctor reduction still applies to the list.)
+- Doctor Today bill items add `appointmentId: string | null`, as the clinic's register does.
+- `GET /me/clinic` answers the clinic he owns: any active owner membership with his `doctorId` at an active clinic
+  (`{ partner, branches }`, as before), so a clinic an admin made him owner of shows too; several: 409
+  `CLINIC_CHOICE_REQUIRED` (as billing). Owning none, the answer is as before (his practice by `soloDoctorId`, else null).
+  ASSUMED: a pending (not yet verified) owned clinic is still answered, with its verification state, so a clinic he has
+  just created keeps showing (billing still needs it verified, 403). `GET /me/practice` is unchanged.
+
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved

@@ -213,6 +213,7 @@ async function main() {
       row({ bookingDate: addDays(T, 40).replace(/-/g, '') }), // 7 outside the range
     ] as never);
     const bIds = Object.values(ins.insertedIds).map(String);
+    const mine: Record<string, string> = {};
     const listIds = (r: any) => r.json.data.map((x: any) => String(x._id));
 
     await check('one list: every source of his, resolved source / clinic / channel; filters; not another doctor\'s or an unconfirmed card booking', async () => {
@@ -253,6 +254,7 @@ async function main() {
       assert.equal(r.json.data.replayed, false);
       assert.equal(r.json.data.patient.name, 'Little Meera');
       const b = await BookingModel.findById(r.json.data.booking.bookingId).lean() as any;
+      mine.c1 = String(b._id);
       assert.deepEqual([b.clinicDesk.partnerId, b.clinicDesk.createdBy, b.settlementSystem, b.consultationMode, String(b.specialistId)],
         [C1.id, String(dMemberC1._id), 'clinic', 'in-person', D]);
       const reception = await clinic.listClinicAppointments(C1.own, { from: T, to: T });
@@ -269,6 +271,7 @@ async function main() {
       await expect('D', 'POST', '/me/clinic-appointments', 404, { ...body, clinicId: C2.id, slotId: await slot(D, C1.branch), requestKey: rk() }, 'CLINIC_NOT_FOUND');
       // His own clinic (owner) works the same way.
       const own = await expect('D', 'POST', '/me/clinic-appointments', 201, { clinicId: S, slotId: await slot(D, SB), customer: { phone: '9877770002' }, requestKey: rk() });
+      mine.own = own.json.data.booking.bookingId;
       assert.equal((await BookingModel.findById(own.json.data.booking.bookingId).lean() as any).clinicDesk.partnerId, S);
       // The counted lookup (not behind the lab-booking switch).
       const look = await expect('D', 'POST', '/me/patients/lookup', 200, { phone: '9877770001' });
@@ -406,6 +409,34 @@ async function main() {
       const e = await expect('E', 'GET', `/me/today?date=${T}`, 200);
       assert.ok(e.json.data.items.map((x: any) => x.id).includes(bIds[4]) && !e.json.data.items.some((x: any) => bIds.slice(0, 4).includes(x.id)));
       assert.equal(e.json.data.pending.unpaidBills, undefined, 'no clinic of his own: no bills queue');
+    });
+
+    await check('r39c: his own clinic\'s desk rows carry the account holder (to bill them); rows he booked are marked; bills name their appointment; GET /me/clinic is the clinic he owns', async () => {
+      await UserModel.updateOne({ phone: '9877770002' }, { $set: { name: 'Own Patient' } });
+      const rows = new Map((await expect('D', 'GET', `/me/appointments/list?from=${T}`, 200)).json.data.map((x: any) => [String(x._id), x]));
+      const pick = (id: string) => { const x: any = rows.get(id); return [x.bookedByMe, x.customer]; };
+      assert.deepEqual(pick(mine.own), [true, { phone: '9877770002', name: 'Own Patient' }], 'a desk row at the clinic he owns');
+      assert.deepEqual(pick(mine.c1), [true, undefined], 'he booked it at a clinic he does not own: no phone');
+      assert.deepEqual(pick(bIds[2]!), [false, undefined], 'the clinic\'s own desk booking');
+      assert.deepEqual(pick(bIds[0]!), [false, undefined]);
+      // A bill for the appointment at his clinic names it on his Today.
+      const billed = (await expect('D', 'POST', '/me/clinic/invoices', 201, { branchId: SB, customer: { name: 'Own Patient', phone: '9877770002' }, appointmentId: mine.own,
+        items: [{ description: 'Consultation', qty: 1, unitPriceMinor: 60_000, gstRate: 0 }], idempotencyKey: rk('bill') })).json.data;
+      const day = (await expect('D', 'GET', `/me/today?date=${today}`, 200)).json.data;
+      const bills = new Map(day.items.filter((x: any) => x.kind === 'bill').map((x: any) => [x.id, x.appointmentId]));
+      assert.deepEqual([bills.get(String(billed._id)), bills.get(billIds[0])], [mine.own, null]);
+      const onT = new Map((await expect('D', 'GET', `/me/today?date=${T}`, 200)).json.data.items.map((x: any) => [x.id, x]));
+      assert.deepEqual([(onT.get(mine.own) as any).bookedByMe, (onT.get(mine.own) as any).customer, (onT.get(bIds[2]!) as any).customer],
+        [true, { phone: '9877770002', name: 'Own Patient' }, undefined]);
+      // GET /me/clinic: his own clinic; one an admin made him owner of; several 409; none null (as before).
+      assert.equal(String((await expect('D', 'GET', '/me/clinic', 200)).json.data.partner._id), S);
+      const J = await doctor('Dr Made Owner');
+      tokens.J = sign({ _id: J, specialistId: J, userType: 'specialist' });
+      await MemberModel.create({ partnerId: C2.id, phone: nextPhone(), name: 'Dr J', role: 'owner', permissions: [], branchIds: [], doctorId: J, isActive: true } as never);
+      const mj = (await expect('J', 'GET', '/me/clinic', 200)).json.data;
+      assert.deepEqual([String(mj.partner._id), mj.branches.length], [C2.id, 1]);
+      await expect('H', 'GET', '/me/clinic', 409, undefined, 'CLINIC_CHOICE_REQUIRED');
+      assert.equal((await expect('E', 'GET', '/me/clinic', 200)).json.data, null);
     });
 
     await check('to-dos: private to the doctor (owner kind doctor)', async () => {

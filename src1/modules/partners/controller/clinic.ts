@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { myOwnedClinic } from '@/modules/specialists/dashboard';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { actorOf } from '@/modules/partners/controller';
 import * as c from '@/modules/partners/services/clinic';
@@ -63,6 +64,8 @@ export const leaveClinic = async (req: Request, res: Response, _n: NextFunction)
 /** Q16b N5: the doctor sees their clinic through the partner own view (no create key/hash, no verifying admin). */
 const withOwnView = <T extends { partner?: unknown } | null>(r: T): T => (r && r.partner ? { ...r, partner: partnerOwnView(r.partner as never) } : r);
 export const getMyPractice = async (req: Request, res: Response, _n: NextFunction) => ok(res, withOwnView(await c.mySoloPractice(doctorOf(req))));
+/** r39c: GET /specialists/me/clinic — the clinic he owns (any owner membership; several: 409); owning none, as before. */
+export const getMyClinic = async (req: Request, res: Response, _n: NextFunction) => ok(res, withOwnView(await myOwnedClinic(doctorOf(req)) as never));
 /** Q14: an onboarded doctor creates their own clinic (keyed; a second one 409 DOCTOR_CLINIC_EXISTS) and finds a lost answer by key. */
 export const createMyClinic = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createSoloPractice(doctorOf(req), req.body);
