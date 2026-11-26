@@ -683,29 +683,30 @@ async function ownDeskBooking(actor: PartnerActor, bookingId: string, s?: Client
 /** Write fence for desk mutations: the booking still at the branch it was admitted at (a concurrent move conflicts). */
 const atBranch = (b: IBooking) => ({ 'clinicDesk.branchId': String(b.clinicDesk!.branchId) });
 
-/** Clinic appointments (desk and online) at the clinic's branches in scope, for up to 31 days. */
-export async function listClinicAppointments(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string; status?: string }) {
-  await clinicOf(actor);
-  if (!isRealDate(q.from) || !isRealDate(q.to) || q.to < q.from) throw err(400, 'INVALID_DATE', 'from/to must be real dates, from ≤ to');
-  if (q.to > addDays(q.from, MAX_RANGE_DAYS - 1)) throw err(400, 'RANGE_TOO_LONG', `At most ${MAX_RANGE_DAYS} days at a time`);
+/**
+ * r40: the clinic's appointments a member reads — desk rows by their own desk clinic (`clinicDesk`), online rows by the
+ * clinic of their visit (`clinicVisit`), at the clinic's branches in the member's scope (or one branch). The one filter of
+ * the appointment list, the busy blocks and the clinic's Today register. Ownership is the booking's own frozen
+ * association, never a slot's current branch; a card-paid assisted booking never confirmed is the booker's alone (r10d).
+ */
+export async function clinicAppointmentsScope(actor: PartnerActor, branchId?: string): Promise<Record<string, unknown>> {
   let branchIds = (await BranchModel.find({ partnerId: actor.partnerId }).select({ _id: 1 }).lean()).map((b) => String(b._id));
   if (!hasGlobalScope(actor)) branchIds = branchIds.filter((b) => actor.branchIds.includes(b));
-  if (q.branchId) {
-    assertBranchInScope(actor, q.branchId);
-    branchIds = branchIds.filter((b) => b === String(q.branchId));
+  if (branchId) {
+    assertBranchInScope(actor, branchId);
+    branchIds = branchIds.filter((b) => b === String(branchId));
   }
-  const from = ymd(q.from);
-  const to = ymd(q.to);
-  // Ownership is the booking's own frozen association (desk rows: their clinicDesk only), never a slot's current branch.
-  const rows = await BookingModel.find({
-    bookingType: 'consultation', bookingDate: { $gte: from, $lte: to }, ...(q.status ? { status: q.status } : {}), ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}),
-    // r10d: a card-paid assisted booking never confirmed is the booker's alone (not the clinic's either).
-    $nor: [UNPAID_CARD_QUERY],
+  return {
+    bookingType: 'consultation', $nor: [UNPAID_CARD_QUERY],
     $or: [
       { 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.branchId': { $in: branchIds } },
       { clinicDesk: { $exists: false }, 'clinicVisit.partnerId': actor.partnerId, 'clinicVisit.branchId': { $in: branchIds } },
     ],
-  }).sort({ bookingDate: 1, bookingTime: 1 }).limit(1000).lean() as IBooking[];
+  };
+}
+
+/** r40: appointment rows as the clinic sees them (the list's view: the person seen, the contact phone, the bill). */
+export async function clinicAppointmentViews(partnerId: string, rows: IBooking[]) {
   const users = await UserModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.userId)))].filter((u) => Types.ObjectId.isValid(u)) } })
     .select({ name: 1, phone: 1 }).lean() as any[];
   const uById = new Map(users.map((u) => [String(u._id), u]));
@@ -713,7 +714,7 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
   const deps = depIds.length ? await DependentModel.find({ _id: { $in: depIds } }).select({ name: 1, relationship: 1 }).lean() as any[] : [];
   const dById = new Map(deps.map((d) => [String(d._id), d]));
   // Q14: the bill of each appointment (its open bill, else the latest cancelled one).
-  const bills = await billsForAppointments(actor.partnerId, rows.map((r) => String(r._id)));
+  const bills = await billsForAppointments(partnerId, rows.map((r) => String(r._id)));
   return rows.map((r) => {
     const account = uById.get(String(r.userId));
     const dep = (r as { dependentId?: string }).dependentId ? dById.get(String((r as { dependentId?: string }).dependentId)) : undefined;
@@ -726,6 +727,53 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
       bill: bills.get(String(r._id).toLowerCase()) ?? null,
     };
   });
+}
+
+/** Clinic appointments (desk and online) at the clinic's branches in scope, for up to 31 days. */
+export async function listClinicAppointments(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string; status?: string }) {
+  await clinicOf(actor);
+  assertRange(q);
+  const rows = await BookingModel.find({
+    ...await clinicAppointmentsScope(actor, q.branchId), bookingDate: { $gte: ymd(q.from), $lte: ymd(q.to) },
+    ...(q.status ? { status: q.status } : {}), ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}),
+  }).sort({ bookingDate: 1, bookingTime: 1 }).limit(1000).lean() as IBooking[];
+  return clinicAppointmentViews(actor.partnerId, rows);
+}
+
+function assertRange(q: { from: string; to: string }): void {
+  if (!isRealDate(q.from) || !isRealDate(q.to) || q.to < q.from) throw err(400, 'INVALID_DATE', 'from/to must be real dates, from ≤ to');
+  if (q.to > addDays(q.from, MAX_RANGE_DAYS - 1)) throw err(400, 'RANGE_TOO_LONG', `At most ${MAX_RANGE_DAYS} days at a time`);
+}
+
+/**
+ * r40 (P3, owner: reception sees a doctor's other work only as "busy"): when each of the clinic's doctors (those the
+ * member sees) is taken elsewhere between `from` and `to` (India dates) — the doctor's held intervals (every booking of
+ * a doctor holds one: scheduled, in-clinic, instant; `DoctorReservationModel`) that are not appointments of this clinic
+ * the member reads here (`clinicAppointmentsScope`, the list's own branch). Only `{ doctorId, from, to }`: never a patient,
+ * a source or a place. One doctor's overlapping or touching blocks are merged, oldest first.
+ */
+export async function clinicBusy(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string }) {
+  await clinicOf(actor);
+  assertRange(q);
+  const seen = (await listClinicDoctors(actor)).map((d) => d.doctorId.toLowerCase());
+  const doctors = q.doctorId ? seen.filter((d) => d === String(q.doctorId).toLowerCase()) : seen;
+  if (!doctors.length) return [];
+  const start = new Date(`${q.from}T00:00:00+05:30`);
+  const end = new Date(new Date(`${q.to}T00:00:00+05:30`).getTime() + 86_400_000);
+  const held = await DoctorReservationModel.find({ doctorId: { $in: doctors }, isActive: true, startTime: { $lt: end }, endTime: { $gt: start } })
+    .select({ doctorId: 1, refId: 1, startTime: 1, endTime: 1 }).sort({ doctorId: 1, startTime: 1 }).lean();
+  const refIds = [...new Set(held.map((h) => String(h.refId).toLowerCase()))].filter((x) => Types.ObjectId.isValid(x));
+  const here = new Set((refIds.length ? await BookingModel.find({ _id: { $in: refIds }, ...await clinicAppointmentsScope(actor, q.branchId) })
+    .select({ _id: 1 }).lean() : []).map((b) => String(b._id).toLowerCase()));
+  const blocks: { doctorId: string; from: Date; to: Date }[] = [];
+  for (const h of held) {
+    if (here.has(String(h.refId).toLowerCase())) continue;
+    const last = blocks[blocks.length - 1];
+    if (last && last.doctorId === h.doctorId && h.startTime.getTime() <= last.to.getTime()) {
+      if (h.endTime > last.to) last.to = h.endTime;
+    } else blocks.push({ doctorId: h.doctorId, from: h.startTime, to: h.endTime });
+  }
+  return blocks;
 }
 
 /** The patient is at the desk. */

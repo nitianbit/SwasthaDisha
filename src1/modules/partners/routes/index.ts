@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import { RequestHandler, Router } from 'express';
+import { Request, RequestHandler, Router } from 'express';
+import PartnerOrgModel from '@/modules/partners/model';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { AppError } from '@/modules/common/types';
@@ -77,6 +78,7 @@ import { labNotMine } from '@/modules/assisted/controller/phase2a';
 import { registerLabDeskRoutes } from '@/modules/assisted/routes/labDesk';
 import { registerLabBookerRoutes } from '@/modules/assisted/routes/labBooker';
 import { assertLab, LAB_TODAY_READERS, labToday, labTodaySearch } from '@/modules/partners/services/today';
+import { clinicToday, clinicTodaySearch } from '@/modules/partners/services/clinicToday';
 import { pageQueryOf, todayQuerySchema, todaySearchSchema } from '@/modules/today/validation';
 import { mountTodoRoutes } from '@/modules/todos';
 import MemberModel from '@/modules/partners/model/member';
@@ -244,19 +246,32 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
 
   // r38 (§26.22): the lab front desk's Today register (each source by its own permission, branch-scoped) and its search.
   const noStore: RequestHandler = (_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store'); next(); };
+  // r40 (§26.24): a clinic's reception has its own register (appointments and bills); any other partner keeps the lab's.
+  const isClinic = async (req: Request) => (await PartnerOrgModel.findById(partnerActorOf(req).partnerId).select({ kind: 1 }).lean() as { kind?: string } | null)?.kind === 'clinic';
   r.get('/today', ...guard.any(...LAB_TODAY_READERS), noStore, validate(todayQuerySchema, 'query'),
-    catchAsync(async (req, res) => { res.status(200).json({ success: true, data: await labToday(partnerActorOf(req), pageQueryOf(req.query as Record<string, unknown>)) }); }));
+    catchAsync(async (req, res) => {
+      const q = pageQueryOf(req.query as Record<string, unknown>);
+      res.status(200).json({ success: true, data: await isClinic(req) ? await clinicToday(partnerActorOf(req), q) : await labToday(partnerActorOf(req), q) });
+    }));
   r.post('/today/search', ...guard.any(...LAB_TODAY_READERS), noStore, validate(todaySearchSchema, 'body'),
-    catchAsync(async (req, res) => { res.status(200).json({ success: true, data: await labTodaySearch(partnerActorOf(req), req.body) }); }));
+    catchAsync(async (req, res) => {
+      res.status(200).json({ success: true, data: await isClinic(req) ? await clinicTodaySearch(partnerActorOf(req), req.body) : await labTodaySearch(partnerActorOf(req), req.body) });
+    }));
   // r38: the lab's to-dos (r37's module, owner kind `lab`): any member of the lab, shared within it; `createdBy` = the member.
-  const labOnly: RequestHandler = catchAsync(async (req, _res, next) => { await assertLab(partnerActorOf(req)); next(); });
+  // r40: a clinic's too (owner kind `clinic`, the same rules); the owner kind is the partner's own.
+  const todoKinds = new WeakMap<Request, 'lab' | 'clinic'>();
+  const labOrClinic: RequestHandler = catchAsync(async (req, _res, next) => {
+    if (await isClinic(req)) todoKinds.set(req, 'clinic');
+    else { await assertLab(partnerActorOf(req)); todoKinds.set(req, 'lab'); }
+    next();
+  });
   mountTodoRoutes(r, (req) => {
     const a = partnerActorOf(req);
-    // r38b: a branch-limited member's to-dos belong to its branches (it sees those and the lab-wide ones).
-    return { owner: { kind: 'lab', id: a.partnerId, ...(hasGlobalScope(a) ? {} : { branchIds: a.branchIds }) }, actor: async () => (a.actorKind === 'admin' || a.memberId.startsWith('admin:')
+    // r38b: a branch-limited member's to-dos belong to its branches (it sees those and the partner-wide ones).
+    return { owner: { kind: todoKinds.get(req) ?? 'lab', id: a.partnerId, ...(hasGlobalScope(a) ? {} : { branchIds: a.branchIds }) }, actor: async () => (a.actorKind === 'admin' || a.memberId.startsWith('admin:')
       ? { kind: 'admin', id: a.memberId.replace(/^admin:/, ''), name: 'Jansetu' }
       : { kind: 'member', id: a.memberId, name: (await MemberModel.findById(a.memberId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null }) };
-  }, [...guard(), labOnly]);
+  }, [...guard(), labOrClinic]);
 
   // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');

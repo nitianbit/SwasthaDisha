@@ -7035,6 +7035,118 @@ same day, and an earlier bill refunded by UPI that day (listed at the refund tim
 as paid; `deskUnbilled`; no holder-phone match once an identity was moved; and branch-scoped to-dos (another branch's
 member sees only lab-wide ones and gets 404 on the other branch's).
 
+### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
+
+Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved
+(`SIMPLE_DESIGN_PLAN_2026-11-26.md`, P3, and "Your answers (26 Nov, later)": reception sees a doctor's other work only as
+"busy"; clinic to-dos are shared with the team). The owner was away, so the small choices are the builder's (ASSUMED,
+below). Existing answers are unchanged: the appointment list's `data` is as before, and the lab's Today is unchanged.
+
+**Shared, no copies.**
+- `clinicAppointmentsScope(actor, branchId?)` (`partners/services/clinic.ts`) is the clinic appointment list's own filter:
+  desk rows by their desk clinic, online rows by their visit's clinic, the branches in scope, never an unpaid card booking.
+  It is used by the list, the busy blocks and the clinic's Today.
+- `clinicAppointmentViews(partnerId, rows)` is the list's row view (the person seen, the account holder's phone, the bill),
+  used by the list and the Today items.
+- The lab register's bill rules are exports of `partners/services/today.ts`, used by the lab's and the clinic's registers:
+  `billDayReads`, `billRawsOf` (payments and refunds of the day), `billWhat`, `billItemOf`, `billMatches` and
+  `unpaidBillsQueue`.
+- The clinic register is `partners/services/clinicToday.ts`, built on `today/register.ts`.
+- The to-do routes take their owner kind from the partner's own kind.
+- A doctor's own booking at a clinic (r39) writes the same desk row (`clinicDesk`), so it appears in all three without
+  more code.
+
+**1. `GET /api/v1/partner-workspace/clinic/appointments?from&to&doctorId?&branchId?&status?`** (as before: `bookings.view` or
+`bookings.manage`):
+- The answer is `{ success, data, busy }`. `data` is unchanged. `busy` is new: `[{ doctorId, from, to }]`, ISO times,
+  oldest first per doctor, with one doctor's overlapping or touching blocks merged.
+- A block is a held interval of a clinic doctor the member sees (`listClinicDoctors`: a branch-limited member sees only the
+  doctors of its branches), from the doctor's reservations (`DoctorReservationModel`, active; every booking of a doctor
+  holds one: scheduled, in-clinic, instant).
+- It overlaps `from 00:00` to the day after `to`, India time.
+- It is not an appointment of this clinic that the member reads here (`clinicAppointmentsScope` with the list's
+  `branchId`).
+- Never a patient, a source or a place. `doctorId` narrows the doctors; the dates are checked as the list's (400
+  `INVALID_DATE` / `RANGE_TOO_LONG`).
+
+**2. `GET /api/v1/partner-workspace/today?date&cursor&limit&order`** — a clinic now gets its own register (a lab keeps r38's;
+the route guard is unchanged). Each source is shown only to a member holding a permission that reads it:
+
+| Source (`kind`) | Rows | Who sees it | Money |
+|---|---|---|---|
+| `appointment` | the clinic's appointments in branch scope: desk (reception and the doctor's own), and online for a visit here; made that day, or made earlier and paid that day | `bookings.view`, `bookings.manage` | a desk appointment's money is its bill's (`paid` = its bill is paid; not counted); an online one paid through Jansetu is `paid: true`, `method: 'online'` and **not counted** (C1) |
+| `bill` | the clinic's in-house bills in scope, made that day or paid or refunded that day | `invoices.create`, `invoices.cancel`, `payments.record`, `finance.view` | as the lab's: each payment of that day by its parts (`cash`, `upi`, `card`, `bank`, else `other`); refunds by their method; what is still due counts as unpaid |
+
+- A member with neither gets 403 `FORBIDDEN`. The clinic register has no consultation or top-up rows: a clinic books no
+  consultations for others and has no wallet.
+- `data: { date, items, totals, pending?, truncated?, nextCursor }`, the lab's shape:
+  - `items[]`: `{ kind: 'appointment' | 'bill', id, at, shortRef, patientName, what, whatParts, amountMinor, paid, method,
+    status, madeOn, paidToday, link }`.
+  - Appointment fields:
+    - `patientName`: the person seen (a family member, else the account holder), as the list shows it.
+    - `shortRef`: `assisted.shortRef`, or null.
+    - `link: { kind: 'booking', id }`.
+    - `whatParts: { code: 'clinic.appointment', values: { doctor, date (YYYY-MM-DD), time, mode, source: desk | online } }`.
+    - `what`: `doctor · date time · mode`.
+  - Bill fields: as the lab's (`shortRef` = the serial, `patientName` = the customer typed on it, `link: { kind: 'invoice',
+    id }`), plus `appointmentId: string | null`, the appointment the bill is for. It is sent only to a member who reads
+    appointments; others always get `null`.
+  - `totals`: the lab's, `{ collectedMinor, byMethod: { cash, upi, card, bank, wallet, online, other }, unpaidMinor, count,
+    refundedMinor, refundsByMethod }`. The drawer is `byMethod.cash − refundsByMethod.cash`.
+  - `pending` (first page; a queue the member cannot read is absent; one that fails is `null`):
+    - `appointmentsToday: { count, toCheckInCount, toConfirmCount, toCheckInIds, toConfirmIds }` — appointments for this
+      date. To check in: desk rows still confirmed and not arrived. To confirm: still pending (an online booking waiting
+      for its payment; desk rows are confirmed when booked).
+    - `deskUnbilled: { count, ids }` — desk appointments, not cancelled or no-show, with no bill or whose bill was
+      cancelled (any day).
+    - `unpaidBills: { count, ids }` — bills issued or part-paid (any day).
+- `Cache-Control: private, no-store`; 400 `INVALID_DATE`, `INVALID_CURSOR`; `order=desc` as the lab's.
+
+**3. `POST /api/v1/partner-workspace/today/search { date?, q (2–100), cursor?, limit?, order? }`** for a clinic →
+`{ date, items, nextCursor }`, `no-store`, with the same branch scope and permissions.
+- An appointment matches on the person seen or the account holder's name, the doctor, the short ref or the line.
+- With 4 or more digits, it also matches on its contact number or the account holder's phone. The phone is not matched
+  once the row's identity was moved to another account.
+- A bill matches as the lab's: the customer, the serial, the lines or the customer's phone.
+
+**4. To-dos for the clinic:** `GET/POST /api/v1/partner-workspace/todos`, `PATCH/DELETE …/todos/:id` (r37's module and
+shapes, owner kind `clinic`), as r38b's for labs.
+- Any active member may use them; the list is shared with the team.
+- `createdBy` is the member (an admin: `Jansetu`).
+- A branch-limited member's to-dos carry its branches. It sees those and the clinic-wide ones; another branch's to-do is the
+  one 404.
+
+**ASSUMED (r40, reversible):**
+
+| # | Choice | Why |
+|---|---|---|
+| C1 | An online appointment paid through Jansetu shows paid (`online`) but is not counted in the clinic's money | It settles to the doctor's account (`settlementSystem: 'ledger'`), not the clinic's; the clinic's money is what it billed |
+| C2 | Busy = the doctor's held intervals that are not this clinic's appointments the member reads here. So the clinic's other branch is "busy" for a member who cannot see it, or when the list is filtered to one branch | The member sees only "busy" for what it cannot open |
+| C3 | Busy blocks are merged per doctor when they overlap or touch | A row of short blocks says no more than one block |
+| C4 | `busy` sits beside `data` in the same answer (one call for the day view) | `data` stays unchanged for the released screens |
+| C5 | "To confirm" = this date's pending appointments; "to check in" = this date's desk rows still confirmed and not arrived (online rows are not checked in at the desk) | The desk's two actions for the day |
+| C6 | Appointments are listed on the day they were made (and earlier ones on the day they were paid), as the register's rule. This date's visits are under `pending.appointmentsToday` | The owner's register rule (26 Nov): money and list by the day it happened |
+
+**Seen, not changed (for a follow-up):** `lifecycle.paid.at` on bookings is a String path holding ISO times. A Date range on
+it is cast by Mongoose to `Date.toString()` text, so the pharmacy register's earlier consultations paid that day
+(`assisted/today.ts:52`) and the lab register's (`partners/services/today.ts`, `consultsPaid`) never match. Those rows are
+not listed, and their money is not counted on the day they were paid. The clinic register uses the new shared
+`isoDay(day)` (`today/register.ts`). The fix for the other two is the same one word, but it changes their answers, so it
+was left for the coordinator.
+
+**Deploy:** no new index or collection (the to-dos are r37's). No migration.
+
+**Checks:** `test/partners/r40-clinic-reception.integration.ts`, 6 checks:
+- busy blocks: merged, the clinic's own appointment not busy, the other branch busy for a branch-limited desk, the branch
+  and doctor filters, no patient or place in a block; `data` beside it;
+- the clinic owner's day: order, shapes, `whatParts`, a desk appointment paid by its bill, an online appointment paid and
+  not counted, an earlier one paid that day, the bill's `appointmentId`, totals with a cash refund and an earlier UPI
+  payment, every pending queue, paging and `desc`;
+- scope and permissions: a Baner desk, a biller (`appointmentId` null), a staff manager 403, another clinic;
+- the search: the person seen, the account holder, the doctor, both phones, the bill serial and customer phone, scope;
+- a lab keeps its register;
+- clinic to-dos: owner kind `clinic`, shared, branch-scoped, another clinic 404, the lab's apart.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

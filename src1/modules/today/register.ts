@@ -31,6 +31,11 @@ export function dayRange(date: string): Day {
   return { $gte: from, $lt: new Date(from.getTime() + 86_400_000) };
 }
 export const inDay = (at: unknown, day: Day) => !!at && new Date(at as Date) >= day.$gte && new Date(at as Date) < day.$lt;
+/**
+ * r40: the day's bounds as ISO strings, for a String path holding ISO times (a booking's `lifecycle.*.at`): a Date range
+ * on such a path is cast by Mongoose to `Date.toString()` text ("Fri Nov 20 2026 …") and never matches.
+ */
+export const isoDay = (day: Day) => ({ $gte: day.$gte.toISOString(), $lt: day.$lt.toISOString() });
 
 /** One row of the day (projected), with how it counts in the day's money. */
 export interface Raw {

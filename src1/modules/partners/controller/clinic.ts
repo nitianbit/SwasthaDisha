@@ -20,7 +20,11 @@ export const linkDoctor = async (req: Request, res: Response, _n: NextFunction) 
 export const unlinkDoctor = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.unlinkDoctor(actorOf(req), req.params.doctorId));
 export const revokeInvite = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.revokeInvite(actorOf(req), req.params.inviteId));
 export const deskSlots = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.deskSlots(actorOf(req), req.query as any));
-export const clinicAppointments = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.listClinicAppointments(actorOf(req), req.query as any));
+/** r40 (P3): `busy` (beside `data`, which is unchanged): when each clinic doctor is taken elsewhere, `{ doctorId, from, to }` only. */
+export const clinicAppointments = async (req: Request, res: Response, _n: NextFunction) => {
+  const data = await c.listClinicAppointments(actorOf(req), req.query as any);
+  res.status(200).json({ success: true, data, busy: await c.clinicBusy(actorOf(req), req.query as any) });
+};
 export const bookDesk = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createDeskAppointment(actorOf(req), req.body);
   ok(res, r, r.replayed ? 200 : 201);
