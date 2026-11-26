@@ -5,6 +5,7 @@ import * as f from '@/modules/partners/services/finance';
 import PartnerModel from '@/modules/partners/model';
 import { referralSummary } from '@/modules/referralCuts/payouts';
 import { withdrawalsSummary } from '@/modules/walletWithdrawals/service';
+import { earningsBreakdown, type BreakdownQuery } from '@/modules/specialists/dashboard';
 
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
 /** A statement CSV answer (r33: shared with the referral statements). */
@@ -54,10 +55,12 @@ export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: N
 const doctorOf = (req: Request) => String((req as AuthRequest).user!.specialistId || (req as AuthRequest).user!._id);
 const doctorAccount = (req: Request) => f.findOwnerAccount('doctor', doctorOf(req));
 /** r35 (§26.10): the doctor's finance adds its referral and withdrawals blocks. */
+/** r39 (§26.23): and `breakdown` — his ledger's earnings by clinic, online, partner and referral (`from`, `to`, `channel`, `clinicId`). */
 export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => {
-  const [summary, referral, withdrawals] = await Promise.all([f.financeSummary(await doctorAccount(req), false),
-    referralSummary('doctor', doctorOf(req)), withdrawalsSummary('doctor', doctorOf(req))]);
-  ok(res, { ...summary, referral, withdrawals });
+  const account = await doctorAccount(req);
+  const [summary, referral, withdrawals, breakdown] = await Promise.all([f.financeSummary(account, false),
+    referralSummary('doctor', doctorOf(req)), withdrawalsSummary('doctor', doctorOf(req)), earningsBreakdown(account, req.query as BreakdownQuery)]);
+  ok(res, { ...summary, referral, withdrawals, breakdown });
 };
 export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>

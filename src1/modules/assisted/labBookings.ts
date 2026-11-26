@@ -662,8 +662,10 @@ export async function acceptLabRescheduleFor(booker: LabBooker, bookingId: strin
  * r26 (§25.5.4): POST /specialists/me/assisted/patients/lookup — `{ exists, holderNameMasked }` only; counted against the
  * doctor's hourly lookup limit (the one limit the owner kept, org key `doctor:<id>`); audited with ids only.
  */
-export async function lookupPatientFor(booker: LabBooker, rawPhone: unknown) {
-  assertOn(booker);
+export async function lookupPatientFor(booker: LabBooker, rawPhone: unknown, opts: { gated?: boolean } = {}) {
+  // r39 (§26.23): the doctor's own lookup and bookings (clinic appointment, online consultation) count and audit the same
+  // way without the lab-booking switch (`gated: false`).
+  if (opts.gated !== false) assertOn(booker);
   const phone = canonicalMobile(rawPhone);
   if (!phone) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
   const user = await countPhoneUse(orgKey(booker), phone, (seen) => auditIn({ actorKind: booker.kind, actorId: actorIdOf(booker), orgKind: booker.kind,

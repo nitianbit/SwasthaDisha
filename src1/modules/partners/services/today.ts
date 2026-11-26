@@ -60,26 +60,18 @@ const BILL_FIELDS = { serial: 1, issuedAt: 1, 'customer.name': 1, 'customer.phon
   paidMinor: 1, labBookingId: 1, branchId: 1 };
 const TOPUP_FIELDS = { amountMinor: 1, at: 1, createdAt: 1 };
 
-async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncated: string[] }> {
-  const src = sourcesOf(a);
+/**
+ * A partner's bills of one day as register rows (r38; r39: shared with the doctor's register for the clinic he owns):
+ * bills made that day, and earlier bills with a payment or a refund that day (their events), each with the money
+ * received that day by method, what is still due and what went back.
+ */
+export async function billRawsOf(billOwner: Row, day: Day, cap: ReturnType<typeof capper>): Promise<Raw[]> {
   const before = { $lt: day.$gte };
-  const none = Promise.resolve([] as Row[]);
-  const labOwner = src.bookings ? labBookingsScope(a) : null;
-  const billOwner = src.bills ? invoicesScope(a) : null;
-  const consultOwner = src.consultations ? labBookerBookingsFilter(a) : null;
-  const [labs, labsPaid, bills, billsTouched, consults, consultsPaid, topups] = await Promise.all([
-    labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, createdAt: day }, LAB_FIELDS) : none,
-    labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS) : none,
-    billOwner ? dayRows(InvoiceModel, { ...billOwner, issuedAt: day }, BILL_FIELDS) : none,
+  const [bills, billsTouched] = await Promise.all([
+    dayRows(InvoiceModel, { ...billOwner, issuedAt: day }, BILL_FIELDS),
     // Earlier bills changed on or after the day began: the ones that may have a payment that day (checked on their events).
-    billOwner ? dayRows(InvoiceModel, { ...billOwner, issuedAt: before, updatedAt: { $gte: day.$gte } }, BILL_FIELDS) : none,
-    consultOwner ? dayRows(BookingModel, { ...consultOwner, createdAt: day }, CONSULTATION_FIELDS) : none,
-    consultOwner ? dayRows(BookingModel, { ...consultOwner, 'lifecycle.paid.at': day, createdAt: before }, CONSULTATION_FIELDS) : none,
-    src.topups ? dayRows(PartnerWalletEntryModel, { ownerKind: 'lab', ownerId: a.partnerId.toLowerCase(), kind: 'credit', referenceType: 'wallet_recharge',
-      at: day }, TOPUP_FIELDS) : none,
+    dayRows(InvoiceModel, { ...billOwner, issuedAt: before, updatedAt: { $gte: day.$gte } }, BILL_FIELDS),
   ]);
-  const truncated = new Set<string>();
-  const cap = capper(truncated);
   const allBills = [...cap('bill', bills), ...cap('bill', billsTouched)];
   // r38b: the day's payments AND cancellations (a cancellation records how a paid bill's money went back: `refund`).
   const events = allBills.length ? await InvoiceEventModel.find({ invoiceId: { $in: allBills.map((b) => String(b._id)) },
@@ -92,16 +84,7 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
     if (e.kind === 'cancellation' && !e.refund) continue;
     m.set(String(e.invoiceId), [...(m.get(String(e.invoiceId)) ?? []), e]);
   }
-  const raws: Raw[] = [
-    ...[...cap('lab_booking', labs), ...cap('lab_booking', labsPaid)].map((l): Raw => {
-      const paid = l.paymentStatus === 'paid';
-      // A desk booking is paid at the lab through its bill (the bill's payments are the money); every other booking is
-      // paid through Jansetu (the patient's app payment, or the pharmacy's or doctor's), settled to the lab later.
-      const desk = isDeskRow(l);
-      return { kind: 'lab_booking', row: l, at: l.createdAt, createdAt: l.createdAt, id: String(l._id), status: l.status, paymentStatus: l.paymentStatus,
-        amountMinor: Number(l.pricing?.payableMinor ?? 0), paid: !desk && paid, paidAt: !desk && paid ? l.lifecycle?.paidAt ?? l.createdAt : null,
-        method: !desk && paid ? 'online' : null, collects: !desk, atGateway: !desk && l.status === 'pending_payment' };
-    }),
+  return [
     ...allBills.flatMap((b): Raw[] => {
       const today = paidToday.get(String(b._id)) ?? [];
       const refundsToday = refundToday.get(String(b._id)) ?? [];
@@ -122,6 +105,38 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
         method: methods.length === 1 ? methods[0]! : methods.length ? 'other' : null, collects: true, atGateway: false, received, dueMinor: due,
         ...(refunded.length ? { refunded } : {}) }];
     }),
+  ];
+}
+
+async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncated: string[] }> {
+  const src = sourcesOf(a);
+  const before = { $lt: day.$gte };
+  const none = Promise.resolve([] as Row[]);
+  const labOwner = src.bookings ? labBookingsScope(a) : null;
+  const billOwner = src.bills ? invoicesScope(a) : null;
+  const consultOwner = src.consultations ? labBookerBookingsFilter(a) : null;
+  const truncated = new Set<string>();
+  const cap = capper(truncated);
+  const [labs, labsPaid, billRaws, consults, consultsPaid, topups] = await Promise.all([
+    labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, createdAt: day }, LAB_FIELDS) : none,
+    labOwner ? dayRows(PartnerLabBookingModel, { ...labOwner, 'lifecycle.paidAt': day, createdAt: before }, LAB_FIELDS) : none,
+    billOwner ? billRawsOf(billOwner, day, cap) : Promise.resolve([] as Raw[]),
+    consultOwner ? dayRows(BookingModel, { ...consultOwner, createdAt: day }, CONSULTATION_FIELDS) : none,
+    consultOwner ? dayRows(BookingModel, { ...consultOwner, 'lifecycle.paid.at': day, createdAt: before }, CONSULTATION_FIELDS) : none,
+    src.topups ? dayRows(PartnerWalletEntryModel, { ownerKind: 'lab', ownerId: a.partnerId.toLowerCase(), kind: 'credit', referenceType: 'wallet_recharge',
+      at: day }, TOPUP_FIELDS) : none,
+  ]);
+  const raws: Raw[] = [
+    ...[...cap('lab_booking', labs), ...cap('lab_booking', labsPaid)].map((l): Raw => {
+      const paid = l.paymentStatus === 'paid';
+      // A desk booking is paid at the lab through its bill (the bill's payments are the money); every other booking is
+      // paid through Jansetu (the patient's app payment, or the pharmacy's or doctor's), settled to the lab later.
+      const desk = isDeskRow(l);
+      return { kind: 'lab_booking', row: l, at: l.createdAt, createdAt: l.createdAt, id: String(l._id), status: l.status, paymentStatus: l.paymentStatus,
+        amountMinor: Number(l.pricing?.payableMinor ?? 0), paid: !desk && paid, paidAt: !desk && paid ? l.lifecycle?.paidAt ?? l.createdAt : null,
+        method: !desk && paid ? 'online' : null, collects: !desk, atGateway: !desk && l.status === 'pending_payment' };
+    }),
+    ...billRaws,
     ...[...cap('consultation', consults), ...cap('consultation', consultsPaid)].map(consultationRaw),
     // A top-up is the lab paying into its own wallet, not money collected from a patient: listed, not counted.
     ...cap('wallet_topup', topups).map((t): Raw => ({ kind: 'wallet_topup', row: t, at: t.at, createdAt: t.at, id: String(t._id), status: 'completed',
@@ -130,16 +145,19 @@ async function rawOf(a: PartnerActor, day: Day): Promise<{ raws: Raw[]; truncate
   return { raws: orderRaws(raws, day), truncated: [...truncated] };
 }
 
+/** A bill's line: its items (`bill.items { first, more }`). */
+export function billWhat(v: Row): { what: string; whatParts: WhatParts } {
+  const names = (v.items ?? []).map((i: Row) => String(i.description ?? 'Item'));
+  return { what: firstOf(names) || 'Bill', whatParts: { code: 'bill.items', values: listOf(names) } };
+}
+
 function whatOf(r: Raw): { what: string; whatParts: WhatParts } {
   const v = r.row;
   switch (r.kind) {
     // r38: a lab booking's line adds where it came from (`source`: self | pharmacy_assisted | doctor_assisted | lab_desk)
     // and the visit (`visit`: lab | home).
     case 'lab_booking': return labTestsWhat(v, { source: labSourceOf(v), visit: v.visitMode ?? null });
-    case 'bill': {
-      const names = (v.items ?? []).map((i: Row) => String(i.description ?? 'Item'));
-      return { what: firstOf(names) || 'Bill', whatParts: { code: 'bill.items', values: listOf(names) } };
-    }
+    case 'bill': return billWhat(v);
     case 'consultation': return consultationWhat(v);
     default: return TOPUP_WHAT;
   }

@@ -755,7 +755,9 @@ export class BookingService {
 
   async createSpecialistBooking(
     data: CreateSpecialistBookingRequest,
-    bookingType: Extract<BookingType, 'consultation' | 'second-opinion'> = 'consultation'
+    bookingType: Extract<BookingType, 'consultation' | 'second-opinion'> = 'consultation',
+    /** r39 (§26.23): a doctor booking for his patient marks the row `doctor_assisted` (server callers only, never a request body). */
+    opts: { source?: 'doctor_assisted' } = {}
   ): Promise<BookingPaymentInitResponse> {
     // A resent create (same key) is the same booking: answer with it before any check or charge (W3b).
     const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
@@ -844,6 +846,7 @@ export class BookingService {
         createTerms: { basePrice, discountAmount, ...(couponCode ? { couponCode } : {}), useWalletBalance: data.useWalletBalance === true },
       } : {}),
       ...earning,
+      ...(opts.source ? { source: opts.source } : {}),
     };
 
     // Slot capacity and (for a follow-up) the parent consultation's benefit are taken in the same transaction as

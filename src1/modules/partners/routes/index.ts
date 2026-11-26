@@ -147,6 +147,37 @@ const requireOwnerActor = (message: string): RequestHandler => (req, _res, next)
 
 
 /**
+ * Q2: the catalogue and in-house bills — part of the workspace, and r39 (§26.23) mounted again for a doctor billing the
+ * clinic he owns (`/api/v1/specialists/me/clinic/…`, its guard building the owner actor).
+ */
+export function registerBillingRoutes(r: Router, guard: WorkspaceGuard): void {
+  // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
+  // r12: the lab desk (bookings.manage) reads the tests it books.
+  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create', 'bookings.manage'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
+  r.get('/catalogue/by-key/:key', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(catalogueItemByKey));
+  r.post('/catalogue/by-key/:key/abandon', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(abandonCatalogueKey));
+  r.post('/catalogue/:itemId/reactivate', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(reactivateCatalogueItem));
+  r.get('/catalogue/:itemId', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueItemParamSchema, 'params'), catchAsync(getCatalogueItem));
+  r.post('/catalogue', ...guard('catalogue.manage'), validate(createCatalogueItemSchema, 'body'), catchAsync(createCatalogueItem));
+  r.put('/catalogue/:itemId', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'),
+    validate(updateCatalogueItemSchema, 'body'), catchAsync(updateCatalogueItem));
+  r.delete('/catalogue/:itemId', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(deactivateCatalogueItem));
+
+  r.get('/invoices', ...guard.any(...INVOICE_READERS), validate(invoiceQuerySchema, 'query'), catchAsync(listPartnerInvoices));
+  r.post('/invoices', ...guard('invoices.create'), validate(createInvoiceSchema, 'body'), catchAsync(createInvoice));
+  // Q10: a bill whose answer was lost — look it up by its key, or give the key up (only invoice creators).
+  r.get('/invoices/by-key/:key', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(invoiceByKey));
+  r.post('/invoices/by-key/:key/abandon', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(abandonInvoiceKey));
+  r.get('/invoices/:invoiceId', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'), catchAsync(getInvoice));
+  r.get('/invoices/:invoiceId/pdf', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'),
+    validate(invoicePdfQuerySchema, 'query'), catchAsync(getInvoicePdf));
+  r.post('/invoices/:invoiceId/pay', ...guard('payments.record'), validate(invoiceParamSchema, 'params'),
+    validate(recordPaymentSchema, 'body'), catchAsync(recordPayment));
+  r.post('/invoices/:invoiceId/cancel', ...guard('invoices.cancel'), validate(invoiceParamSchema, 'params'),
+    validate(cancelInvoiceSchema, 'body'), catchAsync(cancelInvoice));
+}
+
+/**
  * The partner workspace (profile, staff, branches; later packets add catalogue, invoices, bookings, finance). Registered
  * twice: for a partner's own members, and for platform admins managing any partner.
  */
@@ -182,30 +213,7 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.delete('/branches/:branchId', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(deactivateBranch));
   r.post('/branches/:branchId/reactivate', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(reactivateBranch));
 
-  // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
-  // r12: the lab desk (bookings.manage) reads the tests it books.
-  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create', 'bookings.manage'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
-  r.get('/catalogue/by-key/:key', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(catalogueItemByKey));
-  r.post('/catalogue/by-key/:key/abandon', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(abandonCatalogueKey));
-  r.post('/catalogue/:itemId/reactivate', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(reactivateCatalogueItem));
-  r.get('/catalogue/:itemId', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueItemParamSchema, 'params'), catchAsync(getCatalogueItem));
-  r.post('/catalogue', ...guard('catalogue.manage'), validate(createCatalogueItemSchema, 'body'), catchAsync(createCatalogueItem));
-  r.put('/catalogue/:itemId', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'),
-    validate(updateCatalogueItemSchema, 'body'), catchAsync(updateCatalogueItem));
-  r.delete('/catalogue/:itemId', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(deactivateCatalogueItem));
-
-  r.get('/invoices', ...guard.any(...INVOICE_READERS), validate(invoiceQuerySchema, 'query'), catchAsync(listPartnerInvoices));
-  r.post('/invoices', ...guard('invoices.create'), validate(createInvoiceSchema, 'body'), catchAsync(createInvoice));
-  // Q10: a bill whose answer was lost — look it up by its key, or give the key up (only invoice creators).
-  r.get('/invoices/by-key/:key', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(invoiceByKey));
-  r.post('/invoices/by-key/:key/abandon', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(abandonInvoiceKey));
-  r.get('/invoices/:invoiceId', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'), catchAsync(getInvoice));
-  r.get('/invoices/:invoiceId/pdf', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'),
-    validate(invoicePdfQuerySchema, 'query'), catchAsync(getInvoicePdf));
-  r.post('/invoices/:invoiceId/pay', ...guard('payments.record'), validate(invoiceParamSchema, 'params'),
-    validate(recordPaymentSchema, 'body'), catchAsync(recordPayment));
-  r.post('/invoices/:invoiceId/cancel', ...guard('invoices.cancel'), validate(invoiceParamSchema, 'params'),
-    validate(cancelInvoiceSchema, 'body'), catchAsync(cancelInvoice));
+  registerBillingRoutes(r, guard);
 
   // Q3: lab slots (server-owned) and online lab bookings
   r.get('/slots', ...guard.any('slots.manage', 'bookings.view', 'bookings.manage'), validate(labV.partnerSlotsQuerySchema, 'query'), catchAsync(lab.getPartnerSlots));

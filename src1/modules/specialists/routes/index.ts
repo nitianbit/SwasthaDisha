@@ -6,7 +6,17 @@ import * as fin from '@/modules/partners/controller/finance';
 import * as clinicDoc from '@/modules/partners/controller/clinic';
 import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
-import { Router, type NextFunction, type Response } from 'express';
+import { Router, type NextFunction, type RequestHandler, type Response } from 'express';
+import * as dash from '@/modules/specialists/dashboard';
+import * as dashV from '@/modules/specialists/validation/dashboard';
+import { doctorToday, doctorTodaySearch } from '@/modules/specialists/today';
+import { todayQuerySchema, todaySearchSchema, pageQueryOf } from '@/modules/today/validation';
+import { mountTodoRoutes } from '@/modules/todos';
+import { registerBillingRoutes, type WorkspaceGuard } from '@/modules/partners/routes';
+import type { PartnerPermission } from '@/modules/partners/types';
+import { lookupPatientFor } from '@/modules/assisted/labBookings';
+import { lookupSchema } from '@/modules/assisted/validation';
+import SpecialistModel from '@/modules/specialists/model';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { requireAdmin, requireSpecialist, type AuthRequest } from '@/modules/middleware/auth';
@@ -40,6 +50,7 @@ import {
 } from '@/modules/specialistPortal/validation';
 
 const specialistRouter = Router();
+const noStore = (res: Response) => res.setHeader('Cache-Control', 'private, no-store');
 
 const specialistController = new SpecialistController();
 
@@ -137,7 +148,7 @@ specialistRouter.get('/me/clinic', requireSpecialist, catchAsync(clinicDoc.getMy
 specialistRouter.post('/me/clinic', requireSpecialist, validate(clinicV.doctorClinicSchema, 'body'), catchAsync(requireEligibleDoctor), catchAsync(clinicDoc.createMyClinic));
 specialistRouter.get('/me/clinic/by-key/:key', requireSpecialist, validate(clinicV.doctorClinicKeyParamSchema, 'params'), catchAsync(clinicDoc.myClinicByKey));
 // Q5: the doctor's own earnings — balance, statement (+CSV), payouts, legacy history, payout destination.
-specialistRouter.get('/me/finance', requireSpecialist, catchAsync(fin.doctorFinance));
+specialistRouter.get('/me/finance', requireSpecialist, validate(dashV.doctorFinanceQuerySchema, 'query'), catchAsync(fin.doctorFinance));
 specialistRouter.get('/me/finance/statement', requireSpecialist, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.doctorStatement));
 specialistRouter.get('/me/finance/statement.csv', requireSpecialist, validate(finV.csvQuerySchema, 'query'), catchAsync(fin.doctorStatementCsv));
 specialistRouter.get('/me/finance/payouts', requireSpecialist, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.doctorPayouts));
@@ -191,6 +202,14 @@ specialistRouter.get(
   catchAsync(specialistController.listMyAppointments)
 );
 
+// r39 (§26.23): one list of his appointments with filters (before /me/appointments/:id).
+specialistRouter.get('/me/appointments/list', requireSpecialist, validate(dashV.appointmentListQuerySchema, 'query'), catchAsync(restrictIneligibleDoctorReads),
+  catchAsync(async (req: AuthRequest, res: Response) => {
+    const out = await dash.listDoctorAppointments(dash.doctorIdOf(req), req.query as dash.AppointmentListQuery);
+    noStore(res);
+    res.status(200).json({ success: true, data: out.items, meta: { total: out.items.length, truncated: out.truncated } });
+  }));
+
 specialistRouter.get(
   '/me/appointments/:id',
   requireSpecialist,
@@ -236,6 +255,47 @@ specialistRouter.get(
 // r30 (§25.9.4): the doctor asks the account holder to let it see other providers' records (inside the treating window).
 specialistRouter.post('/me/bookings/:id/records-access/request', requireSpecialist, validate(idParamSchema, 'params'), catchAsync(requireEligibleDoctor),
   catchAsync(doctorRecordsRequest));
+
+// r39 (§26.23): the doctor's own bookings — the counted phone lookup, an appointment at a clinic he consults at (the
+// clinic's desk booking), an online consultation or a follow-up for his patient — his Today register and private to-dos.
+const eligible = [requireSpecialist, catchAsync(requireEligibleDoctor)];
+specialistRouter.post('/me/patients/lookup', ...eligible, validate(lookupSchema, 'body'), catchAsync(async (req: AuthRequest, res: Response) => {
+  noStore(res);
+  res.status(200).json({ success: true, data: await lookupPatientFor({ kind: 'doctor', specialistId: dash.doctorIdOf(req) }, req.body.phone, { gated: false }) });
+}));
+specialistRouter.post('/me/clinic-appointments', ...eligible, validate(dashV.doctorClinicBookingSchema, 'body'), catchAsync(async (req: AuthRequest, res: Response) => {
+  const out = await dash.bookDoctorClinicAppointment(dash.doctorIdOf(req), req.body);
+  noStore(res);
+  res.status(out.replayed ? 200 : 201).json({ success: true, data: out });
+}));
+specialistRouter.post('/me/consultations', ...eligible, validate(dashV.doctorConsultationSchema, 'body'), catchAsync(async (req: AuthRequest, res: Response) => {
+  const out = await dash.bookDoctorConsultation(dash.doctorIdOf(req), req.body);
+  noStore(res);
+  res.status(out.replayed ? 200 : 201).json({ success: true, data: out });
+}));
+specialistRouter.get('/me/today', ...eligible, validate(todayQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res: Response) => {
+  noStore(res);
+  res.status(200).json({ success: true, data: await doctorToday(dash.doctorIdOf(req), pageQueryOf(req.query as Record<string, unknown>)) });
+}));
+specialistRouter.post('/me/today/search', ...eligible, validate(todaySearchSchema, 'body'), catchAsync(async (req: AuthRequest, res: Response) => {
+  noStore(res);
+  res.status(200).json({ success: true, data: await doctorTodaySearch(dash.doctorIdOf(req), req.body) });
+}));
+// Private to the doctor (owner kind `doctor`); open to a doctor not yet verified (they are his own notes).
+const doctorMe = Router();
+mountTodoRoutes(doctorMe, (req: AuthRequest) => {
+  const id = dash.doctorIdOf(req);
+  return { owner: { kind: 'doctor', id }, actor: async () => ({ kind: 'doctor', id,
+    name: (await SpecialistModel.findById(id).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null }) };
+}, [requireSpecialist]);
+specialistRouter.use('/me', doctorMe);
+// The doctor bills the clinic he OWNS: the workspace's catalogue and bill routes with his owner actor (other clinics
+// stay reception-only). Every permission is the owner's.
+const doctorOwnerGuard: WorkspaceGuard = Object.assign((..._p: PartnerPermission[]) => [requireSpecialist, catchAsync(requireEligibleDoctor), dash.attachDoctorOwnerActor] as RequestHandler[],
+  { any: (..._p: PartnerPermission[]) => [requireSpecialist, catchAsync(requireEligibleDoctor), dash.attachDoctorOwnerActor] as RequestHandler[] });
+const doctorClinic = Router();
+registerBillingRoutes(doctorClinic, doctorOwnerGuard);
+specialistRouter.use('/me/clinic', doctorClinic);
 
 specialistRouter.get(
   '/:id/stats',

@@ -514,9 +514,41 @@ async function assertDependentOfPhone(dependentId: string, phone: string) {
   if (!u?.phone || canonicalMobile(u.phone) !== canonicalMobile(phone)) throw dependentNotFound();
 }
 
+/**
+ * The desk's patient rule (Q14), shared with the doctor's own bookings (r39): the account of this mobile (found or
+ * created, never merged; its name filled only while empty) and the family member being seen — an existing one of this
+ * account, an active one with the same name and relation, or a new one (`newDependent`, a pre-chosen id the caller
+ * creates with its booking). A named family member of another account is 404 DEPENDENT_NOT_FOUND before any account is made.
+ */
+export async function deskPatientOf(input: { customer: { phone: string; name?: string }; patient?: DeskPatientInput },
+  origin: 'clinic_desk' | 'assisted_booking') {
+  if (input.patient && 'dependentId' in input.patient) await assertDependentOfPhone(String(input.patient.dependentId), input.customer.phone);
+  const customer = await resolveCustomerByPhone(input.customer.phone, origin);
+  const name = input.customer.name?.trim();
+  if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
+  // Q14: the family member being seen. A new one is created inside the booking transaction (with a pre-chosen id).
+  let dependentId: string | undefined;
+  let newDependent: Record<string, unknown> | undefined;
+  if (input.patient && 'dependentId' in input.patient) {
+    dependentId = String(input.patient.dependentId).toLowerCase();
+  } else if (input.patient) {
+    const p = input.patient;
+    const depName = p.name.trim().replace(/\s+/g, ' ');
+    const same = await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
+      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    if (same) dependentId = String(same._id);
+    else {
+      dependentId = new Types.ObjectId().toHexString();
+      newDependent = { _id: dependentId, userId: customer._id, name: depName, relationship: p.relation, isActive: true,
+        ...(p.gender ? { gender: p.gender } : {}), ...(p.dateOfBirth ? { dateOfBirth: ymd(p.dateOfBirth) } : {}) };
+    }
+  }
+  return { customer, dependentId, newDependent };
+}
+
 /** Q13: request-key scope of desk appointments, per clinic and desk member (claimed in the booking transaction). */
 export const deskKeyScope = (actor: PartnerActor) => `clinic_desk_create:${String(actor.partnerId).toLowerCase()}:${String(actor.memberId).toLowerCase()}`;
-const storedDeskKey = (actor: PartnerActor, key: string) => `desk:${actor.memberId}:${key}`;
+export const storedDeskKey = (actor: PartnerActor, key: string) => `desk:${actor.memberId}:${key}`;
 const samePartner = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
 /**
@@ -571,27 +603,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   if (!bookableUntil || bookableUntil.getTime() <= readClock().getTime()) {
     throw err(409, 'SLOT_STARTED', isWindowSlot(slot) ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
   }
-  if (input.patient && 'dependentId' in input.patient) await assertDependentOfPhone(String(input.patient.dependentId), input.customer.phone);
-  const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
-  const name = input.customer.name?.trim();
-  if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
-  // Q14: the family member being seen. A new one is created inside the booking transaction (with a pre-chosen id).
-  let dependentId: string | undefined;
-  let newDependent: Record<string, unknown> | undefined;
-  if (input.patient && 'dependentId' in input.patient) {
-    dependentId = String(input.patient.dependentId).toLowerCase();
-  } else if (input.patient) {
-    const p = input.patient;
-    const depName = p.name.trim().replace(/\s+/g, ' ');
-    const same = await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
-      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null;
-    if (same) dependentId = String(same._id);
-    else {
-      dependentId = new Types.ObjectId().toHexString();
-      newDependent = { _id: dependentId, userId: customer._id, name: depName, relationship: p.relation, isActive: true,
-        ...(p.gender ? { gender: p.gender } : {}), ...(p.dateOfBirth ? { dateOfBirth: ymd(p.dateOfBirth) } : {}) };
-    }
-  }
+  const { customer, dependentId, newDependent } = await deskPatientOf(input, 'clinic_desk');
   const fee = Number(sp.consultationFee) > 0 ? Number(sp.consultationFee) : 0;
   let booking: IBooking;
   try {

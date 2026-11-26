@@ -7035,6 +7035,150 @@ same day, and an earlier bill refunded by UPI that day (listed at the refund tim
 as paid; `deskUnbilled`; no holder-phone match once an identity was moved; and branch-scoped to-dos (another branch's
 member sees only lab-wide ones and gets 404 on the other branch's).
 
+### 26.23 r39: server support for the doctor's single dashboard, P2 (2026-11-26)
+
+Branch `m0/r39-doctor-dashboard` from stage `9b512b92`. Local commits only. The owner was away, so the small choices are
+the builder's (ASSUMED, below). Existing routes and answers are unchanged; `GET /me/finance` only gains `breakdown`.
+
+**Shared, no copies.** `specialists/dashboard.ts` holds the doctor's clinic actors, the list, the two creates and the
+breakdown; `specialists/today.ts` the register. Reused, not copied:
+- the clinic desk's create (`createDeskAppointment`);
+- its patient rule, now one exported function (`deskPatientOf`) that the desk create also calls;
+- the patient's own booking create (`createSpecialistBooking`, which gains a server-only `opts.source`);
+- the workspace's catalogue and bill routes, now one registrar (`registerBillingRoutes`) that the workspace also calls;
+- the bill rows of a day (`billRawsOf`, `billWhat`), shared with the lab register;
+- the counted doctor lookup (`lookupPatientFor`, which gains `{ gated: false }` so it runs without the lab-booking switch);
+- the to-do module, with owner kind `doctor`.
+
+All doctor routes are under `/api/v1/specialists`. Every create and read below needs a verified, active doctor (S5),
+except the to-dos.
+
+**1. `GET /me/appointments/list?from&to&source&clinicId&channel&mode&status`**
+- Returns his consultations from every source in one list, in appointment-time order.
+- `from` defaults to today in India; `to` defaults to `from`. At most 31 days: 400 `RANGE_TOO_LONG`; 400 `INVALID_DATE`.
+- Filters:
+  - `source`: `self | clinic_desk | pharmacy_assisted | lab_assisted | doctor_assisted | instant`.
+  - `clinicId`: a desk row by its `clinicDesk.partnerId`, any other row by its `clinicVisit.partnerId` (the clinic list's
+    own rule).
+  - `channel`: `clinic` (a clinic's row, or any in-person row) or `online`.
+  - `mode`, `status`.
+- `data: [row]`, `meta: { total, truncated }`. At most 1000 rows; `truncated` says when there were more. No-store.
+- Each row is the existing list's row (`assistedPublicView`) plus:
+  - `source`, always resolved. A stored `source` wins. A row without one is `clinic_desk` (desk) or `self`. A `self` row
+    with `bookingKind: 'instant'` reads `instant`.
+  - `clinic: { id, name } | null`.
+  - `channel`.
+- The ineligible-doctor reduction applies, as on the existing list.
+- `GET /me/appointments?view=day|month|all` is unchanged.
+
+**2. `POST /me/clinic-appointments`** — he books at a clinic he consults at, his own clinic included.
+- Body: the clinic desk's body `{ slotId, customer: { phone, name? }, patient?, notes?, requestKey }` plus
+  `{ clinicId, branchId? }`.
+- Answer: the desk's answer `{ booking, customer, patient, replayed }`; 201, or 200 on a replay.
+- His membership of that clinic is the desk actor. Its branches are the ones he consults at (`doctorScopeOf`).
+- The row is that clinic's desk appointment: it is in the clinic's reception list (`source: 'desk'`), it is paid at the
+  clinic, and `clinicDesk.createdBy` is his member id.
+- Only his own slots:
+  - another doctor's slot, or a `branchId` that is not the slot's: 409 `SLOT_NOT_AVAILABLE`;
+  - a slot at another clinic: 404 `BRANCH_NOT_FOUND` (from the desk);
+  - a clinic he is not linked to: 404 `CLINIC_NOT_FOUND`;
+  - a clinic not yet verified: 403 `PARTNER_NOT_VERIFIED`.
+- A new request counts as a phone lookup (his hourly limit, audited `patient.lookup`, ids only). A resend of a recorded
+  key is not counted.
+- **Phone lookup:** `POST /me/patients/lookup { phone }` → `{ exists, holderNameMasked }`. This is the doctor's existing
+  counted lookup (the same counter as `/me/assisted/patients/lookup`), without the lab-booking switch.
+
+**3. `POST /me/consultations`** — there was no doctor-made consultation path, so the smallest reuse is the patient's own
+booking create, for the patient's account, marked `source: 'doctor_assisted'` (no `assisted` block).
+- Body: `{ slotId, mode: video | call | in-person, requestKey, notes?, customer?: { phone, name? }, patient?, followUpOf? }`.
+  Exactly one of `customer` and `followUpOf`; `patient` only with `customer`.
+- **Online:** `video | call` on one of his own slots, for a patient named by phone (the desk's patient shape: the
+  account holder, an existing family member, or a new one).
+  - In person is a clinic appointment (400 `USE_CLINIC_APPOINTMENT`).
+  - Another doctor's slot: 409 `SLOT_NOT_AVAILABLE`.
+  - It counts as a lookup, like item 2.
+  - **Payment:** the patient pays in the app. The create makes the patient's own order, and `POST /bookings/:id/retry-payment`
+    resumes it. The patient has the booking payment window (30 minutes from the create). Unpaid by then, the booking
+    expires and the slot is free again. The doctor is never charged.
+- **Follow-up:** `followUpOf` names a consultation of his; any other booking is 404 `BOOKING_NOT_FOUND`. The existing
+  follow-up rule then applies, with its existing errors: the parent is completed and paid, its 14-day window is open, the
+  benefit is used once, and the follow-up is free, confirmed and paid at once. Its patient is the parent's. Any mode his
+  slot offers.
+- Answer:
+  `{ booking: { bookingId, bookingDate, bookingTime, status, paymentStatus, consultationMode, fee, source: 'doctor_assisted', dependentId, followUpOf }, payment: { by: 'patient_app', required, payBy }, replayed }`.
+  201, or 200 on a replay.
+- Exactly once per (doctor, request key). The stored create key is `doctor:<doctorId>:<key>`. A resend with the same
+  slot, mode, follow-up and patient phone answers the same booking. The same key with any other content is 409
+  `IDEMPOTENCY_KEY_REUSED`.
+
+**4. He bills the clinic he owns:** `/me/clinic/catalogue…` and `/me/clinic/invoices…`
+- These are the workspace's own catalogue and bill routes, with every path, body and answer the same.
+- `attachDoctorOwnerActor` (after `requireSpecialist` and `requireEligibleDoctor`) builds the owner actor as
+  `loadPartnerActor` builds a member's, from his owner membership (`role: 'owner'` with his `doctorId`; his own clinic's
+  creation makes it).
+- He owns none: 404 `CLINIC_NOT_FOUND`. He owns more than one: 409 `CLINIC_CHOICE_REQUIRED`. Not yet verified: 403
+  `PARTNER_NOT_VERIFIED`.
+- Other clinics stay reception-only. The existing `GET/POST /me/clinic` and `/me/clinic/by-key/:key` are unchanged.
+
+**5. `GET /me/today?date&cursor&limit&order`** and **`POST /me/today/search { date?, q, … }`**, on `today/register.ts`
+(no-store).
+- `kind`:
+  - `appointment`: his consultations booked for that date, every source, at the appointment time. Listed, not counted:
+    their money is the ledger's, or the clinic bill's.
+  - `bill`: the bills of the clinic he owns, made, paid or refunded that day, exactly as the clinic's register counts them.
+  - `lab_booking`: lab tests he booked, made or paid that day. Listed, not counted.
+- Items have the register shape. Appointments add `source`, `channel` and `clinic`. `patientName` is the family member
+  seen, else the account holder.
+- `totals`: the register's money (`collectedMinor`, `byMethod` with `bank`, `unpaidMinor`, `refundedMinor`,
+  `refundsByMethod`: his clinic's bills) plus `earnedMinor`, what his ledger earned that day (consultation earnings and
+  referral cuts, net of reversals).
+- `pending` (first page):
+  - `prescriptionsToWrite`: completed in the last 14 days, no prescription;
+  - `appointmentsToConfirm`: pending from this date on, with `awaitingPaymentCount`;
+  - `reportsReady`: reports of his lab tests released in the last 7 days;
+  - `unpaidBills`: only when he owns a clinic.
+- The search matches the patient's name, the short ref or bill serial, the line text, or (4+ digits) the account holder's
+  phone (not once an identity was moved), an appointment's contact number, or a bill's customer phone.
+- **To-dos:** `GET/POST /me/todos`, `PATCH/DELETE /me/todos/:id` (owner kind `doctor`, private to him, `createdBy:
+  { kind: 'doctor', name }`). These are open to a doctor not yet verified (his own notes).
+
+**6. `GET /me/finance` adds `breakdown`** — read from his existing ledger (no second ledger).
+- Query: `from`, `to`, `channel`, `clinicId`. Other query keys are ignored, as before.
+- The ledger's earnings and reversals are grouped by where the money came from:
+  - `online`: his online and instant consultations, and those he booked;
+  - `clinic`: consultations at a clinic paid through Jansetu, by clinic;
+  - `partner`: consultations a pharmacy or lab booked;
+  - `referral`: his cut of lab tests he booked;
+  - `other`.
+- `breakdown: { from, to, totals, online, partner, referral, other, clinics: [{ clinicId, name, …Sum }] }`, where
+  `Sum = { earnedMinor, reversedMinor, netMinor, count }`.
+- Payouts and adjustments are not earnings. A desk appointment is paid at the clinic (its bill), so it never enters the
+  ledger.
+
+**ASSUMED (r39, reversible):**
+
+| # | Choice | Why |
+|---|---|---|
+| D1 | Both creates take the clinic desk's patient shape (`customer` + `patient`) | The clinic appointment is the desk booking; one shape for both |
+| D2 | His creates count as phone lookups, like the lab desk's | The answers show whether the number had an account |
+| D3 | Online: the patient pays in the app within the 30-minute booking window; "now" is not a separate path (he picks his next open slot) | The instant flow matches doctors and holds money in its own request; reusing it for himself would be a new path |
+| D4 | `source: 'doctor_assisted'` on his online and follow-up rows; his clinic rows stay desk rows (`clinic_desk`) | One meaning per source: the desk row is the clinic's |
+| D5 | Several owned clinics: 409 `CLINIC_CHOICE_REQUIRED` (bill from the workspace) instead of a clinic selector | Minimal API; one-clinic owners are the case |
+| D6 | Today's appointments are those booked FOR the day; lab tests are listed, not counted | His day is his schedule; the money he received is his clinic's bills and his ledger |
+| D7 | "Prescriptions to write" = completed in the last 14 days without one; "reports ready" = released in the last 7 days | No read flag exists; bounded windows |
+| D8 | The desk create still notifies the doctor of the appointment he booked himself | Zero change to the desk path |
+
+**Checks:** `test/partners/r39-doctor-dashboard.integration.ts`, 8 checks: the list (every source, resolved fields, each
+filter, range errors, another doctor's and unconfirmed card rows excluded); the clinic appointment (in the clinic's
+reception list, replay, counted once, foreign slot, wrong branch, unlinked clinic, his own clinic, the lookup); the
+online consultation (patient's account and order, replay, key reuse, in-person, foreign slot); the follow-up (free,
+benefit once, another doctor 404); billing his own clinic (catalogue, bills, a payment, another clinic's bill 404, a
+non-owner 404); Today (each kind, money by method, `earnedMinor`, every queue, search, another doctor); to-dos (private);
+the finance breakdown (each part, filters, period, summary unchanged).
+
+**No new indexes.** The list and the register read bookings by `specialistId` (existing `{ specialistId, … }` indexes),
+and bills and lab tests through the r38 indexes.
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
