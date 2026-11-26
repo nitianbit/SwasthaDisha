@@ -7136,7 +7136,8 @@ documented rule (r37b T1): the consultation is listed at its payment time with `
 Every other day range in the Today code is on a Date field (orders' `paidAt`, lab bookings' `lifecycle.paidAt`,
 `createdAt`, bills' `issuedAt` and `updatedAt`, bill events' and wallet entries' `at`). Checks (each failed before the
 fix): r37 and r38 each add a consultation made two days earlier and paid on the register's day, listed and counted
-(wallet). Single suites: `r37-pharmacy-today` 6/6, `r38-lab-today` 5/5, `r40-clinic-reception` 6/6; `tsc` 17.
+(wallet). Single suites: `r37-pharmacy-today` 6/6, `r38-lab-today` 5/5, `r40-clinic-reception` 6/6; `tsc` 17. Full regression
+(`prun.sh … 2` on `1b85de6d`): 91 suites, 91 passed, `tsc` 17.
 
 **Deploy:** no new index or collection (the to-dos are r37's). No migration.
 
