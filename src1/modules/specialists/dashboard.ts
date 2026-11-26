@@ -1,4 +1,5 @@
 import { Container } from 'typedi';
+import type { ClientSession } from 'mongoose';
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -113,8 +114,8 @@ export const clinicIdOf = (b: Row): string | null => {
   const id = b.clinicDesk?.partnerId ?? b.clinicVisit?.partnerId;
   return id ? lower(id) : null;
 };
-/** At a clinic (a clinic's appointment, or any in-person one) or online (video, call, chat). */
-export const channelOf = (b: Row): 'clinic' | 'online' => (clinicIdOf(b) || b.consultationMode === 'in-person' ? 'clinic' : 'online');
+/** r39b: the one rule (list, Today, breakdown): in person is `clinic`; video, call and chat are `online`. */
+export const channelOf = (b: Row): 'clinic' | 'online' => (b.consultationMode === 'in-person' ? 'clinic' : 'online');
 
 const SELF_OR_DERIVED = { $or: [{ source: 'self' }, { source: { $exists: false }, clinicDesk: { $exists: false } }] };
 /** The same rules as Mongo filters. */
@@ -124,9 +125,7 @@ function sourceFilter(s: AppointmentSource): Row {
   if (s === 'self') return { $and: [SELF_OR_DERIVED, { bookingKind: { $ne: 'instant' } }] };
   return { source: s };
 }
-const channelFilter = (c: 'clinic' | 'online'): Row => (c === 'clinic'
-  ? { $or: [{ clinicDesk: { $exists: true } }, { 'clinicVisit.partnerId': { $exists: true } }, { consultationMode: 'in-person' }] }
-  : { clinicDesk: { $exists: false }, 'clinicVisit.partnerId': { $exists: false }, consultationMode: { $ne: 'in-person' } });
+const channelFilter = (c: 'clinic' | 'online'): Row => (c === 'clinic' ? { consultationMode: 'in-person' } : { consultationMode: { $ne: 'in-person' } });
 /** A clinic's rows as the clinic's own list owns them (a desk row by its desk; another by its visit). */
 const clinicFilter = (id: string): Row => ({ $or: [{ 'clinicDesk.partnerId': { $in: spellings(id) } },
   { clinicDesk: { $exists: false }, 'clinicVisit.partnerId': { $in: spellings(id) } }] });
@@ -231,51 +230,60 @@ function consultationView(b: IBooking, replayed: boolean) {
  * `source: 'doctor_assisted'`. Online (`video` | `call`; an in-person visit is a clinic appointment, 400
  * USE_CLINIC_APPOINTMENT) for a patient named by phone (desk shape), or a free follow-up (`followUpOf`: a completed,
  * paid consultation of his whose follow-up is still open; any mode his slot offers) under the existing follow-up rule.
- * Exactly once per (doctor, request key): a resend answers the same booking (200), the key with other content 409.
+ * Exactly once per (doctor, request key, patient account): a resend answers the same booking (200; an interrupted create
+ * is finished), the key with another slot, mode or follow-up 409.
  */
 export async function bookDoctorConsultation(doctorId: string, input: DoctorConsultationInput) {
   const storedKey = storedConsultKey(doctorId, input.requestKey);
   const followUpOf = input.followUpOf ? lower(input.followUpOf) : null;
-  const prior = await BookingModel.findOne({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedKey } }).lean() as IBooking | null;
-  if (prior) {
-    const priorParent = prior.followUp?.isFollowUp ? lower(prior.followUp.parentConsultationId) : null;
-    let samePatient = true;
-    if (!followUpOf && input.customer) {
-      const u = await UserModel.findById(prior.userId).select({ phone: 1 }).lean() as { phone?: string } | null;
-      samePatient = canonicalMobile(u?.phone) === canonicalMobile(input.customer.phone);
-    }
-    if (lower(prior.slotId) !== lower(input.slotId) || prior.consultationMode !== input.mode || priorParent !== followUpOf || !samePatient) {
-      throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
-    }
-    return consultationView(prior, true);
-  }
   if (input.mode === 'in-person' && !followUpOf) throw err(400, 'USE_CLINIC_APPOINTMENT', 'Book an in-person visit as a clinic appointment');
-  const slot = OBJECT_ID.test(input.slotId) ? await SlotModel.findById(input.slotId).select({ specialistId: 1, date: 1, startTime: 1 }).lean() as Row | null : null;
-  if (!slot || lower(slot.specialistId) !== doctorId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
-  let userId: string;
-  let dependentId: string | undefined;
+  // The patient's account: a follow-up's is its parent's (a consultation of his only: anything else is the same 404, its
+  // existence not revealed); a new patient's is the account of the phone, if one exists (none: no earlier booking).
+  let parent: IBooking | null = null;
+  let known: string | null = null;
   if (followUpOf) {
-    // Only a consultation of his: anything else is the same 404 (its existence is not revealed).
-    const parent = OBJECT_ID.test(followUpOf) ? await BookingModel.findOne({ _id: followUpOf, specialistId: { $in: spellings(doctorId) }, bookingType: 'consultation' })
+    parent = OBJECT_ID.test(followUpOf) ? await BookingModel.findOne({ _id: followUpOf, specialistId: { $in: spellings(doctorId) }, bookingType: 'consultation' })
       .select({ userId: 1, dependentId: 1 }).lean() as IBooking | null : null;
     if (!parent) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
-    userId = String(parent.userId);
-    dependentId = parent.dependentId ? String(parent.dependentId) : undefined;
+    known = String(parent.userId);
   } else {
     if (!input.customer) throw err(400, 'VALIDATION_ERROR', 'customer is required');
-    await lookupPatientFor({ kind: 'doctor', specialistId: doctorId }, input.customer.phone, { gated: false });
-    const p = await deskPatientOf({ customer: input.customer, patient: input.patient }, 'assisted_booking');
-    // The patient's booking create has no transaction hook: a new family member is created first (a resend finds it by name).
-    if (p.newDependent) await DependentModel.create(p.newDependent);
-    userId = String(p.customer._id);
-    dependentId = p.dependentId;
+    const phone = canonicalMobile(input.customer.phone);
+    if (!phone) throw err(400, 'INVALID_PHONE', 'Enter a valid 10-digit mobile number');
+    const u = await UserModel.findOne({ phone, userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    known = u ? String(u._id) : null;
   }
   const notes = input.notes?.trim() || undefined;
-  const out = await Container.get(BookingService).createSpecialistBooking({
-    userId, ...(dependentId ? { dependentId } : {}), specialistId: doctorId, primaryConcern: notes ?? (followUpOf ? 'Follow-up' : 'Booked by your doctor'),
-    consultationMode: input.mode as IBooking['consultationMode'] & string, slotId: String(slot._id), bookingDate: slot.date, bookingTime: slot.startTime,
-    requestKey: storedKey, ...(followUpOf ? { followUp: { isFollowUp: true, parentConsultationId: followUpOf } } : {}), ...(notes ? { notes } : {}),
-  } as never, 'consultation', { source: 'doctor_assisted' });
+  const create = (userId: string, slot: { _id: unknown; date?: string; startTime?: string }, dependentId?: string, inTx?: (b: IBooking, s: ClientSession) => Promise<void>) =>
+    Container.get(BookingService).createSpecialistBooking({
+      userId, ...(dependentId ? { dependentId } : {}), specialistId: doctorId, primaryConcern: notes ?? (followUpOf ? 'Follow-up' : 'Booked by your doctor'),
+      consultationMode: input.mode as IBooking['consultationMode'] & string, slotId: String(slot._id), bookingDate: slot.date, bookingTime: slot.startTime,
+      requestKey: storedKey, ...(followUpOf ? { followUp: { isFollowUp: true, parentConsultationId: followUpOf } } : {}), ...(notes ? { notes } : {}),
+    } as never, 'consultation', { source: 'doctor_assisted', ...(inTx ? { inTx } : {}) });
+  // r39b: the key is looked up on the unique { userId, createRequestKey } index. A resend with the same content goes through
+  // the booking create's own replay, which finishes a create interrupted after its insert (e.g. a free follow-up not yet
+  // settled) and answers the booking.
+  const prior = known ? await BookingModel.findOne({ userId: { $eq: known }, createRequestKey: { $eq: storedKey } }).lean() as IBooking | null : null;
+  if (prior) {
+    const priorParent = prior.followUp?.isFollowUp ? lower(prior.followUp.parentConsultationId) : null;
+    if (lower(prior.specialistId) !== doctorId || lower(prior.slotId) !== lower(input.slotId) || prior.consultationMode !== input.mode || priorParent !== followUpOf) {
+      throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+    }
+    const out = await create(String(prior.userId), { _id: prior.slotId, date: prior.bookingDate, startTime: prior.bookingTime }, prior.dependentId ?? undefined);
+    return consultationView(out.booking as IBooking, true);
+  }
+  const slot = OBJECT_ID.test(input.slotId) ? await SlotModel.findById(input.slotId).select({ specialistId: 1, date: 1, startTime: 1 }).lean() as Row | null : null;
+  if (!slot || lower(slot.specialistId) !== doctorId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
+  if (parent) {
+    const out = await create(String(parent.userId), slot as never, parent.dependentId ? String(parent.dependentId) : undefined);
+    return consultationView(out.booking as IBooking, false);
+  }
+  await lookupPatientFor({ kind: 'doctor', specialistId: doctorId }, input.customer!.phone, { gated: false });
+  const p = await deskPatientOf({ customer: input.customer!, patient: input.patient }, 'assisted_booking');
+  // r39b: a new family member is created inside the booking's transaction, as the desk does.
+  const newDependent = p.newDependent;
+  const out = await create(String(p.customer._id), slot as never, p.dependentId,
+    newDependent ? async (_b, s) => { await DependentModel.create([newDependent], { session: s }); } : undefined);
   return consultationView(out.booking as IBooking, false);
 }
 
@@ -295,7 +303,7 @@ const zero = (): Sum => ({ earnedMinor: 0, reversedMinor: 0, netMinor: 0, count:
  */
 export async function earningsBreakdown(account: ISettlementAccount | null, q: BreakdownQuery) {
   const out = { from: q.from ?? null, to: q.to ?? null, totals: zero(), online: zero(), partner: zero(), referral: zero(), other: zero(),
-    clinics: [] as (Sum & { clinicId: string; name: string | null })[] };
+    clinics: [] as (Sum & { clinicId: string | null; name: string | null })[] };
   if (!account) return out;
   const groups = await LedgerEntryModel.aggregate([
     { $match: { settlementAccountId: String(account._id), kind: { $in: ['earning', 'reversal'] }, ...range(q.from, q.to) } },
@@ -307,7 +315,7 @@ export async function earningsBreakdown(account: ISettlementAccount | null, q: B
   const ids = groups.filter((g) => g._id.source === 'consultation' && OBJECT_ID.test(g._id.sourceId)).map((g) => lower(g._id.sourceId));
   const bookings = new Map<string, Row>();
   for (let i = 0; i < ids.length; i += 1000) {
-    const rows = await BookingModel.find({ _id: { $in: ids.slice(i, i + 1000) } }).select({ source: 1, clinicDesk: 1, clinicVisit: 1, bookingKind: 1 }).lean() as Row[];
+    const rows = await BookingModel.find({ _id: { $in: ids.slice(i, i + 1000) } }).select({ source: 1, clinicDesk: 1, clinicVisit: 1, bookingKind: 1, consultationMode: 1 }).lean() as Row[];
     for (const b of rows) bookings.set(lower(b._id), b);
   }
   const clinics = new Map<string, Sum>();
@@ -315,16 +323,18 @@ export async function earningsBreakdown(account: ISettlementAccount | null, q: B
     const b = g._id.source === 'consultation' ? bookings.get(lower(g._id.sourceId)) : undefined;
     const clinicId = b ? clinicIdOf(b) : null;
     const channel: EarningChannel = g._id.source.startsWith('referral_') ? 'referral' : !b ? 'other'
-      : ['pharmacy_assisted', 'lab_assisted'].includes(b.source) ? 'partner' : clinicId ? 'clinic' : 'online';
+      : ['pharmacy_assisted', 'lab_assisted'].includes(b.source) ? 'partner' : channelOf(b);
     if (q.channel && q.channel !== channel) continue;
     if (q.clinicId && (channel !== 'clinic' || clinicId !== lower(q.clinicId))) continue;
-    const parts = [out.totals, channel === 'clinic' ? clinics.get(clinicId!) ?? clinics.set(clinicId!, zero()).get(clinicId!)! : out[channel]];
+    // An in-person consultation with no clinic (an older visit) is its own `clinicId: null` line.
+    const key = clinicId ?? '';
+    const parts = [out.totals, channel === 'clinic' ? clinics.get(key) ?? clinics.set(key, zero()).get(key)! : out[channel]];
     for (const s of parts) {
       s.earnedMinor += g.earned; s.reversedMinor += -g.reversed; s.netMinor += g.earned + g.reversed; s.count += g.earnings > 0 ? 1 : 0;
     }
   }
-  const names = await clinicNames([...clinics.keys()].map((id) => ({ clinicVisit: { partnerId: id } })));
-  out.clinics = [...clinics.entries()].map(([clinicId, s]) => ({ clinicId, name: names.get(clinicId)?.name ?? null, ...s }))
-    .sort((a, b) => b.netMinor - a.netMinor || a.clinicId.localeCompare(b.clinicId));
+  const names = await clinicNames([...clinics.keys()].filter(Boolean).map((id) => ({ clinicVisit: { partnerId: id } })));
+  out.clinics = [...clinics.entries()].map(([key, s]) => ({ clinicId: key || null, name: key ? names.get(key)?.name ?? null : null, ...s }))
+    .sort((a, b) => b.netMinor - a.netMinor || String(a.clinicId).localeCompare(String(b.clinicId)));
   return out;
 }

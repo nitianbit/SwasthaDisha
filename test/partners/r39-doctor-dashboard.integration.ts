@@ -36,6 +36,7 @@ import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/
 import { PharmacyWalletRepository, PharmacyWalletTransactionRepository } from '@/modules/pharmacyWallet/repository';
 import DependentModel from '@/modules/dependents/model';
 import MemberModel from '@/modules/partners/model/member';
+import PartnerOrgModel from '@/modules/partners/model';
 import { InvoiceEventModel, InvoiceModel } from '@/modules/partners/model/invoice';
 import { LedgerEntryModel } from '@/modules/partners/model/settlement';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
@@ -73,6 +74,12 @@ const payments = Object.assign(Object.create(PaymentService.prototype), {
   pharmacyWalletTransactionRepository: new PharmacyWalletTransactionRepository(), bookingReminderScheduler: noop,
   getRazorpayClient: () => fakeRazorpay, getRazorpayCredentials: () => ({ keyId: 'rzp_test_key', keySecret: 'secret' }),
 }) as unknown as PaymentService;
+/** r39b: makes the next free settlement fail (a create interrupted after its insert). */
+const failSettlement = { next: false };
+(payments as unknown as Record<string, unknown>).createDirectPaidBookingRecordIn = async function (this: unknown, ...a: unknown[]) {
+  if (failSettlement.next) { failSettlement.next = false; throw new Error('payment record write failed'); }
+  return (PaymentService.prototype as unknown as { createDirectPaidBookingRecordIn: (...x: unknown[]) => Promise<unknown> }).createDirectPaidBookingRecordIn.apply(this, a);
+};
 const bookingService = Object.assign(Object.create(BookingService.prototype), {
   bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
   walletTransactionRepository: new WalletTransactionRepository(), userRepository: new UserRepository(), slotRepository: new SlotRepository(),
@@ -283,20 +290,36 @@ async function main() {
       const again = await expect('D', 'POST', '/me/consultations', 200, body);
       assert.deepEqual([again.json.data.replayed, again.json.data.booking.bookingId], [true, String(b._id)]);
       await expect('D', 'POST', '/me/consultations', 409, { ...body, slotId: await slot(D) }, 'IDEMPOTENCY_KEY_REUSED');
-      await expect('D', 'POST', '/me/consultations', 409, { ...body, customer: { phone: '9877770009' } }, 'IDEMPOTENCY_KEY_REUSED');
+      // r39b: the key is looked up per patient account (the unique { userId, createRequestKey } index): another phone is
+      // another patient's request — here refused by the taken slot, and its new family member is not created (the
+      // family member is created inside the booking's transaction).
+      await expect('D', 'POST', '/me/consultations', 400, { ...body, customer: { phone: '9877770009' }, patient: { name: 'New Kid', relation: 'Son' } },
+        'SLOT_NOT_AVAILABLE');
+      assert.equal(await DependentModel.countDocuments({ name: 'New Kid' }), 0, 'no family member without its booking');
+      const fam = await expect('D', 'POST', '/me/consultations', 201, { ...body, slotId: await slot(D), patient: { name: 'Baby Kiran', relation: 'Daughter' },
+        requestKey: rk() });
+      const dep = await DependentModel.findOne({ name: 'Baby Kiran' }).lean() as any;
+      assert.deepEqual([fam.json.data.booking.dependentId, String(dep?.userId)], [String(dep?._id), String(b.userId)], 'made with its booking');
       await expect('D', 'POST', '/me/consultations', 400, { ...body, mode: 'in-person', requestKey: rk() }, 'USE_CLINIC_APPOINTMENT');
       await expect('D', 'POST', '/me/consultations', 409, { ...body, slotId: await slot(E), requestKey: rk() }, 'SLOT_NOT_AVAILABLE');
       await expect('D', 'POST', '/me/consultations', 400, { slotId: sl, mode: 'video', requestKey: rk() }, 'VALIDATION_ERROR');
       const list = await expect('D', 'GET', `/me/appointments/list?from=${T}&source=doctor_assisted`, 200);
-      assert.deepEqual(listIds(list), [String(b._id)]);
+      assert.deepEqual(listIds(list).sort(), [String(b._id), fam.json.data.booking.bookingId].sort());
     });
 
     await check('a follow-up: the existing free follow-up of a consultation of his (benefit used once); another doctor\'s consultation is 404', async () => {
       const parent = await BookingModel.collection.insertOne(row({ bookingDate: today.replace(/-/g, ''), status: 'completed', dependentId: undefined,
         followUp: { isFollowUp: false, benefitUsed: false, completedAt: today.replace(/-/g, ''), eligibilityExpiresAt: addDays(today, 14).replace(/-/g, '') } }) as never);
       const P = String(parent.insertedId);
-      const r = await expect('D', 'POST', '/me/consultations', 201, { slotId: await slot(D), mode: 'call', followUpOf: P, requestKey: rk() });
+      // r39b: the create is interrupted after its insert (its free settlement fails); the resend finishes it.
+      const fb = { slotId: await slot(D), mode: 'call', followUpOf: P, requestKey: rk() };
+      failSettlement.next = true;
+      await expect('D', 'POST', '/me/consultations', 500, fb);
+      const half = await BookingModel.findOne({ createRequestKey: `doctor:${D}:${fb.requestKey}` }).lean() as any;
+      assert.deepEqual([half.status, half.paymentStatus], ['pending', 'pending'], 'inserted, not settled');
+      const r = await expect('D', 'POST', '/me/consultations', 200, fb);
       const d = r.json.data;
+      assert.deepEqual([d.replayed, d.booking.bookingId], [true, String(half._id)]);
       assert.deepEqual([d.booking.fee, d.booking.status, d.booking.paymentStatus, d.booking.followUpOf, d.payment.required], [0, 'confirmed', 'paid', P, false]);
       const b = await BookingModel.findById(d.booking.bookingId).lean() as any;
       assert.deepEqual([String(b.userId), b.source, b.followUp.isFollowUp], [String(X), 'doctor_assisted', true]);
@@ -327,6 +350,21 @@ async function main() {
       await expect('D', 'GET', `/me/clinic/invoices/${billIds[2]}`, 404);
       await expect('E', 'GET', '/me/clinic/invoices', 404, undefined, 'CLINIC_NOT_FOUND');
       await expect('E', 'GET', '/me/clinic/catalogue', 404, undefined, 'CLINIC_NOT_FOUND');
+      // r39b: his clinic not yet verified (403), suspended (404, as a clinic he does not have), or several owned (409).
+      const own = async (name: string, prefix: string, doc: string) => (await clinic.createSoloPractice(doc, { name, invoiceSeriesPrefix: prefix,
+        branch: { name: 'Main', phone: '9876500002', address: addr }, requestKey: rk('clinic') } as never) as any).partner;
+      const F = await doctor('Dr Pending'); const G = await doctor('Dr Suspended'); const H = await doctor('Dr Two Clinics');
+      Object.assign(tokens, Object.fromEntries([['F', F], ['G', G], ['H', H]].map(([k, id]) => [k, sign({ _id: id, specialistId: id, userType: 'specialist' })])));
+      await own('Pending Care', 'PEND', F);
+      const gp = await own('Shut Care', 'SHUT', G);
+      await partnerSvc.verifyPartner(String(gp._id), 'admin');
+      await PartnerOrgModel.updateOne({ _id: gp._id }, { $set: { isActive: false } });
+      for (const c of [C1, C2]) {
+        await MemberModel.create({ partnerId: c.id, phone: nextPhone(), name: 'Dr Two', role: 'owner', permissions: [], branchIds: [], doctorId: H, isActive: true } as never);
+      }
+      await expect('F', 'GET', '/me/clinic/invoices', 403, undefined, 'PARTNER_NOT_VERIFIED');
+      await expect('G', 'GET', '/me/clinic/invoices', 404, undefined, 'CLINIC_NOT_FOUND');
+      await expect('H', 'POST', '/me/clinic/invoices', 409, billBody('Someone', 1_000), 'CLINIC_CHOICE_REQUIRED');
       // The existing /me/clinic reads are untouched.
       await expect('D', 'GET', '/me/clinic', 200);
     });
@@ -392,18 +430,19 @@ async function main() {
         { settlementAccountId: String(acct._id), kind: 'payout', amountMinor: -10_000, grossMinor: -10_000, commissionMinor: 0, source: 'payout', sourceId: oid(),
           at: at('14:00'), by: 'admin', byKind: 'admin' },
       ] as never);
-      const f = await expect('D', 'GET', '/me/finance', 200);
+      assert.equal('breakdown' in (await expect('D', 'GET', '/me/finance', 200)).json.data, false, 'r39b: only when asked');
+      const f = await expect('D', 'GET', '/me/finance?breakdown=1', 200);
       const b = f.json.data.breakdown;
       assert.deepEqual([b.online.earnedMinor, b.online.reversedMinor, b.online.netMinor, b.online.count], [60_000, 60_000, 0, 1]);
       assert.deepEqual([b.partner.netMinor, b.referral.netMinor], [50_000, 2_000]);
       assert.deepEqual(b.clinics, [{ clinicId: C2.id, name: 'Far Clinic', earnedMinor: 1_000, reversedMinor: 0, netMinor: 1_000, count: 1 }]);
       assert.equal(b.totals.netMinor, 53_000, 'payouts are not earnings');
       assert.equal(f.json.data.balanceMinor, 43_000, 'the summary is unchanged');
-      const c = (await expect('D', 'GET', `/me/finance?channel=clinic&clinicId=${C2.id}`, 200)).json.data.breakdown;
+      const c = (await expect('D', 'GET', `/me/finance?breakdown=1&channel=clinic&clinicId=${C2.id}`, 200)).json.data.breakdown;
       assert.deepEqual([c.totals.netMinor, c.online.netMinor, c.clinics.length], [1_000, 0, 1]);
-      const day = (await expect('D', 'GET', `/me/finance?from=${T}&to=${T}`, 200)).json.data.breakdown;
+      const day = (await expect('D', 'GET', `/me/finance?breakdown=1&from=${T}&to=${T}`, 200)).json.data.breakdown;
       assert.deepEqual([day.totals.netMinor, day.clinics.length], [-8_000, 0]);
-      assert.equal((await expect('E', 'GET', '/me/finance', 200)).json.data.breakdown.totals.netMinor, 0);
+      assert.equal((await expect('E', 'GET', '/me/finance?breakdown=1', 200)).json.data.breakdown.totals.netMinor, 0);
     });
 
     void DependentModel;

@@ -55,12 +55,16 @@ export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: N
 const doctorOf = (req: Request) => String((req as AuthRequest).user!.specialistId || (req as AuthRequest).user!._id);
 const doctorAccount = (req: Request) => f.findOwnerAccount('doctor', doctorOf(req));
 /** r35 (§26.10): the doctor's finance adds its referral and withdrawals blocks. */
-/** r39 (§26.23): and `breakdown` — his ledger's earnings by clinic, online, partner and referral (`from`, `to`, `channel`, `clinicId`). */
+/**
+ * r39 (§26.23): and, r39b only when asked (`breakdown=1`), `breakdown` — his ledger's earnings by clinic, online, partner
+ * and referral (`from`, `to`, `channel`, `clinicId`). Without it the answer is exactly as before r39.
+ */
 export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => {
   const account = await doctorAccount(req);
+  const q = req.query as BreakdownQuery & { breakdown?: boolean };
   const [summary, referral, withdrawals, breakdown] = await Promise.all([f.financeSummary(account, false),
-    referralSummary('doctor', doctorOf(req)), withdrawalsSummary('doctor', doctorOf(req)), earningsBreakdown(account, req.query as BreakdownQuery)]);
-  ok(res, { ...summary, referral, withdrawals, breakdown });
+    referralSummary('doctor', doctorOf(req)), withdrawalsSummary('doctor', doctorOf(req)), q.breakdown ? earningsBreakdown(account, q) : null]);
+  ok(res, { ...summary, referral, withdrawals, ...(breakdown ? { breakdown } : {}) });
 };
 export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>

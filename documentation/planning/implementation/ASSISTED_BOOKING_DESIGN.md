@@ -7061,7 +7061,7 @@ except the to-dos.
   - `source`: `self | clinic_desk | pharmacy_assisted | lab_assisted | doctor_assisted | instant`.
   - `clinicId`: a desk row by its `clinicDesk.partnerId`, any other row by its `clinicVisit.partnerId` (the clinic list's
     own rule).
-  - `channel`: `clinic` (a clinic's row, or any in-person row) or `online`.
+  - `channel`: `clinic` (in person) or `online` (video, call, chat) — r39b: one rule for the list, Today and the breakdown.
   - `mode`, `status`.
 - `data: [row]`, `meta: { total, truncated }`. At most 1000 rows; `truncated` says when there were more. No-store.
 - Each row is the existing list's row (`assistedPublicView`) plus:
@@ -7108,9 +7108,13 @@ booking create, for the patient's account, marked `source: 'doctor_assisted'` (n
 - Answer:
   `{ booking: { bookingId, bookingDate, bookingTime, status, paymentStatus, consultationMode, fee, source: 'doctor_assisted', dependentId, followUpOf }, payment: { by: 'patient_app', required, payBy }, replayed }`.
   201, or 200 on a replay.
-- Exactly once per (doctor, request key). The stored create key is `doctor:<doctorId>:<key>`. A resend with the same
-  slot, mode, follow-up and patient phone answers the same booking. The same key with any other content is 409
-  `IDEMPOTENCY_KEY_REUSED`.
+- Exactly once per (doctor, request key, patient account). The stored create key is `doctor:<doctorId>:<key>`, looked up
+  (r39b) on the unique `{ userId, createRequestKey }` index: the follow-up's parent's account, or the account of the
+  phone (none: no earlier booking). A resend with the same slot, mode and follow-up goes through the booking create's
+  own replay, which finishes a create interrupted after its insert (r39b). The same key with another slot, mode or
+  follow-up is 409 `IDEMPOTENCY_KEY_REUSED`. Another phone is another patient's request.
+- r39b: a new family member is created inside the booking's transaction (`createSpecialistBooking`'s server-only
+  `opts.inTx`, through to `createBookingWithHolds`), as the desk does.
 
 **4. He bills the clinic he owns:** `/me/clinic/catalogue…` and `/me/clinic/invoices…`
 - These are the workspace's own catalogue and bill routes, with every path, body and answer the same.
@@ -7143,11 +7147,13 @@ booking create, for the patient's account, marked `source: 'doctor_assisted'` (n
 - **To-dos:** `GET/POST /me/todos`, `PATCH/DELETE /me/todos/:id` (owner kind `doctor`, private to him, `createdBy:
   { kind: 'doctor', name }`). These are open to a doctor not yet verified (his own notes).
 
-**6. `GET /me/finance` adds `breakdown`** — read from his existing ledger (no second ledger).
-- Query: `from`, `to`, `channel`, `clinicId`. Other query keys are ignored, as before.
+**6. `GET /me/finance?breakdown=1` adds `breakdown`** — read from his existing ledger (no second ledger).
+- r39b: computed only when asked (`breakdown=1`); without it the answer is exactly as before r39.
+- Query: `breakdown`, `from`, `to`, `channel`, `clinicId`. Other query keys are ignored, as before.
 - The ledger's earnings and reversals are grouped by where the money came from:
   - `online`: his online and instant consultations, and those he booked;
-  - `clinic`: consultations at a clinic paid through Jansetu, by clinic;
+  - `clinic`: in-person consultations paid through Jansetu, by clinic (r39b: an in-person one with no clinic is the
+    `clinicId: null` line);
   - `partner`: consultations a pharmacy or lab booked;
   - `referral`: his cut of lab tests he booked;
   - `other`.
@@ -7179,6 +7185,16 @@ the finance breakdown (each part, filters, period, summary unchanged).
 
 **No new indexes.** The list and the register read bookings by `specialistId` (existing `{ specialistId, … }` indexes),
 and bills and lab tests through the r38 indexes.
+
+**r39b** (branch `m0/r39b-doctor-fixes` from stage `fe9c21f2`), after review:
+- a resent free follow-up whose create was interrupted after its insert is finished by the resend (the booking create's
+  own replay);
+- the consultation key is looked up through the unique `{ userId, createRequestKey }` index;
+- the breakdown only with `breakdown=1`;
+- the family member is created in the booking's transaction;
+- one clinic/online rule (in person = clinic);
+- the suite adds an interrupted follow-up finished by its resend, no family member left by a refused booking, and billing
+  at an unverified (403), suspended (404) or second owned (409) clinic.
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved

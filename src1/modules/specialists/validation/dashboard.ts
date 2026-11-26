@@ -24,7 +24,9 @@ export const doctorConsultationSchema = Joi.object({
   followUpOf: objectId,
 }).xor('customer', 'followUpOf').without('followUpOf', ['patient']);
 
-/** GET /me/finance: the breakdown's filter (other query keys are ignored, as before). */
+/** GET /me/finance: `breakdown=1` and its filter (other query keys are ignored, as before). */
 export const doctorFinanceQuerySchema = Joi.object({
+  /** r39b: the breakdown is computed only when asked (`breakdown=1`). */
+  breakdown: Joi.boolean().truthy('1').falsy('0'),
   from: isoDate, to: isoDate, channel: Joi.string().valid('clinic', 'online', 'partner', 'referral', 'other'), clinicId: objectId,
 });

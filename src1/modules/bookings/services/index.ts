@@ -756,8 +756,11 @@ export class BookingService {
   async createSpecialistBooking(
     data: CreateSpecialistBookingRequest,
     bookingType: Extract<BookingType, 'consultation' | 'second-opinion'> = 'consultation',
-    /** r39 (§26.23): a doctor booking for his patient marks the row `doctor_assisted` (server callers only, never a request body). */
-    opts: { source?: 'doctor_assisted' } = {}
+    /**
+     * r39 (§26.23): a doctor booking for his patient marks the row `doctor_assisted`; r39b: `inTx` runs inside the insert's
+     * transaction (the family member he names is created with the booking). Server callers only, never a request body.
+     */
+    opts: { source?: 'doctor_assisted'; inTx?: (b: IBooking, s: ClientSession) => Promise<void> } = {}
   ): Promise<BookingPaymentInitResponse> {
     // A resent create (same key) is the same booking: answer with it before any check or charge (W3b).
     const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
@@ -851,7 +854,7 @@ export class BookingService {
 
     // Slot capacity and (for a follow-up) the parent consultation's benefit are taken in the same transaction as
     // the insert (A2a): a slot is never oversold and a follow-up benefit never used twice.
-    const savedBooking = await createBookingWithHolds(booking);
+    const savedBooking = await createBookingWithHolds(booking, opts.inTx);
     // A concurrent request with the same key created it: no notifications, wallet debit or order for this one.
     if (isReplayedBooking(savedBooking)) return this.replayedCreate(this.assertSameCreator(savedBooking, data), data);
 
