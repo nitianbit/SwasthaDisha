@@ -6790,6 +6790,67 @@ generic lookup; `Cache-Control`; `rx` and never `prescriptionRequired` on invent
 - `POST /pharmacy-customers/search` equals the GET answer (with and without a search), a customer 403, a bad limit 400;
 - `medicineId.rx` on inventory rows with and without search.
 
+### 26.20 r37: server support for the simple pharmacy home, P1 (2026-11-26)
+
+Branch `m0/r37-pharmacy-today` from stage `68840c92`. Local commits only. The work is owner-approved
+(`SIMPLE_DESIGN_PLAN_2026-11-26.md`, P1). The owner was away, so the small choices are the builder's (ASSUMED, below).
+Every existing answer is unchanged: two new routes are added and nothing else changes.
+
+| # | Built | Where |
+|---|---|---|
+| 1 | `GET /api/v1/pharmacy-assisted/today?date&cursor&limit` (operational pharmacy, `Cache-Control: private, no-store`): one India day's register, oldest first, merged from the pharmacy orders it sold (counter and online), the consultations it booked (scheduled and instant), the lab tests it booked and its card top-ups; the day's money; and the waiting work | `assisted/today.ts` `pharmacyToday` |
+| 1b | Each row through its own screen's reader. Orders use the order list's pharmacy-facing names (`withPharmacyFacingCustomerNames`). Consultations use `bookerViews` (`patientName`, short ref; no clinical fields). Lab tests use `bookerLabViews`. The rows are chosen by the same owner filters as the booking lists (`{ pharmacyId }`, `assistedBookerFilter('pharmacy', …)`) | |
+| 1c | The waiting work is read by the screens' own readers: `getPrescriptionReviewQueue`; the order list repository (in-store, payment pending, not ended); `listPharmacyBookings({ status: 'pending' })`; `listLabBookingsForPharmacy({ status: 'pending_payment' \| 'report_ready' })`; and the inventory low-stock query | |
+| 1d | One payment-method helper, `paymentMethodOf(paymentSource, paymentMode)`: `cash` and `upi` are recognised (any case, trimmed); an online-paid order is `online`; anything else is `other` | `pharmacyOrders/paymentMethod.ts` |
+| 2 | To-dos: one model for every owner kind (`pharmacy`, `lab`, `clinic`, `doctor`), with only the pharmacy's routes mounted. Shared within the owner (`createdBy` says who added each); a doctor's list will be private because the doctor is the owner. Once per (owner, request key); edits are fenced on `version`; the text is never logged | `todos/model`, `todos/index.ts` (`mountTodoRoutes(router, ownerOf)`) |
+| 3 | "Find patient": `POST /api/v1/pharmacy-customers/search` (r36) as it is | — |
+
+**Exact shapes:**
+- `GET …/today` → `{ success, data: { date, items, totals, pending?, truncated?, nextCursor } }`
+  - `items[]`: `{ kind: 'order' | 'consultation' | 'lab_booking' | 'wallet_topup', id, at, shortRef | null, patientName | null,
+    what, amountMinor, paid, method: 'cash' | 'upi' | 'card' | 'wallet' | 'online' | 'other' | null, status, link: { kind:
+    'pharmacy_order' | 'booking' | 'lab_booking' | 'wallet_transaction', id } }`.
+  - `what` is a short line of the record's own names: an order's first medicine (`Dolo 650 +1 more`); a consultation's
+    `doctor · time (or now) · mode`; a lab booking's first test; `Wallet top-up`.
+  - `totals: { collectedMinor, byMethod: { cash, upi, card, wallet, online, other }, unpaidMinor, count }`, over the whole
+    day, on every page.
+  - `pending` (first page only): `{ prescriptionsToReview: { count, ids }, unpaidCounterSales: { count, ids }, bookingsAwaiting:
+    { count, consultationIds, labBookingIds }, labReportsReady: { count, ids }, lowStock: { count, ids } }` (at most 20 ids each).
+  - `nextCursor`: `<at ms>_<id>` (send it back as `cursor`); `limit` 1–200, default 50. `truncated: [kind…]` appears only
+    when a source had more than 2,000 rows that day.
+  - 400 `INVALID_DATE` or `INVALID_CURSOR`.
+- `GET …/todos?done&cursor&limit≤100` → `data: [todo]`, `pagination: { nextCursor }`, newest first.
+- `POST …/todos { text (1–200), dueAt? (ISO or null), requestKey }` → 201 `{ todo, replayed: false }`; the same key and body
+  → 200 `{ todo, replayed: true }`; another body → 409 `IDEMPOTENCY_KEY_REUSED`.
+- `PATCH …/todos/:id { done? | text? | dueAt?, expectedVersion }` → the todo (`done: true` sets `doneAt`; `false` clears it);
+  409 `TODO_CHANGED` when the version moved; 404 `TODO_NOT_FOUND`.
+- `DELETE …/todos/:id` → `{ deleted: true }`; 404 `TODO_NOT_FOUND`.
+- `todo`: `{ _id, text, dueAt | null, done, doneAt | null, createdBy: { kind, id, name | null }, version, createdAt, updatedAt }`.
+  Another pharmacy's to-do is the one 404. Every answer is `Cache-Control: private, no-store`.
+
+**ASSUMED (r37, reversible):**
+
+| # | Choice | Why |
+|---|---|---|
+| T1 | A row belongs to the day it was made at the desk (`createdAt`, India day), not its appointment day; an appointment booked today for tomorrow is on today's register | A register records what was done and taken that day; the money totals match the drawer. Appointments to come are in `pending` and the booking lists |
+| T2 | Top-ups are listed (`method: 'online'`) but not counted as collected | They are the pharmacy paying its own wallet, not money from a customer |
+| T3 | `unpaidMinor` leaves out ended rows (cancelled, abandoned, rejected, no-show) | Nothing more is owed on them |
+| T4 | A consultation's method: card for a card booking, wallet for a wallet one, and wallet for an instant one (a partner's instant consultation is paid from its wallet, r17); `other` for a legacy booking without funding. A lab booking's method: card or wallet from its funding | The stored funding says it |
+| T5 | "Lab reports ready to hand over" = the lab bookings it booked in `report_ready` (the report is out; the booking is not completed) | There is no hand-over field |
+| T6 | The day's rows are read whole (at most 2,000 per source) for the totals; only the page's rows go through the views | Totals over the whole day on every page, at one read per source |
+| T7 | A to-do's `createdBy.name` for a pharmacy is the pharmacy's name (one login per pharmacy); deletes are not version-fenced | The pharmacy is one account today; a delete has nothing to overwrite |
+
+**Deploy:** run `sync-indexes` (builds `todos` `owner.kind_1_owner.id_1_requestKey_1`, unique, and the list index). Until
+then, a to-do create answers 503 `INDEXES_OUTDATED`; Today needs no new index.
+
+**Checks:** `test/assisted/r37-pharmacy-today.integration.ts`, 4 checks:
+- the payment-method helper;
+- one day's register (order, time, shapes, names, amounts, methods, links) with another pharmacy's and the day before's rows
+  absent; the totals (top-up and cancelled rows out); every pending count;
+- paging (three pages; totals on each; pending on the first only), bad date and cursor, an empty day, today by default;
+- to-dos (key replay and reuse, the 200-character limit, the shared list with `createdBy`, the version fence, `done`
+  filter, another pharmacy's 404, delete).
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3

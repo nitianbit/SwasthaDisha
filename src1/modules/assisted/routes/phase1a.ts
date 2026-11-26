@@ -17,6 +17,10 @@ import { setPharmacyPayoutDetails } from '@/modules/walletWithdrawals/service';
 import * as wv from '@/modules/walletWithdrawals/validation';
 import * as finance4 from '@/modules/assisted/controller/phase4f';
 import type { AuthRequest } from '@/modules/middleware/auth';
+import Joi from 'joi';
+import { pharmacyToday } from '@/modules/assisted/today';
+import { mountTodoRoutes } from '@/modules/todos';
+import PharmacyModel from '@/modules/pharmacies/model';
 
 /**
  * Assisted booking phase 1a routes (§17.6).
@@ -77,6 +81,19 @@ pharmacyAssistedRouter.put('/finance/payout-details', validate(payoutDetailsSche
   res.setHeader('Cache-Control', 'private, no-store');
   res.status(200).json({ success: true, data: await setPharmacyPayoutDetails(c.actorOf(req).pharmacyId, req.body) });
 }));
+// r37 (§26.20): the Today register (one India day, oldest first) and the pharmacy's shared to-dos.
+const todayQuerySchema = Joi.object({ date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/), cursor: Joi.string().pattern(/^\d{1,15}_[0-9a-fA-F]{24}$/),
+  limit: Joi.number().integer().min(1).max(200) });
+pharmacyAssistedRouter.get('/today', validate(todayQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  const q = req.query as Record<string, string | undefined>;
+  res.status(200).json({ success: true, data: await pharmacyToday(c.actorOf(req), { date: q.date, cursor: q.cursor, limit: q.limit ? Number(q.limit) : undefined }) });
+}));
+mountTodoRoutes(pharmacyAssistedRouter, async (req: AuthRequest) => {
+  const a = c.actorOf(req);
+  const name = (await PharmacyModel.findById(a.pharmacyId).select({ name: 1 }).lean() as { name?: string } | null)?.name ?? null;
+  return { owner: { kind: 'pharmacy', id: a.pharmacyId }, actor: { kind: 'pharmacy', id: a.actorId, name } };
+});
 // r35 (round 4f, §26.10): the pharmacy's Finance screen — wallet, referral, withdrawals and destination; one statement for either kind.
 pharmacyAssistedRouter.get('/finance', catchAsync(finance4.pharmacyFinance));
 pharmacyAssistedRouter.get('/finance/statement', validate(statementQuerySchema.keys({ kind: wv.statementKind }), 'query'), catchAsync(finance4.pharmacyStatement));
