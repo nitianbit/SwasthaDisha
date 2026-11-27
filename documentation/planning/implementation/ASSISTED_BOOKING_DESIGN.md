@@ -7207,6 +7207,36 @@ and bills and lab tests through the r38 indexes.
   ASSUMED: a pending (not yet verified) owned clinic is still answered, with its verification state, so a clinic he has
   just created keeps showing (billing still needs it verified, 403). `GET /me/practice` is unchanged.
 
+**r41** (branch `m0/r41-doctor-by-key` from stage `eb0548d6`): a doctor's lost create answer, after a full reload.
+The pattern is the pharmacy sale's (r36). All four routes need a verified, active doctor and are no-store.
+
+| Route | Answer |
+|---|---|
+| `GET /me/clinic-appointments/by-key/:key` | `{ state: 'used', booking }` (the desk create's `booking` block), `{ state: 'abandoned' }` or `{ state: 'unknown' }` |
+| `POST /me/clinic-appointments/by-key/:key/abandon` | `{ state: 'abandoned' }`, or `{ state: 'used', booking }` |
+| `GET /me/consultations/by-key/:key` | `{ state: 'used', booking, payment }` (the create's answer without `replayed`), `abandoned` or `unknown` |
+| `POST /me/consultations/by-key/:key/abandon` | `{ state: 'abandoned' }`, or `{ state: 'used', booking, payment }` |
+
+- The key is the create's own `requestKey` (8–100 of `A-Za-z0-9_-`); a malformed key is 400 `VALIDATION_ERROR`.
+- Own keys only: another doctor's key reads `unknown`.
+- Clinic appointments:
+  - read on the unique `clinicDesk.requestKey` index, over his active memberships (each clinic stores its desk keys under
+    the membership that booked);
+  - an abandon is claimed in every clinic's desk scope (`clinic_desk_create:<clinic>:<member>`, which the desk create
+    claims in its transaction) and in his own scope (`doctor_clinic_appointment:<doctorId>`, checked before a create, for
+    a clinic he joins later). A later create with that key is 409 `REQUEST_ABANDONED`, at any clinic.
+- Consultations:
+  - read on a new partial index `{ specialistId, createRequestKey }` (partial on `createRequestKey` being a string),
+    declared on the model and built by `sync-indexes`;
+  - a create claims `doctor_consultation:<doctorId>` in the booking's transaction (`opts.inTx`), so an abandon and the
+    create cannot both win; an abandoned key is 409 `REQUEST_ABANDONED`;
+  - with the index, a key that already made a booking of his for another patient is refused with 409
+    `IDEMPOTENCY_KEY_REUSED`. Exactly once is now per (doctor, key) again, replacing r39b's per-patient rule.
+- **Deploy: run `sync-indexes`** for `{ specialistId: 1, createRequestKey: 1 }`. Without it, the by-key read and the
+  reuse check scan one doctor's bookings.
+- The suite adds a check for these routes: used, abandoned, unknown, another doctor, abandon of a used key, a refused
+  create at two clinics and online, the claim row, 400 for a malformed key, and the index.
+
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved
