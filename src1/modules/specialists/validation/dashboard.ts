@@ -30,3 +30,6 @@ export const doctorFinanceQuerySchema = Joi.object({
   breakdown: Joi.boolean().truthy('1').falsy('0'),
   from: isoDate, to: isoDate, channel: Joi.string().valid('clinic', 'online', 'partner', 'referral', 'other'), clinicId: objectId,
 });
+
+/** r41: a create key in a by-key path (as the create's own `requestKey`; malformed: 400). */
+export const doctorKeyParamSchema = Joi.object({ key: requestKey.required() });

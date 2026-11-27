@@ -273,6 +273,13 @@ specialistRouter.post('/me/consultations', ...eligible, validate(dashV.doctorCon
   noStore(res);
   res.status(out.replayed ? 200 : 201).json({ success: true, data: out });
 }));
+// r41 (§26.23): a lost create answer — his key read back, or given up (as the pharmacy sale's by-key routes).
+const byKey = (fn: (doctorId: string, key: string) => Promise<unknown>) => [...eligible, validate(dashV.doctorKeyParamSchema, 'params'),
+  catchAsync(async (req: AuthRequest, res: Response) => { noStore(res); res.status(200).json({ success: true, data: await fn(dash.doctorIdOf(req), req.params.key) }); })];
+specialistRouter.get('/me/clinic-appointments/by-key/:key', ...byKey(dash.clinicAppointmentByKey));
+specialistRouter.post('/me/clinic-appointments/by-key/:key/abandon', ...byKey(dash.abandonClinicAppointmentKey));
+specialistRouter.get('/me/consultations/by-key/:key', ...byKey(dash.consultationByKey));
+specialistRouter.post('/me/consultations/by-key/:key/abandon', ...byKey(dash.abandonConsultationKey));
 specialistRouter.get('/me/today', ...eligible, validate(todayQuerySchema, 'query'), catchAsync(async (req: AuthRequest, res: Response) => {
   noStore(res);
   res.status(200).json({ success: true, data: await doctorToday(dash.doctorIdOf(req), pageQueryOf(req.query as Record<string, unknown>)) });

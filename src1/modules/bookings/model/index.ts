@@ -580,6 +580,8 @@ bookingSchema.index({ corporateId: 1, bookingDate: 1 });
 bookingSchema.index({ bookingType: 1, status: 1 });
 bookingSchema.index({ wellnessPackageId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, status: 1 });
+// r41 (§26.23): a doctor's own consultation create keys (`doctor:<id>:<key>`), read by key without the patient (by-key, reuse).
+bookingSchema.index({ specialistId: 1, createRequestKey: 1 }, { partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
 bookingSchema.index({ 'clinicDesk.partnerId': 1, bookingDate: 1 });
 bookingSchema.index({ 'clinicVisit.partnerId': 1, bookingDate: 1 });

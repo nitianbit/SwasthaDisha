@@ -669,7 +669,8 @@ async function patientView(b: IBooking) {
   return { dependentId: String(b.dependentId), name: d?.name ?? null, relationship: d?.relationship ?? null };
 }
 
-function deskView(b: IBooking) {
+/** The desk's view of an appointment (r41: also the doctor's by-key answer). */
+export function deskView(b: IBooking) {
   return { bookingId: String(b._id), bookingDate: b.bookingDate, bookingTime: b.bookingTime, status: b.status, doctorId: b.specialistId,
     doctorName: b.doctorName, branchId: b.clinicDesk?.branchId, slotId: b.slotId, consultationMode: b.consultationMode, fee: b.price,
     payAtClinic: b.settlementSystem === 'clinic', arrivedAt: b.clinicDesk?.arrivedAt,

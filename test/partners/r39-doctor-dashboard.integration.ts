@@ -54,6 +54,7 @@ import * as clinic from '@/modules/partners/services/clinic';
 import { AssistedAuditEventModel } from '@/modules/assisted/model';
 import { setAssistedNotifier } from '@/modules/assisted/support';
 import { TodoModel } from '@/modules/todos/model';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { SMSService } from '@/modules/sms/services';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/r39_doctor_dashboard_check?directConnection=true';
@@ -293,11 +294,10 @@ async function main() {
       const again = await expect('D', 'POST', '/me/consultations', 200, body);
       assert.deepEqual([again.json.data.replayed, again.json.data.booking.bookingId], [true, String(b._id)]);
       await expect('D', 'POST', '/me/consultations', 409, { ...body, slotId: await slot(D) }, 'IDEMPOTENCY_KEY_REUSED');
-      // r39b: the key is looked up per patient account (the unique { userId, createRequestKey } index): another phone is
-      // another patient's request — here refused by the taken slot, and its new family member is not created (the
-      // family member is created inside the booking's transaction).
-      await expect('D', 'POST', '/me/consultations', 400, { ...body, customer: { phone: '9877770009' }, patient: { name: 'New Kid', relation: 'Son' } },
-        'SLOT_NOT_AVAILABLE');
+      // r39b: the family member is created inside the booking's transaction: a refused request leaves none.
+      // r41: …and since r41 the key of his booking for another patient is refused outright (read on { specialistId, createRequestKey }).
+      await expect('D', 'POST', '/me/consultations', 409, { ...body, customer: { phone: '9877770009' }, patient: { name: 'New Kid', relation: 'Son' } },
+        'IDEMPOTENCY_KEY_REUSED');
       assert.equal(await DependentModel.countDocuments({ name: 'New Kid' }), 0, 'no family member without its booking');
       const fam = await expect('D', 'POST', '/me/consultations', 201, { ...body, slotId: await slot(D), patient: { name: 'Baby Kiran', relation: 'Daughter' },
         requestKey: rk() });
@@ -331,6 +331,44 @@ async function main() {
       await expect('E', 'POST', '/me/consultations', 404, { slotId: await slot(E), mode: 'call', followUpOf: P, requestKey: rk() }, 'BOOKING_NOT_FOUND');
       await expect('D', 'POST', '/me/consultations', 400, { slotId: await slot(D), mode: 'call', followUpOf: P, customer: { phone: '9877770001' }, requestKey: rk() },
         'VALIDATION_ERROR');
+    });
+
+    await check('r41: his create keys read back after a lost answer (used | abandoned | unknown), own keys only; an abandoned key is refused', async () => {
+      // Clinic appointments (his membership at each clinic).
+      await expect('D', 'GET', '/me/clinic-appointments/by-key/bad', 400, undefined, 'VALIDATION_ERROR');
+      const k1 = rk('clinic-key');
+      assert.deepEqual((await expect('D', 'GET', `/me/clinic-appointments/by-key/${k1}`, 200)).json.data, { state: 'unknown' });
+      const made = await expect('D', 'POST', '/me/clinic-appointments', 201, { clinicId: C1.id, slotId: await slot(D, C1.branch), customer: { phone: '9877770021' },
+        requestKey: k1 });
+      const used = await expect('D', 'GET', `/me/clinic-appointments/by-key/${k1}`, 200);
+      assert.deepEqual([used.json.data.state, used.json.data.booking.bookingId], ['used', made.json.data.booking.bookingId]);
+      assert.equal(used.headers.get('cache-control'), 'private, no-store');
+      assert.deepEqual((await expect('E', 'GET', `/me/clinic-appointments/by-key/${k1}`, 200)).json.data, { state: 'unknown' }, 'another doctor\'s key');
+      assert.equal((await expect('D', 'POST', `/me/clinic-appointments/by-key/${k1}/abandon`, 200)).json.data.state, 'used');
+      const k2 = rk('clinic-key');
+      assert.deepEqual((await expect('D', 'POST', `/me/clinic-appointments/by-key/${k2}/abandon`, 200)).json.data, { state: 'abandoned' });
+      assert.deepEqual((await expect('D', 'GET', `/me/clinic-appointments/by-key/${k2}`, 200)).json.data, { state: 'abandoned' });
+      for (const [clinicId, branch] of [[C1.id, C1.branch], [S, SB]]) {
+        await expect('D', 'POST', '/me/clinic-appointments', 409, { clinicId, slotId: await slot(D, branch), customer: { phone: '9877770022' }, requestKey: k2 },
+          'REQUEST_ABANDONED');
+      }
+      // Consultations.
+      const k3 = rk('consult-key');
+      assert.deepEqual((await expect('D', 'GET', `/me/consultations/by-key/${k3}`, 200)).json.data, { state: 'unknown' });
+      const c = await expect('D', 'POST', '/me/consultations', 201, { slotId: await slot(D), mode: 'video', customer: { phone: '9877770023' }, requestKey: k3 });
+      const cu = (await expect('D', 'GET', `/me/consultations/by-key/${k3}`, 200)).json.data;
+      assert.deepEqual([cu.state, cu.booking.bookingId, cu.booking.source, cu.payment.by, 'replayed' in cu], ['used', c.json.data.booking.bookingId, 'doctor_assisted',
+        'patient_app', false]);
+      assert.equal(await RequestKeyModel.countDocuments({ scope: `doctor_consultation:${D}`, key: k3, state: 'used' }), 1, 'claimed with the booking');
+      assert.deepEqual((await expect('E', 'GET', `/me/consultations/by-key/${k3}`, 200)).json.data, { state: 'unknown' });
+      assert.equal((await expect('D', 'POST', `/me/consultations/by-key/${k3}/abandon`, 200)).json.data.state, 'used');
+      const k4 = rk('consult-key');
+      assert.deepEqual((await expect('D', 'POST', `/me/consultations/by-key/${k4}/abandon`, 200)).json.data, { state: 'abandoned' });
+      assert.deepEqual((await expect('D', 'GET', `/me/consultations/by-key/${k4}`, 200)).json.data, { state: 'abandoned' });
+      await expect('D', 'POST', '/me/consultations', 409, { slotId: await slot(D), mode: 'video', customer: { phone: '9877770024' }, requestKey: k4 }, 'REQUEST_ABANDONED');
+      await expect('D', 'POST', '/me/consultations/by-key/bad%20key/abandon', 400, undefined, 'VALIDATION_ERROR');
+      assert.ok((await BookingModel.collection.indexes()).some((i: any) => i.name === 'specialistId_1_createRequestKey_1' && i.partialFilterExpression),
+        'the partial doctor-key index (sync-indexes)');
     });
 
     let billIds: string[] = [];

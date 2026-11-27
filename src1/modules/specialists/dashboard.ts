@@ -11,6 +11,8 @@ import { BookingService } from '@/modules/bookings/services';
 import SlotModel from '@/modules/slots/model';
 import DependentModel from '@/modules/dependents/model';
 import UserModel from '@/modules/user/model';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
+import { abandonRequestKey, claimRequestKey } from '@/modules/requestKeys';
 import PartnerOrgModel from '@/modules/partners/model';
 import MemberModel from '@/modules/partners/model/member';
 import BranchModel from '@/modules/partners/model/branch';
@@ -19,7 +21,7 @@ import type { PartnerActor } from '@/modules/partners/services';
 import type { PartnerActorRequest } from '@/modules/partners/controller';
 import { range } from '@/modules/partners/services/finance';
 import { addDays, isRealDate, istDate } from '@/modules/partners/services/slots';
-import { createDeskAppointment, deskPatientOf, mySoloPractice, storedDeskKey, type DeskBookingInput, type DeskClock, type DeskPatientInput } from '@/modules/partners/services/clinic';
+import { createDeskAppointment, deskKeyScope, deskPatientOf, deskView, mySoloPractice, storedDeskKey, type DeskBookingInput, type DeskClock, type DeskPatientInput } from '@/modules/partners/services/clinic';
 import { doctorScopeOf } from '@/modules/doctors/services/schedule';
 import { lookupPatientFor } from '@/modules/assisted/labBookings';
 import { assistedPublicView, UNPAID_CARD_QUERY } from '@/modules/assisted/views';
@@ -237,6 +239,8 @@ export async function bookDoctorClinicAppointment(doctorId: string, input: Docto
     throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   }
   if (!(await BookingModel.exists({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, input.requestKey) } }))) {
+    // r41: a key he gave up (by-key abandon) is never used, at any clinic (each clinic's own claim refuses it too).
+    if (await RequestKeyModel.exists({ scope: doctorDeskScope(doctorId), key: input.requestKey, state: 'abandoned' })) throw abandoned();
     await lookupPatientFor({ kind: 'doctor', specialistId: doctorId }, input.customer.phone, { gated: false });
   }
   const { clinicId: _c, branchId: _b, ...desk } = input;
@@ -316,10 +320,17 @@ export async function bookDoctorConsultation(doctorId: string, input: DoctorCons
     const out = await create(String(prior.userId), { _id: prior.slotId, date: prior.bookingDate, startTime: prior.bookingTime }, prior.dependentId ?? undefined);
     return consultationView(out.booking as IBooking, true);
   }
+  // r41: the key already made a booking of his for another patient (read on { specialistId, createRequestKey }).
+  if (await BookingModel.exists({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedKey } })) {
+    throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+  }
+  if (await RequestKeyModel.exists({ scope: doctorConsultScope(doctorId), key: input.requestKey, state: 'abandoned' })) throw abandoned();
   const slot = OBJECT_ID.test(input.slotId) ? await SlotModel.findById(input.slotId).select({ specialistId: 1, date: 1, startTime: 1 }).lean() as Row | null : null;
   if (!slot || lower(slot.specialistId) !== doctorId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
+  // r41: the key is claimed in the booking's transaction, so a by-key abandon and this create cannot both win.
+  const claim = (s: ClientSession) => claimRequestKey(doctorConsultScope(doctorId), input.requestKey, s);
   if (parent) {
-    const out = await create(String(parent.userId), slot as never, parent.dependentId ? String(parent.dependentId) : undefined);
+    const out = await create(String(parent.userId), slot as never, parent.dependentId ? String(parent.dependentId) : undefined, (_b, s) => claim(s));
     return consultationView(out.booking as IBooking, false);
   }
   await lookupPatientFor({ kind: 'doctor', specialistId: doctorId }, input.customer!.phone, { gated: false });
@@ -327,8 +338,65 @@ export async function bookDoctorConsultation(doctorId: string, input: DoctorCons
   // r39b: a new family member is created inside the booking's transaction, as the desk does.
   const newDependent = p.newDependent;
   const out = await create(String(p.customer._id), slot as never, p.dependentId,
-    newDependent ? async (_b, s) => { await DependentModel.create([newDependent], { session: s }); } : undefined);
+    async (_b, s) => { await claim(s); if (newDependent) await DependentModel.create([newDependent], { session: s }); });
   return consultationView(out.booking as IBooking, false);
+}
+
+// ───────────────────────────── r41: his create keys, after a lost answer ─────────────────────────────
+
+/**
+ * r41 (§26.23): a doctor whose create answer was lost (a reload) reads the key back or gives it up, as the pharmacy sale
+ * (r36): `{ state: 'used', booking, … } | { state: 'abandoned' } | { state: 'unknown' }`, his own keys only (another
+ * doctor's key reads `unknown`). An abandoned key is claimed so a later create with it is 409 `REQUEST_ABANDONED`.
+ */
+const doctorDeskScope = (doctorId: string) => `doctor_clinic_appointment:${lower(doctorId)}`;
+const doctorConsultScope = (doctorId: string) => `doctor_consultation:${lower(doctorId)}`;
+const abandoned = () => err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
+export const DOCTOR_KEY = /^[A-Za-z0-9_-]{8,100}$/;
+const assertKey = (key: string) => { if (!DOCTOR_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required'); };
+
+/** His active memberships (each clinic's desk keys are stored under the membership that booked). */
+const doctorMembers = async (doctorId: string) => MemberModel.find({ doctorId: { $in: spellings(doctorId) }, isActive: true })
+  .select({ partnerId: 1 }).lean().exec() as unknown as Promise<{ _id: unknown; partnerId: string }[]>;
+
+/** GET /specialists/me/clinic-appointments/by-key/:key — the appointment his key made at any clinic he consults at. */
+export async function clinicAppointmentByKey(doctorId: string, key: string) {
+  assertKey(key);
+  const members = await doctorMembers(doctorId);
+  const keys = members.map((m) => storedDeskKey({ memberId: String(m._id) } as PartnerActor, key));
+  // The unique `clinicDesk.requestKey` index.
+  const b = keys.length ? await BookingModel.findOne({ 'clinicDesk.requestKey': { $in: keys } }).lean() as IBooking | null : null;
+  if (b) return { state: 'used' as const, booking: deskView(b) };
+  const k = await RequestKeyModel.findOne({ scope: doctorDeskScope(doctorId), key }).lean();
+  return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
+}
+
+/** POST …/clinic-appointments/by-key/:key/abandon — given up at every clinic he consults at (each clinic's claim and his own). */
+export async function abandonClinicAppointmentKey(doctorId: string, key: string) {
+  const found = await clinicAppointmentByKey(doctorId, key);
+  if (found.state === 'used') return found;
+  const members = await doctorMembers(doctorId);
+  const states = await Promise.all([abandonRequestKey(doctorDeskScope(doctorId), key),
+    ...members.map((m) => abandonRequestKey(deskKeyScope({ partnerId: String(m.partnerId), memberId: String(m._id) } as PartnerActor), key))]);
+  return states.every((x) => x === 'abandoned') ? { state: 'abandoned' as const } : clinicAppointmentByKey(doctorId, key);
+}
+
+/** GET /specialists/me/consultations/by-key/:key — the consultation his key made (on { specialistId, createRequestKey }). */
+export async function consultationByKey(doctorId: string, key: string) {
+  assertKey(key);
+  const b = await BookingModel.findOne({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedConsultKey(doctorId, key) } })
+    .sort({ createdAt: 1, _id: 1 }).lean() as IBooking | null;
+  if (b) { const { replayed: _r, ...v } = consultationView(b, true); return { state: 'used' as const, ...v }; }
+  const k = await RequestKeyModel.findOne({ scope: doctorConsultScope(doctorId), key }).lean();
+  return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
+}
+
+/** POST …/consultations/by-key/:key/abandon — a key whose consultation never committed can never make one. */
+export async function abandonConsultationKey(doctorId: string, key: string) {
+  const found = await consultationByKey(doctorId, key);
+  if (found.state === 'used') return found;
+  const state = await abandonRequestKey(doctorConsultScope(doctorId), key);
+  return state === 'abandoned' ? { state } : consultationByKey(doctorId, key);
 }
 
 // ───────────────────────────── Earnings breakdown (his ledger) ─────────────────────────────
