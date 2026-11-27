@@ -37,12 +37,24 @@ export async function bookableNow<T extends { date?: string; startTime?: string;
  */
 export async function bookableQuery(base: Record<string, unknown>, now = new Date()): Promise<Record<string, unknown>> {
   const today = istDate(now).replace(/-/g, '');
-  const todays = await SlotModel.find({ ...base, date: today }).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1, slotType: 1, wellnessPackageId: 1 }).lean() as any[];
-  const closed = todays.filter((s) => { const until = bookableUntilOf(s); return !until || until.getTime() <= now.getTime(); }).map((s) => s._id);
-  const branches = await BranchModel.find({ holidays: { $elemMatch: { $gte: istDate(now) } } }).select({ holidays: 1 }).lean() as { _id: unknown; holidays?: string[] }[];
+  // midnight fix: yesterday's windows still open past midnight (a session that started before 00:00 India time) stay listed.
+  const yesterday = yesterdayOf(now);
+  const fields = { date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1, slotType: 1, wellnessPackageId: 1 };
+  const [todays, yesterdays] = await Promise.all([SlotModel.find({ ...base, date: today }).select(fields).lean().exec() as unknown as Promise<any[]>,
+    SlotModel.find({ ...base, date: yesterday }).select(fields).lean().exec() as unknown as Promise<any[]>]);
+  const open = (s: any) => { const until = bookableUntilOf(s); return !!until && until.getTime() > now.getTime(); };
+  const closed = todays.filter((s) => !open(s)).map((s) => s._id);
+  const stillOpen = yesterdays.filter(open).map((s) => s._id);
+  const branches = await BranchModel.find({ holidays: { $elemMatch: { $gte: istDate(new Date(now.getTime() - DAY_MS)) } } }).select({ holidays: 1 })
+    .lean() as { _id: unknown; holidays?: string[] }[];
   const holidayRows = branches.map((b) => ({ branchId: String(b._id), date: { $in: (b.holidays ?? []).map((h) => String(h).replace(/-/g, '')) } }));
-  return { $and: [{ date: { $gte: today } }, ...(closed.length ? [{ _id: { $nin: closed } }] : []), ...(holidayRows.length ? [{ $nor: holidayRows }] : [])] };
+  const days = stillOpen.length ? { $or: [{ date: { $gte: today } }, { _id: { $in: stillOpen } }] } : { date: { $gte: today } };
+  return { $and: [days, ...(closed.length ? [{ _id: { $nin: closed } }] : []), ...(holidayRows.length ? [{ $nor: holidayRows }] : [])] };
 }
+
+const DAY_MS = 86_400_000;
+/** midnight fix: the India date before `now`'s (YYYYMMDD): the earliest day a still-open window can belong to. */
+export const yesterdayOf = (now: Date) => istDate(new Date(now.getTime() - DAY_MS)).replace(/-/g, '');
 
 @Service()
 export class SlotService {
@@ -399,15 +411,17 @@ export class SlotService {
     specialistId?: string,
     wellnessPackageId?: string,
     date?: string,
-    mode?: 'chat' | 'call' | 'video' | 'in-person'
+    mode?: 'chat' | 'call' | 'video' | 'in-person',
+    now: Date = new Date()
   ): Promise<ISlot[]> {
-    // Q16a re-review (N8): without a date, past days are left out in the query (today's started slots in memory).
+    // Q16a re-review (N8): without a date, past days are left out in the query (started slots in memory). midnight fix: from
+    // yesterday, so a window that started before midnight (India time) and is still open stays listed.
     const slots = await bookableNow(await this.slotRepository.findAvailableSlots(
       specialistId,
       wellnessPackageId,
       date,
-      date ? undefined : istDate(new Date()).replace(/-/g, '')
-    ));
+      date ? undefined : yesterdayOf(now)
+    ), now);
     // Q4: only slots offered for the requested mode, and never a one-patient slot overlapping time the doctor already
     // holds through another path (e.g. an instant consultation).
     const byMode = mode ? slots.filter((s) => !s.serviceModes?.length || s.serviceModes.includes(mode)) : slots;

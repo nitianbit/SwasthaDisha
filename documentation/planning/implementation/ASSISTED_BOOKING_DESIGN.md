@@ -7271,6 +7271,30 @@ The pattern is the pharmacy sale's (r36). All four routes need a verified, activ
   - two concurrent reads of an older one both answer 200, finish it once, and leave one payment record;
   - two concurrent reads during a create answer 200 with no 409 and one payment record.
 
+**Midnight fix (28 Nov 2026, branch `m0/q16a-midnight-windows` from stage `bf102ba8`).**
+
+Cause: `q16a-bookings-money` failed just after 00:00 India time. It was a **product bug**, not only a test date issue. A
+multi-seat session that started before midnight (say 23:50–00:20) carries yesterday's date, and admission correctly
+kept it bookable until it ends (`bookableUntilOf`). But three readers cut it off at the India day change:
+- the available-slot list queried `date ≥ today`, so the open session disappeared from `/slots/available` and doctor
+  listings;
+- the paged slot query (`bookableQuery`) did the same;
+- the customer booking pre-check refused any booking date before today (400 `INVALID_BOOKING_DATE`).
+
+From 00:00 until the session ended, it was bookable at the clinic desk but neither listed nor bookable by patients.
+
+Fix:
+- The list reads from yesterday's date, and the in-memory rule drops ended slots.
+- The paged query adds yesterday's slots that are still open, and widens the holiday filter by a day.
+- The pre-check judges a slot of yesterday by the slot rule: an open window is bookable; anything else is
+  `SLOT_STARTED`, as it already was for today's started slots. Dates before yesterday are still 400.
+- One-patient slots are unaffected: they stop at their start.
+- `getAvailableSlots` takes an optional clock.
+
+The suite adds a check pinned at 00:05 India time. Across midnight, a session is listed, in the paged query and
+bookable; a one-patient slot at the same time, an ended session and an older day are not; at 23:55 it is listed, and
+after its end it is not. N8 is pinned to a fixed clock. Run alone at 00:10–00:13 IST, three times: 42 passed each time.
+
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved

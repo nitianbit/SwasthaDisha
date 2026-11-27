@@ -45,7 +45,7 @@ import NotificationModel from '@/modules/notification/model';
 import DependentModel from '@/modules/dependents/model';
 import TaskQueue from '@/modules/queue/service/TaskQueue';
 import { SlotRepository } from '@/modules/slots/repository';
-import { SlotService } from '@/modules/slots/services';
+import { SlotService, bookableQuery } from '@/modules/slots/services';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doctors/model/reservation';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
@@ -354,6 +354,33 @@ async function main() {
       consultationMode: 'video', serviceMode: 'video', price: 500, status: 'pending', paymentStatus: 'pending' } as any), code('SLOT_STARTED'));
   });
 
+  await check('midnight (28 Nov): a session that started before 00:00 India time stays bookable and listed until it ends; a one-patient slot does not (clock pinned at 00:05)', async () => {
+    const d = await doctor('Dr Midnight');
+    const X = addDays(today, 5);
+    const before = addDays(X, -1);
+    const at = (day: string, hm: string) => new Date(`${day}T${hm}:00+05:30`);
+    const session = await slotAt(d, at(before, '23:50'), { maxBookings: 5 }); // 23:50–00:20, across midnight
+    const single = await slotAt(d, at(before, '23:50')); // a one-patient slot at the same time
+    const ended = await slotAt(d, at(before, '23:00'), { maxBookings: 5 }); // 23:00–23:30
+    const older = await slotAt(d, at(addDays(X, -2), '23:50'), { maxBookings: 5 });
+    const later = await slotAt(d, at(X, '10:00'));
+    const now = at(X, '00:05');
+    const listed = (await slotSvc.getAvailableSlots(d, undefined, undefined, undefined, now)).map((s) => String(s._id));
+    assert.deepEqual([session, single, ended, older, later].map((id) => listed.includes(id)), [true, false, false, false, true], 'listed');
+    const paged = (await SlotModel.find({ specialistId: d, isActive: true, isAvailable: true, ...(await bookableQuery({ specialistId: d }, now)) }).lean())
+      .map((s: any) => String(s._id));
+    assert.deepEqual([session, single, ended, older, later].map((id) => paged.includes(id)), [true, false, false, false, true], 'paged query');
+    const date = (id: string) => SlotModel.findById(id).lean().then((x: any) => x.date);
+    await (bookings as any).validateBookingDateAndSlot(await date(session), session, undefined, now);
+    const singleDate = await date(single);
+    await assert.rejects(() => (bookings as any).validateBookingDateAndSlot(singleDate, single, undefined, now), code('SLOT_STARTED'));
+    await assert.rejects(() => (bookings as any).validateBookingDateAndSlot(ymd(before), ended, undefined, now), code('SLOT_STARTED'));
+    await assert.rejects(() => (bookings as any).validateBookingDateAndSlot(ymd(addDays(X, -2)), older, undefined, now), code('INVALID_BOOKING_DATE'));
+    // Before midnight the session is listed too; after it ends (00:21) it is not.
+    assert.ok((await slotSvc.getAvailableSlots(d, undefined, undefined, undefined, at(before, '23:55'))).some((s) => String(s._id) === session));
+    assert.ok(!(await slotSvc.getAvailableSlots(d, undefined, undefined, undefined, at(X, '00:21'))).some((s) => String(s._id) === session));
+  });
+
   await check('re-review N2: cancelling the booking of a slot switched off by hand gives the seat back but keeps the slot closed', async () => {
     const d = await doctor('Dr Release');
     const u = await customer();
@@ -388,8 +415,10 @@ async function main() {
     assert.deepEqual(starts, ['13:00', '14:00', '15:00'], 'nothing that has started by the injected time');
     let fromDate: unknown = 'not called';
     const spy = Object.assign(Object.create(SlotService.prototype), { slotRepository: { findAvailableSlots: async (_a: unknown, _b: unknown, _c: unknown, f: unknown) => { fromDate = f; return []; } } }) as SlotService;
-    await spy.getAvailableSlots(d);
-    assert.equal(fromDate, ymd(today));
+    const pinned = new Date(`${addDays(today, 4)}T09:00:00+05:30`);
+    await spy.getAvailableSlots(d, undefined, undefined, undefined, pinned);
+    // Midnight fix (28 Nov): from yesterday, so a session open past midnight stays listed (ended ones are dropped in memory).
+    assert.equal(fromDate, ymd(addDays(today, 3)));
   });
 
   await check('re-review N7: payment answers carry the customer booking view (no settlement account, desk internals or keys)', async () => {

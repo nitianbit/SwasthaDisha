@@ -371,9 +371,10 @@ export class BookingService {
     options?: { allowCurrentSlotId?: string },
     now = new Date()
   ): Promise<void> {
-    // Q16a (M1): "today" is the India date, not the server's local date.
-    const today = istDate(now).replace(/-/g, '');
-    if (compareYyyymmdd(bookingDate, today) < 0) {
+    // Q16a (M1): "today" is the India date, not the server's local date. midnight fix: yesterday's slot is judged by the slot rule
+    // below (a window that started before midnight is still bookable until it ends; anything else is SLOT_STARTED).
+    const yesterday = istDate(new Date(now.getTime() - 86_400_000)).replace(/-/g, '');
+    if (compareYyyymmdd(bookingDate, yesterday) < 0) {
       throw new AppError({
         status: 400,
         code: 'INVALID_BOOKING_DATE',
