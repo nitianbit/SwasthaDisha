@@ -7419,6 +7419,20 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
 > - the print wording ("Exempt (SAC 9993)", "Exempt value").
 >
 > Nothing here changes a bill already issued.
+>
+> **Questions for the CA** (from the r42 review):
+> - **Cosmetic consultations.** Cosmetic or plastic surgery is outside "health care services" (unless it restores or
+>   reconstructs after a disease, injury or congenital defect), so those consultations are taxable. The default
+>   covers only a 0% consultation. A cosmetic consultation must be created with its GST rate, or edited to
+>   `taxTreatment: 'taxable'`. Is that enough, or should clinics be warned when they create one?
+> - **SAC with 4 or 6 digits.** The default prints `9993`. Rule 46 asks for 4 digits up to ₹5 crore of aggregate
+>   turnover and 6 digits above it (e.g. `999312`, the services of medical practitioners). Should a clinic over ₹5 crore
+>   get a six-digit default, or set its own SAC on the item (which is kept)?
+> - **"Invoice-cum-bill of supply."** A bill mixing taxable and exempt lines is issued as one tax invoice, with the
+>   exempt lines marked (Rule 46A allows an invoice-cum-bill of supply to an unregistered customer). For a registered
+>   (B2B) customer, a GSTIN given, should the two be separate documents instead? Today both cases are one tax invoice.
+> - **Lab diagnostics.** Is a lab's diagnostic test exempt under the same Sl. 74 (as a clinical establishment)? Lab
+>   items are not defaulted to exempt; a lab can mark an item exempt itself.
 
 **The bill line** (`POST /api/v1/partner-workspace/invoices`, and the admin-as-owner route):
 - `items[].taxTreatment`: `'taxable' | 'exempt'`, optional. Absent means `taxable`, as before.
@@ -7426,7 +7440,8 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
 - The web sends the fee line as `{ description, qty: 1, unitPriceMinor, gstRate: 0, taxTreatment: 'exempt', sac: '9993' }`.
 
 **Validation:**
-- An exempt line must be at rate 0. Otherwise the answer is 400 `EXEMPT_RATE_NOT_ZERO`.
+- An exempt line must be at rate 0. Otherwise the answer is 400 `EXEMPT_RATE_NOT_ZERO`. r42b: its message is "An
+  exempt supply has GST rate 0: set the rate to 0, or mark the item taxable to charge GST".
 - Any other `taxTreatment` value is 400 `VALIDATION_ERROR`.
 
 **On a tax invoice** (a regular registration with a GSTIN and at least one line above 0%):
@@ -7450,8 +7465,21 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
   invoice** (a partner not registered for GST) are unchanged:
   - their lines store no treatment, even when one is sent;
   - `taxableMinor` is the whole value, as before;
-  - the bill of supply keeps its "exempt supply — tax not chargeable" note;
   - a SAC sent on a line is kept and printed, as before.
+  r42b changes the bill of supply in the three ways below. The commercial invoice is still as before.
+
+**r42b, the bill of supply** (branch `m0/r42b-gst-fixes` from stage `5c6d32b4`):
+- **The SAC.** Rule 49 asks for the HSN or SAC on a bill of supply. So a line linked to a catalogue item takes the
+  item's SAC when the line has none, whatever its treatment.
+- **The regime.** A new bill of supply stores `supplier.taxRegime`, `'regular'` or `'composition'`. The field is absent
+  on bills issued before and on other kinds.
+- **The print, by that regime:**
+  - A regular registrant: the note "Exempt supply — tax not chargeable." and the value row "Exempt value".
+  - A composition partner: the note "Composition taxable person, not eligible to collect tax on supplies." and
+    "Taxable value".
+  - A bill of supply issued before r42b: the earlier combined note and "Taxable value".
+- **Stored checksums are unchanged.** The new field appears only on new bills of supply. `invoiceChecksum` is
+  unchanged, and absent keys are dropped, so every earlier bill verifies as before.
 
 **Catalogue items** (`POST` and `PATCH` of catalogue items):
 - An item may carry `taxTreatment` (`'taxable' | 'exempt'`) beside its `sac`.
@@ -7464,6 +7492,9 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
   - A line that names no treatment takes the item's, and the item's SAC when the line has none.
   - A line that names a different treatment from an item that has one is refused 409 `CATALOGUE_PRICE_CHANGED`, like a
     stale price or rate.
+    - r42b keeps the code, because the web already reloads the catalogue on it.
+    - The message now names the treatment, e.g. "OPD is billed as exempt; review the bill".
+    - A stale price keeps its own message.
   - A line linked to an item with no treatment (every item made before r42) keeps the line's own choice.
 
 **ASSUMED:**
@@ -7475,8 +7506,13 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
   Owners mark those by an edit (`taxTreatment: 'exempt'`).
 - An unregistered clinic's consultation is defaulted too. It changes nothing on its commercial invoices, and it is
   already right if the clinic registers later.
-- There is no switch. A web that never sends `taxTreatment` sees no change, except a clinic's new 0% consultation
-  items, which now come back with `taxTreatment: 'exempt'` and `sac: '9993'`.
+- There is no switch. A web that never sends `taxTreatment` can still see changes, through the catalogue:
+  - a clinic's new 0% consultation items come back with `taxTreatment: 'exempt'` and `sac: '9993'`;
+  - a bill with a line linked to such an item becomes exempt-marked:
+    - on a tax invoice (a mixed bill), the line is `taxTreatment: 'exempt'`, takes the item's SAC, and the totals split
+      into `taxableMinor` and `exemptMinor`;
+    - on a bill of supply, the line takes the SAC (r42b).
+  - Hand-written lines, and lines linked to items made before r42, are unchanged.
 - No index, migration or deploy step is needed.
 
 **Checks:**

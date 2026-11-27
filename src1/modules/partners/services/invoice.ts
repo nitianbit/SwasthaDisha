@@ -287,7 +287,7 @@ export function classifyDocument(taxRegime: string, gstin: string | undefined, l
 /** r42: an exempt supply (bill line or catalogue item) is at GST rate 0. */
 export function assertExemptRate(taxTreatment: TaxTreatment | undefined, gstRate: number): void {
   if (taxTreatment === 'exempt' && gstRate !== 0) {
-    throw new AppError({ status: 400, code: 'EXEMPT_RATE_NOT_ZERO', message: 'An exempt supply must have GST rate 0' });
+    throw new AppError({ status: 400, code: 'EXEMPT_RATE_NOT_ZERO', message: 'An exempt supply has GST rate 0: set the rate to 0, or mark the item taxable to charge GST' });
   }
 }
 
@@ -297,7 +297,8 @@ export type CatalogueLink = { name: string; sac?: string; taxTreatment?: TaxTrea
 /**
  * r42 (§26.25): a line is exempt when it says so, or when it names no treatment and links to an exempt catalogue item
  * (then it also takes the item's SAC if it has none). Exempt lines have rate 0 and are marked only on a tax invoice;
- * on a bill of supply or a commercial invoice every line stays as before (no treatment stored).
+ * on a bill of supply or a commercial invoice no treatment is stored. r42b: on a bill of supply every linked line takes
+ * the item's SAC when it has none (Rule 49 asks for the HSN/SAC there).
  */
 export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<string, CatalogueLink>, kind: DocumentKind): IInvoiceLine[] {
   return items.map((item) => {
@@ -320,7 +321,7 @@ export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<
       catalogItemId: item.catalogItemId,
       description: item.description,
       hsn: item.hsn,
-      sac: item.sac ?? (marked ? linked?.sac : undefined),
+      sac: item.sac ?? (marked || kind === 'bill_of_supply' ? linked?.sac : undefined),
       qty: item.qty,
       unitPriceMinor: item.unitPriceMinor,
       discountMinor: discount,
@@ -472,10 +473,13 @@ export class InvoiceService {
       const byId = new Map(rows.map((r) => [String(r._id), r]));
       for (const line of data.items) {
         const item = line.catalogItemId ? byId.get(String(line.catalogItemId)) : undefined;
-        // r42: and its tax treatment when the item names one (a line that names none takes the item's).
-        if (item && (line.unitPriceMinor !== item.priceMinor || line.gstRate !== item.gstRate
-          || (item.taxTreatment && line.taxTreatment && line.taxTreatment !== item.taxTreatment))) {
+        if (item && (line.unitPriceMinor !== item.priceMinor || line.gstRate !== item.gstRate)) {
           throw new AppError({ status: 409, code: 'CATALOGUE_PRICE_CHANGED', message: `${item.name} is now ₹${(item.priceMinor / 100).toFixed(2)} at ${item.gstRate}% GST; review the bill` });
+        }
+        // r42: and its tax treatment when the item names one (a line that names none takes the item's). r42b: the same
+        // code (the web already reloads the catalogue on it), with a message naming the treatment.
+        if (item?.taxTreatment && line.taxTreatment && line.taxTreatment !== item.taxTreatment) {
+          throw new AppError({ status: 409, code: 'CATALOGUE_PRICE_CHANGED', message: `${item.name} is billed as ${item.taxTreatment}; review the bill` });
         }
       }
     }
@@ -495,6 +499,8 @@ export class InvoiceService {
       pan: partner.pan,
       address: addressLine(branch.address),
       placeOfSupply: stateCode,
+      // r42b: a bill of supply names its regime, so it prints the right note (absent on earlier bills and other kinds).
+      ...(documentKind === 'bill_of_supply' ? { taxRegime: partner.taxRegime === 'composition' ? 'composition' as const : 'regular' as const } : {}),
     };
 
     let resolved: Awaited<ReturnType<typeof resolveCustomerByPhone>> | null = null;

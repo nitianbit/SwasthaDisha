@@ -12,6 +12,8 @@ export interface IInvoiceSupplier {
   address: string;
   /** Two-digit GST state code of the issuing branch. */
   placeOfSupply: string;
+  /** r42b: on a bill of supply only (absent on earlier bills): composition, or a regular registrant's exempt supply. */
+  taxRegime?: 'regular' | 'composition';
 }
 
 export interface IInvoiceCustomer {

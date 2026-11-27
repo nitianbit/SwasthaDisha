@@ -31,7 +31,7 @@ import { CatalogueItemRepository } from '@/modules/partners/repository/catalogue
 import { InvoiceRepository, InvoiceEventRepository, InvoiceCounterRepository } from '@/modules/partners/repository/invoice';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
-import { InvoiceService, financialYearOf, formatSerial, eventsAsOf, doctorNames } from '@/modules/partners/services/invoice';
+import { InvoiceService, financialYearOf, formatSerial, eventsAsOf, doctorNames, invoiceChecksum } from '@/modules/partners/services/invoice';
 import { renderInvoiceHtml, renderInvoicePdf, indiaDate } from '@/modules/partners/services/invoicePdf';
 import { normalizePhone, resetCustomerPhoneIndexCache } from '@/modules/partners/services/customerResolver';
 import { SMSService } from '@/modules/sms/services';
@@ -255,7 +255,7 @@ async function main() {
     assert.deepEqual([inter.totals.igstMinor, inter.totals.taxableMinor, inter.totals.exemptMinor, inter.totals.totalMinor], [18000, 100000, 30000, 148000]);
     assert.ok(renderInvoiceHtml(inter, []).includes('<small>Exempt</small>'), 'no SAC: marked Exempt alone');
     await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'X' },
-      items: [line({ taxTreatment: 'exempt' })], idempotencyKey: key() }), code('EXEMPT_RATE_NOT_ZERO'));
+      items: [line({ taxTreatment: 'exempt' })], idempotencyKey: key() }), (e: any) => e?.code === 'EXEMPT_RATE_NOT_ZERO' && /mark the item taxable to charge GST/.test(e.message));
   });
 
   await check('r42: taxable answers are identical (no exemptMinor, no treatment); bills of supply and commercial invoices are unchanged', async () => {
@@ -284,10 +284,36 @@ async function main() {
     assert.deepEqual([inv.items[1]!.taxTreatment, inv.items[1]!.sac, inv.totals.exemptMinor], ['exempt', '9993', 40000]);
     await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Linked' },
       items: [line(), line({ catalogItemId: String(item._id), description: 'Screening', unitPriceMinor: 40000, gstRate: 0, taxTreatment: 'taxable' })], idempotencyKey: key() }),
-    code('CATALOGUE_PRICE_CHANGED'));
+    (e: any) => e?.code === 'CATALOGUE_PRICE_CHANGED' && e.message === 'Screening is billed as exempt; review the bill');
+    // r42b: on a bill of supply (all lines at 0%) a linked line takes the item's SAC too; no treatment is stored there.
+    const bos = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Linked BoS' },
+      items: [line({ catalogItemId: String(item._id), description: 'Screening', unitPriceMinor: 40000, gstRate: 0 })], idempotencyKey: key() });
+    assert.deepEqual([bos.documentKind, bos.items[0]!.sac, bos.items[0]!.taxTreatment, bos.supplier.taxRegime], ['bill_of_supply', '9993', undefined, 'regular']);
     const back = await catalogueSvc.updateItem(lab.actor, String(item._id), { taxTreatment: 'taxable', gstRate: 5 });
     assert.deepEqual([back.taxTreatment, back.gstRate], ['taxable', 5]);
     await catalogueSvc.deactivateItem(lab.actor, String(item._id));
+  });
+
+  await check('r42b: a bill of supply prints the note of its regime; earlier bills keep the combined note and their checksum', async () => {
+    const reg = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'BoS regular' }, items: [line({ gstRate: 0 })], idempotencyKey: key() });
+    const regHtml = renderInvoiceHtml(reg, []);
+    assert.ok(regHtml.includes('<p class="note">Exempt supply — tax not chargeable.</p>') && regHtml.includes('<td>Exempt value</td><td class="n">₹500.00</td>'));
+    assert.ok(!regHtml.includes('Composition') && !regHtml.includes('Taxable value'));
+    const comp = await setupPartner('Comp Two', 'C2', '9000000032', { taxRegime: 'composition', gstin: '29AABCD1234F1ZH' });
+    const c = await invoiceSvc.createInvoice(comp.actor, { branchId: comp.branchId, customer: { name: 'BoS comp' }, items: [line({ gstRate: 0 })], idempotencyKey: key() });
+    assert.equal(c.supplier.taxRegime, 'composition');
+    const compHtml = renderInvoiceHtml(c, []);
+    assert.ok(compHtml.includes('<p class="note">Composition taxable person, not eligible to collect tax on supplies.</p>') && compHtml.includes('<td>Taxable value</td>'));
+    assert.ok(!compHtml.includes('Exempt'));
+    // Tax invoices and commercial invoices carry no regime; their stored form is as before.
+    assert.equal(((await InvoiceModel.collection.findOne({ _id: first._id })) as any).supplier.taxRegime, undefined);
+    // A bill of supply issued before r42b (no regime): it still verifies and prints the combined note.
+    const earlier = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'BoS earlier' }, items: [line({ gstRate: 0 })], idempotencyKey: key() });
+    const { taxRegime: _r, ...supplier } = earlier.supplier;
+    await InvoiceModel.collection.updateOne({ _id: earlier._id }, { $unset: { 'supplier.taxRegime': '' }, $set: { checksum: invoiceChecksum({ ...earlier, supplier } as any) } });
+    const read = (await invoiceSvc.getInvoice(lab.actor, String(earlier._id))).invoice;
+    assert.equal(read.supplier.taxRegime, undefined);
+    assert.ok(renderInvoiceHtml(read, []).includes('<p class="note">Composition taxable person / exempt supply — tax not chargeable.</p>'));
   });
 
   await check('line and reference validation: discount ≤ amount; doctor must work at the partner', async () => {
