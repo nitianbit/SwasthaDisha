@@ -38,6 +38,7 @@ const invoiceSchema = new Schema<IInvoice>(
       pan: { type: String, trim: true },
       address: { type: String, required: true, trim: true },
       placeOfSupply: { type: String, required: true, trim: true },
+      taxRegime: { type: String, enum: ['regular', 'composition'] },
     },
     customer: {
       name: { type: String, required: true, trim: true },

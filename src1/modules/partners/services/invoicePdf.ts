@@ -22,6 +22,13 @@ export const indiaDate = (d: Date | string) => {
 
 const TITLES = { tax_invoice: 'Tax Invoice', bill_of_supply: 'Bill of Supply', commercial_invoice: 'Invoice' } as const;
 
+/** r42b: the bill of supply's note by the supplier's regime (bills issued before r42b keep the combined wording). */
+const BILL_OF_SUPPLY_NOTES = {
+  composition: 'Composition taxable person, not eligible to collect tax on supplies.',
+  regular: 'Exempt supply — tax not chargeable.',
+  earlier: 'Composition taxable person / exempt supply — tax not chargeable.',
+} as const;
+
 const methodsOf = (e: IInvoiceEvent) => (e.splits?.length ? e.splits : [{ mode: e.mode, amountMinor: e.amountMinor, reference: e.reference }])
   .map((x) => `${String(x.mode ?? '').toUpperCase()}${e.splits && e.splits.length > 1 && typeof x.amountMinor === 'number' ? ` ${rupees(x.amountMinor)}` : ''}${x.reference ? ` · Ref ${x.reference}` : ''}`)
   .join(' + ');
@@ -93,14 +100,14 @@ ${extra.doctorName ? `<br><strong>Doctor:</strong> ${esc(extra.doctorName)}` : '
 <table style="margin-top:12px"><thead><tr><th>#</th><th>Item</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Discount</th>
 ${showTax ? '<th class="n">GST</th>' : ''}<th class="n">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <table style="margin-top:8px;width:40%;margin-left:auto"><tbody>
-<tr><td>Taxable value</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${t.exemptMinor !== undefined
+<tr><td>${s.taxRegime === 'regular' ? 'Exempt value' : 'Taxable value'}</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${t.exemptMinor !== undefined
   ? `<tr><td>Exempt value</td><td class="n">${rupees(t.exemptMinor)}</td></tr>` : ''}${taxRows}
 <tr><td><strong>Total</strong></td><td class="n"><strong>${rupees(t.totalMinor)}</strong></td></tr>${status.paidMinor > 0 && status.label !== 'Cancelled'
   ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Due</td><td class="n">${rupees(Math.max(0, t.totalMinor - status.paidMinor))}</td></tr>` : ''}${status.label === 'Cancelled' && status.paidMinor > 0
   ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Refunded</td><td class="n">${rupees(status.refundMinor)}</td></tr>` : ''}</tbody></table>
 ${status.refund ? `<p class="note"><strong>Refund:</strong> ${esc(status.refund)}</p>` : ''}
 ${status.payments.length > 1 ? `<p class="note"><strong>Payments:</strong><br>${status.payments.map(esc).join('<br>')}</p>` : ''}
-${inv.documentKind === 'bill_of_supply' && s.gstin ? '<p class="note">Composition taxable person / exempt supply — tax not chargeable.</p>' : ''}
+${inv.documentKind === 'bill_of_supply' && s.gstin ? `<p class="note">${BILL_OF_SUPPLY_NOTES[s.taxRegime ?? 'earlier']}</p>` : ''}
 ${inv.documentKind === 'commercial_invoice' ? '<p class="note">Supplier not registered under GST.</p>' : ''}
 </body></html>`;
 }
