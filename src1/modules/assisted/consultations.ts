@@ -203,7 +203,7 @@ export async function assistedCouponFor(code: string | undefined, ctx: { userId:
 }
 
 async function replayOf(storedKey: string, hash: string): Promise<IBooking | null> {
-  const prior = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IBooking | null;
+  const prior = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IBooking | null;
   if (!prior) return null;
   if (prior.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
   return prior;
@@ -228,7 +228,7 @@ export async function createAssistedConsultation(bookerIn: PharmacyActor | Booke
   // Review of 800dfc0 (item 4): the replay of a booking already made under this key with the same content answers its
   // receipt first and is not counted, so a retried request never meets a 429 instead of its receipt. That answer depends
   // only on this booker's own key and content, never on whether the number has an account.
-  const replay = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IBooking | null;
+  const replay = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IBooking | null;
   if (replay && replay.assisted?.requestHash === hash) return receiptOf(replay, true, !!replay.assisted?.identity?.newAccount);
   // Phase 1b: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on and the gateway has keys (decided before anything
   // is counted or held, the same answer for every number).

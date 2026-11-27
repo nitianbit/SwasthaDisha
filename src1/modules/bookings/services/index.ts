@@ -765,7 +765,7 @@ export class BookingService {
     // A resent create (same key) is the same booking: answer with it before any check or charge (W3b).
     const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
     if (requestKey) {
-      const prior = await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: requestKey } }).lean() as IBooking | null;
+      const prior = await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: requestKey, $type: 'string' } }).lean() as IBooking | null;
       if (prior) return this.replayedCreate(this.assertSameCreator(prior, data), data);
     }
     const followUpConfig = await this.validateAndPrepareFollowUp(

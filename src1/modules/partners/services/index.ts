@@ -813,7 +813,7 @@ export class PartnerService {
     const requestHash = requestKey ? createHash('sha256').update(canonicalJson(data)).digest('hex') : undefined;
     const replay = async () => {
       if (!requestKey) return null;
-      const prior = await BranchModel.findOne({ partnerId, createRequestKey: { $eq: requestKey } }).select('+createRequestHash').lean() as IBranch | null;
+      const prior = await BranchModel.findOne({ partnerId, createRequestKey: { $eq: requestKey, $type: 'string' } }).select('+createRequestHash').lean() as IBranch | null;
       if (!prior) return null;
       if (prior.createRequestHash !== requestHash) throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different branch' });
       const { createRequestHash: _x, ...shown } = prior;

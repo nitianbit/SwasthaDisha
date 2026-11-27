@@ -270,20 +270,20 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
   return runLedgerTransaction(async s => {
     // Every attempt (also a retry after a duplicate-key clash) first looks for a booking made with this create key.
     if (input.createRequestKey) {
-      const prior = await BookingModel.findOne({ userId: { $eq: input.userId }, createRequestKey: { $eq: input.createRequestKey } })
+      const prior = await BookingModel.findOne({ userId: { $eq: input.userId }, createRequestKey: { $eq: input.createRequestKey, $type: 'string' } })
         .session(s).lean() as IBooking | null;
       if (prior) return Object.assign(prior, { [REPLAYED]: true });
     }
     // Q6: a desk key already used is answered with its booking on every attempt, before any capacity is taken
     // (the caller compares the content hash and the current branch scope).
     if (input.clinicDesk?.requestKey) {
-      const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: input.clinicDesk.requestKey } }).session(s).lean() as IBooking | null;
+      const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: input.clinicDesk.requestKey, $type: 'string' } }).session(s).lean() as IBooking | null;
       if (prior) return Object.assign(prior, { [REPLAYED]: true });
     }
     // Assisted booking phase 1a: an assisted request key already used answers with its booking on every attempt (the
     // caller compares the content hash), before any capacity or money is taken.
     if (input.assisted?.requestKey) {
-      const prior = await BookingModel.findOne({ 'assisted.requestKey': { $eq: input.assisted.requestKey } }).session(s).lean() as IBooking | null;
+      const prior = await BookingModel.findOne({ 'assisted.requestKey': { $eq: input.assisted.requestKey, $type: 'string' } }).session(s).lean() as IBooking | null;
       if (prior) return Object.assign(prior, { [REPLAYED]: true });
     }
     const slotId = input.slotId ? canon(input.slotId) : null;

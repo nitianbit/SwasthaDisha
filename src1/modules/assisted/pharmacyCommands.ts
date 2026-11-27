@@ -443,7 +443,7 @@ export async function rescheduleByBooker(actorIn: PharmacyActor | BookerActor, b
 /** GET /pharmacy-assisted/bookings/by-key/:key — 'used' (with the booking), 'abandoned' or 'unknown' (Q9/Q13). */
 export async function findByKey(actor: PharmacyActor | BookerActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  const b = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key) } }).lean() as IBooking | null;
+  const b = await BookingModel.findOne({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key), $type: 'string' } }).lean() as IBooking | null;
   // Phase 1b: a card booking adds its open Razorpay order (read only: null while none is open) to resume the payment.
   if (b) {
     return { state: 'used' as const, booking: await bookerView(b as never, bookerRefOf(asBooker(actor))),
@@ -456,7 +456,7 @@ export async function findByKey(actor: PharmacyActor | BookerActor, key: string)
 /** POST /pharmacy-assisted/bookings/by-key/:key/abandon — abandoned (it can never be booked) or used (here it is). */
 export async function abandonByKey(actor: PharmacyActor | BookerActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  const made = await BookingModel.exists({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key) } });
+  const made = await BookingModel.exists({ 'assisted.requestKey': { $eq: storedAssistedKey(actor, key), $type: 'string' } });
   if (made) return findByKey(actor, key);
   const state = await abandonRequestKey(assistedKeyScope(actor), key);
   return state === 'abandoned' ? { state } : findByKey(actor, key);

@@ -7237,6 +7237,23 @@ The pattern is the pharmacy sale's (r36). All four routes need a verified, activ
 - The suite adds a check for these routes: used, abandoned, unknown, another doctor, abandon of a used key, a refused
   create at two clinics and online, the claim row, 400 for a malformed key, and the index.
 
+**r41b** (branch `m0/r41b-doctor-key-fixes` from stage `5c6d32b4`), after the r41 review:
+- **Index use, no behaviour change:** every request-key lookup on a partial-indexed key now names `$type: 'string'`, so
+  the partial index is chosen. This covers bookings' `createRequestKey`, `assisted.requestKey` and `clinicDesk.requestKey`,
+  lab bookings, instant requests' `assisted.requestKey`, catalogue items, branches, partners and pharmacies. The suite
+  checks the plans: IXSCAN on `specialistId_1_createRequestKey_1` and `clinicDesk.requestKey_1`.
+- **Once per doctor, also under concurrency:**
+  - inside the booking's transaction, a consultation create refuses a key whose `doctor_consultation` row a committed
+    create already used (409 `IDEMPOTENCY_KEY_REUSED`); the suite runs two concurrent creates for two patients;
+  - a clinic key already used at another of his clinics is 409 `IDEMPOTENCY_KEY_REUSED`;
+  - `createDeskAppointment` takes a server-only transaction hook, and the doctor's create claims
+    `doctor_clinic_appointment:<id>` in it. This closes the join-during-abandon race, and the same key at two clinics at once.
+- **Membership list:** the clinic by-key read and abandon include clinics he has left (no `isActive` filter); the read
+  is ordered `{ createdAt: 1, _id: 1 }`.
+- **By-key finishes an interrupted create:** the consultation by-key read goes through the booking create's own replay, so
+  a free create interrupted after its insert is finished, as a resend is.
+- The family-member rollback test is restored: a fresh key on a taken slot leaves no family member.
+
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved

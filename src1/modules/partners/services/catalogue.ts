@@ -88,7 +88,7 @@ export class CatalogueService {
     const requestHash = requestKey ? createHash('sha256').update(canonicalJson(data)).digest('hex') : undefined;
     const replay = async () => {
       if (!requestKey) return null;
-      const prior = await CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: requestKey } }).lean() as (ICatalogueItem & { createRequestHash?: string }) | null;
+      const prior = await CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: requestKey, $type: 'string' } }).lean() as (ICatalogueItem & { createRequestHash?: string }) | null;
       if (!prior) return null;
       if (prior.createRequestHash !== requestHash) throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different item' });
       return { ...prior, replayed: true };
@@ -200,7 +200,7 @@ export class CatalogueService {
 
   /** Q12: the item a create request key made in this partner, or null (not made yet, never, or abandoned). */
   async findByKey(actor: PartnerActor, key: string): Promise<ICatalogueItem | null> {
-    return CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: key } }).lean() as unknown as Promise<ICatalogueItem | null>;
+    return CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: key, $type: 'string' } }).lean() as unknown as Promise<ICatalogueItem | null>;
   }
 
   /** Q12: give up an item create whose answer was lost: abandoned (it can never be made) or used (here is the item). */

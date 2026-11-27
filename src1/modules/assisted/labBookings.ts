@@ -302,7 +302,7 @@ export async function notifyLabBooked(b: IPartnerLabBooking): Promise<void> {
 }
 
 async function replayOf(storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
-  const prior = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).session(s ?? null).lean() as IPartnerLabBooking | null;
+  const prior = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).session(s ?? null).lean() as IPartnerLabBooking | null;
   if (!prior) return null;
   if (prior.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
   return prior;
@@ -357,7 +357,7 @@ export async function createAssistedLabBooking(booker: LabBooker, input: Assiste
   const bookerId = bookerIdOf(booker);
   await assertAssistedLabIndexes(!!input.couponCode, booker.kind);
   // The same key with the same content answers its receipt first, uncounted.
-  const replay = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IPartnerLabBooking | null;
+  const replay = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IPartnerLabBooking | null;
   if (replay && replay.assisted?.requestHash === hash) return labReceipt(replay, booker, true);
   // r14: card/UPI only while ASSISTED_CARD_PAYMENT_ENABLED is on, the gateway has keys and the card refunds' index is built
   // (decided before anything is counted or held, the same answer for every number).
@@ -597,7 +597,7 @@ export async function listLabBookingsFor(booker: LabBooker, q: { status?: string
 export const findLabByKey = (actor: PharmacyActor, key: string) => findLabByKeyFor(pharmacyBooker(actor), key);
 export async function findLabByKeyFor(booker: LabBooker, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  const b = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedLabKey(booker, key) } }).lean() as IPartnerLabBooking | null;
+  const b = await PartnerLabBookingModel.findOne({ 'assisted.requestKey': { $eq: storedLabKey(booker, key), $type: 'string' } }).lean() as IPartnerLabBooking | null;
   if (b) {
     return { state: 'used' as const, booking: await bookerLabView(b as never, booker),
       ...(b.assisted?.funding?.method === 'razorpay' ? { payment: await openCardOrderOf('lab_booking', b as never, { create: false }) } : {}) };
@@ -610,7 +610,7 @@ export async function findLabByKeyFor(booker: LabBooker, key: string) {
 export const abandonLabByKey = (actor: PharmacyActor, key: string) => abandonLabByKeyFor(pharmacyBooker(actor), key);
 export async function abandonLabByKeyFor(booker: LabBooker, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  if (await PartnerLabBookingModel.exists({ 'assisted.requestKey': { $eq: storedLabKey(booker, key) } })) return findLabByKeyFor(booker, key);
+  if (await PartnerLabBookingModel.exists({ 'assisted.requestKey': { $eq: storedLabKey(booker, key), $type: 'string' } })) return findLabByKeyFor(booker, key);
   const state = await abandonRequestKey(labKeyScope(booker), key);
   return state === 'abandoned' ? { state } : findLabByKeyFor(booker, key);
 }

@@ -122,7 +122,7 @@ function validate(input: AssistedInstantInput): void {
 }
 
 async function replayOf(storedKey: string, hash: string): Promise<IInstantRequest | null> {
-  const prior = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IInstantRequest | null;
+  const prior = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IInstantRequest | null;
   if (!prior) return null;
   if (prior.assisted?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different request');
   return prior;
@@ -138,7 +138,7 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
   const hash = instantAssistedHash(input);
   await assertInstantIndexes(!!input.couponCode);
   // §25.3 patient order: the replay of this booker's own key and content answers first and is not counted.
-  const replay = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).lean() as IInstantRequest | null;
+  const replay = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IInstantRequest | null;
   if (replay && replay.assisted?.requestHash === hash) return instantReceipt(replay, pharmacyId, true);
   if (attempt === 0) {
     await hitLookup(orgKey(pharmacyId));
@@ -194,7 +194,7 @@ export async function createPharmacyInstant(actor: PharmacyActor, input: Assiste
   let request: IInstantRequest;
   try {
     request = await runLedgerTransaction(async (s) => {
-      const again = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey } }).session(s).lean() as IInstantRequest | null;
+      const again = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedKey, $type: 'string' } }).session(s).lean() as IInstantRequest | null;
       if (again) return again;
       await claimRequestKey(instantKeyScope(actor), input.requestKey, s);
       await writePatientIn(pp, { preferredLanguage: input.preferredLanguage }, s);
@@ -319,7 +319,7 @@ export async function listInstantForPharmacy(actor: PharmacyActor, q: { status?:
 /** GET /pharmacy-assisted/instant/requests/by-key/:key — 'used' (with the request), 'abandoned' or 'unknown' (Q13). */
 export async function findInstantByKey(actor: PharmacyActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  const r = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedInstantKey(actor, key) } }).lean() as IInstantRequest | null;
+  const r = await InstantRequestModel.findOne({ 'assisted.requestKey': { $eq: storedInstantKey(actor, key), $type: 'string' } }).lean() as IInstantRequest | null;
   if (r) return { state: 'used' as const, request: await bookerInstantView(r, lower(actor.pharmacyId)) };
   const row = await RequestKeyModel.findOne({ scope: instantKeyScope(actor), key }).lean();
   return { state: row?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
@@ -328,7 +328,7 @@ export async function findInstantByKey(actor: PharmacyActor, key: string) {
 /** POST /pharmacy-assisted/instant/requests/by-key/:key/abandon — abandoned (it can never be made) or used (here it is). */
 export async function abandonInstantByKey(actor: PharmacyActor, key: string) {
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  if (await InstantRequestModel.exists({ 'assisted.requestKey': { $eq: storedInstantKey(actor, key) } })) return findInstantByKey(actor, key);
+  if (await InstantRequestModel.exists({ 'assisted.requestKey': { $eq: storedInstantKey(actor, key), $type: 'string' } })) return findInstantByKey(actor, key);
   const state = await abandonRequestKey(instantKeyScope(actor), key);
   return state === 'abandoned' ? { state } : findInstantByKey(actor, key);
 }

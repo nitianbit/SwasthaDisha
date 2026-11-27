@@ -270,7 +270,7 @@ export class LabBookingService {
 
   async create(userId: string, input: CreateLabBookingInput, now = new Date()): Promise<LabBookingPaymentInit> {
     const requestHash = createRequestHash(input);
-    const prior = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).lean();
+    const prior = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey, $type: 'string' } }).lean();
     if (prior) return this.resume(assertSameRequest(prior as IPartnerLabBooking, requestHash), !!input.useWalletBalance, now);
 
     const partner = await PartnerOrgModel.findById(input.partnerId).lean();
@@ -306,7 +306,7 @@ export class LabBookingService {
     const account = await ensureSettlementAccount('partner', String(partner._id), partner.legalName || partner.name);
 
     const booking = await runLedgerTransaction(async (s) => {
-      const again = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).session(s).lean();
+      const again = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey, $type: 'string' } }).session(s).lean();
       if (again) return assertSameRequest(again as IPartnerLabBooking, requestHash);
       await claimRequestKey(scopeOf('lab_booking_create', userId), input.requestKey, s);
       const slot = await takeSeat(input.slotId, {

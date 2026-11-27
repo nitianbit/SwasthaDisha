@@ -238,13 +238,19 @@ export async function bookDoctorClinicAppointment(doctorId: string, input: Docto
   if (!slot || lower(slot.specialistId) !== doctorId || (input.branchId && lower(slot.branchId) !== lower(input.branchId))) {
     throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   }
-  if (!(await BookingModel.exists({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, input.requestKey) } }))) {
+  if (!(await BookingModel.exists({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, input.requestKey), $type: 'string' } }))) {
+    // r41b: the key already made his appointment at another clinic (another of his memberships) is refused.
+    const others = (await doctorMembers(doctorId)).filter((m) => lower(m._id) !== lower(actor.memberId))
+      .map((m) => storedDeskKey({ memberId: String(m._id) } as PartnerActor, input.requestKey));
+    if (others.length && await BookingModel.exists({ 'clinicDesk.requestKey': { $in: others, $type: 'string' } })) throw keyReused();
     // r41: a key he gave up (by-key abandon) is never used, at any clinic (each clinic's own claim refuses it too).
     if (await RequestKeyModel.exists({ scope: doctorDeskScope(doctorId), key: input.requestKey, state: 'abandoned' })) throw abandoned();
     await lookupPatientFor({ kind: 'doctor', specialistId: doctorId }, input.customer.phone, { gated: false });
   }
   const { clinicId: _c, branchId: _b, ...desk } = input;
-  return createDeskAppointment(actor, desk, clock);
+  // r41b: his own key scope is claimed in the desk booking's transaction too (a clinic he joined during an abandon; the
+  // same key used at another clinic concurrently).
+  return createDeskAppointment(actor, desk, clock, { inTx: (s) => claimOnce(doctorDeskScope(doctorId), input.requestKey, s) });
 }
 
 // ───────────────────────────── Online consultation and follow-up ─────────────────────────────
@@ -258,6 +264,21 @@ export interface DoctorConsultationInput {
 }
 
 const storedConsultKey = (doctorId: string, key: string) => `doctor:${doctorId}:${key}`;
+const keyReused = () => err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+/** r41b: in the booking's transaction — refuses an abandoned key (409 REQUEST_ABANDONED) and one a committed create already used. */
+async function claimOnce(scope: string, key: string, s: ClientSession): Promise<void> {
+  const row = await RequestKeyModel.findOne({ scope, key }).session(s).lean();
+  if (row?.state === 'used') throw keyReused();
+  await claimRequestKey(scope, key, s);
+}
+/** r41b: an earlier consultation of his key, through the booking create's own replay (it finishes a create interrupted after its insert). */
+async function finishedConsultation(doctorId: string, prior: IBooking): Promise<IBooking> {
+  const out = await Container.get(BookingService).createSpecialistBooking({
+    userId: String(prior.userId), specialistId: doctorId, requestKey: String(prior.createRequestKey), slotId: String(prior.slotId), bookingDate: prior.bookingDate,
+    bookingTime: prior.bookingTime, consultationMode: prior.consultationMode, primaryConcern: prior.primaryConcern ?? 'Booked by your doctor',
+  } as never, 'consultation', { source: 'doctor_assisted' });
+  return out.booking as IBooking;
+}
 
 function consultationView(b: IBooking, replayed: boolean) {
   const owed = b.paymentStatus !== 'paid' && b.status !== 'cancelled' && Number(b.price ?? 0) > 0;
@@ -278,8 +299,8 @@ function consultationView(b: IBooking, replayed: boolean) {
  * `source: 'doctor_assisted'`. Online (`video` | `call`; an in-person visit is a clinic appointment, 400
  * USE_CLINIC_APPOINTMENT) for a patient named by phone (desk shape), or a free follow-up (`followUpOf`: a completed,
  * paid consultation of his whose follow-up is still open; any mode his slot offers) under the existing follow-up rule.
- * Exactly once per (doctor, request key, patient account): a resend answers the same booking (200; an interrupted create
- * is finished), the key with another slot, mode or follow-up 409.
+ * Exactly once per (doctor, request key) (r41/r41b): a resend answers the same booking (200; an interrupted create is
+ * finished); the key with another patient, slot, mode or follow-up is 409 IDEMPOTENCY_KEY_REUSED.
  */
 export async function bookDoctorConsultation(doctorId: string, input: DoctorConsultationInput) {
   const storedKey = storedConsultKey(doctorId, input.requestKey);
@@ -311,24 +332,24 @@ export async function bookDoctorConsultation(doctorId: string, input: DoctorCons
   // r39b: the key is looked up on the unique { userId, createRequestKey } index. A resend with the same content goes through
   // the booking create's own replay, which finishes a create interrupted after its insert (e.g. a free follow-up not yet
   // settled) and answers the booking.
-  const prior = known ? await BookingModel.findOne({ userId: { $eq: known }, createRequestKey: { $eq: storedKey } }).lean() as IBooking | null : null;
+  const prior = known ? await BookingModel.findOne({ userId: { $eq: known }, createRequestKey: { $eq: storedKey, $type: 'string' } }).lean() as IBooking | null : null;
   if (prior) {
     const priorParent = prior.followUp?.isFollowUp ? lower(prior.followUp.parentConsultationId) : null;
     if (lower(prior.specialistId) !== doctorId || lower(prior.slotId) !== lower(input.slotId) || prior.consultationMode !== input.mode || priorParent !== followUpOf) {
       throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
     }
-    const out = await create(String(prior.userId), { _id: prior.slotId, date: prior.bookingDate, startTime: prior.bookingTime }, prior.dependentId ?? undefined);
-    return consultationView(out.booking as IBooking, true);
+    return consultationView(await finishedConsultation(doctorId, prior), true);
   }
   // r41: the key already made a booking of his for another patient (read on { specialistId, createRequestKey }).
-  if (await BookingModel.exists({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedKey } })) {
+  if (await BookingModel.exists({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedKey, $type: 'string' } })) {
     throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
   }
   if (await RequestKeyModel.exists({ scope: doctorConsultScope(doctorId), key: input.requestKey, state: 'abandoned' })) throw abandoned();
   const slot = OBJECT_ID.test(input.slotId) ? await SlotModel.findById(input.slotId).select({ specialistId: 1, date: 1, startTime: 1 }).lean() as Row | null : null;
   if (!slot || lower(slot.specialistId) !== doctorId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
-  // r41: the key is claimed in the booking's transaction, so a by-key abandon and this create cannot both win.
-  const claim = (s: ClientSession) => claimRequestKey(doctorConsultScope(doctorId), input.requestKey, s);
+  // r41: the key is claimed in the booking's transaction, so a by-key abandon and this create cannot both win; r41b: a key
+  // a committed create of his already used (another patient, concurrently) is refused there too.
+  const claim = (s: ClientSession) => claimOnce(doctorConsultScope(doctorId), input.requestKey, s);
   if (parent) {
     const out = await create(String(parent.userId), slot as never, parent.dependentId ? String(parent.dependentId) : undefined, (_b, s) => claim(s));
     return consultationView(out.booking as IBooking, false);
@@ -355,8 +376,8 @@ const abandoned = () => err(409, 'REQUEST_ABANDONED', 'This request was cancelle
 export const DOCTOR_KEY = /^[A-Za-z0-9_-]{8,100}$/;
 const assertKey = (key: string) => { if (!DOCTOR_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required'); };
 
-/** His active memberships (each clinic's desk keys are stored under the membership that booked). */
-const doctorMembers = async (doctorId: string) => MemberModel.find({ doctorId: { $in: spellings(doctorId) }, isActive: true })
+/** His memberships, r41b: also of a clinic he has left (each clinic's desk keys are stored under the membership that booked). */
+const doctorMembers = async (doctorId: string) => MemberModel.find({ doctorId: { $in: spellings(doctorId) } })
   .select({ partnerId: 1 }).lean().exec() as unknown as Promise<{ _id: unknown; partnerId: string }[]>;
 
 /** GET /specialists/me/clinic-appointments/by-key/:key — the appointment his key made at any clinic he consults at. */
@@ -365,7 +386,7 @@ export async function clinicAppointmentByKey(doctorId: string, key: string) {
   const members = await doctorMembers(doctorId);
   const keys = members.map((m) => storedDeskKey({ memberId: String(m._id) } as PartnerActor, key));
   // The unique `clinicDesk.requestKey` index.
-  const b = keys.length ? await BookingModel.findOne({ 'clinicDesk.requestKey': { $in: keys } }).lean() as IBooking | null : null;
+  const b = keys.length ? await BookingModel.findOne({ 'clinicDesk.requestKey': { $in: keys, $type: 'string' } }).sort({ createdAt: 1, _id: 1 }).lean() as IBooking | null : null;
   if (b) return { state: 'used' as const, booking: deskView(b) };
   const k = await RequestKeyModel.findOne({ scope: doctorDeskScope(doctorId), key }).lean();
   return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
@@ -384,9 +405,10 @@ export async function abandonClinicAppointmentKey(doctorId: string, key: string)
 /** GET /specialists/me/consultations/by-key/:key — the consultation his key made (on { specialistId, createRequestKey }). */
 export async function consultationByKey(doctorId: string, key: string) {
   assertKey(key);
-  const b = await BookingModel.findOne({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedConsultKey(doctorId, key) } })
+  const b = await BookingModel.findOne({ specialistId: { $in: spellings(doctorId) }, createRequestKey: { $eq: storedConsultKey(doctorId, key), $type: 'string' } })
     .sort({ createdAt: 1, _id: 1 }).lean() as IBooking | null;
-  if (b) { const { replayed: _r, ...v } = consultationView(b, true); return { state: 'used' as const, ...v }; }
+  // r41b: read through the create's own replay, which finishes a create interrupted after its insert.
+  if (b) { const { replayed: _r, ...v } = consultationView(await finishedConsultation(doctorId, b), true); return { state: 'used' as const, ...v }; }
   const k = await RequestKeyModel.findOne({ scope: doctorConsultScope(doctorId), key }).lean();
   return { state: k?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
 }

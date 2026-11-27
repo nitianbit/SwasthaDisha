@@ -111,7 +111,7 @@ export class BookingController {
     create: () => Promise<T>): Promise<T> {
     const key = typeof data.requestKey === 'string' ? data.requestKey.trim() : '';
     const prior = replays && key && data.userId != null
-      ? await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: key } }).select({ _id: 1 }).lean()
+      ? await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: key, $type: 'string' } }).select({ _id: 1 }).lean()
       : null;
     if (prior) {
       const result = await create();

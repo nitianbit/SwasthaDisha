@@ -299,6 +299,10 @@ async function main() {
       await expect('D', 'POST', '/me/consultations', 409, { ...body, customer: { phone: '9877770009' }, patient: { name: 'New Kid', relation: 'Son' } },
         'IDEMPOTENCY_KEY_REUSED');
       assert.equal(await DependentModel.countDocuments({ name: 'New Kid' }), 0, 'no family member without its booking');
+      // r41b: the family member rolls back with its booking: a fresh key on a taken slot (the booking's own refusal).
+      await expect('D', 'POST', '/me/consultations', 400, { ...body, customer: { phone: '9877770009' }, patient: { name: 'Rolled Kid', relation: 'Son' },
+        requestKey: rk() }, 'SLOT_NOT_AVAILABLE');
+      assert.equal(await DependentModel.countDocuments({ name: 'Rolled Kid' }), 0, 'no family member without its booking');
       const fam = await expect('D', 'POST', '/me/consultations', 201, { ...body, slotId: await slot(D), patient: { name: 'Baby Kiran', relation: 'Daughter' },
         requestKey: rk() });
       const dep = await DependentModel.findOne({ name: 'Baby Kiran' }).lean() as any;
@@ -369,6 +373,47 @@ async function main() {
       await expect('D', 'POST', '/me/consultations/by-key/bad%20key/abandon', 400, undefined, 'VALIDATION_ERROR');
       assert.ok((await BookingModel.collection.indexes()).some((i: any) => i.name === 'specialistId_1_createRequestKey_1' && i.partialFilterExpression),
         'the partial doctor-key index (sync-indexes)');
+      // r41b: the reads use their partial indexes (the query names `$type: 'string'`).
+      const plan = async (q: Record<string, unknown>) => JSON.stringify((await BookingModel.find(q).explain('queryPlanner') as any).queryPlanner?.winningPlan ?? {});
+      const p1 = await plan({ specialistId: { $in: [D] }, createRequestKey: { $eq: `doctor:${D}:${k3}`, $type: 'string' } });
+      const p2 = await plan({ 'clinicDesk.requestKey': { $in: [`desk:x:${k1}`], $type: 'string' } });
+      assert.ok(p1.includes('specialistId_1_createRequestKey_1') && !p1.includes('COLLSCAN'), p1);
+      assert.ok(p2.includes('clinicDesk.requestKey_1') && !p2.includes('COLLSCAN'), p2);
+    });
+
+    await check('r41b: once per doctor under concurrency; one key at two clinics; a clinic he left; a by-key read finishes an interrupted free create', async () => {
+      // Two concurrent creates with one key for two patients: one booking, the other 409.
+      for (let i = 0; i < 3; i++) {
+        const k = rk('concurrent-key');
+        const [a, b] = await Promise.all([
+          call('D', 'POST', '/me/consultations', { slotId: await slot(D), mode: 'video', customer: { phone: `98778${String(10000 + i * 2)}` }, requestKey: k }),
+          call('D', 'POST', '/me/consultations', { slotId: await slot(D), mode: 'video', customer: { phone: `98778${String(10001 + i * 2)}` }, requestKey: k }),
+        ]);
+        assert.deepEqual([a.status, b.status].sort(), [201, 409], `${a.status} ${a.text.slice(0, 200)} / ${b.status} ${b.text.slice(0, 200)}`);
+        assert.equal([a, b].find((x) => x.status === 409)!.json.code, 'IDEMPOTENCY_KEY_REUSED');
+        assert.equal(await BookingModel.countDocuments({ createRequestKey: `doctor:${D}:${k}` }), 1);
+      }
+      // One clinic key at two clinics: the second is refused.
+      const k = rk('two-clinic-key');
+      const first = await expect('D', 'POST', '/me/clinic-appointments', 201, { clinicId: C1.id, slotId: await slot(D, C1.branch), customer: { phone: '9877730001' }, requestKey: k });
+      await expect('D', 'POST', '/me/clinic-appointments', 409, { clinicId: S, slotId: await slot(D, SB), customer: { phone: '9877730002' }, requestKey: k }, 'IDEMPOTENCY_KEY_REUSED');
+      // A clinic he has left: his key there still reads back.
+      await MemberModel.updateOne({ partnerId: C1.id, doctorId: D }, { $set: { isActive: false } });
+      try {
+        const left = (await expect('D', 'GET', `/me/clinic-appointments/by-key/${k}`, 200)).json.data;
+        assert.deepEqual([left.state, left.booking?.bookingId], ['used', first.json.data.booking.bookingId]);
+        assert.equal((await expect('D', 'POST', `/me/clinic-appointments/by-key/${k}/abandon`, 200)).json.data.state, 'used');
+      } finally {
+        await MemberModel.updateOne({ partnerId: C1.id, doctorId: D }, { $set: { isActive: true } });
+      }
+      // A free follow-up interrupted after its insert: the by-key read finishes it.
+      const parent = await BookingModel.collection.insertOne(row({ bookingDate: today.replace(/-/g, ''), status: 'completed', dependentId: undefined,
+        followUp: { isFollowUp: false, benefitUsed: false, completedAt: today.replace(/-/g, ''), eligibilityExpiresAt: addDays(today, 14).replace(/-/g, '') } }) as never);
+      const fk = rk('followup-key');
+      failSettlement.next = true;
+      await expect('D', 'POST', '/me/consultations', 500, { slotId: await slot(D), mode: 'call', followUpOf: String(parent.insertedId), requestKey: fk });
+      const got = (await expect('D', 'GET', `/me/consultations/by-key/${fk}`, 200)).json.data;
+      assert.deepEqual([got.state, got.booking.status, got.booking.paymentStatus, got.payment.required], ['used', 'confirmed', 'paid', false]);
     });
 
     let billIds: string[] = [];

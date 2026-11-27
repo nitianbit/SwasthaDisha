@@ -575,7 +575,9 @@ const samePartner = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() ==
 export type DeskClock = Date | (() => Date);
 const clockOf = (c: DeskClock): (() => Date) => (typeof c === 'function' ? c : () => c);
 
-export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput, clock: DeskClock = () => new Date()) {
+export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput, clock: DeskClock = () => new Date(),
+  /** r41b: runs inside the booking's transaction (the doctor's own key claim); server callers only. */
+  opts: { inTx?: (s: ClientSession) => Promise<void> } = {}) {
   const readClock = clockOf(clock);
   await clinicOf(actor);
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
@@ -599,7 +601,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
     return prior;
   };
   const replay = async () => {
-    const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': requestKey }).lean() as IBooking | null;
+    const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: requestKey, $type: 'string' } }).lean() as IBooking | null;
     return prior ? asReceipt(prior) : null;
   };
   const prior = await replay();
@@ -633,6 +635,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
     } as IBooking, async (b, s) => {
       // Q13: the key is claimed with the appointment, so a desk's give-up of a lost answer and this booking cannot both win.
       await claimRequestKey(deskKeyScope(actor), input.requestKey, s);
+      if (opts.inTx) await opts.inTx(s);
       // Q14: the family member is the account's, active, as read in this transaction; a new one commits with the booking.
       if (newDependent) await DependentModel.create([newDependent], { session: s });
       else if (dependentId && !(await DependentModel.exists({ _id: dependentId, userId: customer._id, isActive: true }).session(s))) throw dependentNotFound();
@@ -683,7 +686,7 @@ export function deskView(b: IBooking) {
 /** Q13: the appointment a desk request key made, within this desk's clinic and branches; null when none (or not visible). */
 export async function findDeskByKey(actor: PartnerActor, key: string) {
   await clinicOf(actor);
-  const b = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key) } }).lean() as IBooking | null;
+  const b = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key), $type: 'string' } }).lean() as IBooking | null;
   if (!b || !samePartner(b.clinicDesk?.partnerId, actor.partnerId)) return null;
   const desk = deskScopeOf(actor);
   if (desk.branchIds.length > 0 && !desk.branchIds.includes(String(b.clinicDesk!.branchId))) return null;
@@ -694,7 +697,7 @@ export async function findDeskByKey(actor: PartnerActor, key: string) {
 export async function abandonDeskKey(actor: PartnerActor, key: string) {
   await clinicOf(actor);
   // An appointment made under this key before claims existed (no claim row) is used, never abandoned.
-  const made = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key) } }).select({ clinicDesk: 1 }).lean() as IBooking | null;
+  const made = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key), $type: 'string' } }).select({ clinicDesk: 1 }).lean() as IBooking | null;
   if (made && samePartner(made.clinicDesk?.partnerId, actor.partnerId)) return { state: 'used' as const, booking: await findDeskByKey(actor, key) };
   const state = await abandonRequestKey(deskKeyScope(actor), key);
   return state === 'abandoned' ? { state } : { state, booking: await findDeskByKey(actor, key) };
@@ -960,7 +963,7 @@ function canonicalStable(v: unknown): string {
 
 /** Q14: the clinic a doctor created with this request key (a lost answer); null when none. */
 export async function findDoctorClinicByKey(doctorId: string, key: string) {
-  const partner = await PartnerOrgModel.findOne({ soloDoctorId: String(doctorId), createdBy: doctorClinicCreatedBy(doctorId), createRequestKey: { $eq: key } }).lean() as any;
+  const partner = await PartnerOrgModel.findOne({ soloDoctorId: String(doctorId), createdBy: doctorClinicCreatedBy(doctorId), createRequestKey: { $eq: key, $type: 'string' } }).lean() as any;
   if (!partner) return null;
   return { partner, branches: await BranchModel.find({ partnerId: String(partner._id) }).lean() };
 }

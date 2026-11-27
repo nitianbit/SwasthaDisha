@@ -102,7 +102,7 @@ export class PharmacyService {
     const requestHash = keyed ? requestHashOf(sanitizedData) : undefined;
     const replay = async (): Promise<(IPharmacy & { replayed: true }) | null> => {
       if (!keyed) return null;
-      const prior = await PharmacyModel.findOne({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey } }).lean() as IPharmacy | null;
+      const prior = await PharmacyModel.findOne({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey, $type: 'string' } }).lean() as IPharmacy | null;
       if (!prior) return null;
       if (prior.createRequestHash !== requestHash) {
         throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different pharmacy' });
@@ -134,7 +134,7 @@ export class PharmacyService {
       if (!keyed) return await this.pharmacyRepository.save(sanitizedData);
       return await inTransaction(async (session) => {
         // Looked up again inside every attempt: a concurrent same-key create that committed is answered as a replay.
-        if (await PharmacyModel.exists({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey } }).session(session)) {
+        if (await PharmacyModel.exists({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey, $type: 'string' } }).session(session)) {
           throw new KeyAlreadyUsed();
         }
         await claimRequestKey(pharmacyCreateScope(createdBy!), requestKey!, session);
@@ -152,7 +152,7 @@ export class PharmacyService {
 
   /** Q15: the pharmacy an admin's create key made (that admin's keys only); null when none. */
   async findCreatedByKey(adminId: string, key: string): Promise<IPharmacy | null> {
-    return PharmacyModel.findOne({ createdBy: { $eq: String(adminId) }, createRequestKey: { $eq: key } }).lean() as unknown as Promise<IPharmacy | null>;
+    return PharmacyModel.findOne({ createdBy: { $eq: String(adminId) }, createRequestKey: { $eq: key, $type: 'string' } }).lean() as unknown as Promise<IPharmacy | null>;
   }
 
   /** Q15: give up a lost create: abandoned (it can never be made) or used (here is the pharmacy). */

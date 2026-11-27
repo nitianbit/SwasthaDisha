@@ -66,8 +66,8 @@ async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
     : kind === 'instant_request_create'
       ? InstantRequestModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : kind === 'lab_booking_create'
-      ? PartnerLabBookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
-    : BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
+      ? PartnerLabBookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key, $type: 'string' } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+    : BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key, $type: 'string' } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
 }
 
 const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create',
