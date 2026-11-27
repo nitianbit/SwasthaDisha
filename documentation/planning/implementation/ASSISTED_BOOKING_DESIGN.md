@@ -7530,6 +7530,10 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
 - Single suites: `q2-invoices` 32/32, `q10-billing` 12/12, `q14-owner-decisions` 27/27, `q6-clinics` 21/21 and
   `r40-clinic-reception` 8/8. `tsc` 17.
 - Full regression (`prun.sh … 2` on `eff9235a`): 92 suites, 92 passed, `tsc` 17.
+- r42b: `q2-invoices` adds a bill of supply per regime (note and value label), an earlier bill of supply that verifies
+  and keeps the combined note, a linked line on a bill of supply taking the item's SAC, and the two new messages.
+  Single suites: `q2-invoices` 33/33, `q10-billing` 12/12, `q14-owner-decisions` 27/27, `q6-clinics` 21/21. `tsc` 17.
+  Full regression (`prun.sh … 2` on `3dce2ae8`): 92 suites, 92 passed, `tsc` 17.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
