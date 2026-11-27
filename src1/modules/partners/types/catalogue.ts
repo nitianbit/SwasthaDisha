@@ -15,6 +15,8 @@ export interface ICatalogueItem {
   mrpMinor?: number;
   gstRate: 0 | 5 | 12 | 18 | 28;
   sac?: string;
+  /** r42: absent = taxable; a clinic's 0% consultation is exempt by default (SAC 9993). */
+  taxTreatment?: 'taxable' | 'exempt';
   visitModes: ('home' | 'lab')[];
   reportTatHours?: number;
   isActive: boolean;

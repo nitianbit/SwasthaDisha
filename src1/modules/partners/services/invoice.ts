@@ -18,6 +18,7 @@ import {
   IInvoiceSupplier,
   IInvoiceCustomer,
   DocumentKind,
+  TaxTreatment,
   PaymentMode,
   InvoiceLifecycleState,
   IPartner,
@@ -58,7 +59,7 @@ export interface CreateInvoiceInput {
   appointmentId?: string;
   /** r12 (§24.6.3): the lab desk booking this bill is for (not together with appointmentId). */
   labBookingId?: string;
-  items: { catalogItemId?: string; description: string; hsn?: string; sac?: string; qty: number; unitPriceMinor: number; discountMinor?: number; gstRate: GstRate }[];
+  items: { catalogItemId?: string; description: string; hsn?: string; sac?: string; qty: number; unitPriceMinor: number; discountMinor?: number; gstRate: GstRate; taxTreatment?: TaxTreatment }[];
   idempotencyKey: string;
 }
 
@@ -283,8 +284,27 @@ export function classifyDocument(taxRegime: string, gstin: string | undefined, l
   return 'commercial_invoice';
 }
 
-export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<string, { name: string }>): IInvoiceLine[] {
+/** r42: an exempt supply (bill line or catalogue item) is at GST rate 0. */
+export function assertExemptRate(taxTreatment: TaxTreatment | undefined, gstRate: number): void {
+  if (taxTreatment === 'exempt' && gstRate !== 0) {
+    throw new AppError({ status: 400, code: 'EXEMPT_RATE_NOT_ZERO', message: 'An exempt supply must have GST rate 0' });
+  }
+}
+
+/** What a bill line takes from the catalogue item it links to. */
+export type CatalogueLink = { name: string; sac?: string; taxTreatment?: TaxTreatment };
+
+/**
+ * r42 (§26.25): a line is exempt when it says so, or when it names no treatment and links to an exempt catalogue item
+ * (then it also takes the item's SAC if it has none). Exempt lines have rate 0 and are marked only on a tax invoice;
+ * on a bill of supply or a commercial invoice every line stays as before (no treatment stored).
+ */
+export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<string, CatalogueLink>, kind: DocumentKind): IInvoiceLine[] {
   return items.map((item) => {
+    const linked = item.catalogItemId ? catalogue.get(String(item.catalogItemId)) : undefined;
+    const exempt = (item.taxTreatment ?? linked?.taxTreatment) === 'exempt';
+    assertExemptRate(exempt ? 'exempt' : 'taxable', item.gstRate);
+    const marked = exempt && kind === 'tax_invoice';
     const discount = item.discountMinor ?? 0;
     const gross = item.unitPriceMinor * item.qty;
     if (!Number.isSafeInteger(gross) || gross > MAX_BILL_MINOR) {
@@ -300,11 +320,12 @@ export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<
       catalogItemId: item.catalogItemId,
       description: item.description,
       hsn: item.hsn,
-      sac: item.sac,
+      sac: item.sac ?? (marked ? linked?.sac : undefined),
       qty: item.qty,
       unitPriceMinor: item.unitPriceMinor,
       discountMinor: discount,
       gstRate: item.gstRate,
+      ...(marked ? { taxTreatment: 'exempt' as const } : {}),
       amountMinor: gross - discount,
     };
   });
@@ -315,12 +336,17 @@ export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<
  * each charged at half the rate and rounded on their own, so they are always equal and the line's tax is CGST + SGST
  * (it can differ by a paisa from rounding the full rate once — the earlier rule, which put the odd paisa in SGST).
  * Only new bills use this: an issued bill is never recomputed (its stored totals are part of its checksum).
+ * r42: exempt lines add to exemptMinor (present only when there is one) instead of taxableMinor, and carry no tax.
  */
 export function computeTotals(lines: IInvoiceLine[], sameState: boolean): IInvoiceTotals {
-  const t = { subtotalMinor: 0, discountMinor: 0, taxableMinor: 0, cgstMinor: 0, sgstMinor: 0, igstMinor: 0 };
+  const t: Omit<IInvoiceTotals, 'totalMinor' | 'currency'> = { subtotalMinor: 0, discountMinor: 0, taxableMinor: 0, cgstMinor: 0, sgstMinor: 0, igstMinor: 0 };
   for (const line of lines) {
     t.subtotalMinor += line.unitPriceMinor * line.qty;
     t.discountMinor += line.discountMinor;
+    if (line.taxTreatment === 'exempt') {
+      t.exemptMinor = (t.exemptMinor ?? 0) + line.amountMinor;
+      continue;
+    }
     t.taxableMinor += line.amountMinor;
     if (sameState) {
       const half = Math.round((line.amountMinor * line.gstRate) / 200);
@@ -330,7 +356,7 @@ export function computeTotals(lines: IInvoiceLine[], sameState: boolean): IInvoi
       t.igstMinor += Math.round((line.amountMinor * line.gstRate) / 100);
     }
   }
-  const totals = { ...t, totalMinor: t.taxableMinor + t.cgstMinor + t.sgstMinor + t.igstMinor, currency: 'INR' as const };
+  const totals = { ...t, totalMinor: t.taxableMinor + (t.exemptMinor ?? 0) + t.cgstMinor + t.sgstMinor + t.igstMinor, currency: 'INR' as const };
   if (!Object.values(totals).every((v) => typeof v !== 'number' || (Number.isSafeInteger(v) && v >= 0 && v <= MAX_BILL_MINOR))) {
     throw new AppError({ status: 400, code: 'AMOUNT_TOO_LARGE', message: 'This bill is larger than a single bill can be' });
   }
@@ -438,22 +464,24 @@ export class InvoiceService {
     }
 
     const catalogueIds = [...new Set(data.items.map((i) => i.catalogItemId).filter(Boolean).map(String))];
-    const catalogue = new Map<string, { name: string }>();
+    const catalogue = new Map<string, CatalogueLink>();
     if (catalogueIds.length > 0) {
       const rows = await this.catalogueRepository.findAll({ _id: { $in: catalogueIds }, partnerId: actor.partnerId, isActive: true, adminDisabled: { $ne: true } });
-      for (const r of rows) catalogue.set(String(r._id), { name: r.name });
+      for (const r of rows) catalogue.set(String(r._id), { name: r.name, sac: r.sac, taxTreatment: r.taxTreatment });
       // Q10: a line linked to the catalogue bills the catalogue's own price and GST (only qty and discount vary).
       const byId = new Map(rows.map((r) => [String(r._id), r]));
       for (const line of data.items) {
         const item = line.catalogItemId ? byId.get(String(line.catalogItemId)) : undefined;
-        if (item && (line.unitPriceMinor !== item.priceMinor || line.gstRate !== item.gstRate)) {
+        // r42: and its tax treatment when the item names one (a line that names none takes the item's).
+        if (item && (line.unitPriceMinor !== item.priceMinor || line.gstRate !== item.gstRate
+          || (item.taxTreatment && line.taxTreatment && line.taxTreatment !== item.taxTreatment))) {
           throw new AppError({ status: 409, code: 'CATALOGUE_PRICE_CHANGED', message: `${item.name} is now ₹${(item.priceMinor / 100).toFixed(2)} at ${item.gstRate}% GST; review the bill` });
         }
       }
     }
 
-    const lines = computeLines(data.items, catalogue);
-    const documentKind = classifyDocument(partner.taxRegime, partner.gstin, lines);
+    const documentKind = classifyDocument(partner.taxRegime, partner.gstin, data.items);
+    const lines = computeLines(data.items, catalogue, documentKind);
     assertRegistrationCovers(documentKind, partner.gstin, stateCode);
     // B2C with no customer state: place of supply is the supplier's location (intra-state).
     const sameState = !data.customer.placeOfSupply || data.customer.placeOfSupply === stateCode;

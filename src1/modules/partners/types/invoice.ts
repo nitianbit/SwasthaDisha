@@ -33,13 +33,22 @@ export interface IInvoiceLine {
   unitPriceMinor: number;
   discountMinor: number;
   gstRate: 0 | 5 | 12 | 18 | 28;
+  /**
+   * r42 (§26.25): 'exempt' marks an exempt supply on a tax invoice (e.g. a consultation, SAC 9993); stored only when
+   * exempt, so an absent value is taxable (bills issued before keep their checksum).
+   */
+  taxTreatment?: TaxTreatment;
   amountMinor: number;
 }
+
+export type TaxTreatment = 'taxable' | 'exempt';
 
 export interface IInvoiceTotals {
   subtotalMinor: number;
   discountMinor: number;
   taxableMinor: number;
+  /** r42: the value of exempt lines (outside taxableMinor); present only when the bill has an exempt line. */
+  exemptMinor?: number;
   cgstMinor: number;
   sgstMinor: number;
   igstMinor: number;

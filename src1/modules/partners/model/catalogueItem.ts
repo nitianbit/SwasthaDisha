@@ -15,6 +15,7 @@ const catalogueItemSchema = new Schema<ICatalogueItem>(
     mrpMinor: { type: Number, min: 0 },
     gstRate: { type: Number, required: true, enum: [0, 5, 12, 18, 28] },
     sac: { type: String, trim: true },
+    taxTreatment: { type: String, enum: ['taxable', 'exempt'] },
     visitModes: [{ type: String, enum: ['home', 'lab'] }],
     reportTatHours: { type: Number, min: 0 },
     isActive: { type: Boolean, default: true },

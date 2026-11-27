@@ -28,6 +28,8 @@ export const createInvoiceSchema = Joi.object({
       unitPriceMinor: Joi.number().integer().min(0).max(100_000_000_00).required(),
       discountMinor: Joi.number().integer().min(0).optional(),
       gstRate: Joi.number().valid(0, 5, 12, 18, 28).required(),
+      /** r42 (§26.25): an exempt supply (rate 0) on a tax invoice, e.g. a consultation with sac '9993'. */
+      taxTreatment: Joi.string().valid('taxable', 'exempt').optional(),
     })
   ).min(1).max(100).required(),
   idempotencyKey: Joi.string().trim().min(1).max(100).required(),

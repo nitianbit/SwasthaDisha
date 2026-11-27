@@ -63,9 +63,12 @@ export function statusAfter(events: IInvoiceEvent[], totalMinor?: number): { lab
 export function renderInvoiceHtml(inv: IInvoice, events: IInvoiceEvent[], extra: { doctorName?: string } = {}): string {
   const showTax = inv.documentKind === 'tax_invoice';
   const status = statusAfter(events, inv.totals.totalMinor);
-  const rows = inv.items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.description)}${l.sac ? ` <small>SAC ${esc(l.sac)}</small>` : ''}${l.hsn ? ` <small>HSN ${esc(l.hsn)}</small>` : ''}</td>
+  // r42 (§26.25): an exempt line prints "Exempt (SAC 9993)" (or "Exempt" without a SAC) and no GST rate.
+  const exempt = (l: IInvoice['items'][number]) => l.taxTreatment === 'exempt';
+  const rows = inv.items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.description)}${exempt(l)
+    ? ` <small>Exempt${l.sac ? ` (SAC ${esc(l.sac)})` : ''}</small>` : l.sac ? ` <small>SAC ${esc(l.sac)}</small>` : ''}${l.hsn ? ` <small>HSN ${esc(l.hsn)}</small>` : ''}</td>
     <td class="n">${l.qty}</td><td class="n">${rupees(l.unitPriceMinor)}</td><td class="n">${rupees(l.discountMinor)}</td>
-    ${showTax ? `<td class="n">${l.gstRate}%</td>` : ''}<td class="n">${rupees(l.amountMinor)}</td></tr>`).join('');
+    ${showTax ? `<td class="n">${exempt(l) ? 'Exempt' : `${l.gstRate}%`}</td>` : ''}<td class="n">${rupees(l.amountMinor)}</td></tr>`).join('');
   const t = inv.totals;
   const taxRows = showTax
     ? (t.igstMinor > 0
@@ -90,7 +93,8 @@ ${extra.doctorName ? `<br><strong>Doctor:</strong> ${esc(extra.doctorName)}` : '
 <table style="margin-top:12px"><thead><tr><th>#</th><th>Item</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Discount</th>
 ${showTax ? '<th class="n">GST</th>' : ''}<th class="n">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <table style="margin-top:8px;width:40%;margin-left:auto"><tbody>
-<tr><td>Taxable value</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${taxRows}
+<tr><td>Taxable value</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${t.exemptMinor !== undefined
+  ? `<tr><td>Exempt value</td><td class="n">${rupees(t.exemptMinor)}</td></tr>` : ''}${taxRows}
 <tr><td><strong>Total</strong></td><td class="n"><strong>${rupees(t.totalMinor)}</strong></td></tr>${status.paidMinor > 0 && status.label !== 'Cancelled'
   ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Due</td><td class="n">${rupees(Math.max(0, t.totalMinor - status.paidMinor))}</td></tr>` : ''}${status.label === 'Cancelled' && status.paidMinor > 0
   ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Refunded</td><td class="n">${rupees(status.refundMinor)}</td></tr>` : ''}</tbody></table>

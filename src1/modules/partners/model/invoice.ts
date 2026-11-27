@@ -11,6 +11,8 @@ const invoiceLineSchema = new Schema(
     unitPriceMinor: { type: Number, required: true, min: 0 },
     discountMinor: { type: Number, required: true, default: 0, min: 0 },
     gstRate: { type: Number, required: true, enum: [0, 5, 12, 18, 28] },
+    // r42 (§26.25): no default — an absent value is taxable and keeps earlier bills (and their checksums) as they were.
+    taxTreatment: { type: String, enum: ['taxable', 'exempt'] },
     amountMinor: { type: Number, required: true },
   },
   { _id: false }
@@ -58,6 +60,7 @@ const invoiceSchema = new Schema<IInvoice>(
       subtotalMinor: { type: Number, required: true },
       discountMinor: { type: Number, required: true },
       taxableMinor: { type: Number, required: true },
+      exemptMinor: { type: Number },
       cgstMinor: { type: Number, required: true },
       sgstMinor: { type: Number, required: true },
       igstMinor: { type: Number, required: true },

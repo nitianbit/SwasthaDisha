@@ -124,6 +124,29 @@ async function main() {
     assert.equal(ok.totals.taxableMinor, 159000);
   });
 
+  await check('r42: a clinic consultation at 0% is exempt by default (SAC 9993) and bills as an exempt line; other items stay taxable', async () => {
+    const gstClinic = await partner('clinic', { taxRegime: 'regular', gstin: '29AABCK4321F1ZH' });
+    const opd = await catalogueSvc.createItem(gstClinic.actor, { kind: 'consultation', name: 'OPD', priceMinor: 50000, gstRate: 0 });
+    assert.deepEqual([opd.taxTreatment, opd.sac], ['exempt', '9993']);
+    const own = await catalogueSvc.createItem(gstClinic.actor, { kind: 'consultation', name: 'Review', priceMinor: 20000, gstRate: 0, sac: '999312' });
+    assert.deepEqual([own.taxTreatment, own.sac], ['exempt', '999312'], 'its own SAC is kept');
+    const chosen = await catalogueSvc.createItem(gstClinic.actor, { kind: 'consultation', name: 'Wellness talk', priceMinor: 20000, gstRate: 0, taxTreatment: 'taxable' });
+    assert.equal(chosen.taxTreatment, 'taxable', 'an explicit choice is kept');
+    const cosmetic = await catalogueSvc.createItem(gstClinic.actor, { kind: 'consultation', name: 'Cosmetic', priceMinor: 100000, gstRate: 18 });
+    const dressing = await catalogueSvc.createItem(gstClinic.actor, { kind: 'procedure', name: 'Dressing', priceMinor: 30000, gstRate: 0 });
+    assert.deepEqual([cosmetic.taxTreatment, dressing.taxTreatment], [undefined, undefined]);
+    const bill = await invoiceSvc.createInvoice(gstClinic.actor, { branchId: gstClinic.A, customer: { name: 'Patient' }, idempotencyKey: key(), items: [
+      { catalogItemId: String(opd._id), description: 'OPD', qty: 1, unitPriceMinor: 50000, gstRate: 0 },
+      { catalogItemId: String(cosmetic._id), description: 'Cosmetic', qty: 1, unitPriceMinor: 100000, gstRate: 18 }] });
+    assert.deepEqual([bill.documentKind, bill.items[0]!.taxTreatment, bill.items[0]!.sac, bill.totals.exemptMinor, bill.totals.taxableMinor, bill.totals.totalMinor],
+      ['tax_invoice', 'exempt', '9993', 50000, 100000, 168000]);
+    // An unregistered clinic's consultation is exempt too, but its commercial invoice is as before.
+    const plainOpd = await catalogueSvc.createItem(clinic.actor, { kind: 'consultation', name: 'OPD r42', priceMinor: 40000, gstRate: 0 });
+    const plain = await invoiceSvc.createInvoice(clinic.actor, { branchId: clinic.A, customer: { name: 'Patient' }, idempotencyKey: key(),
+      items: [{ catalogItemId: String(plainOpd._id), description: 'OPD', qty: 1, unitPriceMinor: 40000, gstRate: 0 }] });
+    assert.deepEqual([plain.documentKind, plain.items[0]!.taxTreatment, plain.items[0]!.sac, plain.totals.exemptMinor], ['commercial_invoice', undefined, undefined, undefined]);
+  });
+
   await check('the doctor on a clinic bill must consult at that branch and be an active, verified doctor', async () => {
     const doc = new Types.ObjectId();
     await SpecialistModel.collection.insertOne({ _id: doc, name: 'Dr Q', phone: nextPhone(), isActive: true, isVerified: true } as never);

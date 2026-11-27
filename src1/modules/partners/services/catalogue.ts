@@ -1,6 +1,6 @@
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { createHash } from 'crypto';
-import { canonicalJson } from '@/modules/partners/services/invoice';
+import { canonicalJson, assertExemptRate } from '@/modules/partners/services/invoice';
 import { Service } from 'typedi';
 import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
 import { ICatalogueItem, CatalogueItemKind } from '@/modules/partners/types';
@@ -39,7 +39,11 @@ async function assertItemFits(partnerId: string, item: { kind?: string; gstRate?
   if (item.gstRate !== undefined && item.gstRate !== 0 && !(p.taxRegime === 'regular' && p.gstin)) {
     throw new AppError({ status: 400, code: 'GST_RATE_NOT_ALLOWED', message: 'Only 0% GST can be billed without a regular GST registration' });
   }
+  return p;
 }
+
+/** r42 (§26.25): healthcare by a clinical establishment is exempt (SAC 9993), so a clinic's 0% consultation is by default. */
+export const EXEMPT_HEALTHCARE_SAC = '9993';
 
 const notFound = () => new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
 
@@ -55,6 +59,7 @@ export type CatalogueItemInput = {
   mrpMinor?: number;
   gstRate: 0 | 5 | 12 | 18 | 28;
   sac?: string;
+  taxTreatment?: 'taxable' | 'exempt';
   visitModes?: ('home' | 'lab')[];
   reportTatHours?: number;
 };
@@ -104,12 +109,15 @@ export class CatalogueService {
     if (data.mrpMinor !== undefined && data.mrpMinor < data.priceMinor) {
       throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
     }
-    await assertItemFits(actor.partnerId, { kind: data.kind, gstRate: data.gstRate, visitModes: data.visitModes ?? [] });
+    const partner = await assertItemFits(actor.partnerId, { kind: data.kind, gstRate: data.gstRate, visitModes: data.visitModes ?? [] });
+    assertExemptRate(data.taxTreatment, data.gstRate);
+    const exemptByDefault = partner.kind === 'clinic' && data.kind === 'consultation' && data.gstRate === 0 && data.taxTreatment === undefined;
     return inTransaction(async (session) => {
       // Q12: the key is claimed with the item, so an abandon either wins (no item can follow) or finds it used.
       if (requestKey) await claimRequestKey(catalogueKeyScope(actor.partnerId), requestKey, session);
       const item = await this.catalogueRepo.save({
         ...data,
+        ...(exemptByDefault ? { taxTreatment: 'exempt', sac: data.sac ?? EXEMPT_HEALTHCARE_SAC } : {}),
         visitModes: data.visitModes ?? [],
         ...(requestKey ? { createRequestKey: requestKey, createRequestHash: requestHash } : {}),
         // Q12: new rows store the canonical (lowercase) id, so the unique (partnerId, createRequestKey) index holds one
@@ -142,6 +150,8 @@ export class CatalogueService {
       if (mrp !== undefined && mrp !== null && mrp < price) {
         throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
       }
+      // r42: checked on the item as this attempt reads it (the write below is fenced on its updatedAt).
+      assertExemptRate(safe.taxTreatment ?? item.taxTreatment, safe.gstRate ?? item.gstRate);
       // A conversion is admitted on the item as THIS attempt reads it (a concurrent conversion makes it KIND_FIXED), and the
       // write below is fenced on that kind.
       if (safe.kind !== undefined && await kindFits(actor.partnerId, item.kind)) {

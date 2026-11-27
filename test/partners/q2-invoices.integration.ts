@@ -70,7 +70,8 @@ const branchInput = (name: string, stateCode: string, state: string) => ({
 }) as any;
 let keySeq = 0;
 const key = () => `k-${++keySeq}`;
-const line = (over: Partial<{ description: string; qty: number; unitPriceMinor: number; gstRate: 0 | 5 | 12 | 18 | 28; discountMinor: number; catalogItemId: string }> = {}) =>
+const line = (over: Partial<{ description: string; qty: number; unitPriceMinor: number; gstRate: 0 | 5 | 12 | 18 | 28; discountMinor: number; catalogItemId: string;
+  sac: string; taxTreatment: 'taxable' | 'exempt' }> = {}) =>
   ({ description: 'CBC', qty: 1, unitPriceMinor: 50000, gstRate: 5 as const, ...over });
 
 async function setupPartner(name: string, prefix: string, ownerPhone: string, tax: { taxRegime: 'regular' | 'composition' | 'unregistered'; gstin?: string }) {
@@ -232,6 +233,61 @@ async function main() {
     assert.equal(u.documentKind, 'commercial_invoice');
     assert.equal(u.supplier.gstin, undefined, 'no GSTIN on a commercial invoice');
     await assert.rejects(() => invoiceSvc.createInvoice(unreg.actor, { branchId: unreg.branchId, customer: { name: 'U' }, items: [line()], idempotencyKey: key() }), code('INVALID_TAX_RATES'));
+  });
+
+  // ── r42 (§26.25): exempt lines on a tax invoice ──
+  await check('r42: an exempt line on a tax invoice: no tax, exempt value apart from taxable value, marked on the bill; checksum holds', async () => {
+    const lines = [line({ catalogItemId: cbcId, unitPriceMinor: 50001 }), line({ description: 'Consult', unitPriceMinor: 30000, gstRate: 0, taxTreatment: 'exempt', sac: '9993' })];
+    const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Exempt mix' }, items: lines, idempotencyKey: key() });
+    assert.equal(inv.documentKind, 'tax_invoice');
+    assert.deepEqual([inv.totals.taxableMinor, inv.totals.exemptMinor, inv.totals.cgstMinor + inv.totals.sgstMinor, inv.totals.igstMinor, inv.totals.totalMinor],
+      [50001, 30000, 2500, 0, 82501]);
+    assert.deepEqual([inv.items[0]!.taxTreatment, inv.items[1]!.taxTreatment, inv.items[1]!.sac], [undefined, 'exempt', '9993']);
+    const stored = await InvoiceModel.collection.findOne({ _id: inv._id }) as any;
+    assert.ok(!('taxTreatment' in stored.items[0]), 'a taxable line stores no treatment');
+    assert.equal((await invoiceSvc.getInvoice(lab.actor, String(inv._id))).invoice.totals.exemptMinor, 30000, 'the checksum covers the exempt fields');
+    const html = renderInvoiceHtml(inv, []);
+    assert.ok(html.includes('<small>Exempt (SAC 9993)</small>') && html.includes('>Exempt</td>') && html.includes('<td>Exempt value</td><td class="n">₹300.00</td>'));
+    assert.ok(html.includes('<td>Taxable value</td><td class="n">₹500.01</td>'));
+    // Inter-state: IGST on the taxable line only.
+    const inter = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Exempt inter', placeOfSupply: '27' },
+      items: [line({ unitPriceMinor: 100000, gstRate: 18 }), line({ description: 'Consult', unitPriceMinor: 30000, gstRate: 0, taxTreatment: 'exempt' })], idempotencyKey: key() });
+    assert.deepEqual([inter.totals.igstMinor, inter.totals.taxableMinor, inter.totals.exemptMinor, inter.totals.totalMinor], [18000, 100000, 30000, 148000]);
+    assert.ok(renderInvoiceHtml(inter, []).includes('<small>Exempt</small>'), 'no SAC: marked Exempt alone');
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'X' },
+      items: [line({ taxTreatment: 'exempt' })], idempotencyKey: key() }), code('EXEMPT_RATE_NOT_ZERO'));
+  });
+
+  await check('r42: taxable answers are identical (no exemptMinor, no treatment); bills of supply and commercial invoices are unchanged', async () => {
+    const raw = await InvoiceModel.collection.findOne({ _id: first._id }) as any;
+    assert.ok(!('exemptMinor' in raw.totals) && raw.items.every((l: any) => !('taxTreatment' in l)));
+    assert.equal(first.totals.exemptMinor, undefined);
+    assert.ok(!renderInvoiceHtml(first, []).includes('Exempt'));
+    const explicit = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'T' }, items: [line({ taxTreatment: 'taxable' })], idempotencyKey: key() });
+    assert.ok(!('taxTreatment' in explicit.items[0]!) || explicit.items[0]!.taxTreatment === undefined);
+    const bos = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'B' },
+      items: [line({ gstRate: 0, taxTreatment: 'exempt', sac: '9993' })], idempotencyKey: key() });
+    assert.equal(bos.documentKind, 'bill_of_supply');
+    assert.deepEqual([bos.items[0]!.taxTreatment, bos.items[0]!.sac, bos.totals.taxableMinor, bos.totals.exemptMinor, bos.totals.totalMinor], [undefined, '9993', 50000, undefined, 50000]);
+    const unreg = await setupPartner('Exempt Village', 'EV', '9000000031', { taxRegime: 'unregistered' });
+    const ci = await invoiceSvc.createInvoice(unreg.actor, { branchId: unreg.branchId, customer: { name: 'U' }, items: [line({ gstRate: 0, taxTreatment: 'exempt' })], idempotencyKey: key() });
+    assert.deepEqual([ci.documentKind, ci.items[0]!.taxTreatment, ci.totals.exemptMinor, ci.totals.taxableMinor], ['commercial_invoice', undefined, undefined, 50000]);
+  });
+
+  await check('r42: catalogue items carry the treatment: a linked line takes it (and the SAC); a different one is refused; exempt needs rate 0', async () => {
+    await assert.rejects(() => catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'Bad exempt', priceMinor: 100, gstRate: 5, taxTreatment: 'exempt', visitModes: ['lab'] }), code('EXEMPT_RATE_NOT_ZERO'));
+    const item = await catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'Screening', priceMinor: 40000, gstRate: 0, taxTreatment: 'exempt', sac: '9993', visitModes: ['lab'] });
+    assert.equal(item.taxTreatment, 'exempt');
+    await assert.rejects(() => catalogueSvc.updateItem(lab.actor, String(item._id), { gstRate: 5 }), code('EXEMPT_RATE_NOT_ZERO'));
+    const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Linked' },
+      items: [line(), line({ catalogItemId: String(item._id), description: 'Screening', unitPriceMinor: 40000, gstRate: 0 })], idempotencyKey: key() });
+    assert.deepEqual([inv.items[1]!.taxTreatment, inv.items[1]!.sac, inv.totals.exemptMinor], ['exempt', '9993', 40000]);
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Linked' },
+      items: [line(), line({ catalogItemId: String(item._id), description: 'Screening', unitPriceMinor: 40000, gstRate: 0, taxTreatment: 'taxable' })], idempotencyKey: key() }),
+    code('CATALOGUE_PRICE_CHANGED'));
+    const back = await catalogueSvc.updateItem(lab.actor, String(item._id), { taxTreatment: 'taxable', gstRate: 5 });
+    assert.deepEqual([back.taxTreatment, back.gstRate], ['taxable', 5]);
+    await catalogueSvc.deactivateItem(lab.actor, String(item._id));
   });
 
   await check('line and reference validation: discount ≤ amount; doctor must work at the partner', async () => {
@@ -504,6 +560,13 @@ async function main() {
       assert.equal((await call('GET', `/api/v1/partner-workspace/invoices/${puneBill!._id}`, partnerToken(deskA))).status, 404);
       assert.equal((await call('POST', '/api/v1/partner-workspace/invoices', ownerT,
         { customer: { name: 'no branch' }, items: [line()], idempotencyKey: key() })).status, 400);
+      // r42: the web sends taxTreatment 'exempt' and sac '9993' on the fee line.
+      const fee = await call('POST', '/api/v1/partner-workspace/invoices', ownerT, { branchId: lab.branchId, customer: { name: 'HTTP fee' },
+        items: [line(), line({ description: 'Consultation fee', gstRate: 0, taxTreatment: 'exempt', sac: '9993' })], idempotencyKey: key() });
+      assert.equal(fee.status, 201);
+      assert.deepEqual([fee.json.data.items[1].taxTreatment, fee.json.data.items[1].sac, fee.json.data.totals.exemptMinor], ['exempt', '9993', 50000]);
+      assert.equal((await call('POST', '/api/v1/partner-workspace/invoices', ownerT, { branchId: lab.branchId, customer: { name: 'x' },
+        items: [line({ gstRate: 0, taxTreatment: 'zero' as any })], idempotencyKey: key() })).status, 400);
     });
 
     await check('HTTP: admin bills through /admin/:partnerId/workspace', async () => {

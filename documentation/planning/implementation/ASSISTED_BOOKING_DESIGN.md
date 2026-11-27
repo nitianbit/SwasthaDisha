@@ -7374,6 +7374,97 @@ a viewer, a biller and a lab refused; two audit rows with ids only; the hourly l
 unaffected). `r12-phase2c` 27/27 (the lab desk's lookup unchanged). Full regression (`prun.sh … 2` on `cda0af91`): 92 suites, 92 passed,
 `tsc` 17.
 
+### 26.25 r42: GST-exempt consultation lines on in-house bills (2026-11-27)
+
+Branch `m0/r42-gst-exempt` from stage `eb0548d6`. The work is owner-approved. The owner was away, so the small choices
+are the builder's (ASSUMED, below).
+
+**Why.** Until now a clinic bill put the doctor's fee on a hand-written line at 0% GST with no SAC. Healthcare by a
+clinical establishment is GST-exempt (Notification 12/2017-Central Tax (Rate), Sl. 74; SAC 9993). On a tax invoice, an
+exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable line.
+
+> **Confirm before production.** The owner or their CA should confirm three things before this reaches `main`:
+> - the exemption entry;
+> - the SAC printed (`9993`, or a six-digit code such as `999312`);
+> - the print wording ("Exempt (SAC 9993)", "Exempt value").
+>
+> Nothing here changes a bill already issued.
+
+**The bill line** (`POST /api/v1/partner-workspace/invoices`, and the admin-as-owner route):
+- `items[].taxTreatment`: `'taxable' | 'exempt'`, optional. Absent means `taxable`, as before.
+- `items[].sac` (or `hsn`): optional, as before.
+- The web sends the fee line as `{ description, qty: 1, unitPriceMinor, gstRate: 0, taxTreatment: 'exempt', sac: '9993' }`.
+
+**Validation:**
+- An exempt line must be at rate 0. Otherwise the answer is 400 `EXEMPT_RATE_NOT_ZERO`.
+- Any other `taxTreatment` value is 400 `VALIDATION_ERROR`.
+
+**On a tax invoice** (a regular registration with a GSTIN and at least one line above 0%):
+- An exempt line is stored with `taxTreatment: 'exempt'` and carries no CGST, SGST or IGST.
+- `totals.taxableMinor` is now the taxable lines only.
+- The new `totals.exemptMinor` is the exempt lines' value. It is present only when the bill has an exempt line.
+- `totalMinor = taxableMinor + exemptMinor + CGST + SGST + IGST`.
+- For example, a ₹500.01 test at 5% plus a ₹300 exempt consultation gives taxable 50001, exempt 30000, tax 2500 and a
+  total of 82501 (the same total as before; only the split differs).
+
+**Printed or PDF bill:**
+- The line reads "Exempt (SAC 9993)", or "Exempt" when the line has no SAC.
+- Its GST column reads "Exempt".
+- The totals gain an "Exempt value" row under "Taxable value".
+
+**Unchanged:**
+- A bill with only taxable lines answers exactly as before. Its lines store no `taxTreatment` and its totals have no
+  `exemptMinor`. Both fields have no default, so bills issued before keep their stored form and their checksum. The
+  checksum covers the new fields when they are present.
+- A **bill of supply** (a registered partner billing only 0% lines, or a composition partner) and a **commercial
+  invoice** (a partner not registered for GST) are unchanged:
+  - their lines store no treatment, even when one is sent;
+  - `taxableMinor` is the whole value, as before;
+  - the bill of supply keeps its "exempt supply — tax not chargeable" note;
+  - a SAC sent on a line is kept and printed, as before.
+
+**Catalogue items** (`POST` and `PATCH` of catalogue items):
+- An item may carry `taxTreatment` (`'taxable' | 'exempt'`) beside its `sac`.
+- An exempt item must be at rate 0 (400 `EXEMPT_RATE_NOT_ZERO`). An edit is checked on the item as it reads then, so
+  setting 5% on an exempt item needs `taxTreatment: 'taxable'` in the same edit.
+- **A clinic's consultation at 0%, created without `taxTreatment`, is exempt by default,** with `sac: '9993'` unless it
+  names its own SAC. This is `EXEMPT_HEALTHCARE_SAC` in `partners/services/catalogue.ts`. Procedures, packages, other
+  items, a consultation with GST, and lab items are not defaulted.
+- **A bill line linked to an item:**
+  - A line that names no treatment takes the item's, and the item's SAC when the line has none.
+  - A line that names a different treatment from an item that has one is refused 409 `CATALOGUE_PRICE_CHANGED`, like a
+    stale price or rate.
+  - A line linked to an item with no treatment (every item made before r42) keeps the line's own choice.
+
+**ASSUMED:**
+- An exempt line is marked only on a tax invoice. The coordinator asked for bills of supply to stay unchanged, and a
+  bill of supply already says the supply is exempt. If the CA wants the "Exempt (SAC …)" mark and the exempt value on a
+  registered clinic's bill of supply too, it is a small change in `computeLines`, which strips the treatment when the
+  document is not a tax invoice.
+- The default applies when an item is created, not to existing items or to a legacy item converted to a consultation.
+  Owners mark those by an edit (`taxTreatment: 'exempt'`).
+- An unregistered clinic's consultation is defaulted too. It changes nothing on its commercial invoices, and it is
+  already right if the clinic registers later.
+- There is no switch. A web that never sends `taxTreatment` sees no change, except a clinic's new 0% consultation
+  items, which now come back with `taxTreatment: 'exempt'` and `sac: '9993'`.
+- No index, migration or deploy step is needed.
+
+**Checks:**
+- `q2-invoices`, now 32:
+  - the mixed bill: split totals, marks on the bill, the checksum on read;
+  - the inter-state case, with IGST on the taxable line only;
+  - an exempt line at 5% refused;
+  - taxable answers stored without the new fields;
+  - a bill of supply and a commercial invoice unchanged;
+  - an exempt catalogue item: inherited by a linked line, a different treatment refused, an edit to 5% refused;
+  - HTTP: the fee line with `taxTreatment: 'exempt', sac: '9993'` gives 201; a bad value gives 400.
+- `q10-billing`, now 12: a GST clinic's consultation defaults to exempt with SAC 9993 (its own SAC and an explicit
+  choice are kept); its mixed tax invoice; an unregistered clinic's commercial invoice unchanged.
+- A failing-first check: q2 fails with exempt totals disabled.
+- Single suites: `q2-invoices` 32/32, `q10-billing` 12/12, `q14-owner-decisions` 27/27, `q6-clinics` 21/21 and
+  `r40-clinic-reception` 8/8. `tsc` 17.
+- Full regression: REGRESSION_PLACEHOLDER
+
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
 Design only; nothing here is built. Base: `m0/r15-phase3-spec` (`f5f171c9` + §25). Phase 5 is built after the phase 2 and 3
