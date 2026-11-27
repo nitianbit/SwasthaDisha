@@ -1000,7 +1000,7 @@ export class PharmacyOrderService {
     const requestHash = requestHashOf({ kind: 'rx_order', ...content });
     return this.keyedOnce({ index: { pharmacyId: 1, 'prescriptionFromBooking.requestKey': 1 }, requestHash, onReplay: bindRxOrderFile,
       prior: async () => await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId),
-        'prescriptionFromBooking.requestKey': { $eq: requestKey } }).lean() as IPharmacyOrder | null,
+        'prescriptionFromBooking.requestKey': { $eq: requestKey, $type: 'string' } }).lean() as IPharmacyOrder | null,
       hashOf: (o) => o.prescriptionFromBooking?.requestHash }, async () => {
       const terms = await prepareRxOrder(pharmacyId, data);
       const result = await this.create(pharmacyId, { ...content, prescriptionFromBookingId: undefined, prescriptionUrls: [],
@@ -1058,7 +1058,7 @@ export class PharmacyOrderService {
 
   private async saleByKey(pharmacyId: string, key: string): Promise<IPharmacyOrder | null> {
     if (!Types.ObjectId.isValid(pharmacyId)) return null;
-    return await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId), 'saleRequest.requestKey': { $eq: key } }).lean() as IPharmacyOrder | null;
+    return await PharmacyOrderModel.findOne({ pharmacyId: new Types.ObjectId(pharmacyId), 'saleRequest.requestKey': { $eq: key, $type: 'string' } }).lean() as IPharmacyOrder | null;
   }
 
   /** r36: GET /pharmacy-orders/by-key/:key — the order a sale key made (this pharmacy's own keys only), Q13 shape. */

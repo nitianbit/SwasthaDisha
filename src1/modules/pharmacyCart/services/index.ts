@@ -391,7 +391,7 @@ export class PharmacyCartService {
       throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'Request keys are for customer orders' });
     }
     const keyed = async () => (key
-      ? (await PharmacyOrderModel.findOne({ customerId: { $eq: actor.actorId }, checkoutRequestKey: { $eq: key } }).lean()) as IPharmacyOrder | null
+      ? (await PharmacyOrderModel.findOne({ customerId: { $eq: actor.actorId }, checkoutRequestKey: { $eq: key, $type: 'string' } }).lean()) as IPharmacyOrder | null
       : null);
     // A replay also finishes emptying the cart the order came from (its first request may have died before that),
     // only if that cart is unchanged since: a cart changed or replaced since is the customer's next order.

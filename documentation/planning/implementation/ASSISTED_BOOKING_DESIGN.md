@@ -7254,6 +7254,23 @@ The pattern is the pharmacy sale's (r36). All four routes need a verified, activ
   a free create interrupted after its insert is finished, as a resend is.
 - The family-member rollback test is restored: a fresh key on a taken slot leaves no family member.
 
+**r41c** (branch `m0/r41c-by-key-read-safety` from stage `70a2de73`), after the r41b re-check:
+- **A by-key read is a read.** `GET …/consultations/by-key/:key` finishes an interrupted create only in these cases:
+  - the create is older than 30 s, so one still in flight is left to its own request;
+  - it is still unfinished (pending, no payment link, with its stored terms).
+
+  If finishing fails (a racing resend, the gateway), the booking is answered as it now stands. A read never answers 409
+  and never makes a second order. The abandon uses the plain read and never finishes anything.
+- **No booking from a read:** finishing calls the booking service's replay directly (`finishInterruptedCreate`, the same
+  `replayedCreate` a resend runs), never the create.
+- **Index selection only, same results:** `$type: 'string'` is added to the lookups of the lab desk's `desk.requestKey`,
+  a compensation's `compensation.requestKey`, a pharmacy prescription order's `prescriptionFromBooking.requestKey`, a
+  sale's `saleRequest.requestKey` and a checkout's `checkoutRequestKey` (the services and the request-key router).
+- **Tests:**
+  - a young interrupted create is left alone;
+  - two concurrent reads of an older one both answer 200, finish it once, and leave one payment record;
+  - two concurrent reads during a create answer 200 with no 409 and one payment record.
+
 ### 26.24 r40: server support for the simple clinic reception view, P3 (2026-11-26)
 
 Branch `m0/r40-clinic-reception` from stage `9b512b92`. Local commits only. The work is owner-approved

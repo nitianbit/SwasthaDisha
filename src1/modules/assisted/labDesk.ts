@@ -124,7 +124,7 @@ async function receipt(actor: PartnerActor, b: IPartnerLabBooking, replayed: boo
 }
 
 async function replayOf(actor: PartnerActor, storedKey: string, hash: string, s?: ClientSession): Promise<IPartnerLabBooking | null> {
-  const prior = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedKey } }).session(s ?? null).lean() as IPartnerLabBooking | null;
+  const prior = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedKey, $type: 'string' } }).session(s ?? null).lean() as IPartnerLabBooking | null;
   if (!prior) return null;
   if (prior.desk?.requestHash !== hash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
   // A receipt is shown only while the booking is at a branch in this member's scope.
@@ -155,7 +155,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
   const hash = labDeskRequestHash(input);
   await assertLabDeskIndexes();
   // The same key with the same content answers its receipt first, uncounted.
-  const replay = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedKey } }).lean() as IPartnerLabBooking | null;
+  const replay = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedKey, $type: 'string' } }).lean() as IPartnerLabBooking | null;
   if (replay && replay.desk?.requestHash === hash && inScope(actor, replay)) return receipt(actor, replay, true);
   // Every other create names a phone like a lookup does: counted (the one limit the owner kept) and audited (ids only).
   if (attempt === 0) await countPhoneUse(orgKey(partnerId), phone, (seen) => recordPartnerAudit(actor, 'lab_desk.attempted', undefined, seen));
@@ -262,7 +262,7 @@ export async function createDeskBooking(actor: PartnerActor, input: LabDeskInput
 export async function findDeskByKey(actor: PartnerActor, key: string) {
   await labOf(actor, { eligible: false });
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  const b = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedDeskKey(actor, key) } }).lean() as IPartnerLabBooking | null;
+  const b = await PartnerLabBookingModel.findOne({ 'desk.requestKey': { $eq: storedDeskKey(actor, key), $type: 'string' } }).lean() as IPartnerLabBooking | null;
   if (b) return { state: 'used' as const, booking: inScope(actor, b) ? (await deskViews(actor, [b]))[0]! : null };
   const row = await RequestKeyModel.findOne({ scope: deskKeyScope(actor), key }).lean();
   return { state: row?.state === 'abandoned' ? 'abandoned' as const : 'unknown' as const };
@@ -272,7 +272,7 @@ export async function findDeskByKey(actor: PartnerActor, key: string) {
 export async function abandonDeskByKey(actor: PartnerActor, key: string) {
   await labOf(actor, { eligible: false });
   if (!ASSISTED_KEY.test(String(key ?? ''))) throw err(400, 'VALIDATION_ERROR', 'A valid key is required');
-  if (await PartnerLabBookingModel.exists({ 'desk.requestKey': { $eq: storedDeskKey(actor, key) } })) return findDeskByKey(actor, key);
+  if (await PartnerLabBookingModel.exists({ 'desk.requestKey': { $eq: storedDeskKey(actor, key), $type: 'string' } })) return findDeskByKey(actor, key);
   const state = await abandonRequestKey(deskKeyScope(actor), key);
   return state === 'abandoned' ? { state } : findDeskByKey(actor, key);
 }

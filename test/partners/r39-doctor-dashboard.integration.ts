@@ -412,8 +412,26 @@ async function main() {
       const fk = rk('followup-key');
       failSettlement.next = true;
       await expect('D', 'POST', '/me/consultations', 500, { slotId: await slot(D), mode: 'call', followUpOf: String(parent.insertedId), requestKey: fk });
+      // r41c: a create younger than 30 s may still be running: the read leaves it as it is.
+      const young = (await expect('D', 'GET', `/me/consultations/by-key/${fk}`, 200)).json.data;
+      assert.deepEqual([young.state, young.booking.status, young.booking.paymentStatus], ['used', 'pending', 'pending']);
+      await BookingModel.collection.updateOne({ createRequestKey: `doctor:${D}:${fk}` }, { $set: { createdAt: new Date(Date.now() - 60_000) } });
+      // Two concurrent reads of the interrupted (older) create: both answer 200, it is finished once.
+      const [g1, g2] = await Promise.all([call('D', 'GET', `/me/consultations/by-key/${fk}`), call('D', 'GET', `/me/consultations/by-key/${fk}`)]);
+      assert.deepEqual([g1.status, g2.status], [200, 200], g1.text.slice(0, 200) + ' / ' + g2.text.slice(0, 200));
       const got = (await expect('D', 'GET', `/me/consultations/by-key/${fk}`, 200)).json.data;
       assert.deepEqual([got.state, got.booking.status, got.booking.paymentStatus, got.payment.required], ['used', 'confirmed', 'paid', false]);
+      assert.equal(await PaymentRecordModel.countDocuments({ contextId: got.booking.bookingId }), 1, 'one payment record');
+      // r41c: two concurrent reads during a create: no 409, one payment record (a read never finishes an in-flight create).
+      const ck = rk('race-read-key');
+      const [made, r1, r2] = await Promise.all([
+        call('D', 'POST', '/me/consultations', { slotId: await slot(D), mode: 'video', customer: { phone: '9877740001' }, requestKey: ck }),
+        call('D', 'GET', `/me/consultations/by-key/${ck}`), call('D', 'GET', `/me/consultations/by-key/${ck}`),
+      ]);
+      assert.deepEqual([made.status, r1.status, r2.status], [201, 200, 200], [made.text, r1.text, r2.text].map((t) => t.slice(0, 150)).join(' / '));
+      assert.equal(await PaymentRecordModel.countDocuments({ contextId: made.json.data.booking.bookingId }), 1, 'one payment record');
+      const after = (await expect('D', 'GET', `/me/consultations/by-key/${ck}`, 200)).json.data;
+      assert.deepEqual([after.state, after.booking.bookingId], ['used', made.json.data.booking.bookingId]);
     });
 
     let billIds: string[] = [];

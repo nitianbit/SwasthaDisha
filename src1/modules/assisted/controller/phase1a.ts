@@ -268,7 +268,7 @@ export const closeCompensated = async (req: AuthRequest, res: Response) => {
   const requestHash = requestHashOf({ paymentRecordId, reason });
   /** The record this (admin, key) already closed: its closure when the content matches, else 409. */
   const byKey = async () => {
-    const prior = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
+    const prior = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey, $type: 'string' } }).lean() as Record<string, any> | null;
     if (!prior) return null;
     if (prior.compensation?.requestHash !== requestHash) throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different close' });
     return closureOf(prior);
@@ -299,7 +299,7 @@ export const closeCompensatedByKey = async (req: AuthRequest, res: Response) => 
   assertAdminToolsOn();
   await assertUniqueIndex(PaymentRecordModel, COMPENSATION_KEY_INDEX);
   const requestKey = `${String(req.user?._id).toLowerCase()}:${String(req.params.key)}`;
-  const r = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey } }).lean() as Record<string, any> | null;
+  const r = await PaymentRecordModel.findOne({ 'compensation.requestKey': { $eq: requestKey, $type: 'string' } }).lean() as Record<string, any> | null;
   if (!r) return send(res, { state: 'not_found' });
   send(res, { state: 'closed', ...closureOf(r) });
 };

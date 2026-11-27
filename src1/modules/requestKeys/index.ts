@@ -62,7 +62,7 @@ async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
     : kind === 'customer_return' ? CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'supplier_return' ? SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'pharmacy_checkout'
-      ? PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+      ? PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key, $type: 'string' } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : kind === 'instant_request_create'
       ? InstantRequestModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : kind === 'lab_booking_create'
@@ -73,11 +73,11 @@ async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
 const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create',
   'pharmacy_rx_order', 'pharmacy_sale'];
 const rxOrderFor = (pharmacyId: string, key: string) => (/^[0-9a-fA-F]{24}$/.test(pharmacyId)
-  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'prescriptionFromBooking.requestKey': { $eq: key } })
+  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'prescriptionFromBooking.requestKey': { $eq: key, $type: 'string' } })
     .select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
   : Promise.resolve(null));
 const saleFor = (pharmacyId: string, key: string) => (/^[0-9a-fA-F]{24}$/.test(pharmacyId)
-  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'saleRequest.requestKey': { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+  ? PharmacyOrderModel.findOne({ pharmacyId: { $eq: pharmacyId }, 'saleRequest.requestKey': { $eq: key, $type: 'string' } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
   : Promise.resolve(null));
 const CUSTOMER_KINDS: OnceOnlyKind[] = ['booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
 

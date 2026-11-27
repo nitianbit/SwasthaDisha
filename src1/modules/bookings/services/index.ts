@@ -713,6 +713,14 @@ export class BookingService {
    * Answer for a create whose key was already used: the existing booking, unchanged. Payment (if still due) is resumed
    * from the booking (retry-payment / payment reconciliation), never by creating a second booking.
    */
+  /**
+   * r41c (§26.23): finishes a consultation create interrupted after its insert, exactly as a resend of its key does (the
+   * replay below), and answers it. Never creates a booking: it is called only with a booking already found.
+   */
+  async finishInterruptedCreate(booking: IBooking): Promise<BookingPaymentInitResponse> {
+    return this.replayedCreate(booking, {} as CreateSpecialistBookingRequest);
+  }
+
   private async replayedCreate(booking: IBooking, _resent: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
     // Interrupted after the insert (no payment link, not settled): finish it now with the original request's terms.
     // Only with the validated terms stored at the insert; the resent request's body is not trusted for money.
