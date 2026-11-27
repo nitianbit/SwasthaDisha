@@ -7463,7 +7463,7 @@ exempt supply should be shown as **exempt**, with its SAC, not as a 0% taxable l
 - A failing-first check: q2 fails with exempt totals disabled.
 - Single suites: `q2-invoices` 32/32, `q10-billing` 12/12, `q14-owner-decisions` 27/27, `q6-clinics` 21/21 and
   `r40-clinic-reception` 8/8. `tsc` 17.
-- Full regression: REGRESSION_PLACEHOLDER
+- Full regression (`prun.sh … 2` on `eff9235a`): 92 suites, 92 passed, `tsc` 17.
 
 ## 27. Phase 5 build specification (SMS) (r23, 2026-11-25)
 
